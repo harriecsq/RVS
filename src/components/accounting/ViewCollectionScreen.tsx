@@ -1,0 +1,970 @@
+import { useState } from "react";
+import { ArrowLeft, Clock, Trash2, Edit3, X, Check, FileText, Receipt, Plus, Paperclip } from "lucide-react";
+import { ActionsDropdown } from "../shared/ActionsDropdown";
+import { StandardButton, StandardInput, StandardSelect, StandardTextarea, StandardTabs } from "../design-system";
+import { toast } from "sonner@2.0.3";
+import { formatAmount } from "../../utils/formatAmount";
+import { CollectionBillingsTab } from "./CollectionBillingsTab";
+import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
+import { AttachmentsTab } from "../shared/AttachmentsTab";
+import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
+import { NotesSection } from "../shared/NotesSection";
+
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+
+interface ViewCollectionScreenProps {
+  collection: {
+    id: string;
+    collectionNumber: string;
+    customerName: string;
+    billingNumber?: string;
+    projectNumber?: string;
+    amount: number;
+    collectionDate: string;
+    paymentMethod?: string;
+    referenceNumber?: string;
+    notes?: string;
+    bankName?: string;
+    checkNumber?: string;
+    status: "Draft" | "For Approval" | "Approved" | "Collected" | "Cancelled";
+    createdAt: string;
+    allocations?: {
+      billingId: string;
+      billingNumber: string;
+      amount: number;
+      projectId?: string;
+      projectNumber?: string;
+      bookingNumber?: string;
+    }[];
+  };
+  onBack: () => void;
+  onDeleted?: () => void;
+}
+
+export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewCollectionScreenProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentCollection, setCurrentCollection] = useState(collection);
+  const [editedCollection, setEditedCollection] = useState(collection);
+  const [editedAllocations, setEditedAllocations] = useState(collection.allocations || []);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "billings" | "attachments">("overview");
+
+  // Approval / Sign-off fields
+  const [editedPreparedBy, setEditedPreparedBy] = useState((collection as any).preparedBy || "");
+  const [editedCheckedBy, setEditedCheckedBy] = useState((collection as any).checkedBy || "");
+  const [editedApprovedBy, setEditedApprovedBy] = useState((collection as any).approvedBy || "");
+
+  // Update local state when prop changes
+  if (collection.id !== currentCollection.id && !isEditing) {
+    setCurrentCollection(collection);
+    setEditedCollection(collection);
+    setEditedAllocations(collection.allocations || []);
+    setEditedPreparedBy((collection as any).preparedBy || "");
+    setEditedCheckedBy((collection as any).checkedBy || "");
+    setEditedApprovedBy((collection as any).approvedBy || "");
+  }
+
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      const totalFromAllocations = editedAllocations.reduce((sum, a) => sum + (a.amount || 0), 0);
+      const response = await fetch(`${API_URL}/collections/${currentCollection.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${publicAnonKey}`
+        },
+        body: JSON.stringify({
+          ...editedCollection,
+          amount: totalFromAllocations,
+          allocations: editedAllocations,
+          preparedBy: editedPreparedBy,
+          checkedBy: editedCheckedBy,
+          approvedBy: editedApprovedBy
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to update collection");
+      }
+
+      const updatedCollection = { ...editedCollection, amount: totalFromAllocations, allocations: editedAllocations };
+      setCurrentCollection(updatedCollection);
+      setIsEditing(false);
+      toast.success("Collection updated successfully");
+    } catch (error) {
+      console.error("Error updating collection:", error);
+      toast.error("Failed to update collection");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedCollection(currentCollection);
+    setEditedAllocations(currentCollection.allocations || []);
+    setEditedPreparedBy((currentCollection as any).preparedBy || "");
+    setEditedCheckedBy((currentCollection as any).checkedBy || "");
+    setEditedApprovedBy((currentCollection as any).approvedBy || "");
+    setIsEditing(false);
+  };
+
+  const handleStatusChange = async (newStatus: "Draft" | "For Approval" | "Approved" | "Collected" | "Cancelled") => {
+    try {
+      const response = await fetch(`${API_URL}/collections/${currentCollection.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${publicAnonKey}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        toast.error(result.error || "Failed to update status");
+        return;
+      }
+
+      setCurrentCollection({ ...currentCollection, status: newStatus });
+      setShowStatusDropdown(false);
+      toast.success(`Status updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "—";
+      return date.toLocaleDateString("en-US", { 
+        year: "numeric", 
+        month: "long", 
+        day: "numeric" 
+      });
+    } catch {
+      return "—";
+    }
+  };
+
+  const handleDeleteCollection = async () => {
+    try {
+      const response = await fetch(`${API_URL}/collections/${collection.id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${publicAnonKey}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        toast.error(result.error || "Failed to delete collection");
+        setShowDeleteConfirm(false);
+        return;
+      }
+
+      toast.success("Collection deleted successfully");
+      setShowDeleteConfirm(false);
+      if (onDeleted) onDeleted();
+      else onBack();
+    } catch (error) {
+      console.error("Error deleting collection:", error);
+      toast.error("An error occurred while deleting the collection");
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const COLLECTION_STATUSES = ["Draft", "For Approval", "Approved", "Collected", "Cancelled"] as const;
+
+  // Helper component for read-only fields matching ProjectOverviewTab style
+  const Field = ({ label, value }: { label: string; value?: string | number | null }) => (
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "13px",
+        fontWeight: 500,
+        color: "var(--neuron-ink-base)",
+        marginBottom: "8px"
+      }}>
+        {label}
+      </label>
+      <div style={{
+        padding: "10px 14px",
+        backgroundColor: "#F9FAFB",
+        border: "1px solid var(--neuron-ui-border)",
+        borderRadius: "6px",
+        fontSize: "14px",
+        color: value ? "var(--neuron-ink-primary)" : "#9CA3AF",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        minHeight: "42px" // Ensure consistent height
+      }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {value || "—"}
+        </span>
+      </div>
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: "#667085", fontSize: "14px" }}>Loading collection details...</div>
+      </div>
+    );
+  }
+
+  // Determine allocations
+  // If allocations array exists, use it. Otherwise, construct one from legacy fields
+  const allocations = currentCollection.allocations && currentCollection.allocations.length > 0
+    ? currentCollection.allocations
+    : currentCollection.billingNumber 
+        ? [{
+            billingId: "legacy",
+            billingNumber: currentCollection.billingNumber,
+            amount: currentCollection.amount,
+            projectNumber: currentCollection.projectNumber
+          }]
+        : [];
+
+  // Compute total amount from allocations (auto-updated)
+  const computedAmount = (isEditing ? editedAllocations : allocations).reduce((sum, a) => sum + (a.amount || 0), 0);
+
+  return (
+    <div style={{
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      background: "#F9FAFB"
+    }}>
+      {/* Header - Matching ProjectDetail */}
+      <div style={{
+        background: "white",
+        borderBottom: "1px solid var(--neuron-ui-border)",
+        padding: "20px 48px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <button
+              onClick={onBack}
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: "8px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                color: "#6B7280",
+                borderRadius: "6px"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#F3F4F6";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <ArrowLeft size={20} />
+            </button>
+            
+            <div>
+              <h1 style={{
+                fontSize: "20px",
+                fontWeight: 600,
+                color: "var(--neuron-ink-primary)",
+                marginBottom: "0"
+              }}>
+                {currentCollection.collectionNumber}
+              </h1>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            {isEditing ? (
+              <>
+                <StandardButton
+                  variant="secondary"
+                  onClick={handleCancel}
+                  icon={<X size={16} />}
+                >
+                  Cancel
+                </StandardButton>
+                <StandardButton
+                  variant="primary"
+                  onClick={handleSave}
+                  icon={<Check size={16} />}
+                >
+                  Save Changes
+                </StandardButton>
+              </>
+            ) : (
+              <>
+                {/* Edit Button */}
+                <StandardButton
+                  variant="secondary"
+                  onClick={() => {
+                    setEditedCollection(currentCollection);
+                    setEditedAllocations(currentCollection.allocations || []);
+                    setIsEditing(true);
+                  }}
+                  icon={<Edit3 size={16} />}
+                >
+                  Edit
+                </StandardButton>
+
+                {/* Activity Timeline Button */}
+                <StandardButton
+                  variant={showTimeline ? "secondary" : "outline"}
+                  onClick={() => setShowTimeline(!showTimeline)}
+                  icon={<Clock size={16} />}
+                >
+                  Activity
+                </StandardButton>
+
+                {/* Actions Dropdown */}
+                <ActionsDropdown
+                  onDownloadPDF={() => {
+                    toast.success("PDF download starting...");
+                  }}
+                  onDownloadWord={() => {
+                    toast.success("Word download starting...");
+                  }}
+                  onDelete={() => setShowDeleteConfirm(true)}
+                />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Metadata/Summary Bar */}
+      <div style={{
+        background: (() => {
+          switch (currentCollection.status) {
+            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
+            case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
+            case "Collected": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
+            case "Cancelled": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
+            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+          }
+        })(),
+        borderBottom: "1.5px solid #0F766E",
+        padding: "16px 48px",
+        display: "flex",
+        alignItems: "center",
+        gap: "32px",
+        flexShrink: 0
+      }}>
+        {/* Status Dropdown */}
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
+            Status
+          </div>
+          
+          <div
+            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            onBlur={() => setTimeout(() => setShowStatusDropdown(false), 200)}
+            tabIndex={0}
+            style={{
+              fontSize: "14px",
+              fontWeight: 600,
+              color: currentCollection.status === "Draft" ? "#6B7280" :
+                     currentCollection.status === "For Approval" ? "#F59E0B" :
+                     currentCollection.status === "Approved" ? "#3B82F6" :
+                     currentCollection.status === "Collected" ? "#10B981" :
+                     currentCollection.status === "Cancelled" ? "#EF4444" : "#667085",
+              cursor: "pointer",
+              padding: "4px 24px 4px 8px",
+              borderRadius: "6px",
+              border: "1.5px solid transparent",
+              position: "relative",
+              transition: "all 0.2s ease",
+              background: showStatusDropdown ? "#FFFFFF" : "transparent"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#FFFFFF";
+              e.currentTarget.style.borderColor = "#0F766E";
+            }}
+            onMouseLeave={(e) => {
+              if (!showStatusDropdown) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "transparent";
+              }
+            }}
+          >
+            {currentCollection.status}
+            
+            <div style={{
+              position: "absolute",
+              right: "6px",
+              top: "50%",
+              transform: `translateY(-50%) ${showStatusDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
+              transition: "transform 0.2s ease",
+              pointerEvents: "none",
+              color: "#0F766E"
+            }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
+          {showStatusDropdown && (
+            <div style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              background: "white",
+              border: "1.5px solid #E5E7EB",
+              borderRadius: "8px",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+              zIndex: 50,
+              minWidth: "160px",
+              overflow: "hidden"
+            }}>
+              {COLLECTION_STATUSES.map((status, index) => (
+                <div
+                  key={status}
+                  onClick={() => handleStatusChange(status)}
+                  style={{
+                    padding: "10px 14px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    color: status === "Draft" ? "#6B7280" :
+                           status === "For Approval" ? "#F59E0B" :
+                           status === "Approved" ? "#3B82F6" :
+                           status === "Collected" ? "#10B981" :
+                           status === "Cancelled" ? "#EF4444" : "#667085",
+                    background: status === currentCollection.status ? "#F0FDF4" : "transparent",
+                    borderBottom: index < COLLECTION_STATUSES.length - 1 ? "1px solid #E5E7EB" : "none",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (status !== currentCollection.status) {
+                      e.currentTarget.style.background = "#F9FAFB";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (status !== currentCollection.status) {
+                      e.currentTarget.style.background = "transparent";
+                    }
+                  }}
+                >
+                  {status}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
+
+        {/* Amount */}
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
+            Amount
+          </div>
+          <div style={{ fontSize: "20px", fontWeight: 700, color: "#12332B" }}>
+            ₱{formatAmount(computedAmount)}
+          </div>
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
+
+        {/* Payment Date — read-only */}
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
+            Collection Date
+          </div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+            {currentCollection.collectionDate ? formatDate(currentCollection.collectionDate) : "—"}
+          </div>
+        </div>
+
+        {/* Separator */}
+        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
+
+        {/* Created Date — always read-only, auto-set on creation */}
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
+            Created Date
+          </div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+            {currentCollection.createdAt ? formatDate(currentCollection.createdAt) : formatDate(new Date().toISOString())}
+          </div>
+        </div>
+      </div>
+
+      {/* Standard Tabs */}
+      <StandardTabs
+        tabs={[
+          { id: "overview", label: "Overview", icon: <FileText size={18} /> },
+          { id: "billings", label: "Billings", icon: <Receipt size={18} /> },
+          { id: "attachments", label: "Attachments", icon: <Paperclip size={18} /> },
+        ]}
+        activeTab={activeTab}
+        onChange={(tabId) => setActiveTab(tabId as "overview" | "billings" | "attachments")}
+      />
+
+      {/* Content Area */}
+      <div style={{ flex: 1, overflow: "auto", background: "#F9FAFB" }}>
+        
+        {activeTab === "overview" && (
+          <div style={{ padding: "32px 48px" }}>
+            {/* Collection Information */}
+            <div style={{
+              background: "white",
+          borderRadius: "12px",
+          border: "1px solid #E5E7EB",
+          overflow: "hidden",
+          marginBottom: "24px"
+        }}>
+          <div style={{
+            padding: "20px 24px",
+            borderBottom: "1px solid #E5E7EB",
+            background: "#F9FAFB"
+          }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+              Collection Details
+            </h3>
+          </div>
+
+          <div style={{ padding: "24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              {isEditing ? (
+                <>
+                  <div>
+                    <label style={{
+                      display: "block",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      color: "var(--neuron-ink-base)",
+                      marginBottom: "8px"
+                    }}>
+                      Collection Date
+                    </label>
+                    <SingleDateInput
+                      value={(() => {
+                        try {
+                          const d = new Date(editedCollection.collectionDate);
+                          return isNaN(d.getTime()) ? "" : d.toISOString().split('T')[0];
+                        } catch { return ""; }
+                      })()}
+                      onChange={(iso) => setEditedCollection({ ...editedCollection, collectionDate: iso })}
+                      placeholder="Select date"
+                    />
+                  </div>
+                  
+                  <StandardSelect
+                    label="Payment Method"
+                    value={editedCollection.paymentMethod || ""}
+                    options={[
+                      { value: "Cash", label: "Cash" },
+                      { value: "Bank Transfer", label: "Bank Transfer" },
+                      { value: "Check", label: "Check" }
+                    ]}
+                    onChange={(value) => setEditedCollection({ ...editedCollection, paymentMethod: value })}
+                    placeholder="Select payment method"
+                  />
+                  
+                  <StandardInput
+                    label="Reference Number"
+                    value={editedCollection.referenceNumber || ""}
+                    onChange={(value) => setEditedCollection({ ...editedCollection, referenceNumber: value })}
+                    placeholder="Enter reference number"
+                  />
+                  
+                  {/* Only show single Billing Number field if it's not a multi-allocation, OR if we want to allow editing the primary link */}
+                  {/* With multi-allocation, this field is less relevant. */}
+                  {!currentCollection.allocations && (
+                      <StandardInput
+                        label="Billing Number"
+                        value={editedCollection.billingNumber || ""}
+                        onChange={(value) => setEditedCollection({ ...editedCollection, billingNumber: value })}
+                        placeholder="Enter billing number"
+                      />
+                  )}
+
+                  {editedCollection.paymentMethod === "Bank Transfer" && (
+                    <StandardInput
+                      label="Bank Name"
+                      value={editedCollection.bankName || ""}
+                      onChange={(value) => setEditedCollection({ ...editedCollection, bankName: value })}
+                      placeholder="Enter bank name"
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <Field 
+                    label="Collection Date" 
+                    value={formatDate(currentCollection.collectionDate)}
+                  />
+                  
+                  <Field 
+                    label="Payment Method" 
+                    value={currentCollection.paymentMethod}
+                  />
+                  
+                  <Field 
+                    label="Reference Number" 
+                    value={currentCollection.referenceNumber}
+                  />
+
+                  {currentCollection.paymentMethod === "Bank Transfer" && (
+                    <Field 
+                      label="Bank Name" 
+                      value={currentCollection.bankName}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+            
+
+          </div>
+        </div>
+
+        {/* Allocations Table */}
+        <div style={{
+          background: "white",
+          borderRadius: "12px",
+          border: "1px solid #E5E7EB",
+          overflow: "hidden"
+        }}>
+          <div style={{
+            padding: "20px 24px",
+            borderBottom: "1px solid #E5E7EB",
+            background: "#F9FAFB",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+              Payment Allocation
+            </h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ fontSize: "13px", color: "#667085" }}>
+                {(isEditing ? editedAllocations : allocations).length} Invoice{(isEditing ? editedAllocations : allocations).length !== 1 ? "s" : ""}
+              </span>
+              {isEditing && (
+                <button
+                  onClick={() => {
+                    setEditedAllocations([
+                      ...editedAllocations,
+                      { billingId: `new-${Date.now()}`, billingNumber: "", amount: 0 }
+                    ]);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 14px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "#0F766E",
+                    background: "white",
+                    border: "1.5px solid #0F766E",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#F0FDF4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "white"; }}
+                >
+                  <Plus size={14} />
+                  Add Row
+                </button>
+              )}
+            </div>
+          </div>
+
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>
+                <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Invoice #</th>
+                <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Booking</th>
+                <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Applied Amount</th>
+                {isEditing && (
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase", width: "60px" }}></th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {isEditing ? (
+                editedAllocations.length > 0 ? (
+                  editedAllocations.map((alloc, index) => (
+                    <tr key={alloc.billingId || index} style={{ borderBottom: "1px solid #E5E7EB" }}>
+                      <td style={{ padding: "12px 24px" }}>
+                        <input
+                          type="text"
+                          value={alloc.billingNumber}
+                          onChange={(e) => {
+                            const updated = [...editedAllocations];
+                            updated[index] = { ...updated[index], billingNumber: e.target.value };
+                            setEditedAllocations(updated);
+                          }}
+                          placeholder="Enter invoice #"
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            fontSize: "14px",
+                            fontWeight: 500,
+                            color: "#12332B",
+                            border: "1.5px solid #E5E9F0",
+                            borderRadius: "6px",
+                            outline: "none",
+                            background: "white",
+                            transition: "border-color 0.15s ease"
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                          onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                        />
+                      </td>
+                      <td style={{ padding: "12px 24px" }}>
+                        <input
+                          type="text"
+                          value={alloc.bookingNumber || alloc.projectNumber || ""}
+                          onChange={(e) => {
+                            const updated = [...editedAllocations];
+                            updated[index] = { ...updated[index], bookingNumber: e.target.value };
+                            setEditedAllocations(updated);
+                          }}
+                          placeholder="Booking #"
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            fontSize: "14px",
+                            color: "#0F766E",
+                            border: "1.5px solid #E5E9F0",
+                            borderRadius: "6px",
+                            outline: "none",
+                            background: "white",
+                            transition: "border-color 0.15s ease"
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                          onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                        />
+                      </td>
+                      <td style={{ padding: "12px 24px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", justifyContent: "flex-end" }}>
+                          <span style={{ fontSize: "14px", color: "#667085", fontWeight: 500 }}>₱</span>
+                          <input
+                            type="number"
+                            value={alloc.amount || ""}
+                            onChange={(e) => {
+                              const updated = [...editedAllocations];
+                              updated[index] = { ...updated[index], amount: parseFloat(e.target.value) || 0 };
+                              setEditedAllocations(updated);
+                            }}
+                            placeholder="0.00"
+                            style={{
+                              width: "140px",
+                              padding: "8px 12px",
+                              fontSize: "14px",
+                              fontWeight: 500,
+                              color: "#12332B",
+                              border: "1.5px solid #E5E9F0",
+                              borderRadius: "6px",
+                              outline: "none",
+                              background: "white",
+                              textAlign: "right",
+                              transition: "border-color 0.15s ease"
+                            }}
+                            onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                          />
+                        </div>
+                      </td>
+                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                        <button
+                          onClick={() => {
+                            setEditedAllocations(editedAllocations.filter((_, i) => i !== index));
+                          }}
+                          style={{
+                            color: "#D1D5DB",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "4px",
+                            transition: "color 0.15s ease"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                          onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "32px", textAlign: "center", color: "#667085", fontSize: "14px" }}>
+                      No allocations. Click "Add Row" to add an invoice allocation.
+                    </td>
+                  </tr>
+                )
+              ) : (
+                allocations.length > 0 ? (
+                  allocations.map((alloc, index) => (
+                    <tr key={index} style={{ borderBottom: "1px solid #E5E7EB" }}>
+                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#12332B", fontWeight: 500 }}>
+                        {alloc.billingNumber}
+                      </td>
+                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0F766E" }}>
+                        {alloc.bookingNumber || alloc.projectNumber || "—"}
+                      </td>
+                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#12332B", textAlign: "right" }}>
+                        ₱{formatAmount(alloc.amount)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3} style={{ padding: "32px", textAlign: "center", color: "#667085", fontSize: "14px" }}>
+                      No invoice allocations found.
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+            {(() => {
+              const displayAllocations = isEditing ? editedAllocations : allocations;
+              if (displayAllocations.length === 0) return null;
+              const total = displayAllocations.reduce((sum, a) => sum + (a.amount || 0), 0);
+              return (
+                <tfoot style={{ background: "#F9FAFB", borderTop: "2px solid #E5E7EB" }}>
+                  <tr>
+                    <td colSpan={isEditing ? 2 : 2} style={{ padding: "16px 24px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: "#12332B" }}>
+                      Total Allocated:
+                    </td>
+                    <td style={{ padding: "16px 24px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#12332B" }}>
+                      ₱{formatAmount(total)}
+                    </td>
+                    {isEditing && <td></td>}
+                  </tr>
+                </tfoot>
+              );
+            })()}
+          </table>
+        </div>
+
+              {/* Notes Section */}
+              <NotesSection
+                value={isEditing ? (editedCollection.notes || "") : (currentCollection.notes || "")}
+                onChange={(val) => setEditedCollection({ ...editedCollection, notes: val })}
+                disabled={!isEditing}
+              />
+
+              {/* Approval / Sign-off Section */}
+              <ApprovalSignoffSection
+                preparedBy={isEditing ? editedPreparedBy : ((currentCollection as any)?.preparedBy || "")}
+                checkedBy={isEditing ? editedCheckedBy : ((currentCollection as any)?.checkedBy || "")}
+                approvedBy={isEditing ? editedApprovedBy : ((currentCollection as any)?.approvedBy || "")}
+                onPreparedByChange={setEditedPreparedBy}
+                onCheckedByChange={setEditedCheckedBy}
+                onApprovedByChange={setEditedApprovedBy}
+                disabled={!isEditing}
+              />
+
+          </div>
+        )}
+
+        {activeTab === "billings" && (
+          <CollectionBillingsTab 
+            collectionId={currentCollection.id}
+            collectionNumber={currentCollection.collectionNumber}
+            allocations={allocations}
+          />
+        )}
+
+        {activeTab === "attachments" && (
+          <AttachmentsTab
+            entityType="collection"
+            entityId={currentCollection.id}
+          />
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          onClick={() => setShowDeleteConfirm(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(18, 51, 43, 0.15)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              width: "480px",
+              padding: "32px",
+              borderRadius: "12px",
+              border: "1px solid var(--neuron-ui-border)",
+              boxShadow: "0 4px 24px rgba(18, 51, 43, 0.12)"
+            }}
+          >
+            <h2 style={{ 
+              fontSize: "20px", 
+              fontWeight: 600, 
+              color: "#12332B", 
+              marginBottom: "12px" 
+            }}>
+              Delete Collection?
+            </h2>
+            <p style={{ 
+              fontSize: "14px", 
+              color: "#667085", 
+              marginBottom: "24px", 
+              lineHeight: "1.5"
+            }}>
+              Are you sure you want to delete collection <strong>{currentCollection.collectionNumber}</strong>? This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <StandardButton
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </StandardButton>
+              <StandardButton
+                variant="danger"
+                onClick={handleDeleteCollection}
+                icon={<Trash2 size={16} />}
+              >
+                Delete Collection
+              </StandardButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

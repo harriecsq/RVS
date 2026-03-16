@@ -1,0 +1,128 @@
+import React from 'react';
+
+interface StandardSelectOption {
+  value: string;
+  label: string;
+}
+
+interface StandardSelectProps {
+  label?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: StandardSelectOption[];
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  helperText?: string;
+  icon?: React.ReactNode;
+  style?: React.CSSProperties;
+  selectStyle?: React.CSSProperties;
+}
+
+export function StandardSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  required = false,
+  disabled = false,
+  error,
+  helperText,
+  icon,
+  style,
+  selectStyle
+}: StandardSelectProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', ...style }}>
+      {label && (
+        <label 
+          style={{ 
+            display: 'block', 
+            fontSize: '14px', 
+            fontWeight: 500, 
+            color: error ? '#DC2626' : '#374151'
+          }}
+        >
+          {label} {required && <span style={{ color: '#DC2626' }}>*</span>}
+        </label>
+      )}
+      
+      <div style={{ position: 'relative' }}>
+        {icon && (
+          <div
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: error ? '#DC2626' : '#667085',
+              display: 'flex',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              zIndex: 1
+            }}
+          >
+            {icon}
+          </div>
+        )}
+        
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          disabled={disabled}
+          style={{
+            width: '100%',
+            padding: icon ? '10px 12px 10px 40px' : '10px 12px',
+            border: `1px solid ${error ? '#DC2626' : 'var(--neuron-ui-border)'}`,
+            borderRadius: '8px',
+            fontSize: '14px',
+            outline: 'none',
+            color: disabled ? '#9CA3AF' : (value ? 'var(--neuron-ink-primary)' : '#9CA3AF'),
+            backgroundColor: disabled ? '#F9FAFB' : '#FFFFFF',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            appearance: 'none',
+            backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${disabled ? '%239CA3AF' : '%23667085'}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 12px center',
+            backgroundSize: '16px',
+            paddingRight: '40px',
+            transition: 'border-color 0.15s ease',
+            ...selectStyle
+          }}
+          onFocus={(e) => {
+            if (!error && !disabled) {
+              e.currentTarget.style.borderColor = 'var(--neuron-teal)';
+            }
+          }}
+          onBlur={(e) => {
+            if (!error) {
+              e.currentTarget.style.borderColor = 'var(--neuron-ui-border)';
+            }
+          }}
+        >
+          {placeholder && <option value="">{placeholder}</option>}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      {(error || helperText) && (
+        <span 
+          style={{ 
+            fontSize: '12px', 
+            color: error ? '#DC2626' : '#667085',
+            lineHeight: '1.4'
+          }}
+        >
+          {error || helperText}
+        </span>
+      )}
+    </div>
+  );
+}
