@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams, useSearchParams } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from "react-router";
 import { Layout } from "./components/Layout";
+import type { Page } from "./components/NeuronSidebar";
 import { UserProvider, useUser } from "./hooks/useUser";
-import type { Customer } from "./types/bd";
 import { Toaster, toast } from "sonner@2.0.3";
 import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png";
 
 // Direct imports — static import graph ensures Tailwind v4 scans all component files
 import { ExecutiveDashboard } from "./components/ExecutiveDashboard";
-import { BusinessDevelopment } from "./components/BusinessDevelopment";
-import { Pricing } from "./components/Pricing";
 import { ClientsModule } from "./components/operations/ClientsModule";
 import { VouchersScreen } from "./components/accounting/VouchersScreen";
 import { BillingsScreen } from "./components/accounting/BillingsScreen";
@@ -18,7 +16,6 @@ import { ExpensesScreen } from "./components/accounting/ExpensesScreen";
 import { HR } from "./components/HR";
 import { ProjectsModule } from "./components/projects/ProjectsModule";
 import { ProjectsList } from "./components/operations/ProjectsList";
-import { ReportControlCenter } from "./components/bd/reports/ReportControlCenter";
 import { Reports } from "./components/Reports";
 import { ContainerRefundReport } from "./components/reports/ContainerRefundReport";
 import { FinalShipmentCostReport } from "./components/reports/FinalShipmentCostReport";
@@ -30,8 +27,10 @@ import { ActivityLogPage } from "./components/ActivityLogPage";
 import { EmployeeProfile } from "./components/EmployeeProfile";
 import { CreateBooking } from "./components/CreateBooking";
 import { BookingFullView } from "./components/operations/BookingFullView";
-import { BrokerageBookings } from "./components/operations/ImportBookings";
+import { ImportBookings } from "./components/operations/ImportBookings";
 import { OthersBookings } from "./components/operations/OthersBookings";
+import { projectId, publicAnonKey } from './utils/supabase/info';
+import { API_BASE_URL } from '@/utils/api-config';
 import { ExportBookings } from "./components/operations/ExportBookings";
 import { Bookings } from "./components/Bookings";
 import { TruckingModule } from "./components/operations/TruckingModule";
@@ -228,22 +227,9 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
   const location = useLocation();
 
   // Map current URL to Page type for Layout's active state
-  const getCurrentPage = (): string => {
+  const getCurrentPage = (): Page => {
     const path = location.pathname;
     if (path === "/" || path === "/dashboard") return "dashboard";
-    if (path.startsWith("/bd/customers")) return "bd-customers";
-    if (path.startsWith("/bd/requests")) return "bd-requests";
-    if (path.startsWith("/bd/tasks")) return "bd-tasks";
-    // Activities removed - will be deleted in migration
-    // if (path.startsWith("/bd/activities")) return "bd-activities";
-    // Budget Requests removed - will be deleted in migration
-    // if (path.startsWith("/bd/budget-requests")) return "bd-budget-requests";
-    if (path.startsWith("/bd/reports")) return "bd-reports";
-    if (path.startsWith("/pricing/customers")) return "pricing-customers";
-    if (path.startsWith("/pricing/quotations")) return "pricing-quotations";
-    if (path.startsWith("/pricing/projects")) return "pricing-projects";
-    if (path.startsWith("/pricing/vendors")) return "pricing-vendors";
-    if (path.startsWith("/pricing/reports")) return "pricing-reports";
     if (path.startsWith("/operations/requests")) return "ops-requests";
     if (path.startsWith("/operations/clients")) return "ops-clients";
     if (path.startsWith("/operations/projects")) return "ops-projects";
@@ -253,7 +239,6 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
     if (path.startsWith("/operations/forwarding")) return "ops-forwarding";
     if (path.startsWith("/operations/brokerage")) return "ops-brokerage";
     if (path.startsWith("/operations/others")) return "ops-others";
-    // if (path.startsWith("/operations/reports")) return "ops-reports";
     if (path.startsWith("/operations")) return "operations";
     if (path.startsWith("/reports")) return "reports";
     if (path.startsWith("/projects")) return "projects";
@@ -266,26 +251,14 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
     if (path.startsWith("/activity-log")) return "activity-log";
     if (path.startsWith("/profile")) return "profile";
     if (path.startsWith("/admin")) return "admin";
-    if (path.startsWith("/tickets")) return "ticket-testing";
     return "dashboard";
   };
 
   // Handler to navigate using router
-  const handleNavigate = (page: string) => {
-    const routeMap: Record<string, string> = {
+  const handleNavigate = (page: Page) => {
+    const routeMap: Record<Page, string> = {
       "dashboard": "/dashboard",
-      "bd-customers": "/bd/customers",
       "projects": "/projects",
-      "bd-projects": "/bd/projects",
-      "bd-tasks": "/bd/tasks",
-      // Budget Requests removed - will be deleted in migration
-      // "bd-budget-requests": "/bd/budget-requests",
-      "bd-reports": "/bd/reports",
-      "pricing-customers": "/pricing/customers",
-      "pricing-quotations": "/pricing/quotations",
-      "pricing-projects": "/pricing/projects",
-      "pricing-vendors": "/pricing/vendors",
-      "pricing-reports": "/pricing/reports",
       "operations": "/operations",
       "reports": "/reports",
       "ops-requests": "/operations/requests",
@@ -297,7 +270,6 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
       "ops-forwarding": "/operations/forwarding",
       "ops-brokerage": "/operations/brokerage",
       "ops-others": "/operations/others",
-      "ops-reports": "/operations/reports",
       "acct-vouchers": "/accounting/vouchers",
       "acct-billings": "/accounting/billings",
       "acct-collections": "/accounting/collections",
@@ -307,127 +279,20 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
       "activity-log": "/activity-log",
       "profile": "/profile",
       "admin": "/admin",
-      "ticket-testing": "/tickets"
     };
-    
-    const route = routeMap[page] || "/dashboard";
-    navigate(route);
+
+    navigate(routeMap[page] ?? "/dashboard");
   };
 
   return (
-    <Layout 
-      currentPage={getCurrentPage() as any}
-      onNavigate={handleNavigate as any}
+    <Layout
+      currentPage={getCurrentPage()}
+      onNavigate={handleNavigate}
       currentUser={user || undefined}
       onLogout={logout}
     >
       {children}
     </Layout>
-  );
-}
-
-// Business Development Routes
-function BDContactsPage() {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  const { contactId } = useParams();
-  
-  const handleCreateInquiry = (customer: Customer) => {
-    navigate(`/bd/inquiries?customerId=${customer.id}`);
-  };
-  
-  const handleViewInquiry = (inquiryId: string) => {
-    navigate(`/bd/inquiries/${inquiryId}`);
-  };
-  
-  return (
-    <RouteWrapper page="bd-contacts">
-      <BusinessDevelopment 
-        view="contacts" 
-        onCreateInquiry={handleCreateInquiry}
-        onViewInquiry={handleViewInquiry}
-        currentUser={user}
-        contactId={contactId}
-      />
-    </RouteWrapper>
-  );
-}
-
-function BDCustomersPage() {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  
-  const handleCreateInquiry = (customer: Customer) => {
-    navigate(`/bd/inquiries?customerId=${customer.id}`);
-  };
-  
-  const handleViewInquiry = (inquiryId: string) => {
-    navigate(`/bd/inquiries/${inquiryId}`);
-  };
-  
-  return (
-    <RouteWrapper page="bd-customers">
-      <BusinessDevelopment 
-        view="customers" 
-        onCreateInquiry={handleCreateInquiry}
-        onViewInquiry={handleViewInquiry}
-        currentUser={user}
-      />
-    </RouteWrapper>
-  );
-}
-
-function BDInquiriesPage() {
-  const { user } = useUser();
-  const { inquiryId } = useParams();
-  const [searchParams] = useSearchParams();
-  const customerId = searchParams.get('customerId');
-  
-  // TODO: Fetch customer data if customerId is provided
-  const customerData = null;
-  
-  return (
-    <RouteWrapper page="bd-inquiries">
-      <BusinessDevelopment 
-        view="inquiries" 
-        customerData={customerData}
-        inquiryId={inquiryId}
-        currentUser={user}
-      />
-    </RouteWrapper>
-  );
-}
-
-function BDTasksPage() {
-  const { user } = useUser();
-  return (
-    <RouteWrapper page="bd-tasks">
-      <BusinessDevelopment view="tasks" currentUser={user} />
-    </RouteWrapper>
-  );
-}
-
-function BDProjectsPage() {
-  const { user } = useUser();
-  return (
-    <RouteWrapper page="bd-projects">
-      <BusinessDevelopment view="projects" currentUser={user} />
-    </RouteWrapper>
-  );
-}
-
-function BDReportsPage() {
-  const navigate = useNavigate();
-  
-  const handleBack = () => {
-    // For now, just refresh or stay on reports
-    // In future, this could navigate to a reports list view
-  };
-  
-  return (
-    <RouteWrapper page="bd-reports">
-      <ReportControlCenter onBack={handleBack} />
-    </RouteWrapper>
   );
 }
 
@@ -501,90 +366,6 @@ function ProjectsPage() {
   );
 }
 
-// Pricing Routes
-function PricingContactsPage() {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  
-  const handleViewInquiry = (inquiryId: string) => {
-    navigate(`/pricing/quotations/${inquiryId}`);
-  };
-  
-  return (
-    <RouteWrapper page="pricing-contacts">
-      <Pricing 
-        view="contacts" 
-        onViewInquiry={handleViewInquiry}
-        currentUser={user}
-      />
-    </RouteWrapper>
-  );
-}
-
-function PricingCustomersPage() {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  
-  const handleViewInquiry = (inquiryId: string) => {
-    navigate(`/pricing/quotations/${inquiryId}`);
-  };
-  
-  return (
-    <RouteWrapper page="pricing-customers">
-      <Pricing 
-        view="customers" 
-        onViewInquiry={handleViewInquiry}
-        currentUser={user}
-      />
-    </RouteWrapper>
-  );
-}
-
-function PricingQuotationsPage() {
-  const { user } = useUser();
-  const { inquiryId } = useParams();
-  
-  return (
-    <RouteWrapper page="pricing-quotations">
-      <Pricing 
-        view="quotations" 
-        inquiryId={inquiryId}
-        currentUser={user}
-      />
-    </RouteWrapper>
-  );
-}
-
-function PricingProjectsPage() {
-  const { user } = useUser();
-  
-  return (
-    <RouteWrapper page="pricing-projects">
-      <ProjectsModule 
-        currentUser={user || undefined}
-      />
-    </RouteWrapper>
-  );
-}
-
-function PricingVendorsPage() {
-  const { user } = useUser();
-  return (
-    <RouteWrapper page="pricing-vendors">
-      <Pricing view="vendors" currentUser={user} />
-    </RouteWrapper>
-  );
-}
-
-function PricingReportsPage() {
-  const { user } = useUser();
-  return (
-    <RouteWrapper page="pricing-reports">
-      <Pricing view="reports" currentUser={user} />
-    </RouteWrapper>
-  );
-}
-
 // Operations Routes
 function OperationsPage() {
   const { user } = useUser();
@@ -644,8 +425,6 @@ function ImportBookingsPage() {
   );
 }
 
-import { projectId, publicAnonKey } from './utils/supabase/info';
-
 function CreateBookingPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -664,7 +443,7 @@ function CreateBookingPage() {
       }
       
       // Post to the unified booking endpoint
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/bookings`, {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -924,18 +703,6 @@ function AppContent() {
         {/* Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
         
-        {/* Business Development */}
-        <Route path="/bd/customers" element={<BDCustomersPage />} />
-        <Route path="/bd/inquiries" element={<BDInquiriesPage />} />
-        <Route path="/bd/inquiries/:inquiryId" element={<BDInquiriesPage />} />
-        <Route path="/bd/tasks" element={<BDTasksPage />} />
-        <Route path="/bd/projects" element={<BDProjectsPage />} />
-        {/* Activities removed - will be deleted in migration */}
-        {/* <Route path="/bd/activities" element={<BDActivitiesPage />} /> */}
-        {/* Budget Requests removed - will be deleted in migration */}
-        {/* <Route path="/bd/budget-requests" element={<BDBudgetRequestsPage />} /> */}
-        <Route path="/bd/reports" element={<BDReportsPage />} />
-        
         {/* Unified Reports */}
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/reports/container-refund" element={<ContainerRefundReportPage />} />
@@ -947,14 +714,6 @@ function AppContent() {
 
         {/* Unified Projects Page */}
         <Route path="/projects" element={<ProjectsPage />} />
-        
-        {/* Pricing */}
-        <Route path="/pricing/customers" element={<PricingCustomersPage />} />
-        <Route path="/pricing/quotations" element={<PricingQuotationsPage />} />
-        <Route path="/pricing/quotations/:inquiryId" element={<PricingQuotationsPage />} />
-        <Route path="/pricing/projects" element={<PricingProjectsPage />} />
-        <Route path="/pricing/vendors" element={<PricingVendorsPage />} />
-        <Route path="/pricing/reports" element={<PricingReportsPage />} />
         
         {/* Operations */}
         <Route path="/operations" element={<OperationsPage />} />

@@ -2,8 +2,9 @@
 // Simulates a real freight forwarding business that's been operating for 30 days
 
 import { projectId, publicAnonKey } from './supabase/info';
+import { API_BASE_URL } from '@/utils/api-config';
 
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-c142e950`;
+const API_BASE_URL = `${API_BASE_URL}`;
 
 // Helper to get dates relative to today
 const daysAgo = (days: number): string => {
@@ -744,7 +745,7 @@ export async function seedAllData() {
     // 1. Seed Customers
     console.log("📦 Seeding customers...");
     for (const customer of CUSTOMERS) {
-      await fetch(`${API_BASE}/clients`, {
+      await fetch(`${API_BASE_URL}/clients`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -758,7 +759,7 @@ export async function seedAllData() {
     // 2. Seed Contacts
     console.log("👥 Seeding contacts...");
     for (const contact of CONTACTS) {
-      await fetch(`${API_BASE}/contacts`, {
+      await fetch(`${API_BASE_URL}/contacts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -772,7 +773,7 @@ export async function seedAllData() {
     // 3. Seed Quotations (will add more in continuation)
     console.log("📋 Seeding quotations...");
     for (const quotation of QUOTATIONS) {
-      await fetch(`${API_BASE}/quotations`, {
+      await fetch(`${API_BASE_URL}/quotations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

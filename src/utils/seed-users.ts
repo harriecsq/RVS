@@ -9,11 +9,12 @@
  */
 
 import { projectId, publicAnonKey } from './supabase/info';
+import { API_BASE_URL } from '@/utils/api-config';
 
 export async function seedUsers() {
   try {
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-c142e950/auth/seed-users`,
+      `${API_BASE_URL}/auth/seed-users`,
       {
         method: 'POST',
         headers: {

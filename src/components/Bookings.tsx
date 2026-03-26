@@ -16,6 +16,7 @@ import {
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { useNavigate } from "react-router";
 import { toast } from "sonner@2.0.3";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Booking {
   id: string;
@@ -139,7 +140,7 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
   const fetchBookings = async () => {
     try {
       setIsRefreshing(true);
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/bookings`, {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`
         }

@@ -20,8 +20,7 @@ import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { BookingInfoSubTabs } from "./shared/BookingInfoSubTabs";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 export type ExecutionStatus = 
   | "Draft" 
@@ -317,8 +316,8 @@ export function ExportBookingDetails({
     try {
       const isLegacy = !(currentBooking as any).booking_type;
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+        : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       const response = await fetch(endpoint, {
@@ -363,8 +362,8 @@ export function ExportBookingDetails({
     try {
       const isLegacy = !(currentBooking as any).booking_type;
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+        : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       const response = await fetch(endpoint, {
@@ -402,8 +401,8 @@ export function ExportBookingDetails({
     try {
       const isLegacy = !(currentBooking as any).booking_type;
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+        : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       await fetch(endpoint, {
@@ -433,7 +432,7 @@ export function ExportBookingDetails({
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch(`${API_URL}/projects`, {
+        const response = await fetch(`${API_BASE_URL}/projects`, {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
           },
@@ -481,8 +480,8 @@ export function ExportBookingDetails({
       const isLegacy = !(booking as any).booking_type;
       
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${booking.bookingId}` 
-        : `${API_URL}/export-bookings/${booking.id || booking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${booking.bookingId}` 
+        : `${API_BASE_URL}/export-bookings/${booking.id || booking.bookingId}`;
       
       const method = isLegacy ? "PATCH" : "PUT";
 
@@ -537,7 +536,7 @@ export function ExportBookingDetails({
 
   const handleDeleteBooking = async () => {
     try {
-      const response = await fetch(`${API_URL}/export-bookings/${booking.id || booking.bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/export-bookings/${booking.id || booking.bookingId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

@@ -5,8 +5,7 @@ import { NEURON_STYLES, NEURON_COLORS } from "../design-system/neuron-design-tok
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { useNavigate } from "react-router";
 import { formatAmount } from "../../utils/formatAmount";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Billing {
   id: string;
@@ -52,7 +51,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
     setIsLoading(true);
     try {
       // Fetch all billings via the list endpoint which calculates pendingAmount server-side
-      const response = await fetch(`${API_URL}/billings`, {
+      const response = await fetch(`${API_BASE_URL}/billings`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

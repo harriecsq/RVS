@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Plus, Building2, Users as UsersIcon, TrendingUp, Briefcase, Target, ArrowUp, ArrowDown, MoreHorizontal, X } from "lucide-react";
-import type { Client, Industry, ClientStatus } from "../../types/bd";
+import type { Client, Industry, ClientStatus } from "../../types/operations";
 import { AddClientPanel } from "./AddClientPanel";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { Mail, Phone } from "lucide-react";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ClientsListWithFiltersProps {
   onViewClient: (client: Client) => void;
@@ -37,7 +36,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
   // Fetch users from backend (Operations users)
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${API_URL}/users?department=Operations`, {
+      const response = await fetch(`${API_BASE_URL}/users?department=Operations`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
         cache: 'no-store',
       });
@@ -69,7 +68,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
       }
       params.append("role", "Operations");
       
-      const url = `${API_URL}/clients?${params.toString()}`;
+      const url = `${API_BASE_URL}/clients?${params.toString()}`;
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -143,7 +142,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
       
       // Try backend first
       try {
-        const response = await fetch(`${API_URL}/clients/${clientToDelete.id}`, {
+        const response = await fetch(`${API_BASE_URL}/clients/${clientToDelete.id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
@@ -216,7 +215,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
       
       // Try backend first
       try {
-        const response = await fetch(`${API_URL}/clients`, {
+        const response = await fetch(`${API_BASE_URL}/clients`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -243,7 +242,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                const first_name = nameParts[0];
                const last_name = nameParts.slice(1).join(' ');
 
-               await fetch(`${API_URL}/contacts`, {
+               await fetch(`${API_BASE_URL}/contacts`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",

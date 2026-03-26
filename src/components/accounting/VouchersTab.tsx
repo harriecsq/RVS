@@ -6,8 +6,7 @@ import { VoucherDetailPanel } from "./VoucherDetailPanel";
 import { formatAmount } from "../../utils/formatAmount";
 import { NEURON_STYLES, NEURON_COLORS } from "../design-system/neuron-design-tokens";
 import { NeuronStatusPill } from "../NeuronStatusPill";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Voucher {
   id: string;
@@ -53,7 +52,7 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
   const fetchVouchers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/expenses/${expenseId}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}/vouchers`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

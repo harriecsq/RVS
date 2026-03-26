@@ -5,6 +5,7 @@ import { CreateOthersBookingPanel } from "./CreateOthersBookingPanel";
 import { OthersBookingDetails } from "./OthersBookingDetails";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { toast } from "../ui/toast-utils";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface OthersBooking {
   bookingId: string;
@@ -24,8 +25,6 @@ interface OthersBookingsProps {
   currentUser?: { name: string; email: string; department: string } | null;
 }
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
-
 export function OthersBookings({ currentUser }: OthersBookingsProps = {}) {
   const [bookings, setBookings] = useState<OthersBooking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +42,7 @@ export function OthersBookings({ currentUser }: OthersBookingsProps = {}) {
   const fetchBookings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/others-bookings`, {
+      const response = await fetch(`${API_BASE_URL}/others-bookings`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'
@@ -83,7 +82,7 @@ export function OthersBookings({ currentUser }: OthersBookingsProps = {}) {
     }
 
     try {
-      const response = await fetch(`${API_URL}/others-bookings/${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/others-bookings/${bookingId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,

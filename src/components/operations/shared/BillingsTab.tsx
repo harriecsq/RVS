@@ -9,6 +9,7 @@ import { NeuronStatusPill } from "../../NeuronStatusPill";
 import { StandardLoadingState } from "../../design-system/StandardLoadingState";
 import { StandardEmptyState } from "../../design-system/StandardEmptyState";
 import { formatAmount } from "../../../utils/formatAmount";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface BillingsTabProps {
   bookingId: string;
@@ -20,8 +21,6 @@ interface BillingsTabProps {
   /** When provided, row click selects the billing (for sub-tab embedding) instead of opening the side panel */
   onBillingSelect?: (billingId: string, billingNumber: string) => void;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 type BillingStatus = "Draft" | "Submitted" | "Approved" | "Paid" | "Cancelled";
 
@@ -62,7 +61,7 @@ export function BillingsTab({ bookingId, bookingNumber, projectId: bookingProjec
       console.log(`🔍 [BillingsTab] Fetching billings for bookingId: ${bookingId}`);
       
       // Fetch billings from the main accounting module endpoint
-      const response = await fetch(`${API_URL}/billings?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings?bookingId=${bookingId}`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'

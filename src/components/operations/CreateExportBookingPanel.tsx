@@ -6,6 +6,8 @@ import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES } from "../../utils/truckingTags";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
+import { API_BASE_URL } from '@/utils/api-config';
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface CreateExportBookingPanelProps {
   isOpen: boolean;
@@ -24,8 +26,6 @@ interface CreateExportBookingPanelProps {
     pod?: string;
   } | null;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 /* ── Section title ── */
 function SectionTitle({ children, first }: { children: React.ReactNode; first?: boolean }) {
@@ -549,7 +549,7 @@ export function CreateExportBookingPanel({
         mode: "Sea",
       };
 
-      const response = await fetch(`${API_URL}/export-bookings`, {
+      const response = await fetch(`${API_BASE_URL}/export-bookings`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
@@ -639,14 +639,7 @@ export function CreateExportBookingPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40"
-        onClick={handleClose}
-        style={{
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)",
-        }}
-      />
+      <PanelBackdrop onClick={handleClose} />
 
       {/* Side Panel */}
       <div

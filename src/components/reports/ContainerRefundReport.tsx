@@ -5,8 +5,7 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // --- Data Interfaces ---
 
@@ -162,8 +161,8 @@ export function ContainerRefundReport() {
     try {
       // Fetch Expenses (Anchor) and Vouchers (Lookup) in parallel
       const [expensesRes, vouchersRes] = await Promise.all([
-        fetch(`${API_URL}/expenses`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
-        fetch(`${API_URL}/vouchers`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
+        fetch(`${API_BASE_URL}/expenses`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        fetch(`${API_BASE_URL}/vouchers`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
       ]);
 
       const expensesResult = await expensesRes.json();

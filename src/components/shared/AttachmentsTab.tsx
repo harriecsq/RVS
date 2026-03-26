@@ -7,8 +7,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Upload, FileText, Image, File, Trash2, Download, Paperclip } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Attachment {
   id: string;
@@ -48,7 +47,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
 
   const fetchAttachments = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/attachments/${entityType}/${entityId}`, {
+      const response = await fetch(`${API_BASE_URL}/attachments/${entityType}/${entityId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();
@@ -80,7 +79,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
           reader.readAsDataURL(file);
         });
 
-        const response = await fetch(`${API_URL}/attachments/${entityType}/${entityId}`, {
+        const response = await fetch(`${API_BASE_URL}/attachments/${entityType}/${entityId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -113,7 +112,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
   const handleDelete = async (attachment: Attachment) => {
     try {
       const response = await fetch(
-        `${API_URL}/attachments/${entityType}/${entityId}/${attachment.id}`,
+        `${API_BASE_URL}/attachments/${entityType}/${entityId}/${attachment.id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${publicAnonKey}` },
@@ -135,7 +134,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
 
   const handleDownload = async (attachment: Attachment) => {
     try {
-      const response = await fetch(`${API_URL}/attachments/download/${attachment.id}`, {
+      const response = await fetch(`${API_BASE_URL}/attachments/download/${attachment.id}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();

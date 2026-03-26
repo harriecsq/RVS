@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "../ui/popover";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Booking {
   id: string;
@@ -60,7 +61,7 @@ export function BookingSelector({
         let lastError: any = null;
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/bookings`, {
+            response = await fetch(`${API_BASE_URL}/bookings`, {
               headers: {
                 'Authorization': `Bearer ${publicAnonKey}`
               }

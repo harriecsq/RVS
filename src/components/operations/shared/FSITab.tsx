@@ -5,6 +5,7 @@ import { toast } from "../../ui/toast-utils";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface FSITabProps {
   bookingId: string;
@@ -41,8 +42,6 @@ interface FSIData {
   createdAt?: string;
   updatedAt?: string;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 export function FSITab({ bookingId, currentUser }: FSITabProps) {
   const [fsiData, setFsiData] = useState<FSIData | null>(null);
@@ -85,7 +84,7 @@ export function FSITab({ bookingId, currentUser }: FSITabProps) {
   const fetchFSI = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/fsi?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/fsi?bookingId=${bookingId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
           "Content-Type": "application/json",
@@ -117,8 +116,8 @@ export function FSITab({ bookingId, currentUser }: FSITabProps) {
     try {
       const method = fsiData?.id ? "PUT" : "POST";
       const url = fsiData?.id
-        ? `${API_URL}/fsi/${fsiData.id}`
-        : `${API_URL}/fsi`;
+        ? `${API_BASE_URL}/fsi/${fsiData.id}`
+        : `${API_BASE_URL}/fsi`;
 
       const response = await fetch(url, {
         method,

@@ -1,6 +1,5 @@
 import { projectId, publicAnonKey } from "./supabase/info";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Contact {
   id: string;
@@ -28,7 +27,7 @@ export async function cleanupDuplicates() {
 
     // ==================== CLEANUP CONTACTS ====================
     console.log("\n📞 Fetching all contacts...");
-    const contactsResponse = await fetch(`${API_URL}/contacts`, {
+    const contactsResponse = await fetch(`${API_BASE_URL}/contacts`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${publicAnonKey}`,
@@ -63,7 +62,7 @@ export async function cleanupDuplicates() {
           for (const contact of toDelete) {
             console.log(`   ❌ Deleting duplicate: ${contact.name} (ID: ${contact.id})`);
             
-            const deleteResponse = await fetch(`${API_URL}/contacts/${contact.id}`, {
+            const deleteResponse = await fetch(`${API_BASE_URL}/contacts/${contact.id}`, {
               method: "DELETE",
               headers: {
                 Authorization: `Bearer ${publicAnonKey}`,
@@ -84,7 +83,7 @@ export async function cleanupDuplicates() {
 
     // ==================== CLEANUP CUSTOMERS ====================
     console.log("\n\n🏢 Fetching all customers...");
-    const customersResponse = await fetch(`${API_URL}/clients`, {
+    const customersResponse = await fetch(`${API_BASE_URL}/clients`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${publicAnonKey}`,
@@ -119,7 +118,7 @@ export async function cleanupDuplicates() {
           for (const customer of toDelete) {
             console.log(`   ❌ Deleting duplicate: ${customer.company_name} (ID: ${customer.id})`);
             
-            const deleteResponse = await fetch(`${API_URL}/clients/${customer.id}`, {
+            const deleteResponse = await fetch(`${API_BASE_URL}/clients/${customer.id}`, {
               method: "DELETE",
               headers: {
                 Authorization: `Bearer ${publicAnonKey}`,

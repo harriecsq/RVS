@@ -5,6 +5,7 @@ import { toast } from "../../ui/toast-utils";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface FormETabProps {
   bookingId: string;
@@ -46,8 +47,6 @@ interface FormEData {
   createdAt?: string;
   updatedAt?: string;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 export function FormETab({ bookingId, currentUser }: FormETabProps) {
   const [formEData, setFormEData] = useState<FormEData | null>(null);
@@ -95,7 +94,7 @@ export function FormETab({ bookingId, currentUser }: FormETabProps) {
   const fetchFormE = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/form-e?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/form-e?bookingId=${bookingId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
           "Content-Type": "application/json",
@@ -127,8 +126,8 @@ export function FormETab({ bookingId, currentUser }: FormETabProps) {
     try {
       const method = formEData?.id ? "PUT" : "POST";
       const url = formEData?.id
-        ? `${API_URL}/form-e/${formEData.id}`
-        : `${API_URL}/form-e`;
+        ? `${API_BASE_URL}/form-e/${formEData.id}`
+        : `${API_BASE_URL}/form-e`;
 
       const response = await fetch(url, {
         method,

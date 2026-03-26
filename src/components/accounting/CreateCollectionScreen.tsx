@@ -7,8 +7,7 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CreateCollectionScreenProps {
   onBack: () => void;
@@ -141,7 +140,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   const fetchBillings = async () => {
     setIsLoadingBillings(true);
     try {
-      const response = await fetch(`${API_URL}/billings`, {
+      const response = await fetch(`${API_BASE_URL}/billings`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -277,7 +276,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
         allocations
       };
 
-      const response = await fetch(`${API_URL}/collections`, {
+      const response = await fetch(`${API_BASE_URL}/collections`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -8,8 +8,7 @@ import { formatAmount } from "../../utils/formatAmount";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ExpensesScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -118,7 +117,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
 
   const fetchAndSelectExpense = async (expenseId: string) => {
     try {
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +140,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const fetchExpenses = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/expenses`, {
+      const response = await fetch(`${API_BASE_URL}/expenses`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

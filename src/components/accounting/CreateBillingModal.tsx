@@ -11,8 +11,7 @@ import { Label } from "../ui/label";
 import { Card } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
@@ -128,7 +127,7 @@ export function CreateBillingScreen({
       const fetchAndSelectBooking = async () => {
         try {
           // First try the unified bookings endpoint
-          const response = await fetch(`${API_URL}/bookings/${prefillBookingId}`, {
+          const response = await fetch(`${API_BASE_URL}/bookings/${prefillBookingId}`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
           });
           const result = await response.json();
@@ -143,7 +142,7 @@ export function CreateBillingScreen({
         
         // Fallback: try fetching all bookings and find the match
         try {
-          const response = await fetch(`${API_URL}/bookings`, {
+          const response = await fetch(`${API_BASE_URL}/bookings`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
           });
           const result = await response.json();
@@ -289,7 +288,7 @@ export function CreateBillingScreen({
   const fetchExpenses = async (bookingId: string) => {
     setIsLoadingExpenses(true);
     try {
-      const response = await fetch(`${API_URL}/expenses`, {
+      const response = await fetch(`${API_BASE_URL}/expenses`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -398,7 +397,7 @@ export function CreateBillingScreen({
       // Extract client ID from booking if available
       const clientId = selectedBooking?.client_id || selectedBooking?.clientId || selectedBooking?.customer_id || selectedBooking?.customerId || "";
 
-      const response = await fetch(`${API_URL}/billings`, {
+      const response = await fetch(`${API_BASE_URL}/billings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

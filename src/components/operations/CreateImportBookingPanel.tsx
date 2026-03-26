@@ -7,6 +7,8 @@ import { ComboInput } from "../ui/ComboInput";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { API_BASE_URL } from '@/utils/api-config';
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface CreateBrokerageBookingPanelProps {
   isOpen: boolean;
@@ -24,8 +26,6 @@ interface CreateBrokerageBookingPanelProps {
     pod?: string;
   } | null;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 // Selectivity color mapping
 const SELECTIVITY_OPTIONS = ["Green", "Orange", "Yellow", "Red"];
@@ -450,7 +450,7 @@ export function CreateBrokerageBookingPanel({
         mode: "Sea"
       };
 
-      const response = await fetch(`${API_URL}/import-bookings`, {
+      const response = await fetch(`${API_BASE_URL}/import-bookings`, {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
@@ -723,14 +723,7 @@ export function CreateBrokerageBookingPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40"
-        onClick={handleClose}
-        style={{
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={handleClose} />
 
       {/* Side Panel */}
       <div

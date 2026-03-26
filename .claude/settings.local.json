@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")",
+      "Skill(update-config)",
+      "Bash(grep -l \"useUser\\\\|useContext\\\\|useState\" /c/Users/Harrie/Downloads/RVS/Realrvsupdated/src/components/accounting/*.tsx)",
+      "Bash(grep -r \"^[[:space:]]*//.*TODO\\\\|FIXME\\\\|HACK\\\\|XXX\" /c/Users/Harrie/Downloads/RVS/Realrvsupdated/src --include=\"*.tsx\" --include=\"*.ts\")",
+      "Bash(ls -lh /c/Users/Harrie/Downloads/RVS/Realrvsupdated/src/components/*.tsx)",
+      "Bash(grep:*)",
+      "Bash(cd:*)",
+      "Bash(npm run:*)",
+      "Bash(mv src/types/evoucher.tsx src/types/evoucher.ts)",
+      "Bash(mv src/types/operations.tsx src/types/operations.ts)",
+      "Bash(mv src/types/pricing.tsx src/types/pricing.ts)",
+      "Bash(node scripts/centralize-api-url.js)",
+      "Bash(ls:*)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//c/Users/Harrie/Downloads/RVS/Realrvsupdated/**)",
+      "Bash(done)",
+      "Bash(node:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

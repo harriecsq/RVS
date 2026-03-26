@@ -5,6 +5,7 @@ import { ViewVoucherScreen } from "./ViewVoucherScreen";
 import { CreateVoucherModal } from "./CreateVoucherModal";
 import { formatAmount } from "../../utils/formatAmount";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface VouchersScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -98,8 +99,7 @@ export function VouchersScreen({ currentUser }: VouchersScreenProps) {
   const fetchVouchers = async () => {
     setIsLoading(true);
     try {
-      const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
-      const response = await fetch(`${API_URL}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

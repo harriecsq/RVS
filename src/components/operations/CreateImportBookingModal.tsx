@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
-import type { Client, Contact } from "../../types/bd";
+import type { Client, Contact } from "../../types/operations";
+import { API_BASE_URL } from '@/utils/api-config';
 
 // Hardcoded color constants — avoids CSS variable resolution issues
 const S = {
@@ -94,7 +95,7 @@ export function CreateBrokerageBookingModal({ onClose, onSuccess }: CreateBroker
       const validContainers = containerList.filter(c => c.trim() !== "");
       const containerNumbersStr = validContainers.join(", ");
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/import-bookings`, {
+      const response = await fetch(`${API_BASE_URL}/import-bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
         body: JSON.stringify({

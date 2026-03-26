@@ -4,8 +4,7 @@ import type { Project } from "../../types/pricing";
 import type { TruckingLeg } from "../../types/operations";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { NeuronStatusPill } from "../NeuronStatusPill";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ProjectTruckingTabProps {
   project: Project;
@@ -23,7 +22,7 @@ export function ProjectTruckingTab({ project }: ProjectTruckingTabProps) {
     setIsLoading(true);
     try {
       // Fetch all bookings for this project
-      const bookingsResponse = await fetch(`${API_URL}/projects/${project.id}/bookings`, {
+      const bookingsResponse = await fetch(`${API_BASE_URL}/projects/${project.id}/bookings`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -46,7 +45,7 @@ export function ProjectTruckingTab({ project }: ProjectTruckingTabProps) {
         
         try {
           const response = await fetch(
-            `${API_URL}/trucking-legs?bookingId=${bookingId}&bookingType=${bookingType}`,
+            `${API_BASE_URL}/trucking-legs?bookingId=${bookingId}&bookingType=${bookingType}`,
             {
               headers: {
                 Authorization: `Bearer ${publicAnonKey}`,

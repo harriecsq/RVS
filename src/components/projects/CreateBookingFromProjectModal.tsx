@@ -10,8 +10,7 @@ import {
   linkBookingToProject
 } from "../../utils/projectAutofill";
 import { toast } from "../ui/toast-utils";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CreateBookingFromProjectModalProps {
   isOpen: boolean;
@@ -81,7 +80,7 @@ export function CreateBookingFromProjectModal({
       switch (serviceType) {
         case "Forwarding":
           bookingData = autofillForwardingFromProject(project);
-          endpoint = `${API_URL}/forwarding-bookings`;
+          endpoint = `${API_BASE_URL}/forwarding-bookings`;
           bookingIdPrefix = "FWD";
           
           // Add required fields for forwarding (only if not already autofilled)
@@ -106,7 +105,7 @@ export function CreateBookingFromProjectModal({
 
         case "Brokerage":
           bookingData = autofillBrokerageFromProject(project);
-          endpoint = `${API_URL}/brokerage-bookings`;
+          endpoint = `${API_BASE_URL}/brokerage-bookings`;
           bookingIdPrefix = "BRK";
           
           bookingData = {
@@ -131,7 +130,7 @@ export function CreateBookingFromProjectModal({
 
         case "Trucking":
           bookingData = autofillTruckingFromProject(project);
-          endpoint = `${API_URL}/trucking-bookings`;
+          endpoint = `${API_BASE_URL}/trucking-bookings`;
           bookingIdPrefix = "TRK";
           
           bookingData = {
@@ -151,7 +150,7 @@ export function CreateBookingFromProjectModal({
 
         case "Others":
           bookingData = autofillOthersFromProject(project);
-          endpoint = `${API_URL}/others-bookings`;
+          endpoint = `${API_BASE_URL}/others-bookings`;
           bookingIdPrefix = "OTH";
           
           bookingData = {

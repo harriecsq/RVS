@@ -7,8 +7,7 @@ import { ViewCollectionScreen } from "./ViewCollectionScreen";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CollectionsScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -105,7 +104,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const fetchCollections = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/collections`, {
+      const response = await fetch(`${API_BASE_URL}/collections`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

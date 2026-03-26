@@ -20,8 +20,7 @@ import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../u
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface BrokerageBookingDetailsProps {
   booking: BrokerageBooking;
@@ -221,8 +220,8 @@ export function BrokerageBookingDetails({
     try {
       const isLegacy = !(currentBooking as any).booking_type;
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_URL}/import-bookings/${currentBooking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       const response = await fetch(endpoint, {
@@ -267,8 +266,8 @@ export function BrokerageBookingDetails({
     try {
       const isLegacy = !(currentBooking as any).booking_type;
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_URL}/import-bookings/${currentBooking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       const response = await fetch(endpoint, {
@@ -306,8 +305,8 @@ export function BrokerageBookingDetails({
     try {
       const isLegacy = !(currentBooking as any).booking_type;
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_URL}/import-bookings/${currentBooking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       await fetch(endpoint, {
@@ -337,7 +336,7 @@ export function BrokerageBookingDetails({
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch(`${API_URL}/projects`, {
+        const response = await fetch(`${API_BASE_URL}/projects`, {
           headers: {
             Authorization: `Bearer ${publicAnonKey}`,
           },
@@ -394,8 +393,8 @@ export function BrokerageBookingDetails({
       const isLegacy = !(booking as any).booking_type;
       
       const endpoint = isLegacy 
-        ? `${API_URL}/bookings/${booking.bookingId}` 
-        : `${API_URL}/import-bookings/${booking.bookingId}`;
+        ? `${API_BASE_URL}/bookings/${booking.bookingId}` 
+        : `${API_BASE_URL}/import-bookings/${booking.bookingId}`;
       
       const method = isLegacy ? "PATCH" : "PUT";
 
@@ -452,7 +451,7 @@ export function BrokerageBookingDetails({
 
   const handleDeleteBooking = async () => {
     try {
-      const response = await fetch(`${API_URL}/import-bookings/${booking.bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/import-bookings/${booking.bookingId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

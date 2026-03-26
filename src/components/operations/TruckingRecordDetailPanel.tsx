@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { TruckingRecordDetails } from "./TruckingRecordDetails";
 import type { TruckingRecord } from "./CreateTruckingModal";
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface TruckingRecordDetailPanelProps {
   record: TruckingRecord | null;
@@ -47,14 +48,7 @@ export function TruckingRecordDetailPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40 transition-opacity duration-200"
-        onClick={onClose}
-        style={{ 
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={onClose} />
 
       {/* Slide-out Panel */}
       <div

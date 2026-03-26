@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Edit3, Clock, Trash2 } from "lucide-react";
-import { ProjectOverviewTab } from "../bd/ProjectOverviewTab";
+import { ProjectOverviewTab } from "./ProjectOverviewTab";
 import { ProjectTruckingTab } from "./ProjectTruckingTab";
 import { ProjectBillingsTab } from "./ProjectBillingsTab";
 import { ProjectExpensesTab } from "./ProjectExpensesTab";
@@ -10,6 +10,7 @@ import { StandardTabs } from "../design-system/StandardTabs";
 import { StandardButton } from "../design-system/StandardButton";
 import { toast } from "../ui/toast-utils";
 import { ActionsDropdown } from "../shared/ActionsDropdown";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ProjectDetailProps {
   project: Project;
@@ -57,7 +58,7 @@ export function ProjectDetail({
       const { projectId, publicAnonKey } = await import("../../utils/supabase/info");
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/projects/${projectData.id}`,
+        `${API_BASE_URL}/projects/${projectData.id}`,
         {
           method: "PATCH",
           headers: {
@@ -88,7 +89,7 @@ export function ProjectDetail({
       const { projectId, publicAnonKey } = await import("../../utils/supabase/info");
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/projects/${project.id}`,
+        `${API_BASE_URL}/projects/${project.id}`,
         {
           method: "PATCH",
           headers: {
@@ -118,7 +119,7 @@ export function ProjectDetail({
       const { projectId, publicAnonKey } = await import("../../utils/supabase/info");
       
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/projects/${project.id}`,
+        `${API_BASE_URL}/projects/${project.id}`,
         {
           method: "DELETE",
           headers: {

@@ -10,8 +10,7 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ViewCollectionScreenProps {
   collection: {
@@ -72,7 +71,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
     try {
       setIsLoading(true);
       const totalFromAllocations = editedAllocations.reduce((sum, a) => sum + (a.amount || 0), 0);
-      const response = await fetch(`${API_URL}/collections/${currentCollection.id}`, {
+      const response = await fetch(`${API_BASE_URL}/collections/${currentCollection.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -117,7 +116,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
 
   const handleStatusChange = async (newStatus: "Draft" | "For Approval" | "Approved" | "Collected" | "Cancelled") => {
     try {
-      const response = await fetch(`${API_URL}/collections/${currentCollection.id}`, {
+      const response = await fetch(`${API_BASE_URL}/collections/${currentCollection.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -158,7 +157,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
 
   const handleDeleteCollection = async () => {
     try {
-      const response = await fetch(`${API_URL}/collections/${collection.id}`, {
+      const response = await fetch(`${API_BASE_URL}/collections/${collection.id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

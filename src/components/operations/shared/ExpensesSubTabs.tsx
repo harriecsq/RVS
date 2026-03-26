@@ -4,8 +4,7 @@ import { ExpensesTab } from "./ExpensesTab";
 import { ViewExpenseScreen } from "../../accounting/ViewExpenseScreen";
 import { BookingVouchersTab } from "./BookingVouchersTab";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ExpensesSubTabsProps {
   bookingId: string;
@@ -52,7 +51,7 @@ export function ExpensesSubTabs({
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch(`${API_URL}/expenses?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();
@@ -71,7 +70,7 @@ export function ExpensesSubTabs({
 
   const fetchVouchersCount = async () => {
     try {
-      const response = await fetch(`${API_URL}/bookings/${bookingId}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/vouchers`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();

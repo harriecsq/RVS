@@ -2,7 +2,8 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
-import type { Client, Contact } from "../../types/bd";
+import type { Client, Contact } from "../../types/operations";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CreateOthersBookingModalProps { onClose: () => void; onSuccess: () => void; }
 
@@ -26,7 +27,7 @@ export function CreateOthersBookingModal({ onClose, onSuccess }: CreateOthersBoo
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/others-bookings`, {
+      const response = await fetch(`${API_BASE_URL}/others-bookings`, {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` }, body: JSON.stringify({
           ...formData,
           customerName: selectedContact ? selectedContact.name : (selectedCompany ? (selectedCompany.name || selectedCompany.company_name) : formData.customerName),

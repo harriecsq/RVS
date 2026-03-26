@@ -17,8 +17,7 @@ import { ComboInput } from "../ui/ComboInput";
 import { DateInput } from "../ui/DateInput";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CreateExpenseScreenProps {
   onBack: () => void;
@@ -102,7 +101,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
 
     // Fetch linked vouchers
     try {
-        const response = await fetch(`${API_URL}/bookings/${booking.id}/vouchers`, {
+        const response = await fetch(`${API_BASE_URL}/bookings/${booking.id}/vouchers`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
         });
         const result = await response.json();
@@ -180,7 +179,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
 
     // Fetch trucking record for this booking to get Loading Address from trucking tab
     try {
-      const truckingRes = await fetch(`${API_URL}/trucking-records?linkedBookingId=${booking.id}`, {
+      const truckingRes = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${booking.id}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` }
       });
       const truckingResult = await truckingRes.json();
@@ -362,7 +361,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
         }
       }
 
-      const response = await fetch(`${API_URL}/expenses`, {
+      const response = await fetch(`${API_BASE_URL}/expenses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -429,7 +428,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
       const fetchAndSelectBooking = async () => {
         try {
           // First try the unified bookings endpoint
-          const response = await fetch(`${API_URL}/bookings/${prefillBookingId}`, {
+          const response = await fetch(`${API_BASE_URL}/bookings/${prefillBookingId}`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
           });
           const result = await response.json();
@@ -445,7 +444,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
         
         // Fallback: try fetching all bookings and find the match
         try {
-          const response = await fetch(`${API_URL}/bookings`, {
+          const response = await fetch(`${API_BASE_URL}/bookings`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
           });
           const result = await response.json();

@@ -14,6 +14,7 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { PayeeSelector } from "../selectors/PayeeSelector";
 import { formatAmount } from "../../utils/formatAmount";
+import { API_BASE_URL } from '@/utils/api-config';
 
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
@@ -281,7 +282,6 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const [linkedExpenseNumbers, setLinkedExpenseNumbers] = useState<string[]>([]);
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
 
-  const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
   useEffect(() => {
     fetchVoucherDetails();
@@ -299,7 +299,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
   const fetchLinkedExpenses = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/expenses?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (!response.ok) return;
@@ -328,7 +328,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
   const fetchTruckingRecordForBooking = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/trucking-records?linkedBookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (!response.ok) return;
@@ -355,7 +355,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const fetchVoucherDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/vouchers/${voucherId}`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -404,7 +404,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
   const handleDeleteVoucher = async () => {
     try {
-      const response = await fetch(`${API_URL}/vouchers/${voucherId}`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -446,7 +446,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           lineItems: combinedLineItems
       };
 
-      const response = await fetch(`${API_URL}/vouchers/${voucherId}`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
@@ -478,7 +478,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const handleStatusChange = async (newStatus: VoucherStatus) => {
     if (!voucher) return;
     try {
-      const response = await fetch(`${API_URL}/vouchers/${voucherId}`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,

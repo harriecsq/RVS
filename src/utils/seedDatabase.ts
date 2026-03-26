@@ -17,13 +17,14 @@
  */
 
 import { projectId, publicAnonKey } from './supabase/info';
+import { API_BASE_URL } from '@/utils/api-config';
 
 export async function seedDatabase() {
   try {
     console.log('🌱 Seeding database with test data...');
     
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-c142e950/entities/seed`,
+      `${API_BASE_URL}/entities/seed`,
       {
         method: 'POST',
         headers: {

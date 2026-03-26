@@ -4,7 +4,8 @@ import { NeuronStatusPill } from "./NeuronStatusPill";
 import { useUser } from "../hooks/useUser";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { useNavigate } from "react-router";
-import { CustomDropdown } from "./bd/CustomDropdown";
+import { StandardFilterDropdown } from "./design-system/StandardFilterDropdown";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ActivityLog {
   id: string;
@@ -29,8 +30,6 @@ export function ActivityLogPage() {
   const [total, setTotal] = useState(0);
   const [hasNewActivities, setHasNewActivities] = useState(false);
   const [newActivityCount, setNewActivityCount] = useState(0);
-  
-  const baseUrl = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
   
   // Executive Department exception: Everyone in Executive gets director access
   const actualRole = effectiveDepartment === "Executive" ? "director" : effectiveRole;
@@ -74,7 +73,7 @@ export function ActivityLogPage() {
   
   const fetchUsersInDepartment = async (department: string) => {
     try {
-      const response = await fetch(`${baseUrl}/users?department=${department}`, {
+      const response = await fetch(`${API_BASE_URL}/users?department=${department}`, {
         headers: { 'Authorization': `Bearer ${publicAnonKey}` }
       });
       
@@ -140,7 +139,7 @@ export function ActivityLogPage() {
         params.append("date_to", dateTo);
       }
       
-      const response = await fetch(`${baseUrl}/activity-log?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/activity-log?${params}`, {
         headers: { 'Authorization': `Bearer ${publicAnonKey}` }
       });
       
@@ -182,7 +181,7 @@ export function ActivityLogPage() {
         params.append("entity_type", entityTypeFilter);
       }
       
-      const response = await fetch(`${baseUrl}/activity-log?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/activity-log?${params}`, {
         headers: { 'Authorization': `Bearer ${publicAnonKey}` }
       });
       
@@ -444,8 +443,7 @@ export function ActivityLogPage() {
             </div>
             
             <div style={{ minWidth: "160px" }}>
-              <CustomDropdown
-                label=""
+              <StandardFilterDropdown
                 value={entityTypeFilter}
                 onChange={setEntityTypeFilter}
                 options={[
@@ -458,8 +456,7 @@ export function ActivityLogPage() {
             </div>
             
             <div style={{ minWidth: "140px" }}>
-              <CustomDropdown
-                label=""
+              <StandardFilterDropdown
                 value={actionTypeFilter}
                 onChange={setActionTypeFilter}
                 options={[
@@ -475,9 +472,8 @@ export function ActivityLogPage() {
             {/* Show Department filter only for Executives */}
             {actualRole === "director" && (
               <div style={{ minWidth: "160px" }}>
-                <CustomDropdown
-                  label=""
-                  value={departmentFilter}
+                <StandardFilterDropdown
+                    value={departmentFilter}
                   onChange={(value) => {
                     setDepartmentFilter(value);
                     setUserFilter(""); // Reset user filter when department changes
@@ -496,9 +492,8 @@ export function ActivityLogPage() {
             {/* Show User filter when department is selected (not "all") */}
             {(departmentFilter !== "all" || actualRole === "manager") && (
               <div style={{ minWidth: "150px" }}>
-                <CustomDropdown
-                  label=""
-                  value={userFilter}
+                <StandardFilterDropdown
+                    value={userFilter}
                   onChange={setUserFilter}
                   options={[
                     { value: "", label: "All Users" },

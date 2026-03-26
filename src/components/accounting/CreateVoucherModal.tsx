@@ -10,8 +10,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // ─── Category Dropdown (matches PayeeSelector visual design) ─────────────────
 
@@ -340,7 +339,7 @@ export function CreateVoucherModal({
 
   const fetchLinkedExpenses = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/expenses?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (!response.ok) return;
@@ -372,7 +371,7 @@ export function CreateVoucherModal({
 
   const fetchTruckingRecordForBooking = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/trucking-records?linkedBookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (!response.ok) return;
@@ -813,7 +812,7 @@ export function CreateVoucherModal({
         ]
       };
 
-      const response = await fetch(`${API_URL}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

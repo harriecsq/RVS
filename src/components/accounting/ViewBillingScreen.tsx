@@ -15,6 +15,7 @@ import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { Paperclip } from "lucide-react";
+import { API_BASE_URL } from '@/utils/api-config';
 
 
 interface ViewBillingScreenProps {
@@ -235,7 +236,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const displayOrigin = billing?.origin || billing?.pol || billing?.pickup || (primaryBooking as any)?.origin || (primaryBooking as any)?.pol || (primaryBooking as any)?.pickup || "—";
   const displayConsignee = billing?.consignee || (primaryBooking as any)?.consignee || "—";
 
-  const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
   useEffect(() => {
     fetchBillingDetails();
@@ -310,7 +310,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const fetchBillingDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/billings/${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings/${billingId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -333,7 +333,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const fetchCollections = async () => {
     setIsLoadingCollections(true);
     try {
-      const response = await fetch(`${API_URL}/collections?billingId=${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/collections?billingId=${billingId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -364,7 +364,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const fetchLinkedBookings = async (bookingIds: string[]) => {
     setIsLoadingRelatedData(true);
     try {
-      const response = await fetch(`${API_URL}/bookings?ids=${bookingIds.join(",")}`, {
+      const response = await fetch(`${API_BASE_URL}/bookings?ids=${bookingIds.join(",")}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -387,7 +387,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const fetchLinkedExpenses = async (expenseIds: string[]) => {
     setIsLoadingRelatedData(true);
     try {
-      const response = await fetch(`${API_URL}/expenses?ids=${expenseIds.join(",")}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?ids=${expenseIds.join(",")}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -410,7 +410,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const fetchProjects = async () => {
     setIsLoadingProjects(true);
     try {
-      const response = await fetch(`${API_URL}/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -433,7 +433,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const fetchAllBookings = async () => {
     try {
       // Fetch all bookings (global search)
-      const response = await fetch(`${API_URL}/bookings`, {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();
@@ -451,7 +451,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
 
   const fetchAllExpenses = async () => {
     try {
-      const response = await fetch(`${API_URL}/expenses`, {
+      const response = await fetch(`${API_BASE_URL}/expenses`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -569,7 +569,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
         approvedBy: editedApprovedBy,
       };
 
-      const response = await fetch(`${API_URL}/billings/${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings/${billingId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -601,7 +601,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
 
   const handleDeleteBilling = async () => {
     try {
-      const response = await fetch(`${API_URL}/billings/${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings/${billingId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -738,7 +738,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
     setShowStatusDropdown(false);
     
     try {
-      const response = await fetch(`${API_URL}/billings/${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings/${billingId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

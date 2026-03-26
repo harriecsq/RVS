@@ -10,8 +10,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Upload, FileText, Image, File, Trash2, Download, Paperclip, Ship, Truck, Receipt, CreditCard, ChevronDown, ChevronRight } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Attachment {
   id: string;
@@ -60,7 +59,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
 
   const fetchAttachments = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/attachments/${entityType}/${entityId}`, {
+      const response = await fetch(`${API_BASE_URL}/attachments/${entityType}/${entityId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();
@@ -89,7 +88,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const response = await fetch(`${API_URL}/attachments/${entityType}/${entityId}`, {
+        const response = await fetch(`${API_BASE_URL}/attachments/${entityType}/${entityId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -120,7 +119,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
   const handleDelete = async (attachment: Attachment) => {
     try {
       const response = await fetch(
-        `${API_URL}/attachments/${entityType}/${entityId}/${attachment.id}`,
+        `${API_BASE_URL}/attachments/${entityType}/${entityId}/${attachment.id}`,
         { method: "DELETE", headers: { Authorization: `Bearer ${publicAnonKey}` } }
       );
       const result = await response.json();
@@ -138,7 +137,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
 
   const handleDownload = async (attachment: Attachment) => {
     try {
-      const response = await fetch(`${API_URL}/attachments/download/${attachment.id}`, {
+      const response = await fetch(`${API_BASE_URL}/attachments/download/${attachment.id}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();

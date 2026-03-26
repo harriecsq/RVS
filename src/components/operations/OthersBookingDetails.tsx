@@ -7,8 +7,7 @@ import { StandardButton } from "../design-system/StandardButton";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface OthersBookingDetailsProps {
   booking: OthersBooking;
@@ -622,8 +621,8 @@ function BookingInformationTab({
           const isLegacy = !(booking as any).booking_type;
           
           const endpoint = isLegacy 
-            ? `${API_URL}/bookings/${booking.bookingId}` 
-            : `${API_URL}/others-bookings/${booking.bookingId}`;
+            ? `${API_BASE_URL}/bookings/${booking.bookingId}` 
+            : `${API_BASE_URL}/others-bookings/${booking.bookingId}`;
           
           const method = isLegacy ? "PATCH" : "PUT";
 

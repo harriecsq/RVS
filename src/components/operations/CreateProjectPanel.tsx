@@ -2,7 +2,8 @@ import { ArrowLeft, Briefcase, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
 import { useUser } from "../../hooks/useUser";
-import type { Client, Contact } from "../../types/bd";
+import type { Client, Contact } from "../../types/operations";
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface CreateProjectPanelProps {
   isOpen: boolean;
@@ -177,14 +178,7 @@ export function CreateProjectPanel({ isOpen, onClose, onSave, movementType }: Cr
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40"
-        onClick={handleClose}
-        style={{ 
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={handleClose} />
 
       {/* Slide-out Panel */}
       <div

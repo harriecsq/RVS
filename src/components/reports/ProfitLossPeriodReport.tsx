@@ -5,8 +5,7 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // --- Interfaces ---
 
@@ -165,10 +164,10 @@ export function ProfitLossPeriodReport() {
 
       // Parallel fetch: Bookings/Billings/Expenses (for Revenue) AND Vouchers (for Expenses)
       const [bookingsRes, billingsRes, expensesRes, vouchersRes] = await Promise.all([
-        fetch(`${API_URL}/bookings`, { headers }),
-        fetch(`${API_URL}/billings`, { headers }),
-        fetch(`${API_URL}/expenses`, { headers }),
-        fetch(`${API_URL}/vouchers`, { headers })
+        fetch(`${API_BASE_URL}/bookings`, { headers }),
+        fetch(`${API_BASE_URL}/billings`, { headers }),
+        fetch(`${API_BASE_URL}/expenses`, { headers }),
+        fetch(`${API_BASE_URL}/vouchers`, { headers })
       ]);
 
       const bookingsData = await bookingsRes.json();

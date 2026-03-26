@@ -5,8 +5,7 @@ import { CreateBrokerageBookingPanel } from "../operations/CreateBrokerageBookin
 import { CreateForwardingBookingPanel } from "../operations/forwarding/CreateForwardingBookingPanel";
 import type { Project } from "../../types/pricing";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Booking {
   id?: string;
@@ -310,7 +309,7 @@ export function BookingsTab({ project, currentUser, onUpdate }: BookingsTabProps
   const fetchBookings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/projects/${project.id}/bookings`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${project.id}/bookings`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

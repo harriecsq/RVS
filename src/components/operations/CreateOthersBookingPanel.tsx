@@ -2,6 +2,8 @@ import { ArrowLeft, Briefcase, Package, FileText } from "lucide-react";
 import { useState } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
+import { API_BASE_URL } from '@/utils/api-config';
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface CreateOthersBookingPanelProps {
   isOpen: boolean;
@@ -53,7 +55,7 @@ export function CreateOthersBookingPanel({
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/others-bookings`,
+        `${API_BASE_URL}/others-bookings`,
         {
           method: "POST",
           headers: {
@@ -91,14 +93,7 @@ export function CreateOthersBookingPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40"
-        onClick={onClose}
-        style={{
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={onClose} />
 
       {/* Side Panel */}
       <div

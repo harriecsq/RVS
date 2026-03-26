@@ -13,8 +13,7 @@ import { EXPORT_STANDARD_PARTICULARS, getAvailableExportSuggestions } from "./Ex
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ViewExpenseScreenProps {
   expenseId: string;
@@ -257,7 +256,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
     // Persist to backend
     try {
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "PATCH",
         headers: {
             "Authorization": `Bearer ${publicAnonKey}`,
@@ -572,7 +571,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         (async () => {
           for (const bookingId of ids) {
             try {
-              const res = await fetch(`${API_URL}/trucking-records?linkedBookingId=${bookingId}`, {
+              const res = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`, {
                 headers: { Authorization: `Bearer ${publicAnonKey}` },
               });
               const result = await res.json();
@@ -596,7 +595,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     try {
       console.log("Fetching vouchers for bookings:", bookingIds);
       const promises = bookingIds.map(id => 
-        fetch(`${API_URL}/bookings/${id}/vouchers`, {
+        fetch(`${API_BASE_URL}/bookings/${id}/vouchers`, {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
         }).then(res => res.json())
       );
@@ -631,7 +630,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
   const fetchExpenseDetails = async () => {
     setIsLoading(true);
     try {
-      const expenseResponse = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const expenseResponse = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         headers: {
           "Authorization": `Bearer ${publicAnonKey}`,
         },
@@ -662,7 +661,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         }
 
         if (expenseData.projectId) {
-          const projectResponse = await fetch(`${API_URL}/projects/${expenseData.projectId}`, {
+          const projectResponse = await fetch(`${API_BASE_URL}/projects/${expenseData.projectId}`, {
             headers: {
               "Authorization": `Bearer ${publicAnonKey}`,
             },
@@ -688,13 +687,13 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           const bookingPromises = bookingIdsToFetch.map(async (bookingId: string) => {
             console.log(`Attempting to fetch booking: ${bookingId}`);
             const endpoints = [
-              `${API_URL}/export-bookings/${bookingId}`,
-              `${API_URL}/import-bookings/${bookingId}`,
-              `${API_URL}/forwarding-bookings/${bookingId}`,
-              `${API_URL}/trucking-bookings/${bookingId}`,
-              `${API_URL}/brokerage-bookings/${bookingId}`,
-              `${API_URL}/marine-insurance-bookings/${bookingId}`,
-              `${API_URL}/others-bookings/${bookingId}`,
+              `${API_BASE_URL}/export-bookings/${bookingId}`,
+              `${API_BASE_URL}/import-bookings/${bookingId}`,
+              `${API_BASE_URL}/forwarding-bookings/${bookingId}`,
+              `${API_BASE_URL}/trucking-bookings/${bookingId}`,
+              `${API_BASE_URL}/brokerage-bookings/${bookingId}`,
+              `${API_BASE_URL}/marine-insurance-bookings/${bookingId}`,
+              `${API_BASE_URL}/others-bookings/${bookingId}`,
             ];
 
             for (const endpoint of endpoints) {
@@ -737,7 +736,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
               console.log(`Booking ${booking.bookingId} has client_id: ${clientId}`);
               if (clientId) {
                 try {
-                  const clientResponse = await fetch(`${API_URL}/clients/${clientId}`, {
+                  const clientResponse = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
                     headers: {
                       "Authorization": `Bearer ${publicAnonKey}`,
                     },
@@ -780,7 +779,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
   const fetchProjectsAndBookings = async () => {
     try {
-      const projectsResponse = await fetch(`${API_URL}/projects`, {
+      const projectsResponse = await fetch(`${API_BASE_URL}/projects`, {
         headers: {
           "Authorization": `Bearer ${publicAnonKey}`,
         },
@@ -793,7 +792,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         }
       }
 
-      const bookingsResponse = await fetch(`${API_URL}/bookings`, {
+      const bookingsResponse = await fetch(`${API_BASE_URL}/bookings`, {
         headers: {
           "Authorization": `Bearer ${publicAnonKey}`,
         },
@@ -984,7 +983,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         previousAmount: editedExpense.amount
       });
 
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${publicAnonKey}`,
@@ -1029,7 +1028,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         billingAmount: billingAmount
       });
 
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${publicAnonKey}`,
@@ -1062,7 +1061,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     try {
       console.log(`🔄 Updating expense status from ${expense.status} to ${newStatus}`);
       
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "PATCH",
         headers: {
           "Authorization": `Bearer ${publicAnonKey}`,
@@ -1098,7 +1097,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
   const handleDeleteExpense = async () => {
     try {
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

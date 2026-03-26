@@ -2,6 +2,7 @@ import { toast } from 'sonner@2.0.3';
 import { useState, useEffect, useRef } from 'react';
 import { Check, ChevronsUpDown, Search, Plus } from 'lucide-react';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Payee {
   id: string;
@@ -64,7 +65,7 @@ export function PayeeSelector({
     setLoading(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/payees`,
+        `${API_BASE_URL}/payees`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
@@ -109,7 +110,7 @@ export function PayeeSelector({
     setIsAdding(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/payees`,
+        `${API_BASE_URL}/payees`,
         {
           method: 'POST',
           headers: {

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Building2, Plus, Trash2, User, Mail, Phone, X } from "lucide-react";
-import { CustomSelect } from "../bd/CustomSelect";
+import { StandardSelect } from "../design-system/StandardSelect";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 type ClientStatus = "Prospect" | "Active" | "Inactive";
 
@@ -58,7 +58,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(`${API_URL}/users`, {
+        const response = await fetch(`${API_BASE_URL}/users`, {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
           cache: 'no-store',
         });
@@ -141,14 +141,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40"
-        onClick={handleClose}
-        style={{ 
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={handleClose} />
 
       {/* Slide-out Panel */}
       <div
@@ -306,7 +299,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   >
                     Status
                   </label>
-                  <CustomSelect
+                  <StandardSelect
                     id="status"
                     value={formData.status}
                     onChange={(value) => handleChange("status", value)}

@@ -1,5 +1,6 @@
 import type { Project } from "../types/pricing";
 import type { BillingChargeCategory, ExpenseChargeCategory } from "../types/operations";
+import { API_BASE_URL } from '@/utils/api-config';
 
 /**
  * Project Autofill Utilities
@@ -15,7 +16,7 @@ export async function fetchProjectByNumber(
 ): Promise<{ success: boolean; data?: Project; error?: string }> {
   try {
     const response = await fetch(
-      `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/projects/by-number/${projectNumber}`,
+      `${API_BASE_URL}/projects/by-number/${projectNumber}`,
       {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
@@ -327,7 +328,7 @@ export async function linkBookingToProject(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await fetch(
-      `https://${supabaseProjectId}.supabase.co/functions/v1/make-server-ce0d67b8/projects/${projectId}/link-booking`,
+      `${API_BASE_URL}/projects/${projectId}/link-booking`,
       {
         method: "POST",
         headers: {
@@ -360,7 +361,7 @@ export async function unlinkBookingFromProject(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await fetch(
-      `https://${supabaseProjectId}.supabase.co/functions/v1/make-server-ce0d67b8/projects/${projectId}/unlink-booking`,
+      `${API_BASE_URL}/projects/${projectId}/unlink-booking`,
       {
         method: "POST",
         headers: {

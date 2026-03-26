@@ -4,8 +4,7 @@ import { toast } from "sonner@2.0.3";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { useNavigate } from "react-router";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // --- Interfaces ---
 
@@ -75,7 +74,7 @@ export function VatReturnsReport() {
 
     try {
         // Fetch the single booking by ID instead of all bookings
-        const response = await fetch(`${API_URL}/bookings/${bookingId}`, {
+        const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
              headers: { Authorization: `Bearer ${publicAnonKey}` }
         });
         const result = await response.json();

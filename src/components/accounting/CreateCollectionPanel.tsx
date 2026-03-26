@@ -1,5 +1,6 @@
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 import { CreateCollectionScreen } from "./CreateCollectionScreen";
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface CreateCollectionPanelProps {
   isOpen: boolean;
@@ -16,23 +17,11 @@ export function CreateCollectionPanel({
 }: CreateCollectionPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Safe backdrop click — only close if the click target is the backdrop itself
-  const handleBackdropMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // Only close if the actual target is the backdrop div (not a portaled element on top)
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  }, [onClose]);
-
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop — uses onMouseDown on currentTarget only to avoid portal conflicts */}
-      <div
-        className="fixed inset-0 bg-black/40 z-[999]"
-        onMouseDown={handleBackdropMouseDown}
-      />
+      <PanelBackdrop onClick={onClose} />
 
       {/* Slide-out Panel */}
       <div

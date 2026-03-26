@@ -1,6 +1,4 @@
-import { NeuronSidebar } from "./NeuronSidebar";
-
-type Page = "dashboard" | "bd-contacts" | "bd-customers" | "bd-tasks" | "bd-activities" | "bd-budget-requests" | "bd-reports" | "pricing" | "operations" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "acct-inquiries" | "acct-projects" | "acct-ledger" | "acct-reports" | "hr" | "calendar" | "profile" | "admin";
+import { NeuronSidebar, type Page } from "./NeuronSidebar";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,9 +17,9 @@ export function Layout({ children, currentPage, onNavigate, currentUser }: Layou
       background: "var(--neuron-bg-page, #F7FAF8)",
     }}>
       {/* Left Sidebar - Fixed width 272px */}
-      <NeuronSidebar 
-        currentPage={currentPage as any}
-        onNavigate={onNavigate as any}
+      <NeuronSidebar
+        currentPage={currentPage}
+        onNavigate={onNavigate}
         currentUser={currentUser}
       />
 

@@ -9,8 +9,7 @@ import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // ---- Filter Dropdown (matches Trucking design) ----
 function FilterDropdown({
@@ -486,7 +485,7 @@ export function VouchersScreen() {
   const fetchVouchers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

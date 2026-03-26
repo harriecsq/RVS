@@ -14,8 +14,7 @@ import { StandardLoadingState } from "../design-system/StandardLoadingState";
 import { StandardEmptyState } from "../design-system/StandardEmptyState";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 type BillingStatus = "Draft" | "Submitted" | "Approved" | "Paid" | "Completed" | "Cancelled";
 
@@ -75,7 +74,7 @@ export function BillingsScreen() {
   const fetchBillings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/billings`, {
+      const response = await fetch(`${API_BASE_URL}/billings`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

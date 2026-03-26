@@ -4,8 +4,7 @@ import { BillingsTab } from "./BillingsTab";
 import { ViewBillingScreen } from "../../accounting/ViewBillingScreen";
 import { CollectionsListTab } from "./CollectionsListTab";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface BillingsSubTabsProps {
   bookingId: string;
@@ -62,7 +61,7 @@ export function BillingsSubTabs({
 
   const fetchBillings = async () => {
     try {
-      const response = await fetch(`${API_URL}/billings?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings?bookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();
@@ -81,7 +80,7 @@ export function BillingsSubTabs({
 
   const fetchCollectionsCount = async (billingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/collections?billingId=${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/collections?billingId=${billingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await response.json();

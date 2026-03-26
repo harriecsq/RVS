@@ -8,12 +8,11 @@ import { toast } from "../ui/toast-utils";
 import { ExportBookingDetails, ExportBooking } from "./ExportBookingDetails";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ExportBookingsProps {
   currentUser?: { name: string; email: string; department: string } | null;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 const getTimelineStatus = (timeline: { step: string; datetime: string | null }[] | undefined) => {
   const STEPS = ["Draft", "Signed", "Final", "For Debit", "Debited"];
@@ -50,7 +49,7 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
   const fetchBookings = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/bookings`, {
+      const response = await fetch(`${API_BASE_URL}/bookings`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'

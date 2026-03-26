@@ -4,8 +4,7 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import * as XLSX from "xlsx";
 import { toast } from "sonner@2.0.3";
 import { formatAmount } from "../../utils/formatAmount";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ReportFilters {
   startDate: string;
@@ -114,10 +113,10 @@ export function GeneralAnalyticsReport() {
     try {
       // 1. Fetch all necessary data in parallel
       const [bookingsRes, billingsRes, expensesRes, collectionsRes] = await Promise.all([
-        fetch(`${API_URL}/bookings?includeAll=true`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
-        fetch(`${API_URL}/billings`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
-        fetch(`${API_URL}/expenses`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
-        fetch(`${API_URL}/collections`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
+        fetch(`${API_BASE_URL}/bookings?includeAll=true`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        fetch(`${API_BASE_URL}/billings`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        fetch(`${API_BASE_URL}/expenses`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        fetch(`${API_BASE_URL}/collections`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
       ]);
 
       const bookingsResult = await bookingsRes.json();

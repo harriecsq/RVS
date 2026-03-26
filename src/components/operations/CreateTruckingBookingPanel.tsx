@@ -2,6 +2,7 @@ import { ArrowLeft, Truck } from "lucide-react";
 import { useState } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CreateTruckingBookingPanelProps {
   isOpen: boolean;
@@ -132,7 +133,7 @@ export function CreateTruckingBookingPanel({
 
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/trucking-bookings`,
+        `${API_BASE_URL}/trucking-bookings`,
         {
           method: "POST",
           headers: {

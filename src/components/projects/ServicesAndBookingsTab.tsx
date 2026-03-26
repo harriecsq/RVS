@@ -3,10 +3,10 @@ import { Plus, Clipboard, ChevronDown, ChevronRight, ExternalLink } from "lucide
 import { useNavigate } from "react-router";
 import type { Project, InquiryService } from "../../types/pricing";
 import { CreateBookingFromProjectModal } from "./CreateBookingFromProjectModal";
-import { ForwardingSpecsDisplay } from "../bd/service-displays/ForwardingSpecsDisplay";
-import { BrokerageSpecsDisplay } from "../bd/service-displays/BrokerageSpecsDisplay";
-import { TruckingSpecsDisplay } from "../bd/service-displays/TruckingSpecsDisplay";
-import { OthersSpecsDisplay } from "../bd/service-displays/OthersSpecsDisplay";
+import { ForwardingSpecsDisplay } from "./service-displays/ForwardingSpecsDisplay";
+import { BrokerageSpecsDisplay } from "./service-displays/BrokerageSpecsDisplay";
+import { TruckingSpecsDisplay } from "./service-displays/TruckingSpecsDisplay";
+import { OthersSpecsDisplay } from "./service-displays/OthersSpecsDisplay";
 
 interface ServicesAndBookingsTabProps {
   project: Project;

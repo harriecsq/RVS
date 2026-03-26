@@ -5,8 +5,7 @@ import { NeuronStatusPill } from "../../NeuronStatusPill";
 import { VoucherDetailPanel } from "../../accounting/VoucherDetailPanel";
 import { CreateVoucherModal } from "../../accounting/CreateVoucherModal";
 import { formatAmount } from "../../../utils/formatAmount";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Voucher {
   id: string;
@@ -45,7 +44,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
   const fetchVouchers = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/bookings/${bookingId}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/vouchers`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
 

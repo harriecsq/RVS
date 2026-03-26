@@ -14,6 +14,7 @@ import {
   PopoverTrigger,
 } from '../ui/popover';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Client {
   id: string;
@@ -106,7 +107,7 @@ export function ClientSelector({
     setLoading(true);
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/clients`,
+        `${API_BASE_URL}/clients`,
         {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,

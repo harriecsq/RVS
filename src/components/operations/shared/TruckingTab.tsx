@@ -11,8 +11,7 @@ import { toast } from "../../ui/toast-utils";
 import { CreateTruckingModal } from "../CreateTruckingModal";
 import { TruckingRecordDetails } from "../TruckingRecordDetails";
 import type { TruckingRecord } from "../CreateTruckingModal";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface TruckingTabProps {
   bookingId: string;
@@ -33,7 +32,7 @@ export function TruckingTab({ bookingId, bookingType, currentUser }: TruckingTab
     setIsLoading(true);
     try {
       const res = await fetch(
-        `${API_URL}/trucking-records?linkedBookingId=${bookingId}`,
+        `${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`,
         { headers: { Authorization: `Bearer ${publicAnonKey}` } }
       );
       const result = await res.json();

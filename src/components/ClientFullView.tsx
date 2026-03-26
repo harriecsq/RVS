@@ -1,8 +1,7 @@
 import { NeuronStatusPill } from "./NeuronStatusPill";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { formatAmount } from "../utils/formatAmount";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Client {
   id: string;
@@ -140,10 +139,10 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
     setIsLoadingRequests(true);
     try {
       const [exportRes, importRes] = await Promise.all([
-        fetch(`${API_URL}/export-bookings`, {
+        fetch(`${API_BASE_URL}/export-bookings`, {
           headers: { Authorization: `Bearer ${publicAnonKey}` }
         }),
-        fetch(`${API_URL}/import-bookings`, {
+        fetch(`${API_BASE_URL}/import-bookings`, {
           headers: { Authorization: `Bearer ${publicAnonKey}` }
         })
       ]);
@@ -179,7 +178,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
   const fetchProjects = async () => {
     setIsLoadingProjects(true);
     try {
-      const response = await fetch(`${API_URL}/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` }
       });
 

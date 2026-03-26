@@ -1,4 +1,5 @@
-
+// TODO: Wire up booking fetch from API — currently receives booking=null from App.tsx.
+// Needs: fetch by bookingId from URL param, then pass to detail component.
 import { ArrowLeft } from "lucide-react";
 
 interface BookingFullViewProps {

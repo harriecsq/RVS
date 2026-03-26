@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { publicAnonKey } from '../utils/supabase/info';
+import { runServerInitialization } from '../utils/startup';
 
 export interface User {
   id: string;
@@ -97,134 +98,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
 
     // Run server initialization in the background (non-blocking)
-    const initializeServerInBackground = async () => {
-      try {
-        // Check if projectId and publicAnonKey are defined
-        if (!projectId || !publicAnonKey) {
-          console.log('[Init] Supabase configuration not found. Skipping user initialization.');
-          return;
-        }
-
-        try {
-          const usersResponse = await fetch(
-            `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/users`,
-            {
-              headers: {
-                'Authorization': `Bearer ${publicAnonKey}`,
-              },
-            }
-          );
-          
-          if (!usersResponse.ok) {
-            console.log('[Init] Backend server not responding yet (this is normal on first load)');
-            return;
-          }
-          
-          const usersResult = await usersResponse.json();
-          
-          // Check if users need migration (old department format: "BD", "PD")
-          const needsMigration = usersResult.success && usersResult.data.length > 0 && 
-            usersResult.data.some((u: any) => u.department === "BD" || u.department === "PD");
-          
-          // If no users exist OR users need migration, seed them
-          if ((usersResult.success && usersResult.data.length === 0) || needsMigration) {
-            if (needsMigration) {
-              console.log('Old user format detected. Migrating to new department names...');
-              // Clear stored user session since department format changed
-              localStorage.removeItem('neuron_user');
-              setUser(null);
-            } else {
-              console.log('No users found. Auto-seeding test users...');
-            }
-            
-            const seedResponse = await fetch(
-              `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/auth/seed-users`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${publicAnonKey}`,
-                },
-              }
-            );
-            
-            if (!seedResponse.ok) {
-              console.log('[Init] Unable to seed users (server not ready)');
-            } else {
-              const seedResult = await seedResponse.json();
-              
-              if (seedResult.success) {
-                console.log('✅ Test users seeded successfully with new department names!');
-                if (needsMigration) {
-                  console.log('🔄 Migration complete. Please log in again.');
-                }
-              } else {
-                console.log('[Init] Failed to seed users:', seedResult.error);
-              }
-            }
-          }
-          
-          // Auto-seed ticket types if they don't exist
-          try {
-            const ticketTypesResponse = await fetch(
-              `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/ticket-types`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${publicAnonKey}`,
-                },
-              }
-            );
-            
-            if (!ticketTypesResponse.ok) {
-              console.log('[Init] Ticket types endpoint not ready yet');
-            } else {
-              const ticketTypesResult = await ticketTypesResponse.json();
-              
-              if (ticketTypesResult.success && ticketTypesResult.data.length === 0) {
-                console.log('No ticket types found. Auto-seeding ticket types...');
-                
-                const seedTicketTypesResponse = await fetch(
-                  `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/ticket-types/seed`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${publicAnonKey}`,
-                    },
-                  }
-                );
-                
-                if (!seedTicketTypesResponse.ok) {
-                  console.log('[Init] Unable to seed ticket types (server not ready)');
-                } else {
-                  const seedTicketTypesResult = await seedTicketTypesResponse.json();
-                  
-                  if (seedTicketTypesResult.success) {
-                    console.log('✅ Ticket types seeded successfully!');
-                  } else {
-                    console.log('[Init] Failed to seed ticket types:', seedTicketTypesResult.error);
-                  }
-                }
-              }
-            }
-          } catch (ticketError) {
-            console.log('[Init] Ticket types check skipped (server not ready)');
-          }
-        } catch (fetchError) {
-          console.log('[Init] Backend server is not available yet. App will work in offline mode.');
-        }
-      } catch (error) {
-        console.log('[Init] Initialization check skipped:', error instanceof Error ? error.message : 'Unknown error');
-      }
-    };
-    
-    initializeServerInBackground();
+    runServerInitialization(() => {
+      localStorage.removeItem('neuron_user');
+      setUser(null);
+    });
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8/auth/login`,
+        `${API_BASE_URL}/auth/login`,
         {
           method: 'POST',
           headers: {

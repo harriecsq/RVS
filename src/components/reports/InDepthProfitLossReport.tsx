@@ -5,8 +5,7 @@ import { BookingSelector } from "../selectors/BookingSelector";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { formatAmount } from "../../utils/formatAmount";
 import { toast } from "sonner@2.0.3";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface LineItem {
   description: string;
@@ -82,13 +81,13 @@ export function InDepthProfitLossReport() {
 
   const fetchBookingDetails = async (bookingId: string) => {
     const endpoints = [
-      `${API_URL}/export-bookings/${bookingId}`,
-      `${API_URL}/import-bookings/${bookingId}`,
-      `${API_URL}/forwarding-bookings/${bookingId}`,
-      `${API_URL}/trucking-bookings/${bookingId}`,
-      `${API_URL}/brokerage-bookings/${bookingId}`,
-      `${API_URL}/marine-insurance-bookings/${bookingId}`,
-      `${API_URL}/others-bookings/${bookingId}`,
+      `${API_BASE_URL}/export-bookings/${bookingId}`,
+      `${API_BASE_URL}/import-bookings/${bookingId}`,
+      `${API_BASE_URL}/forwarding-bookings/${bookingId}`,
+      `${API_BASE_URL}/trucking-bookings/${bookingId}`,
+      `${API_BASE_URL}/brokerage-bookings/${bookingId}`,
+      `${API_BASE_URL}/marine-insurance-bookings/${bookingId}`,
+      `${API_BASE_URL}/others-bookings/${bookingId}`,
     ];
 
     for (const endpoint of endpoints) {
@@ -112,7 +111,7 @@ export function InDepthProfitLossReport() {
 
   const fetchExpenses = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/expenses?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
         headers: { "Authorization": `Bearer ${publicAnonKey}` },
       });
       if (response.ok) {
@@ -133,7 +132,7 @@ export function InDepthProfitLossReport() {
 
   const fetchBillings = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_URL}/billings?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings?bookingId=${bookingId}`, {
         headers: { "Authorization": `Bearer ${publicAnonKey}` },
       });
       if (response.ok) {

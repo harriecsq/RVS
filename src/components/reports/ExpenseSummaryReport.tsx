@@ -6,8 +6,7 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import * as XLSX from "xlsx";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // --- Data Interfaces ---
 
@@ -229,7 +228,7 @@ export function ExpenseSummaryReport() {
     setIsLoading(true);
     try {
       // Fetch VOUCHERS instead of expenses, as the system now uses the Voucher module
-      const response = await fetch(`${API_URL}/vouchers`, {
+      const response = await fetch(`${API_BASE_URL}/vouchers`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

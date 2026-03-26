@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { ViewExpenseScreen } from "./ViewExpenseScreen";
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface ExpenseDetailPanelProps {
   expenseId: string | null;
@@ -58,14 +59,7 @@ export function ExpenseDetailPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40 transition-opacity duration-200"
-        onClick={onClose}
-        style={{ 
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={onClose} />
 
       {/* Slide-out Panel */}
       <div

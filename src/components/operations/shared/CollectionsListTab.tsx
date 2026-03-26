@@ -5,8 +5,7 @@ import { NeuronStatusPill } from "../../NeuronStatusPill";
 import { CreateCollectionPanel } from "../../accounting/CreateCollectionPanel";
 import { CollectionDetailPanel } from "../../accounting/CollectionDetailPanel";
 import { formatAmount } from "../../../utils/formatAmount";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Collection {
   id: string;
@@ -56,7 +55,7 @@ export function CollectionsListTab({ billingId, billingNumber, bookingId, onUpda
 
   const fetchBillingsForBooking = async () => {
     try {
-      const response = await fetch(`${API_URL}/billings?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/billings?bookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (!response.ok) return;
@@ -73,7 +72,7 @@ export function CollectionsListTab({ billingId, billingNumber, bookingId, onUpda
   const fetchCollections = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/collections?billingId=${billingId}`, {
+      const response = await fetch(`${API_BASE_URL}/collections?billingId=${billingId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

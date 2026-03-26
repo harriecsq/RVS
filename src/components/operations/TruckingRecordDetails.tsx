@@ -35,6 +35,7 @@ import {
   hexToRgba,
 } from "../../utils/truckingTags";
 import { formatDateTime } from "./shared/DateTimeInput";
+import { API_BASE_URL } from '@/utils/api-config';
 
 /** Convert "HH:mm" (24h) to "h:mm AM/PM" */
 function formatTimeAmPm(time: string | undefined | null): string {
@@ -47,8 +48,6 @@ function formatTimeAmPm(time: string | undefined | null): string {
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 interface TruckingRecordDetailsProps {
   record: TruckingRecord;
@@ -977,7 +976,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
     }
     setIsLoadingLinkedBooking(true);
     try {
-      const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
+      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await res.json();
@@ -1120,7 +1119,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
       setIsStatusSaving(true);
       try {
         const payload = { ...currentRecord, remarks: newTags, updatedAt: new Date().toISOString() };
-        const res = await fetch(`${API_URL}/trucking-records/${currentRecord.id}`, {
+        const res = await fetch(`${API_BASE_URL}/trucking-records/${currentRecord.id}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -1220,7 +1219,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
   // ── Delete ──
   const handleDelete = async () => {
     try {
-      const res = await fetch(`${API_URL}/trucking-records/${currentRecord.id}`, {
+      const res = await fetch(`${API_BASE_URL}/trucking-records/${currentRecord.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
@@ -1243,7 +1242,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
     setIsSaving(true);
     try {
       const payload = { ...editForm, updatedAt: new Date().toISOString() };
-      const res = await fetch(`${API_URL}/trucking-records/${currentRecord.id}`, {
+      const res = await fetch(`${API_BASE_URL}/trucking-records/${currentRecord.id}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(payload),

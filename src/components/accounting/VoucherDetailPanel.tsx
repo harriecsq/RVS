@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { ViewVoucherScreen } from "./ViewVoucherScreen";
+import { PanelBackdrop } from "../shared/PanelBackdrop";
 
 interface VoucherDetailPanelProps {
   voucherId: string | null;
@@ -58,14 +59,7 @@ export function VoucherDetailPanel({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black z-40 transition-opacity duration-200"
-        onClick={onClose}
-        style={{ 
-          backdropFilter: "blur(2px)",
-          backgroundColor: "rgba(18, 51, 43, 0.15)"
-        }}
-      />
+      <PanelBackdrop onClick={onClose} />
 
       {/* Slide-out Panel */}
       <div

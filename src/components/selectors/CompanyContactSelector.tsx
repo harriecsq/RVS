@@ -14,7 +14,8 @@ import {
   PopoverTrigger,
 } from '../ui/popover';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
-import type { Client, Contact } from '../../types/bd';
+import type { Client, Contact } from '../../types/operations';
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface CompanyContactSelectorProps {
   companyId?: string;
@@ -24,8 +25,6 @@ interface CompanyContactSelectorProps {
   showContact?: boolean;
   showLabels?: boolean;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 export function CompanyContactSelector({ 
   companyId, 
@@ -64,7 +63,7 @@ export function CompanyContactSelector({
   const fetchCompanies = async () => {
     setLoadingCompanies(true);
     try {
-      const response = await fetch(`${API_URL}/clients`, {
+      const response = await fetch(`${API_BASE_URL}/clients`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` }
       });
       const result = await response.json();
@@ -82,7 +81,7 @@ export function CompanyContactSelector({
     setLoadingContacts(true);
     try {
       // Backend expects 'customer_id' filter, not 'client_id'
-      const response = await fetch(`${API_URL}/contacts?customer_id=${clientId}`, {
+      const response = await fetch(`${API_BASE_URL}/contacts?customer_id=${clientId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` }
       });
       const result = await response.json();

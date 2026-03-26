@@ -6,8 +6,7 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { CreateProjectPanel } from "../operations/CreateProjectPanel";
 import { CreateProjectTypeModal } from "./CreateProjectTypeModal";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 export type ProjectsView = "list" | "detail";
 
@@ -34,9 +33,9 @@ export function ProjectsModule({ currentUser, onCreateTicket }: ProjectsModulePr
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching projects from:', `${API_URL}/projects`);
+      console.log('Fetching projects from:', `${API_BASE_URL}/projects`);
       
-      const response = await fetch(`${API_URL}/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
         },
@@ -85,7 +84,7 @@ export function ProjectsModule({ currentUser, onCreateTicket }: ProjectsModulePr
     // If we're viewing a specific project, update it with fresh data
     if (selectedProject) {
       try {
-        const response = await fetch(`${API_URL}/projects/${selectedProject.id}`, {
+        const response = await fetch(`${API_BASE_URL}/projects/${selectedProject.id}`, {
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
           },
@@ -106,7 +105,7 @@ export function ProjectsModule({ currentUser, onCreateTicket }: ProjectsModulePr
 
   const handleCreateProject = async (projectData: any) => {
     try {
-      const response = await fetch(`${API_URL}/projects`, {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
@@ -133,7 +132,7 @@ export function ProjectsModule({ currentUser, onCreateTicket }: ProjectsModulePr
 
   const handleDeleteProject = async (projectId: string) => {
     try {
-      const response = await fetch(`${API_URL}/projects/${projectId}`, {
+      const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,

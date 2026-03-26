@@ -7,8 +7,7 @@ import { BillingDetailPanel } from "../accounting/BillingDetailPanel";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { StandardLoadingState } from "../design-system/StandardLoadingState";
 import { StandardEmptyState } from "../design-system/StandardEmptyState";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Billing {
   id?: string;
@@ -51,7 +50,7 @@ export function ProjectBillingsTab({ project, currentUser, onUpdate }: ProjectBi
   const fetchBillings = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/billings?projectId=${project.id}`, {
+      const response = await fetch(`${API_BASE_URL}/billings?projectId=${project.id}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },

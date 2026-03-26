@@ -14,6 +14,7 @@ import { toast } from "../ui/toast-utils";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
+import { API_BASE_URL } from '@/utils/api-config';
 import {
   ALL_TRUCKING_TAGS,
   TRUCKING_TAG_GROUPS,
@@ -24,8 +25,6 @@ import {
   GATEPASS_LIST,
   hexToRgba,
 } from "../../utils/truckingTags";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -571,7 +570,7 @@ export function CreateTruckingModal({
     if (isOpen && existingRecord?.linkedBookingId && !linkedBookingData) {
       (async () => {
         try {
-          const res = await fetch(`${API_URL}/bookings/${existingRecord.linkedBookingId}`, {
+          const res = await fetch(`${API_BASE_URL}/bookings/${existingRecord.linkedBookingId}`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` },
           });
           const result = await res.json();
@@ -605,7 +604,7 @@ export function CreateTruckingModal({
   async function fetchAndAutoFill(bookingId: string) {
     setIsLoadingBooking(true);
     try {
-      const res = await fetch(`${API_URL}/bookings/${bookingId}`, {
+      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await res.json();
@@ -801,7 +800,7 @@ export function CreateTruckingModal({
     setIsSaving(true);
     try {
       const payload = { ...form, updatedAt: new Date().toISOString(), createdAt: form.createdAt || new Date().toISOString() };
-      const url = existingRecord ? `${API_URL}/trucking-records/${existingRecord.id}` : `${API_URL}/trucking-records`;
+      const url = existingRecord ? `${API_BASE_URL}/trucking-records/${existingRecord.id}` : `${API_BASE_URL}/trucking-records`;
       const method = existingRecord ? "PUT" : "POST";
 
       const res = await fetch(url, {

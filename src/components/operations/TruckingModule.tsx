@@ -17,8 +17,7 @@ import {
 } from "../../utils/truckingTags";
 
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 // ---- Filter Dropdown ----
 function FilterDropdown({
@@ -446,7 +445,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
   const fetchRecords = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/trucking-records`, {
+      const res = await fetch(`${API_BASE_URL}/trucking-records`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await res.json();

@@ -7,6 +7,7 @@ import { formatAmount } from "../../../utils/formatAmount";
 import { projectId, publicAnonKey } from "../../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { NeuronStatusPill } from "../../NeuronStatusPill";
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface ExpensesTabProps {
   bookingId: string;
@@ -18,8 +19,6 @@ interface ExpensesTabProps {
   /** When provided, row click selects the expense (for sub-tab embedding) instead of opening the side panel */
   onExpenseSelect?: (expenseId: string, expenseNumber: string) => void;
 }
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
 
 type ExpenseStatus = "Draft" | "Submitted" | "Approved" | "Paid" | "Rejected";
 
@@ -56,7 +55,7 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
     setIsLoading(true);
     try {
       // Fetch expenses from the main accounting module endpoint
-      const response = await fetch(`${API_URL}/expenses?bookingId=${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'

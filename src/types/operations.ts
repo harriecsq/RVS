@@ -1,5 +1,63 @@
 // Operations Module Types
 
+// Client / Contact types (moved from types/bd)
+export type ClientStatus = "Active" | "Inactive" | "Prospect" | "Lead" | "Churned";
+
+export type Industry =
+  | "Garments"
+  | "Automobile"
+  | "Energy"
+  | "Food & Beverage"
+  | "Heavy Equipment"
+  | "Construction"
+  | "Agricultural"
+  | "Pharmaceutical"
+  | "IT"
+  | "Electronics"
+  | "General Merchandise"
+  | "Electronics & Technology"
+  | "Textile & Apparel"
+  | "Mining & Resources"
+  | "Retail & Distribution"
+  | string;
+
+export interface Contact {
+  id: string;
+  customer_id?: string;
+  client_id?: string;
+  name: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  company_name?: string;
+  client_name?: string;
+  industry?: string;
+  credit_terms?: string;
+  address?: string;
+  registered_address?: string;
+  phone?: string;
+  email?: string;
+  status?: ClientStatus;
+  notes?: string;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  contacts?: Contact[];
+  owner_id?: string;
+  owner_name?: string;
+  total_revenue?: number;
+  active_projects?: number;
+  active_bookings?: number;
+}
+
 export type ExecutionStatus =
   | "Draft"
   | "For Approval"

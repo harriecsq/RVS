@@ -4,8 +4,7 @@ import type { Project } from "../../types/pricing";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { CreateExpensePanel } from "../accounting/CreateExpensePanel";
 import { ExpenseDetailPanel } from "../accounting/ExpenseDetailPanel";
-
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-ce0d67b8`;
+import { API_BASE_URL } from '@/utils/api-config';
 
 interface Expense {
   id?: string;
@@ -52,7 +51,7 @@ export function ProjectExpensesTab({ project, currentUser, onUpdate }: ProjectEx
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/expenses?projectId=${project.id}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses?projectId=${project.id}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
         },
@@ -121,7 +120,7 @@ export function ProjectExpensesTab({ project, currentUser, onUpdate }: ProjectEx
     }
 
     try {
-      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+      const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
