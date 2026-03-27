@@ -177,10 +177,10 @@ export function CompanyClientFilter<T>({
           alignItems: "center",
           gap: "6px",
           padding: "10px 12px",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "8px",
           fontSize: "14px",
-          color: hasSelection ? "#12332B" : "#667085",
+          color: hasSelection ? "#0A1D4D" : "#667085",
           backgroundColor: "#FFFFFF",
           cursor: "pointer",
           outline: "none",
@@ -229,7 +229,7 @@ export function CompanyClientFilter<T>({
               width: dropdownPos.width,
               maxHeight: 360,
               backgroundColor: "#FFFFFF",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
               zIndex: 9999,
@@ -242,7 +242,7 @@ export function CompanyClientFilter<T>({
             <div
               style={{
                 padding: "8px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
                 flexShrink: 0,
               }}
             >
@@ -266,11 +266,11 @@ export function CompanyClientFilter<T>({
                   style={{
                     width: "100%",
                     padding: "6px 8px 6px 28px",
-                    border: "1px solid #E5E7EB",
+                    border: "1px solid #E5E9F0",
                     borderRadius: "6px",
                     fontSize: "13px",
                     outline: "none",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     backgroundColor: "#F9FAFB",
                   }}
                 />
@@ -300,7 +300,7 @@ export function CompanyClientFilter<T>({
                   cursor: "pointer",
                   fontSize: "13px",
                   fontWeight: !selectedCompany ? 600 : 400,
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   textAlign: "left",
                 }}
                 onMouseEnter={(e) => {
@@ -403,7 +403,7 @@ export function CompanyClientFilter<T>({
                           cursor: "pointer",
                           fontSize: "13px",
                           fontWeight: isSelected ? 600 : 400,
-                          color: "#12332B",
+                          color: "#0A1D4D",
                           textAlign: "left",
                           overflow: "hidden",
                         }}
@@ -458,7 +458,7 @@ export function CompanyClientFilter<T>({
                               cursor: "pointer",
                               fontSize: "12.5px",
                               fontWeight: isClientSelected ? 600 : 400,
-                              color: isClientSelected ? "#006644" : "#374151",
+                              color: isClientSelected ? "#006644" : "#344054",
                               textAlign: "left",
                             }}
                             onMouseEnter={(e) => {

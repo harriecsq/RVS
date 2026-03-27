@@ -8,43 +8,42 @@
 :root {
   /* ===== NEURON DESIGN TOKENS ===== */
   /* Backgrounds */
-  --neuron-bg-page: #F7FAF8;
+  --neuron-bg-page: #F8F9FB;
   --neuron-bg-elevated: #FFFFFF;
-  
+
   /* Ink (Text Colors) */
-  --neuron-ink-primary: #12332B;
-  --neuron-ink-secondary: #2E5147;
-  --neuron-ink-muted: #6B7A76;
-  
+  --neuron-ink-primary: #0A1D4D;
+  --neuron-ink-secondary: #344054;
+  --neuron-ink-muted: #667085;
+
   /* Brand Colors */
-  --neuron-brand-green: #237F66;
-  --neuron-brand-green-600: #1E6D59;
-  --neuron-brand-green-100: #E8F2EE;
-  
-  /* Accent */
-  --neuron-accent-terracotta: #B06A4F;
-  
+  --neuron-brand-green: #0F766E;
+  --neuron-brand-green-600: #0D6B64;
+  --neuron-brand-green-100: #E8F5F3;
+
+  /* Deep Green (headers, important elements) */
+  --neuron-brand-deep-green: #12332B;
+
   /* UI Colors */
-  --neuron-ui-border: #E5ECE9;
-  --neuron-ui-divider: #EEF3F1;
-  
+  --neuron-ui-border: #E5E9F0;
+  --neuron-ui-divider: #EEF1F5;
+
   /* States */
-  --neuron-state-hover: #F1F6F4;
-  --neuron-state-selected: #E4EFEA;
-  
-  /* Semantic */
-  --neuron-semantic-success: #2B8A6E;
-  --neuron-semantic-warn: #C88A2B;
-  --neuron-semantic-danger: #C94F3D;
-  
-  /* Elevations (Shadows) */
-  --elevation-1: 0 1px 2px 0 rgba(16, 24, 20, 0.04);
-  --elevation-2: 0 2px 8px 0 rgba(16, 24, 20, 0.06);
-  
+  --neuron-state-hover: #F9FAFB;
+  --neuron-state-selected: #E8F5F3;
+
+  /* Semantic / Status */
+  --neuron-semantic-success: #0F766E;
+  --neuron-semantic-warn: #F59E0B;
+  --neuron-semantic-danger: #EF4444;
+  --neuron-semantic-info: #3B82F6;
+
+  /* Stroke-based design: no box shadows. Use 1px solid borders instead. */
+
   /* Radius */
   --neuron-radius-s: 6px;
-  --neuron-radius-m: 10px;
-  --neuron-radius-l: 14px;
+  --neuron-radius-m: 12px;
+  --neuron-radius-l: 12px;
   
   /* ===== DESIGN SYSTEM TOKENS (from EXP-89545 Reference) ===== */
   
@@ -54,22 +53,24 @@
   --ds-green-dark: #12332B;
   --ds-gray-medium: #667085;
   --ds-gray-light: #F9FAFB;
-  --ds-border: #E5E7EB;
+  --ds-border: #E5E9F0;
   --ds-white: #FFFFFF;
-  
+
   /* Status Colors */
-  --ds-success: #10B981;
+  --ds-success: #0F766E;
   --ds-warning: #F59E0B;
-  --ds-error: #DC2626;
+  --ds-error: #EF4444;
   --ds-info: #3B82F6;
   
   /* Typography Sizes */
-  --ds-text-page-title: 20px;
+  --ds-text-display: 36px;
+  --ds-text-page-title: 24px;
   --ds-text-section-header: 16px;
   --ds-text-subsection: 14px;
-  --ds-text-label: 13px;
+  --ds-text-label: 12px;
   --ds-text-body: 14px;
   --ds-text-metadata: 12px;
+  --ds-text-micro: 10px;
   --ds-text-large-amount: 24px;
   
   /* Font Weights */
@@ -91,14 +92,16 @@
   /* Component Specific */
   --ds-input-height: 40px;
   --ds-button-height: 40px;
-  --ds-radius-input: 8px;
+  --ds-radius-input: 6px;
+  --ds-radius-button: 6px;
   --ds-radius-card: 12px;
   --ds-radius-pill: 12px;
+  --ds-radius-badge: 4px;
   
   /* Page Layout */
   --ds-page-padding-vertical: 32px;
   --ds-page-padding-horizontal: 48px;
-  --ds-card-padding: 24px;
+  --ds-card-padding: 20px;
   --ds-section-gap: 24px;
   
   /* Transitions */
@@ -108,29 +111,29 @@
   
   /* ===== LIGHT MODE BASE COLORS (for Tailwind) ===== */
   --background: #FFFFFF;
-  --foreground: #12332B;
+  --foreground: #0A1D4D;
   --card: #FFFFFF;
-  --card-foreground: #12332B;
+  --card-foreground: #0A1D4D;
   --popover: #FFFFFF;
-  --popover-foreground: #12332B;
+  --popover-foreground: #0A1D4D;
   --primary: #0F766E;
   --primary-foreground: #FFFFFF;
   --secondary: #F9FAFB;
-  --secondary-foreground: #12332B;
+  --secondary-foreground: #0A1D4D;
   --muted: #F9FAFB;
   --muted-foreground: #667085;
   --accent: #E5F4F2;
   --accent-foreground: #0F766E;
-  --destructive: #DC2626;
+  --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
-  --border: #E5E7EB;
-  --input: #E5E7EB;
+  --border: #E5E9F0;
+  --input: #E5E9F0;
   --ring: #0F766E;
   --chart-1: #0F766E;
-  --chart-2: #10B981;
+  --chart-2: #0F766E;
   --chart-3: #F59E0B;
   --chart-4: #3B82F6;
-  --chart-5: #DC2626;
+  --chart-5: #EF4444;
   --sidebar: #12332B;
   --sidebar-foreground: #FFFFFF;
   --sidebar-primary: #0F766E;
@@ -204,11 +207,11 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-xs: 6px;
-  --radius-sm: 8px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
   --radius-md: 12px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -258,62 +261,68 @@
  * Line heights: Preserved from original SF Pro Display system
  */
 @layer base {
-  /* Typography base defaults - Inter with SF Pro Display-like tracking */
+  /* Typography base defaults — Neuron OS refined scale */
+
+  /* Display Header: 36px / Semibold / -1.5px tracking */
+  .text-display {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 44px;
+    letter-spacing: -0.042em; /* -1.5px at 36px */
+  }
+
+  /* Page Title: 24px / Semibold / -0.5px tracking */
   h1 {
     font-size: 24px;
     font-weight: 600;
-    line-height: 36px;
-    letter-spacing: -0.01em;
+    line-height: 32px;
+    letter-spacing: -0.021em; /* -0.5px at 24px */
     font-variant-numeric: normal;
   }
 
   h2 {
     font-size: 20px;
-    font-weight: 500;
-    line-height: 30px;
+    font-weight: 600;
+    line-height: 28px;
     letter-spacing: -0.005em;
     font-variant-numeric: normal;
   }
 
-  h3 {
-    font-size: 18px;
-    font-weight: 500;
-    line-height: 27px;
-    letter-spacing: -0.005em;
-  }
-
-  h4 {
+  /* Section Heading: 16px / Medium */
+  h3, h4 {
     font-size: 16px;
     font-weight: 500;
     line-height: 24px;
     letter-spacing: 0;
   }
 
+  /* Body Main: 14px / Regular */
   p {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 400;
-    line-height: 22.5px;
+    line-height: 21px;
     letter-spacing: 0;
   }
 
+  /* Body Small / Labels: 12px / Regular */
   label {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    letter-spacing: 0;
+  }
+
+  button {
     font-size: 14px;
     font-weight: 500;
     line-height: 21px;
     letter-spacing: 0;
   }
 
-  button {
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 22.5px;
-    letter-spacing: 0;
-  }
-
   input, textarea, select {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 400;
-    line-height: 22.5px;
+    line-height: 21px;
     letter-spacing: 0;
   }
 
@@ -325,11 +334,12 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Micro: 10px / Bold / All-caps */
   small {
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 18px;
-    letter-spacing: 0.002em;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 14px;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
   }
 }
@@ -407,12 +417,14 @@ body {
   max-height: 500px;
 }
 
-/* Badge/Pill styling with uppercase text - Small UI +0.2% tracking */
+/* Status badges: 11px / 600 / 4px radius / 4px 8px padding */
 .badge, [class*="badge"] {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.002em;
   text-transform: uppercase;
+  border-radius: 4px;
+  padding: 4px 8px;
 }
 
 /* Tabular numerals for numeric UI elements - Inter /tnum */
@@ -531,7 +543,7 @@ table th,
   align-items: flex-start !important;
   gap: 12px !important;
   background: #FFFFFF !important;
-  border: 1px solid #E5E7EB !important;
+  border: 1px solid #E5E9F0 !important;
   border-radius: 12px !important;
   padding: 12px 16px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
@@ -596,8 +608,8 @@ table th,
 /* Success toast icon color */
 [data-sonner-toast][data-type="success"] [data-icon],
 [data-sonner-toast][data-type="success"] [data-icon] > svg {
-  color: #10B981 !important;
-  stroke: #10B981 !important;
+  color: #0F766E !important;
+  stroke: #0F766E !important;
 }
 
 /* Error toast icon color */

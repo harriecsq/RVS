@@ -34,7 +34,7 @@ export function DateRangePicker({
           <Button
             variant="outline"
             className={cn(
-              "border-[#E5E7EB] hover:bg-[#F9FAFB] justify-start",
+              "border-[#E5E9F0] hover:bg-[#F9FAFB] justify-start",
               "transition-colors duration-150"
             )}
             style={{ 
@@ -73,7 +73,7 @@ export function DateRangePicker({
           <Button
             variant="outline"
             className={cn(
-              "border-[#E5E7EB] hover:bg-[#F9FAFB] justify-start",
+              "border-[#E5E9F0] hover:bg-[#F9FAFB] justify-start",
               "transition-colors duration-150"
             )}
             style={{ 

@@ -7,7 +7,7 @@
  *  - Popup: three scrollable columns (Hour 1–12, Minute 00–55, AM/PM)
  *  - Selected values: teal (#0F766E) filled bg with white text
  *  - Footer: "Clear" link (left), "Now" button (right, teal solid)
- *  - Neuron design system: #12332B text, #0F766E accent, stroke borders
+ *  - Neuron design system: #0A1D4D text, #0F766E accent, stroke borders
  *
  * Value format: "HH:mm" 24-hour string (e.g. "14:30"), same as <input type="time">.
  */
@@ -144,7 +144,7 @@ function PickerColumn({
               padding: "8px 12px",
               fontSize: "14px",
               fontWeight: isActive ? 600 : 400,
-              color: isActive ? "#FFFFFF" : "#12332B",
+              color: isActive ? "#FFFFFF" : "#0A1D4D",
               backgroundColor: isActive ? "#0F766E" : "transparent",
               borderRadius: "6px",
               cursor: "pointer",
@@ -319,9 +319,9 @@ export function NeuronTimePicker({
           disabled={disabled}
           className="w-full px-4 py-2.5 rounded-lg border transition-colors"
           style={{
-            borderColor: "#E5E7EB",
+            borderColor: "#E5E9F0",
             fontSize: "14px",
-            color: "#12332B",
+            color: "#0A1D4D",
             outline: "none",
             backgroundColor: "#FFFFFF",
             paddingRight: "40px",
@@ -364,7 +364,7 @@ export function NeuronTimePicker({
               zIndex: 99999,
               width: "260px",
               backgroundColor: "#FFFFFF",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "12px",
               boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
               padding: "12px",
@@ -378,7 +378,7 @@ export function NeuronTimePicker({
                 gap: "4px",
                 marginBottom: "8px",
                 paddingBottom: "8px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
               }}
             >
               {["Hour", "Min", ""].map((label, i) => (
@@ -436,7 +436,7 @@ export function NeuronTimePicker({
                 alignItems: "center",
                 marginTop: "12px",
                 paddingTop: "12px",
-                borderTop: "1px solid #E5E7EB",
+                borderTop: "1px solid #E5E9F0",
               }}
             >
               <button
@@ -451,7 +451,7 @@ export function NeuronTimePicker({
                   color: "#667085",
                   padding: "4px 0",
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#DC2626"; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#EF4444"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#667085"; }}
               >
                 Clear

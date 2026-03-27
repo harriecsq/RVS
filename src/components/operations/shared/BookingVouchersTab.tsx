@@ -109,8 +109,8 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
               key={card.label}
               style={{
                 flex: 1,
-                border: "1px solid #E5E7EB",
-                borderRadius: "10px",
+                border: "1px solid #E5E9F0",
+                borderRadius: "8px",
                 padding: "20px 24px",
                 backgroundColor: "#FFFFFF",
               }}
@@ -130,7 +130,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                 style={{
                   fontSize: "24px",
                   fontWeight: 700,
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   marginTop: "8px",
                 }}
               >
@@ -141,7 +141,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
         </div>
 
         <div style={{
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "12px",
           backgroundColor: "#FFFFFF",
           overflow: "hidden"
@@ -149,13 +149,13 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
           {/* Header */}
           <div style={{
             padding: "24px",
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #E5E9F0",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center"
           }}>
             <div>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                 Linked Vouchers
               </h3>
               <p style={{ fontSize: "14px", color: "#667085", marginTop: "4px", marginBottom: 0 }}>
@@ -195,7 +195,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
             <div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E7EB" }}>
+                  <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Voucher Number</th>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payee</th>
@@ -209,7 +209,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                     <tr
                       key={voucher.id}
                       style={{
-                        borderBottom: index < vouchers.length - 1 ? "1px solid #E5E7EB" : "none",
+                        borderBottom: index < vouchers.length - 1 ? "1px solid #E5E9F0" : "none",
                         transition: "background 0.15s ease",
                         cursor: "pointer"
                       }}
@@ -218,17 +218,17 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                       onMouseLeave={(e) => e.currentTarget.style.background = "#FFFFFF"}
                     >
                       <td style={{ padding: "16px 24px" }}>
-                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
                           {voucher.voucherNumber}
                         </div>
                       </td>
                       <td style={{ padding: "16px 24px" }}>
-                        <div style={{ fontSize: "14px", color: "#12332B" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {formatDate(voucher.voucherDate || voucher.created_at || "")}
                         </div>
                       </td>
                       <td style={{ padding: "16px 24px" }}>
-                        <div style={{ fontSize: "14px", color: "#12332B" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {voucher.payee || "\u2014"}
                         </div>
                       </td>
@@ -249,7 +249,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                         )}
                       </td>
                       <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                        <div style={{ fontSize: "14px", color: "#12332B" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {formatCurrency(voucher.amount, voucher.currency)}
                         </div>
                       </td>
@@ -263,7 +263,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
             </div>
           ) : (
             <div style={{ padding: "48px 24px", textAlign: "center" }}>
-              <Receipt size={40} style={{ color: "#E5E7EB", margin: "0 auto 12px" }} />
+              <Receipt size={40} style={{ color: "#E5E9F0", margin: "0 auto 12px" }} />
               <p style={{ fontSize: "14px", color: "#667085", margin: 0 }}>
                 No vouchers linked to this booking yet
               </p>

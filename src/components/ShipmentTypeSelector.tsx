@@ -56,7 +56,7 @@ export function ShipmentTypeSelector({
                     "h-11 px-[18px] rounded-full text-[13px] font-medium transition-all inline-flex items-center gap-2",
                     isSelected
                       ? "bg-[#0F766E] text-white"
-                      : "bg-white text-[#12332B] border border-[#E5E9F0] hover:bg-[#F3F4F6]",
+                      : "bg-white text-[#0A1D4D] border border-[#E5E9F0] hover:bg-[#F3F4F6]",
                     disabled && "cursor-not-allowed opacity-50"
                   )}
                 >

@@ -513,7 +513,7 @@ export function PayrollPayslipsModal({
               onClick={() => toast.success("Downloading Excel...")}
               variant="ghost"
               className="h-11 text-[14px]"
-              style={{ fontWeight: 500, minWidth: "120px", borderRadius: "10px" }}
+              style={{ fontWeight: 500, minWidth: "120px", borderRadius: "8px" }}
             >
               <Download className="w-4 h-4 mr-2" />
               Download Excel
@@ -521,7 +521,7 @@ export function PayrollPayslipsModal({
             <Button
               onClick={() => window.print()}
               className="h-11 px-6 bg-[#F25C05] hover:bg-[#E55304] text-white text-[14px]"
-              style={{ fontWeight: 500, minWidth: "140px", borderRadius: "10px" }}
+              style={{ fontWeight: 500, minWidth: "140px", borderRadius: "8px" }}
             >
               <Printer className="w-4 h-4 mr-2" />
               Print
@@ -548,7 +548,7 @@ export function PayrollPayslipsModal({
             </span>
             <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
               <SelectTrigger
-                className="h-9 rounded-lg border-[#E5E7EB] text-[13px]"
+                className="h-9 rounded-lg border-[#E5E9F0] text-[13px]"
                 style={{ width: "240px" }}
               >
                 <SelectValue />

@@ -187,7 +187,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="border-b border-[#E5E9F0] px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h3 className="text-[14px] font-medium text-[#0A1D4D]">
@@ -227,7 +227,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
           <div className="p-8">
             <div className="bg-white border border-[#D1D5DB] rounded-lg p-8 shadow-sm">
               {/* Paper Header Row */}
-              <div className="grid grid-cols-12 gap-6 mb-6 pb-4 border-b border-[#E5E7EB]">
+              <div className="grid grid-cols-12 gap-6 mb-6 pb-4 border-b border-[#E5E9F0]">
                 {/* Left side - Neuron Logo & Linked Booking */}
                 <div className="col-span-4 space-y-3">
                   <div>
@@ -244,7 +244,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                     <Input
                       value={booking.trackingNo}
                       disabled
-                      className="border-[#E5E7EB] text-[12px] h-9 rounded bg-[#F9FAFB]"
+                      className="border-[#E5E9F0] text-[12px] h-9 rounded bg-[#F9FAFB]"
                     />
                   </div>
                 </div>
@@ -268,7 +268,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                       onChange={(e) =>
                         setFormData({ ...formData, date: e.target.value })
                       }
-                      className="border-[#E5E7EB] text-[12px] h-9 rounded"
+                      className="border-[#E5E9F0] text-[12px] h-9 rounded"
                     />
                   </div>
                   <div>
@@ -280,15 +280,15 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                       onChange={(e) =>
                         setFormData({ ...formData, expenseNo: e.target.value })
                       }
-                      className="border-[#E5E7EB] text-[12px] h-9 rounded"
+                      className="border-[#E5E9F0] text-[12px] h-9 rounded"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Category Strip - Table Style */}
-              <div className="mb-6 pb-4 border-b border-[#E5E7EB]">
-                <div className="border border-[#E5E7EB] rounded-lg overflow-hidden">
+              <div className="mb-6 pb-4 border-b border-[#E5E9F0]">
+                <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
                   <div className="grid grid-cols-8">
                     {EXPENSE_CATEGORIES.map((category, index) => (
                       <button
@@ -296,7 +296,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                         onClick={() => handleCategoryToggle(category)}
                         className={cn(
                           "px-3 py-3 text-[13px] font-semibold text-center transition-all",
-                          index < EXPENSE_CATEGORIES.length - 1 && "border-r border-[#E5E7EB]",
+                          index < EXPENSE_CATEGORIES.length - 1 && "border-r border-[#E5E9F0]",
                           formData.selectedCategories.includes(category)
                             ? "bg-[#0A1D4D] text-white"
                             : "bg-white text-[#6B7280] hover:bg-[#F9FAFB]"
@@ -315,13 +315,13 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                   <table className="w-full">
                     <thead className="bg-[#F9FAFB]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-[11px] font-medium text-[#6B7280] uppercase tracking-wider border-b border-r border-[#E5E7EB]" style={{ width: "40%" }}>
+                        <th className="px-4 py-3 text-left text-[11px] font-medium text-[#6B7280] uppercase tracking-wider border-b border-r border-[#E5E9F0]" style={{ width: "40%" }}>
                           Particular
                         </th>
-                        <th className="px-4 py-3 text-left text-[11px] font-medium text-[#6B7280] uppercase tracking-wider border-b border-r border-[#E5E7EB]" style={{ width: "40%" }}>
+                        <th className="px-4 py-3 text-left text-[11px] font-medium text-[#6B7280] uppercase tracking-wider border-b border-r border-[#E5E9F0]" style={{ width: "40%" }}>
                           Description
                         </th>
-                        <th className="px-4 py-3 text-right text-[11px] font-medium text-[#6B7280] uppercase tracking-wider border-b border-[#E5E7EB]" style={{ width: "20%" }}>
+                        <th className="px-4 py-3 text-right text-[11px] font-medium text-[#6B7280] uppercase tracking-wider border-b border-[#E5E9F0]" style={{ width: "20%" }}>
                           Amount (₱)
                         </th>
                       </tr>
@@ -330,8 +330,8 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                       {formData.lineItems.map((item, index) => (
                         <tr key={item.id} className="hover:bg-[#FAFBFC] transition-colors">
                           <td className={cn(
-                            "px-4 py-3 border-r border-[#E5E7EB] relative",
-                            index < formData.lineItems.length - 1 && "border-b border-[#E5E7EB]"
+                            "px-4 py-3 border-r border-[#E5E9F0] relative",
+                            index < formData.lineItems.length - 1 && "border-b border-[#E5E9F0]"
                           )} style={{ width: "40%" }}>
                             <div className="flex items-center gap-2">
                               <Input
@@ -354,8 +354,8 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                             </div>
                           </td>
                           <td className={cn(
-                            "px-4 py-3 border-r border-[#E5E7EB]",
-                            index < formData.lineItems.length - 1 && "border-b border-[#E5E7EB]"
+                            "px-4 py-3 border-r border-[#E5E9F0]",
+                            index < formData.lineItems.length - 1 && "border-b border-[#E5E9F0]"
                           )} style={{ width: "40%" }}>
                             <Input
                               value={item.description}
@@ -367,7 +367,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                             />
                           </td>
                           <td className={cn(
-                            "px-4 py-3 border-[#E5E7EB]",
+                            "px-4 py-3 border-[#E5E9F0]",
                             index < formData.lineItems.length - 1 && "border-b"
                           )} style={{ width: "20%" }}>
                             <Input
@@ -389,12 +389,12 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
 
                       {/* Total Row */}
                       <tr className="bg-[#F9FAFB] border-t-2 border-[#D1D5DB]">
-                        <td colSpan={2} className="px-4 py-3 text-right border-r border-[#E5E7EB]" style={{ width: "80%" }}>
+                        <td colSpan={2} className="px-4 py-3 text-right border-r border-[#E5E9F0]" style={{ width: "80%" }}>
                           <span className="text-[13px] text-[#0A1D4D]" style={{ fontWeight: 600 }}>
                             Total Amount
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right border-[#E5E7EB]" style={{ width: "20%" }}>
+                        <td className="px-4 py-3 text-right border-[#E5E9F0]" style={{ width: "20%" }}>
                           <span className="text-[14px] text-[#0A1D4D]" style={{ fontWeight: 700 }}>
                             ₱{calculateTotal().toLocaleString("en-US", {
                               minimumFractionDigits: 2,
@@ -418,7 +418,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
               </div>
 
               {/* For the Account Of */}
-              <div className="mb-8 pb-6 border-b border-[#E5E7EB]">
+              <div className="mb-8 pb-6 border-b border-[#E5E9F0]">
                 <Label className="text-[11px] text-[#6B7280] mb-2 block uppercase">
                   For the account of:
                 </Label>
@@ -428,7 +428,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                     setFormData({ ...formData, forAccountOf: e.target.value })
                   }
                   placeholder="Enter vendor or payee name"
-                  className="border-[#E5E7EB] text-[13px] h-10 rounded"
+                  className="border-[#E5E9F0] text-[13px] h-10 rounded"
                 />
               </div>
 
@@ -439,7 +439,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                   <Label className="text-[11px] text-[#6B7280] mb-2 block uppercase">
                     Prepared by
                   </Label>
-                  <div className="border border-[#E5E7EB] rounded-lg p-3 bg-[#F9FAFB]">
+                  <div className="border border-[#E5E9F0] rounded-lg p-3 bg-[#F9FAFB]">
                     <div className="text-[13px] text-[#0A1D4D] mb-2" style={{ fontWeight: 500 }}>
                       {getUserName()}
                     </div>
@@ -465,7 +465,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                       setFormData({ ...formData, notedBy: value })
                     }
                   >
-                    <SelectTrigger className="border-[#E5E7EB] text-[13px] h-11 rounded-lg">
+                    <SelectTrigger className="border-[#E5E9F0] text-[13px] h-11 rounded-lg">
                       <SelectValue placeholder="Select approver" />
                     </SelectTrigger>
                     <SelectContent>
@@ -494,7 +494,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
                       setFormData({ ...formData, approvedBy: value })
                     }
                   >
-                    <SelectTrigger className="border-[#E5E7EB] text-[13px] h-11 rounded-lg">
+                    <SelectTrigger className="border-[#E5E9F0] text-[13px] h-11 rounded-lg">
                       <SelectValue placeholder="Select approver" />
                     </SelectTrigger>
                     <SelectContent>
@@ -517,7 +517,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
         </div>
 
         {/* Modal Footer */}
-        <div className="border-t border-[#E5E7EB] px-6 py-4 flex items-center justify-between flex-shrink-0 bg-[#F9FAFB]">
+        <div className="border-t border-[#E5E9F0] px-6 py-4 flex items-center justify-between flex-shrink-0 bg-[#F9FAFB]">
           <div className="flex items-center gap-2">
             <Button
               onClick={handlePrint}
@@ -540,7 +540,7 @@ export function ExpenseModal({ booking, currentUser, expense, onClose, onSave }:
             <Button
               onClick={() => handleSave("Draft")}
               variant="outline"
-              className="border-[#E5E7EB] hover:border-[#0A1D4D] hover:bg-white rounded-lg h-10 px-5 text-[13px]"
+              className="border-[#E5E9F0] hover:border-[#0A1D4D] hover:bg-white rounded-lg h-10 px-5 text-[13px]"
               style={{ fontWeight: 600 }}
             >
               Save as Draft

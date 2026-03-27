@@ -14,7 +14,7 @@ export function Layout({ children, currentPage, onNavigate, currentUser }: Layou
       height: "100vh",
       display: "flex",
       overflow: "hidden",
-      background: "var(--neuron-bg-page, #F7FAF8)",
+      background: "var(--neuron-bg-page, #F8F9FB)",
     }}>
       {/* Left Sidebar - Fixed width 272px */}
       <NeuronSidebar

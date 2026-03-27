@@ -46,7 +46,7 @@ export function CreatePayrollModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-[#E5E9F0] px-6 py-4 flex items-center justify-between">
           <h3 className="text-[16px] text-[#0A1D4D]" style={{ fontWeight: 600 }}>
             Create Payroll Run
           </h3>
@@ -68,7 +68,7 @@ export function CreatePayrollModal({
                 Company
               </Label>
               <Select value={company} onValueChange={setCompany}>
-                <SelectTrigger className="border-[#E5E7EB] text-[13px] h-10 rounded">
+                <SelectTrigger className="border-[#E5E9F0] text-[13px] h-10 rounded">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
                 <SelectContent>
@@ -86,7 +86,7 @@ export function CreatePayrollModal({
                 Period
               </Label>
               <Select value={period} onValueChange={setPeriod}>
-                <SelectTrigger className="border-[#E5E7EB] text-[13px] h-10 rounded">
+                <SelectTrigger className="border-[#E5E9F0] text-[13px] h-10 rounded">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -102,7 +102,7 @@ export function CreatePayrollModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="border-t border-[#E5E7EB] px-6 py-4 flex items-center justify-end gap-2 bg-white">
+        <div className="border-t border-[#E5E9F0] px-6 py-4 flex items-center justify-end gap-2 bg-white">
           <Button
             onClick={onClose}
             variant="ghost"

@@ -602,7 +602,7 @@ export function ExportBookingDetails({
             <h1 style={{ 
               fontSize: "20px",
               fontWeight: 600,
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "2px"
             }}>
               {booking.customerName}
@@ -758,7 +758,7 @@ export function ExportBookingDetails({
                 top: "calc(100% + 4px)",
                 left: 0,
                 background: "white",
-                border: "1.5px solid #E5E7EB",
+                border: "1.5px solid #E5E9F0",
                 borderRadius: "8px",
                 boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                 zIndex: 50,
@@ -779,7 +779,7 @@ export function ExportBookingDetails({
                       alignItems: "center",
                       gap: "10px",
                       background: status === currentBooking.status ? "#F0FDF4" : "transparent",
-                      borderBottom: index < EXPORT_STATUS_OPTIONS.length - 1 ? "1px solid #E5E7EB" : "none",
+                      borderBottom: index < EXPORT_STATUS_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
                       transition: "all 0.15s ease"
                     }}
                     onMouseEnter={(e) => {
@@ -833,7 +833,7 @@ export function ExportBookingDetails({
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#FFFFFF";
-                e.currentTarget.style.borderColor = "#E5E7EB";
+                e.currentTarget.style.borderColor = "#E5E9F0";
               }}
               onMouseLeave={(e) => {
                 if (!showShippingLineDropdown) {
@@ -872,7 +872,7 @@ export function ExportBookingDetails({
                 top: "calc(100% + 4px)",
                 left: 0,
                 background: "white",
-                border: "1.5px solid #E5E7EB",
+                border: "1.5px solid #E5E9F0",
                 borderRadius: "8px",
                 boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                 zIndex: 50,
@@ -893,7 +893,7 @@ export function ExportBookingDetails({
                       alignItems: "center",
                       gap: "10px",
                       background: slStatus === (currentBooking as any).shippingLineStatus ? "#F0FDF4" : "transparent",
-                      borderBottom: index < SHIPPING_LINE_STATUS_OPTIONS.length - 1 ? "1px solid #E5E7EB" : "none",
+                      borderBottom: index < SHIPPING_LINE_STATUS_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
                       transition: "all 0.15s ease"
                     }}
                     onMouseEnter={(e) => {
@@ -923,7 +923,7 @@ export function ExportBookingDetails({
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
             Route
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", lineHeight: "1.3" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", lineHeight: "1.3" }}>
             {(currentBooking as any).origin || "Origin"} &rarr; {currentBooking.pod || currentBooking.destination || "Destination"}
           </div>
         </div>
@@ -936,7 +936,7 @@ export function ExportBookingDetails({
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
             Created Date
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", lineHeight: "1.3" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", lineHeight: "1.3" }}>
             {new Date(currentBooking.createdAt).toLocaleDateString()}
           </div>
         </div>
@@ -956,7 +956,7 @@ export function ExportBookingDetails({
       {/* Tabs */}
       <div style={{
         padding: "0 48px",
-        borderBottom: "1px solid #E5ECE9",
+        borderBottom: "1px solid #E5E9F0",
         backgroundColor: "white"
       }}>
         <StandardTabs
@@ -1072,14 +1072,14 @@ export function ExportBookingDetails({
               padding: "32px",
               maxWidth: "480px",
               width: "90%",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{
               fontSize: "18px",
               fontWeight: 600,
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "12px",
             }}>
               Delete Booking
@@ -1138,7 +1138,7 @@ function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
           top: "0",
           bottom: "0",
           width: "2px",
-          backgroundColor: "#E5E7EB"
+          backgroundColor: "#E5E9F0"
         }} />
 
         {/* Activity Items */}
@@ -1262,7 +1262,7 @@ function LockedField({ label, value, tooltip }: { label: string; value: string; 
       <div style={{
         padding: "10px 14px",
         backgroundColor: "#F9FAFB",
-        border: "1px solid #E5E7EB",
+        border: "1px solid #E5E9F0",
         borderRadius: "6px",
         fontSize: "14px",
         color: "#6B7280",
@@ -1368,7 +1368,7 @@ function EditableField({
         <div style={{
           padding: "10px 14px",
           backgroundColor: "#F9FAFB",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "6px",
           fontSize: "14px",
           color: "#6B7280",
@@ -1396,7 +1396,7 @@ function EditableField({
         <div style={{
           padding: "10px 14px",
           backgroundColor: isEmpty ? "white" : "#F9FAFB",
-          border: isEmpty && required ? "2px dashed #FCD34D" : isEmpty ? "2px dashed #E5E7EB" : "1px solid #E5E7EB",
+          border: isEmpty && required ? "2px dashed #FCD34D" : isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
           borderRadius: "6px",
           fontSize: "14px",
           color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -1566,7 +1566,7 @@ function ContainerListField({
                     <div key={i} style={{
                       padding: "10px 14px",
                       backgroundColor: "#FAFBFC",
-                      border: "1px solid #E5E7EB",
+                      border: "1px solid #E5E9F0",
                       borderRadius: "6px",
                       fontSize: "14px",
                       color: "var(--neuron-ink-primary)"
@@ -1577,7 +1577,7 @@ function ContainerListField({
                     <div style={{
                       padding: "10px 14px",
                       backgroundColor: "#FAFBFC",
-                      border: "2px dashed #E5E7EB",
+                      border: "2px dashed #E5E9F0",
                       borderRadius: "6px",
                       fontSize: "14px",
                       color: "#9CA3AF"
@@ -1817,7 +1817,7 @@ function BookingInformationTab({
           <div style={{
             padding: "10px 14px",
             backgroundColor: isEmpty ? "white" : "#F9FAFB",
-            border: isEmpty ? "2px dashed #E5E7EB" : "1px solid #E5E7EB",
+            border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
             borderRadius: "6px",
             fontSize: "14px",
             color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -1948,7 +1948,7 @@ function BookingInformationTab({
           <div style={{
             padding: "10px 14px",
             backgroundColor: isEmpty ? "white" : "#F9FAFB",
-            border: isEmpty ? "2px dashed #E5E7EB" : "1px solid #E5E7EB",
+            border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
             borderRadius: "6px",
             fontSize: "14px",
             color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -2000,7 +2000,7 @@ function BookingInformationTab({
               left: 0,
               right: 0,
               background: "white",
-              border: "1.5px solid #E5E7EB",
+              border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
               zIndex: 50,
@@ -2008,7 +2008,7 @@ function BookingInformationTab({
               overflowY: "auto"
             }}>
               {searchable && setSearchValue && (
-                <div style={{ padding: "8px", borderBottom: "1px solid #E5E7EB", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+                <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
                   <input
                     type="text"
                     value={searchValue || ""}
@@ -2049,7 +2049,7 @@ function BookingInformationTab({
                     alignItems: "center",
                     gap: "10px",
                     background: currentVal === option ? "#F0FDF4" : "transparent",
-                    borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E7EB" : "none",
+                    borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
                     transition: "all 0.15s ease"
                   }}
                   onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
@@ -2096,7 +2096,7 @@ function BookingInformationTab({
           <div style={{
             padding: "10px 14px",
             backgroundColor: isEmpty ? "white" : "#F9FAFB",
-            border: isEmpty ? "2px dashed #E5E7EB" : "1px solid #E5E7EB",
+            border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
             borderRadius: "6px",
             fontSize: "14px",
             color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -2149,7 +2149,7 @@ function BookingInformationTab({
               left: 0,
               right: 0,
               background: "white",
-              border: "1.5px solid #E5E7EB",
+              border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
               zIndex: 50,
@@ -2158,7 +2158,7 @@ function BookingInformationTab({
               display: "flex",
               flexDirection: "column",
             }}>
-              <div style={{ padding: "8px", borderBottom: "1px solid #E5E7EB" }}>
+              <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
                 <input
                   type="text"
                   value={sectionSearch}
@@ -2198,7 +2198,7 @@ function BookingInformationTab({
                       alignItems: "center",
                       gap: "10px",
                       background: currentVal === option ? "#F0FDF4" : "transparent",
-                      borderBottom: index < filtered.length - 1 ? "1px solid #E5E7EB" : "none",
+                      borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
                       transition: "all 0.15s ease"
                     }}
                     onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
@@ -2234,7 +2234,7 @@ function BookingInformationTab({
         <div style={{
           padding: "10px 14px",
           backgroundColor: isEmpty ? "white" : "#F9FAFB",
-          border: isEmpty ? "2px dashed #E5E7EB" : "1px solid #E5E7EB",
+          border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
           borderRadius: "6px",
           fontSize: "14px",
           color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -2262,7 +2262,7 @@ function BookingInformationTab({
           <div style={{
             padding: "10px 14px",
             backgroundColor: isEmpty ? "white" : "#F9FAFB",
-            border: isEmpty ? "2px dashed #E5E7EB" : "1px solid #E5E7EB",
+            border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
             borderRadius: "6px",
             fontSize: "14px",
             color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -2344,7 +2344,7 @@ function BookingInformationTab({
                 left: 0,
                 right: 0,
                 background: "white",
-                border: "1.5px solid #E5E7EB",
+                border: "1.5px solid #E5E9F0",
                 borderRadius: "8px",
                 boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                 zIndex: 50
@@ -2363,7 +2363,7 @@ function BookingInformationTab({
                       cursor: "pointer",
                       color: "#111827",
                       background: parsed.unit === unit ? "#F0FDF4" : "transparent",
-                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E7EB" : "none"
+                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
                     }}
                     onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
                     onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
@@ -2384,7 +2384,7 @@ function BookingInformationTab({
     <div style={{
       background: "white",
       borderRadius: "12px",
-      border: "1px solid #E5E7EB",
+      border: "1px solid #E5E9F0",
       overflow: "hidden",
       marginBottom: "24px"
     }}>

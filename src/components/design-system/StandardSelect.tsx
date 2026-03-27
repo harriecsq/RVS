@@ -42,10 +42,10 @@ export function StandardSelect({
             display: 'block', 
             fontSize: '14px', 
             fontWeight: 500, 
-            color: error ? '#DC2626' : '#374151'
+            color: error ? '#EF4444' : '#344054'
           }}
         >
-          {label} {required && <span style={{ color: '#DC2626' }}>*</span>}
+          {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}
       
@@ -57,7 +57,7 @@ export function StandardSelect({
               left: '12px',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: error ? '#DC2626' : '#667085',
+              color: error ? '#EF4444' : '#667085',
               display: 'flex',
               alignItems: 'center',
               pointerEvents: 'none',
@@ -76,8 +76,8 @@ export function StandardSelect({
           style={{
             width: '100%',
             padding: icon ? '10px 12px 10px 40px' : '10px 12px',
-            border: `1px solid ${error ? '#DC2626' : 'var(--neuron-ui-border)'}`,
-            borderRadius: '8px',
+            border: `1px solid ${error ? '#EF4444' : 'var(--neuron-ui-border)'}`,
+            borderRadius: '6px',
             fontSize: '14px',
             outline: 'none',
             color: disabled ? '#9CA3AF' : (value ? 'var(--neuron-ink-primary)' : '#9CA3AF'),
@@ -116,7 +116,7 @@ export function StandardSelect({
         <span 
           style={{ 
             fontSize: '12px', 
-            color: error ? '#DC2626' : '#667085',
+            color: error ? '#EF4444' : '#667085',
             lineHeight: '1.4'
           }}
         >

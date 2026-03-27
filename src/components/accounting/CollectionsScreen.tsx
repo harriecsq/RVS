@@ -218,7 +218,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
             <h1 style={{ 
               fontSize: "32px", 
               fontWeight: 600, 
-              color: "#12332B", 
+              color: "#0A1D4D", 
               marginBottom: "4px",
               letterSpacing: "-1.2px"
             }}>
@@ -274,11 +274,11 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
             style={{
               width: "100%",
               padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
               outline: "none",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
             }}
           />
@@ -308,10 +308,10 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
             onChange={(e) => setStatusFilter(e.target.value as CollectionStatus | "all")}
             style={{
               padding: "10px 12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
               outline: "none",
               cursor: "pointer",
@@ -331,10 +331,10 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
             onChange={(e) => setPaymentMethodFilter(e.target.value)}
             style={{
               padding: "10px 12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
               outline: "none",
               cursor: "pointer",
@@ -355,11 +355,11 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       <div style={{ padding: "0 48px 48px 48px" }}>
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-[#12332B]/60">Loading collections...</div>
+            <div className="text-[#0A1D4D]/60">Loading collections...</div>
           </div>
         ) : filteredCollections.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-[#12332B]/60 mb-2">
+            <div className="text-[#0A1D4D]/60 mb-2">
               {searchTerm || statusFilter !== "all" 
                 ? "No collections match your filters" 
                 : "No collections yet"}
@@ -373,14 +373,14 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           </div>
         ) : (
           <div style={{
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "12px",
             overflow: "hidden",
             backgroundColor: "#FFFFFF"
           }}>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#12332B]/10">
+                <tr className="border-b border-[#0A1D4D]/10">
                   <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
                     Collection Details
                   </th>
@@ -421,7 +421,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
                   return (
                   <tr
                     key={collection.id}
-                    className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                     onClick={() => handleViewCollection(collection.id)}
                   >
                     <td className="py-4 px-4">
@@ -431,7 +431,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
                           <div style={{ 
                             fontSize: "14px", 
                             fontWeight: 600, 
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             marginBottom: "2px"
                           }}>
                             {collection.collectionNumber}
@@ -448,12 +448,12 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {"\u20B1"}{formatAmount(computedAmount)}
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {collection.paymentMethod || "\u2014"}
                       </div>
                     </td>
@@ -483,7 +483,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
                       <NeuronStatusPill status={collection.status} />
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "13px", color: "#12332B" }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
                         {collection.collectionDate ? new Date(collection.collectionDate).toLocaleDateString() : new Date(collection.createdAt).toLocaleDateString()}
                       </div>
                     </td>

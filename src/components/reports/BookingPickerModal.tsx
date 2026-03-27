@@ -91,16 +91,15 @@ export function BookingPickerModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
-        className="bg-white border-[#E5E7EB] p-0"
+        className="bg-white border-[#E5E9F0] p-0"
         style={{ 
           maxWidth: '960px',
           width: '90vw',
           borderRadius: '16px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
         }}
       >
         {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E5E7EB]">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-[#E5E9F0]">
           <DialogTitle 
             className="text-[#0A1D4D]"
             style={{ 
@@ -122,7 +121,7 @@ export function BookingPickerModal({
         </DialogHeader>
 
         {/* Toolbar */}
-        <div className="px-6 pt-4 pb-3 border-b border-[#E5E7EB]">
+        <div className="px-6 pt-4 pb-3 border-b border-[#E5E9F0]">
           <div className="flex items-center gap-3">
             {/* Search */}
             <div className="flex-1 relative">
@@ -131,13 +130,13 @@ export function BookingPickerModal({
                 placeholder="Search booking, client, company…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 border-[#E5E7EB] rounded-full text-[13px]"
+                className="pl-10 h-10 border-[#E5E9F0] rounded-full text-[13px]"
               />
             </div>
 
             {/* Filter Dropdowns */}
             <Select value={filterCompany} onValueChange={setFilterCompany}>
-              <SelectTrigger className="h-10 w-[140px] rounded-full border-[#E5E7EB] text-[13px]">
+              <SelectTrigger className="h-10 w-[140px] rounded-full border-[#E5E9F0] text-[13px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -149,7 +148,7 @@ export function BookingPickerModal({
             </Select>
 
             <Select value={filterClient} onValueChange={setFilterClient}>
-              <SelectTrigger className="h-10 w-[140px] rounded-full border-[#E5E7EB] text-[13px]">
+              <SelectTrigger className="h-10 w-[140px] rounded-full border-[#E5E9F0] text-[13px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -166,7 +165,7 @@ export function BookingPickerModal({
         <div className="px-6 py-4" style={{ maxHeight: '400px', overflowY: 'auto' }}>
           <table className="w-full" style={{ fontSize: '13px' }}>
             <thead className="sticky top-0 bg-white z-10">
-              <tr className="border-b border-[#E5E7EB]">
+              <tr className="border-b border-[#E5E9F0]">
                 <th className="text-left py-3 px-3 text-[#6B7280]" style={{ fontWeight: 600, fontSize: '12px' }}>
                   BOOKING / JOB NO.
                 </th>
@@ -191,7 +190,7 @@ export function BookingPickerModal({
                   key={booking.bookingNo}
                   onClick={() => setSelectedBooking(booking.bookingNo)}
                   className={cn(
-                    "border-b border-[#E5E7EB] cursor-pointer transition-colors",
+                    "border-b border-[#E5E9F0] cursor-pointer transition-colors",
                     selectedBooking === booking.bookingNo 
                       ? "bg-[#FFF7ED]" 
                       : "hover:bg-[#F9FAFB]"
@@ -219,7 +218,7 @@ export function BookingPickerModal({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-[#E5E7EB] flex items-center justify-between">
+          <div className="px-6 py-3 border-t border-[#E5E9F0] flex items-center justify-between">
             <div className="text-[13px] text-[#6B7280]">
               Page {currentPage} of {totalPages}
             </div>
@@ -229,7 +228,7 @@ export function BookingPickerModal({
                 size="sm"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="h-8 px-3 rounded-full border-[#E5E7EB] text-[13px]"
+                className="h-8 px-3 rounded-full border-[#E5E9F0] text-[13px]"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 Previous
@@ -239,7 +238,7 @@ export function BookingPickerModal({
                 size="sm"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="h-8 px-3 rounded-full border-[#E5E7EB] text-[13px]"
+                className="h-8 px-3 rounded-full border-[#E5E9F0] text-[13px]"
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />
@@ -249,7 +248,7 @@ export function BookingPickerModal({
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#E5E7EB] flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-[#E5E9F0] flex items-center justify-end gap-3">
           <Button
             variant="ghost"
             onClick={handleCancel}

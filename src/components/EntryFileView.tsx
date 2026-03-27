@@ -73,7 +73,7 @@ function StatusBadge({ status }: { status: "Posted" | "Draft" }) {
 function TypeBadge({ type }: { type: "Revenue" | "Expense" }) {
   const config = {
     "Revenue": { color: "#059669", bg: "#D1FAE5" },
-    "Expense": { color: "#DC2626", bg: "#FEE2E2" },
+    "Expense": { color: "#EF4444", bg: "#FEE2E2" },
   }[type];
 
   return (
@@ -164,7 +164,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                   year: "numeric" 
                 })}
               </p>
-              <span className="text-[#E5E7EB]">•</span>
+              <span className="text-[#E5E9F0]">•</span>
               <p className="text-[#94A3B8]" style={{ fontSize: '13px', fontWeight: 400 }}>
                 {entry.company}
               </p>
@@ -177,7 +177,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
           <Button
             onClick={onEdit}
             variant="outline"
-            className="border-[#E5E7EB] hover:bg-[#F9FAFB] text-[#0A1D4D] rounded-lg h-10 px-4"
+            className="border-[#E5E9F0] hover:bg-[#F9FAFB] text-[#0A1D4D] rounded-lg h-10 px-4"
             style={{ fontWeight: 600 }}
           >
             <Edit className="w-4 h-4 mr-2" />
@@ -186,7 +186,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
           <Button
             onClick={handlePrint}
             variant="outline"
-            className="border-[#E5E7EB] hover:bg-[#F9FAFB] text-[#0A1D4D] rounded-lg h-10 px-4"
+            className="border-[#E5E9F0] hover:bg-[#F9FAFB] text-[#0A1D4D] rounded-lg h-10 px-4"
             style={{ fontWeight: 600 }}
           >
             <Printer className="w-4 h-4 mr-2" />
@@ -196,7 +196,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
             <Button
               onClick={handleDuplicate}
               variant="outline"
-              className="border-[#E5E7EB] hover:bg-[#F9FAFB] text-[#0A1D4D] rounded-lg h-10 px-4"
+              className="border-[#E5E9F0] hover:bg-[#F9FAFB] text-[#0A1D4D] rounded-lg h-10 px-4"
               style={{ fontWeight: 600 }}
             >
               <Copy className="w-4 h-4 mr-2" />
@@ -212,7 +212,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
           {/* Left Column - Main content (8 columns) */}
           <div className="col-span-8 space-y-6">
             {/* General Information Card */}
-            <Card className="p-6 border border-[#E5E7EB] bg-white">
+            <Card className="p-6 border border-[#E5E9F0] bg-white">
               <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-4 uppercase tracking-wide" style={{ fontWeight: 600 }}>
                 General Information
               </h3>
@@ -229,7 +229,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                 </div>
                 <div>
                   <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">Category</p>
-                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#F3F4F6] text-[#374151] text-[12px]" style={{ fontWeight: 500 }}>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-[#F3F4F6] text-[#344054] text-[12px]" style={{ fontWeight: 500 }}>
                     {entry.category}
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                     <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">
                       {entry.type === "Revenue" ? "Particulars" : "Description"}
                     </p>
-                    <p className="text-[13px] text-[#374151]" style={{ fontWeight: 500, lineHeight: '1.6' }}>
+                    <p className="text-[13px] text-[#344054]" style={{ fontWeight: 500, lineHeight: '1.6' }}>
                       {entry.description || entry.particulars}
                     </p>
                   </div>
@@ -276,7 +276,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
 
             {/* Revenue-specific: Cost & Profit Breakdown */}
             {entry.type === "Revenue" && (
-              <Card className="p-6 border border-[#E5E7EB] bg-[#FFFBF0]">
+              <Card className="p-6 border border-[#E5E9F0] bg-[#FFFBF0]">
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-4 uppercase tracking-wide" style={{ fontWeight: 600 }}>
                   Cost & Profit Breakdown
                 </h3>
@@ -301,7 +301,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                   </div>
                   <div>
                     <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">Total Expenses</p>
-                    <p className="text-[14px] text-[#DC2626]" style={{ fontWeight: 700 }}>
+                    <p className="text-[14px] text-[#EF4444]" style={{ fontWeight: 700 }}>
                       ₱{formatAmount(calculateTotalExpenses())}
                     </p>
                   </div>
@@ -316,7 +316,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                     <p
                       className={cn(
                         "text-[16px]",
-                        calculateGrossProfit() >= 0 ? "text-[#10B981]" : "text-[#DC2626]"
+                        calculateGrossProfit() >= 0 ? "text-[#10B981]" : "text-[#EF4444]"
                       )}
                       style={{ fontWeight: 700 }}
                     >
@@ -329,11 +329,11 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
 
             {/* Expense-specific: RFP Lines */}
             {entry.type === "Expense" && entry.lineItems && entry.lineItems.length > 0 && (
-              <Card className="p-6 border border-[#E5E7EB] bg-white">
+              <Card className="p-6 border border-[#E5E9F0] bg-white">
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-4 uppercase tracking-wide" style={{ fontWeight: 600 }}>
                   Request for Payment Lines
                 </h3>
-                <div className="border border-[#E5E7EB] rounded-lg overflow-hidden">
+                <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-[#F9FAFB]">
                       <tr>
@@ -350,11 +350,11 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                     </thead>
                     <tbody>
                       {entry.lineItems.map((item, index) => (
-                        <tr key={item.id} className="border-t border-[#E5E7EB]">
+                        <tr key={item.id} className="border-t border-[#E5E9F0]">
                           <td className="px-4 py-3 text-[13px] text-[#0A1D4D]" style={{ fontWeight: 600 }}>
                             {item.particular}
                           </td>
-                          <td className="px-4 py-3 text-[13px] text-[#374151]" style={{ fontWeight: 500 }}>
+                          <td className="px-4 py-3 text-[13px] text-[#344054]" style={{ fontWeight: 500 }}>
                             {item.description || "—"}
                           </td>
                           <td className="px-4 py-3 text-[13px] text-[#0A1D4D] text-right" style={{ fontWeight: 600 }}>
@@ -374,7 +374,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                   </table>
                 </div>
                 {entry.forAccountOf && (
-                  <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
+                  <div className="mt-4 pt-4 border-t border-[#E5E9F0]">
                     <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">For the account of</p>
                     <p className="text-[13px] text-[#0A1D4D]" style={{ fontWeight: 600 }}>
                       {entry.forAccountOf}
@@ -386,7 +386,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
 
             {/* Reporting Fields Card (Revenue only) */}
             {entry.type === "Revenue" && (
-              <Card className="p-6 border border-[#E5E7EB] bg-white">
+              <Card className="p-6 border border-[#E5E9F0] bg-white">
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-4 uppercase tracking-wide" style={{ fontWeight: 600 }}>
                   Reporting Fields
                 </h3>
@@ -422,7 +422,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
           {/* Right Column - Sidebar (4 columns) */}
           <div className="col-span-4 space-y-6">
             {/* Summary Card */}
-            <Card className="p-5 border border-[#E5E7EB] bg-white">
+            <Card className="p-5 border border-[#E5E9F0] bg-white">
               <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4 uppercase tracking-wide" style={{ fontWeight: 600 }}>
                 Summary
               </h3>
@@ -433,7 +433,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                     ₱{formatAmount(entry.amount)}
                   </p>
                 </div>
-                <div className="pt-3 border-t border-[#E5E7EB]">
+                <div className="pt-3 border-t border-[#E5E9F0]">
                   <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">Company</p>
                   <p className="text-[13px] text-[#0A1D4D]" style={{ fontWeight: 600 }}>
                     {entry.company}
@@ -449,7 +449,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
             </Card>
 
             {/* Audit Card */}
-            <Card className="p-5 border border-[#E5E7EB] bg-[#F9FAFB]">
+            <Card className="p-5 border border-[#E5E9F0] bg-[#F9FAFB]">
               <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4 uppercase tracking-wide" style={{ fontWeight: 600 }}>
                 Audit Trail
               </h3>
@@ -465,7 +465,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                 {entry.createdAt && (
                   <div>
                     <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">Created at</p>
-                    <p className="text-[13px] text-[#374151]" style={{ fontWeight: 500 }}>
+                    <p className="text-[13px] text-[#344054]" style={{ fontWeight: 500 }}>
                       {entry.createdAt}
                     </p>
                   </div>
@@ -473,7 +473,7 @@ export function EntryFileView({ entry, onBack, onEdit, onDuplicate }: EntryFileV
                 {entry.updatedAt && (
                   <div>
                     <p className="text-[11px] text-[#9CA3AF] mb-1 uppercase tracking-wide">Last updated</p>
-                    <p className="text-[13px] text-[#374151]" style={{ fontWeight: 500 }}>
+                    <p className="text-[13px] text-[#344054]" style={{ fontWeight: 500 }}>
                       {entry.updatedAt}
                     </p>
                   </div>

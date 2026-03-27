@@ -25,7 +25,7 @@ export function NeuronSectionHeader({ children, style }: SectionHeaderProps) {
         color: "var(--neuron-ink-primary)",
         marginBottom: "20px",
         paddingBottom: "12px",
-        borderBottom: "2px solid #E5E7EB",
+        borderBottom: "2px solid #E5E9F0",
         ...style
       }}
     >
@@ -124,7 +124,7 @@ export function NeuronModuleTitle({ children, subtitle, style }: ModuleTitleProp
         style={{ 
           fontSize: "32px", 
           fontWeight: 600, 
-          color: "#12332B", 
+          color: "#0A1D4D", 
           marginBottom: subtitle ? "4px" : "0",
           letterSpacing: "-1.2px",
           ...style
@@ -161,7 +161,7 @@ export function NeuronDetailTitle({ children, subtitle, style }: DetailTitleProp
         style={{ 
           fontSize: "32px", 
           fontWeight: 600, 
-          color: "#12332B", 
+          color: "#0A1D4D", 
           lineHeight: "40px",
           marginBottom: subtitle ? "8px" : "0",
           letterSpacing: "-1.2px",

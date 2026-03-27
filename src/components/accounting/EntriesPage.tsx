@@ -371,10 +371,10 @@ export function EntriesPage() {
             </div>
           ) : (
             // Entries Table
-            <div className="border border-[#E5E7EB]" style={{ borderRadius: 'var(--radius-sm)' }}>
+            <div className="border border-[#E5E9F0]" style={{ borderRadius: 'var(--radius-sm)' }}>
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+                  <TableRow className="bg-[#F9FAFB] border-b border-[#E5E9F0]">
                     <TableHead className="text-[12px] text-[#6B7280] h-10">Date</TableHead>
                     <TableHead className="text-[12px] text-[#6B7280] h-10">Booking No</TableHead>
                     <TableHead className="text-[12px] text-[#6B7280] h-10">Client</TableHead>
@@ -390,18 +390,18 @@ export function EntriesPage() {
                   {filteredEntries.map((entry, index) => (
                     <TableRow
                       key={entry.id}
-                      className={`border-b border-[#E5E7EB] hover:bg-[#F9FAFB] cursor-pointer transition-colors ${
+                      className={`border-b border-[#E5E9F0] hover:bg-[#F9FAFB] cursor-pointer transition-colors ${
                         selectedRowIndex === index ? "bg-orange-50 hover:bg-orange-50" : ""
                       }`}
                       onClick={() => handleRowClick(entry, index)}
                     >
-                      <TableCell className="text-[14px] text-[#374151]">
+                      <TableCell className="text-[14px] text-[#344054]">
                         {new Date(entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </TableCell>
                       <TableCell className="text-[14px] text-[#0A1D4D] font-medium">
                         {entry.bookingNo}
                       </TableCell>
-                      <TableCell className="text-[14px] text-[#374151]">{entry.client}</TableCell>
+                      <TableCell className="text-[14px] text-[#344054]">{entry.client}</TableCell>
                       <TableCell>
                         <BadgeType type={entry.type} />
                       </TableCell>
@@ -413,13 +413,13 @@ export function EntriesPage() {
                               ? "var(--text-revenue)"
                               : entry.type === "expense"
                               ? "var(--text-expense)"
-                              : "#374151",
+                              : "#344054",
                         }}
                       >
                         {entry.type === "revenue" && "+"}
                         {entry.type === "expense" && "-"}₱{formatAmount(entry.amount)}
                       </TableCell>
-                      <TableCell className="text-[14px] text-[#374151]">{entry.account}</TableCell>
+                      <TableCell className="text-[14px] text-[#344054]">{entry.account}</TableCell>
                       <TableCell className="text-[14px] text-[#6B7280]">{entry.category || "—"}</TableCell>
                       <TableCell className="text-[14px] text-[#6B7280] max-w-[200px] truncate">
                         {entry.note || "—"}
@@ -431,8 +431,8 @@ export function EntriesPage() {
                   ))}
                 </TableBody>
                 <TableFooter>
-                  <TableRow className="bg-[#F9FAFB] border-t-2 border-[#E5E7EB]">
-                    <TableCell colSpan={4} className="text-[14px] text-[#374151]">
+                  <TableRow className="bg-[#F9FAFB] border-t-2 border-[#E5E9F0]">
+                    <TableCell colSpan={4} className="text-[14px] text-[#344054]">
                       Total ({filteredEntries.length} entries)
                     </TableCell>
                     <TableCell className="text-right">
@@ -448,7 +448,7 @@ export function EntriesPage() {
                           </div>
                         )}
                         {totals.transfer > 0 && (
-                          <div className="text-[14px] text-[#374151] tabular-nums">
+                          <div className="text-[14px] text-[#344054] tabular-nums">
                             ₱{formatAmount(totals.transfer)}
                           </div>
                         )}

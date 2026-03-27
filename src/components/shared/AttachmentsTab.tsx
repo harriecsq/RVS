@@ -308,7 +308,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
                         style={{
                           fontSize: "14px",
                           fontWeight: 500,
-                          color: "#12332B",
+                          color: "#0A1D4D",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -423,7 +423,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
               style={{
                 fontSize: "14px",
                 fontWeight: 600,
-                color: isDragOver ? "#0F766E" : "#12332B",
+                color: isDragOver ? "#0F766E" : "#0A1D4D",
                 margin: "0 0 4px 0",
               }}
             >

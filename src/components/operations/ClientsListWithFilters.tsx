@@ -339,8 +339,8 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
   const getStatusColor = (status: ClientStatus) => {
     switch (status) {
       case "Active": return "#0F766E";
-      case "Inactive": return "#6B7A76";
-      default: return "#6B7A76";
+      case "Inactive": return "#667085";
+      default: return "#667085";
     }
   };
 
@@ -367,8 +367,8 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
   const getCompanyLogoColor = (companyName: string) => {
     if (!companyName) return '#0F766E';
     const colors = [
-      '#0F766E', '#2B8A6E', '#237F66', '#1E6D59',
-      '#C88A2B', '#6B7A76', '#C94F3D'
+      '#0F766E', '#0F766E', '#0F766E', '#0D6B64',
+      '#F59E0B', '#667085', '#EF4444'
     ];
     const index = companyName.charCodeAt(0) % colors.length;
     return colors[index];
@@ -407,8 +407,8 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
   
   const getProgressColor = (progress: number) => {
     if (progress >= 80) return "#0F766E";
-    if (progress >= 60) return "#C88A2B";
-    return "#C94F3D";
+    if (progress >= 60) return "#F59E0B";
+    return "#EF4444";
   };
   
   const getProgressBgColor = (progress: number) => {
@@ -438,7 +438,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
           }}
         >
           <div>
-            <h1 style={{ fontSize: "32px", fontWeight: 600, color: "#12332B", marginBottom: "4px", letterSpacing: "-1.2px" }}>
+            <h1 style={{ fontSize: "32px", fontWeight: 600, color: "#0A1D4D", marginBottom: "4px", letterSpacing: "-1.2px" }}>
               Clients
             </h1>
             <p style={{ fontSize: "14px", color: "#667085" }}>
@@ -494,9 +494,9 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                   {newClientsTrend > 0 ? (
                     <ArrowUp size={14} style={{ color: "#0F766E" }} />
                   ) : (
-                    <ArrowDown size={14} style={{ color: "#C94F3D" }} />
+                    <ArrowDown size={14} style={{ color: "#EF4444" }} />
                   )}
-                  <span className="text-xs" style={{ color: newClientsTrend > 0 ? "#0F766E" : "#C94F3D" }}>
+                  <span className="text-xs" style={{ color: newClientsTrend > 0 ? "#0F766E" : "#EF4444" }}>
                     {Math.abs(newClientsTrend)}%
                   </span>
                 </div>
@@ -535,9 +535,9 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                   {prospectsTrend > 0 ? (
                     <ArrowUp size={14} style={{ color: "#0F766E" }} />
                   ) : (
-                    <ArrowDown size={14} style={{ color: "#C94F3D" }} />
+                    <ArrowDown size={14} style={{ color: "#EF4444" }} />
                   )}
-                  <span className="text-xs" style={{ color: prospectsTrend > 0 ? "#0F766E" : "#C94F3D" }}>
+                  <span className="text-xs" style={{ color: prospectsTrend > 0 ? "#0F766E" : "#EF4444" }}>
                     {Math.abs(prospectsTrend)}%
                   </span>
                 </div>
@@ -576,9 +576,9 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                   {activeClientsTrend > 0 ? (
                     <ArrowUp size={14} style={{ color: "#0F766E" }} />
                   ) : (
-                    <ArrowDown size={14} style={{ color: "#C94F3D" }} />
+                    <ArrowDown size={14} style={{ color: "#EF4444" }} />
                   )}
-                  <span className="text-xs" style={{ color: activeClientsTrend > 0 ? "#0F766E" : "#C94F3D" }}>
+                  <span className="text-xs" style={{ color: activeClientsTrend > 0 ? "#0F766E" : "#EF4444" }}>
                     {Math.abs(activeClientsTrend)}%
                   </span>
                 </div>
@@ -617,9 +617,9 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                   {revenueTrend > 0 ? (
                     <ArrowUp size={14} style={{ color: "#0F766E" }} />
                   ) : (
-                    <ArrowDown size={14} style={{ color: "#C94F3D" }} />
+                    <ArrowDown size={14} style={{ color: "#EF4444" }} />
                   )}
-                  <span className="text-xs" style={{ color: revenueTrend > 0 ? "#0F766E" : "#C94F3D" }}>
+                  <span className="text-xs" style={{ color: revenueTrend > 0 ? "#0F766E" : "#EF4444" }}>
                     {Math.abs(revenueTrend)}%
                   </span>
                 </div>
@@ -664,11 +664,11 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
             style={{
               width: "100%",
               padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
               outline: "none",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
             }}
           />
@@ -685,19 +685,19 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
         ) : filteredClients.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
             <Building2 className="w-12 h-12 mb-3" style={{ color: "#9CA3AF" }} />
-            <div style={{ fontSize: "16px", fontWeight: 500, color: "#12332B", marginBottom: "8px" }}>No clients found</div>
+            <div style={{ fontSize: "16px", fontWeight: 500, color: "#0A1D4D", marginBottom: "8px" }}>No clients found</div>
             <div style={{ fontSize: "13px", color: "#667085" }}>Try adjusting your search query</div>
           </div>
         ) : (
           <div style={{
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "12px",
             overflow: "hidden",
             backgroundColor: "#FFFFFF"
           }}>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#12332B]/10">
+                <tr className="border-b border-[#0A1D4D]/10">
                   <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide" style={{ width: "48px" }}></th>
                   <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
                     Company
@@ -722,7 +722,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                   return (
                     <tr
                       key={client.id}
-                      className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                      className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                       onClick={() => onViewClient(client)}
                     >
                       {/* Company Logo */}
@@ -741,14 +741,14 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
 
                       {/* Company Name */}
                       <td className="py-4 px-4">
-                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
                           {client.name || client.company_name}
                         </div>
                       </td>
 
                       {/* Address */}
                       <td className="py-4 px-4">
-                        <div style={{ fontSize: "14px", color: "#12332B", maxWidth: "260px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={address}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D", maxWidth: "260px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={address}>
                           {address}
                         </div>
                       </td>
@@ -756,13 +756,13 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                       {/* Contact Info - Phone + Email stacked */}
                       <td className="py-4 px-4">
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#12332B" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#0A1D4D" }}>
                             <Mail size={14} style={{ color: "#667085", flexShrink: 0 }} />
                             <span style={{ maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                               {(client as any).email || "—"}
                             </span>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#12332B" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#0A1D4D" }}>
                             <Phone size={14} style={{ color: "#667085", flexShrink: 0 }} />
                             <span>{(client as any).phone || "—"}</span>
                           </div>
@@ -846,7 +846,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
               style={{
                 fontSize: "20px",
                 fontWeight: 600,
-                color: "#12332B",
+                color: "#0A1D4D",
                 marginBottom: "16px"
               }}
             >
@@ -879,7 +879,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
                   gap: "8px",
                   padding: "12px 20px",
                   background: "transparent",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid #E5E9F0",
                   borderRadius: "8px",
                   color: "#667085",
                   fontSize: "14px",

@@ -30,7 +30,7 @@ export function StandardFilterDropdown({
       style={{
         padding: '10px 40px 10px 12px',
         border: '1px solid var(--neuron-ui-border)',
-        borderRadius: '8px',
+        borderRadius: '6px',
         fontSize: '14px',
         outline: 'none',
         color: disabled ? '#9CA3AF' : (value ? 'var(--neuron-ink-primary)' : '#9CA3AF'),

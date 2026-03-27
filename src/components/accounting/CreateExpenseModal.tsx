@@ -60,7 +60,7 @@ export function CreateExpenseModal({
           }}
         >
           <div>
-            <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#12332B", marginBottom: "4px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", marginBottom: "4px" }}>
               Create Expense
             </h2>
             <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>

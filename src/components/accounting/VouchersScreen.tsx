@@ -49,10 +49,10 @@ function FilterDropdown({
           padding: "10px 12px",
           fontSize: "14px",
           fontWeight: 400,
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "8px",
           background: "#FFFFFF",
-          color: "#12332B",
+          color: "#0A1D4D",
           cursor: "pointer",
           whiteSpace: "nowrap" as const,
           boxSizing: "border-box" as const,
@@ -69,7 +69,7 @@ function FilterDropdown({
             left: 0,
             marginTop: "4px",
             backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
             zIndex: 1000,
@@ -85,12 +85,12 @@ function FilterDropdown({
               style={{
                 padding: "9px 14px",
                 fontSize: "13px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 cursor: "pointer",
                 backgroundColor: value === opt.value ? "#F0FAF8" : "transparent",
                 fontWeight: value === opt.value ? 600 : 400,
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt.value ? "#F0FAF8" : "transparent"; }}
             >
               {opt.label}
@@ -205,10 +205,10 @@ function PayeeFilterDropdown({
           alignItems: "center",
           gap: "6px",
           padding: "10px 12px",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "8px",
           fontSize: "14px",
-          color: hasSelection ? "#12332B" : "#667085",
+          color: hasSelection ? "#0A1D4D" : "#667085",
           backgroundColor: "#FFFFFF",
           cursor: "pointer",
           outline: "none",
@@ -256,7 +256,7 @@ function PayeeFilterDropdown({
               width: dropdownPos.width,
               maxHeight: 360,
               backgroundColor: "#FFFFFF",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
               zIndex: 9999,
@@ -269,7 +269,7 @@ function PayeeFilterDropdown({
             <div
               style={{
                 padding: "8px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
                 flexShrink: 0,
               }}
             >
@@ -293,11 +293,11 @@ function PayeeFilterDropdown({
                   style={{
                     width: "100%",
                     padding: "6px 8px 6px 28px",
-                    border: "1px solid #E5E7EB",
+                    border: "1px solid #E5E9F0",
                     borderRadius: "6px",
                     fontSize: "13px",
                     outline: "none",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     backgroundColor: "#F9FAFB",
                   }}
                 />
@@ -327,7 +327,7 @@ function PayeeFilterDropdown({
                   cursor: "pointer",
                   fontSize: "13px",
                   fontWeight: !hasSelection ? 600 : 400,
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   textAlign: "left",
                 }}
                 onMouseEnter={(e) => {
@@ -374,7 +374,7 @@ function PayeeFilterDropdown({
                       cursor: "pointer",
                       fontSize: "13px",
                       fontWeight: isSelected ? 600 : 400,
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       textAlign: "left",
                       overflow: "hidden",
                     }}
@@ -598,7 +598,7 @@ export function VouchersScreen() {
             <h1 style={{ 
               fontSize: "32px", 
               fontWeight: 600, 
-              color: "#12332B", 
+              color: "#0A1D4D", 
               marginBottom: "4px",
               letterSpacing: "-1.2px"
             }}>
@@ -654,11 +654,11 @@ export function VouchersScreen() {
             style={{
               width: "100%",
               padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
               outline: "none",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
             }}
           />
@@ -740,11 +740,11 @@ export function VouchersScreen() {
       <div style={{ padding: "0 48px 48px 48px" }}>
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-[#12332B]/60">Loading vouchers...</div>
+            <div className="text-[#0A1D4D]/60">Loading vouchers...</div>
           </div>
         ) : filteredVouchers.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-[#12332B]/60 mb-2">
+            <div className="text-[#0A1D4D]/60 mb-2">
               {searchTerm || statusFilter !== "all" 
                 ? "No vouchers match your filters" 
                 : "No vouchers yet"}
@@ -758,14 +758,14 @@ export function VouchersScreen() {
           </div>
         ) : (
           <div style={{
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "12px",
             overflow: "hidden",
             backgroundColor: "#FFFFFF"
           }}>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#12332B]/10">
+                <tr className="border-b border-[#0A1D4D]/10">
                   <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
                     Voucher Details
                   </th>
@@ -793,7 +793,7 @@ export function VouchersScreen() {
                 {filteredVouchers.map((voucher) => (
                   <tr
                     key={voucher.id}
-                    className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                     onClick={() => setSelectedVoucherId(voucher.id)}
                   >
                     <td className="py-4 px-4">
@@ -803,7 +803,7 @@ export function VouchersScreen() {
                           <div style={{ 
                             fontSize: "14px", 
                             fontWeight: 600, 
-                            color: "#12332B", 
+                            color: "#0A1D4D", 
                             marginBottom: "2px" 
                           }}>
                             {voucher.voucherNumber}
@@ -812,17 +812,17 @@ export function VouchersScreen() {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {voucher.currency} {formatAmount(voucher.amount)}
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {voucher.payee || "\u2014"}
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {voucher.category || "\u2014"}
                       </div>
                     </td>
@@ -846,7 +846,7 @@ export function VouchersScreen() {
                       <NeuronStatusPill status={voucher.status} />
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "13px", color: "#12332B" }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
                         {new Date(voucher.voucherDate).toLocaleDateString()}
                       </div>
                     </td>

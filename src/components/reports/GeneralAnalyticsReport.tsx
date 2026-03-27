@@ -403,7 +403,7 @@ export function GeneralAnalyticsReport() {
           <h1 style={{ 
             fontSize: "32px", 
             fontWeight: 600, 
-            color: "#12332B", 
+            color: "#0A1D4D", 
             marginBottom: "4px",
             letterSpacing: "-1.2px"
           }}>
@@ -539,8 +539,8 @@ export function GeneralAnalyticsReport() {
                       <td style={{ padding: "12px 16px", fontSize: "13px", textAlign: "center", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.numberOfContainer}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-primary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.soaNumber}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, textAlign: "right", color: "var(--neuron-ink-primary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.billing)}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, textAlign: "right", color: "#DC2626", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.costing)}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 700, textAlign: "right", color: row.profit >= 0 ? "var(--neuron-brand-green)" : "#DC2626", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.profit)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 500, textAlign: "right", color: "#EF4444", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.costing)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", fontWeight: 700, textAlign: "right", color: row.profit >= 0 ? "var(--neuron-brand-green)" : "#EF4444", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.profit)}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", textAlign: "right", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.containerDeposit)}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.bankNameCheckNumber}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", textAlign: "right", color: "var(--neuron-ink-primary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.checkAmount)}</td>

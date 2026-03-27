@@ -14,7 +14,7 @@ export function PanelBackdrop({ onClick, zIndex = 40 }: PanelBackdropProps) {
       style={{
         zIndex,
         backdropFilter: "blur(2px)",
-        backgroundColor: "rgba(18, 51, 43, 0.15)",
+        backgroundColor: "rgba(10, 29, 77, 0.15)",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClick();

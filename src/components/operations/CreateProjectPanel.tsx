@@ -201,12 +201,12 @@ export function CreateProjectPanel({ isOpen, onClose, onSave, movementType }: Cr
               onClick={handleClose}
               className="p-2 hover:bg-[#0F766E]/10 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-[#12332B]" />
+              <ArrowLeft className="w-5 h-5 text-[#0A1D4D]" />
             </button>
             
             {/* Title Block */}
             <div>
-              <h2 className="text-2xl font-semibold text-[#12332B] mb-1">
+              <h2 className="text-2xl font-semibold text-[#0A1D4D] mb-1">
                 Create New {movementType} Project
               </h2>
               <p className="text-sm text-[#667085]">

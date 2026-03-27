@@ -139,7 +139,7 @@ export function ExpensesSubTabs({
                     fontWeight: 500,
                     color: "#0F766E",
                     background: "transparent",
-                    border: "1px solid #E5E7EB",
+                    border: "1px solid #E5E9F0",
                     borderRadius: "6px",
                     cursor: "pointer",
                     transition: "all 0.2s ease",
@@ -150,7 +150,7 @@ export function ExpensesSubTabs({
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.borderColor = "#E5E7EB";
+                    e.currentTarget.style.borderColor = "#E5E9F0";
                   }}
                 >
                   &larr; All Expenses

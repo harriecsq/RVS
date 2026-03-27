@@ -16,7 +16,7 @@ export function NotesSection({
       style={{
         background: "white",
         borderRadius: "12px",
-        border: "1px solid #E5E7EB",
+        border: "1px solid #E5E9F0",
         overflow: "hidden",
         marginTop: "24px",
       }}
@@ -25,7 +25,7 @@ export function NotesSection({
       <div
         style={{
           padding: "20px 24px",
-          borderBottom: "1px solid #E5E7EB",
+          borderBottom: "1px solid #E5E9F0",
           background: "#F9FAFB",
           display: "flex",
           alignItems: "center",
@@ -36,7 +36,7 @@ export function NotesSection({
           style={{
             fontSize: "16px",
             fontWeight: 600,
-            color: "#12332B",
+            color: "#0A1D4D",
             margin: 0,
           }}
         >
@@ -51,10 +51,10 @@ export function NotesSection({
             style={{
               padding: "14px 16px",
               backgroundColor: value ? "#F9FAFB" : "white",
-              border: value ? "1px solid #E5E7EB" : "2px dashed #E5E7EB",
+              border: value ? "1px solid #E5E9F0" : "2px dashed #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: value ? "#12332B" : "#9CA3AF",
+              color: value ? "#0A1D4D" : "#9CA3AF",
               minHeight: "120px",
               lineHeight: "1.6",
               whiteSpace: "pre-wrap" as const,
@@ -73,8 +73,8 @@ export function NotesSection({
               width: "100%",
               padding: "14px 16px",
               fontSize: "14px",
-              color: "#12332B",
-              border: "1.5px solid #E5E7EB",
+              color: "#0A1D4D",
+              border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
               outline: "none",
               background: "white",
@@ -89,7 +89,7 @@ export function NotesSection({
               e.currentTarget.style.borderColor = "#0F766E";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = "#E5E7EB";
+              e.currentTarget.style.borderColor = "#E5E9F0";
             }}
           />
         )}

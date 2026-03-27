@@ -31,7 +31,7 @@ function EmptyDocumentState({ title, description }: { title: string; description
         }}
       >
         <FileText size={44} style={{ color: "#D1D5DB", marginBottom: "14px" }} />
-        <p style={{ fontSize: "15px", fontWeight: 600, color: "#12332B", margin: "0 0 6px" }}>
+        <p style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>
           No {title} record
         </p>
         <p style={{ fontSize: "13px", color: "#667085", margin: "0 0 16px" }}>

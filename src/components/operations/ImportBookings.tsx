@@ -260,7 +260,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               <h1 style={{ 
                 fontSize: "32px", 
                 fontWeight: 600, 
-                color: "#12332B", 
+                color: "#0A1D4D", 
                 marginBottom: "4px",
                 letterSpacing: "-1.2px"
               }}>
@@ -316,11 +316,11 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               style={{
                 width: "100%",
                 padding: "10px 12px 10px 40px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 borderRadius: "8px",
                 fontSize: "14px",
                 outline: "none",
-                color: "#12332B",
+                color: "#0A1D4D",
                 backgroundColor: "#FFFFFF",
               }}
             />
@@ -350,10 +350,10 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               onChange={(e) => setActiveTab(e.target.value)}
               style={{
                 padding: "10px 12px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 borderRadius: "8px",
                 fontSize: "14px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 backgroundColor: "#FFFFFF",
                 outline: "none",
                 cursor: "pointer",
@@ -378,10 +378,10 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               onChange={(e) => setDestinationFilter(e.target.value)}
               style={{
                 padding: "10px 12px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 borderRadius: "8px",
                 fontSize: "14px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 backgroundColor: "#FFFFFF",
                 outline: "none",
                 cursor: "pointer",
@@ -411,11 +411,11 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
         <div style={{ padding: "0 48px 48px 48px" }}>
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-[#12332B]/60">Loading bookings...</div>
+              <div className="text-[#0A1D4D]/60">Loading bookings...</div>
             </div>
           ) : filteredBookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
-              <div className="text-[#12332B]/60 mb-2">
+              <div className="text-[#0A1D4D]/60 mb-2">
                 {searchTerm || activeTab !== "all" 
                   ? "No bookings match your filters" 
                   : "No import bookings yet"}
@@ -429,14 +429,14 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
             </div>
           ) : (
             <div style={{
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "12px",
               overflow: "hidden",
               backgroundColor: "#FFFFFF"
             }}>
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-[#12332B]/10">
+                  <tr className="border-b border-[#0A1D4D]/10">
                     <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
                       Booking Ref #
                     </th>
@@ -473,26 +473,26 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
                     return (
                       <tr
                         key={booking.bookingId}
-                        className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                        className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                         onClick={() => setSelectedBooking(booking)}
                       >
                         <td className="py-4 px-4">
-                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
                             {booking.bookingId}
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div title={booking.blNumber} style={{ fontSize: "14px", color: "#12332B", maxWidth: "120px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          <div title={booking.blNumber} style={{ fontSize: "14px", color: "#0A1D4D", maxWidth: "120px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {booking.blNumber || "—"}
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div title={booking.containerNo} style={{ fontSize: "14px", color: "#12332B" }}>
+                          <div title={booking.containerNo} style={{ fontSize: "14px", color: "#0A1D4D" }}>
                             {displayContainer}{extraContainers}
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div style={{ fontSize: "14px", color: "#12332B" }}>
+                          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                             {booking.consignee || booking.customerName}
                           </div>
                           {booking.consignee && booking.customerName && booking.consignee !== booking.customerName && (
@@ -507,12 +507,12 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
                           )}
                         </td>
                         <td className="py-4 px-4">
-                          <div style={{ fontSize: "13px", color: "#12332B" }}>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
                             {booking.pod || booking.destination || "—"}
                           </div>
                         </td>
                         <td className="py-4 px-4">
-                          <div style={{ fontSize: "13px", color: "#12332B" }}>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
                             {new Date(booking.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </div>
                         </td>
@@ -543,7 +543,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
                           })()}
                         </td>
                         <td className="py-4 px-4">
-                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
                             {getTimelineStatus(booking.docsTimeline)}
                           </div>
                         </td>
@@ -598,7 +598,7 @@ function TabButton({ icon, label, count, isActive, color, onClick }: TabButtonPr
         background: "transparent",
         border: "none",
         borderBottom: isActive ? `2px solid ${color}` : "2px solid transparent",
-        color: isActive ? color : (isHovered ? "#12332B" : "#667085"),
+        color: isActive ? color : (isHovered ? "#0A1D4D" : "#667085"),
         fontSize: "14px",
         fontWeight: 600,
         cursor: "pointer",
@@ -649,7 +649,7 @@ function StatusTabButton({ label, count, isActive, onClick }: StatusTabButtonPro
         background: "transparent",
         border: "none",
         borderBottom: isActive ? `2px solid #0F766E` : "2px solid transparent",
-        color: isActive ? "#0F766E" : (isHovered ? "#12332B" : "#667085"),
+        color: isActive ? "#0F766E" : (isHovered ? "#0A1D4D" : "#667085"),
         fontSize: "14px",
         fontWeight: 600,
         cursor: "pointer",

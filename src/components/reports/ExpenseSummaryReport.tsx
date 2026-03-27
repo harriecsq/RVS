@@ -46,14 +46,14 @@ function ExpenseCategoryTable({ title, data, showParticularsColumn, totalAmount 
   return (
     <div style={{
       backgroundColor: "white",
-      border: "1px solid #E5E7EB",
+      border: "1px solid #E5E9F0",
       borderRadius: "12px",
       overflow: "hidden"
     }}>
       {/* Header */}
       <div style={{
         padding: "20px 24px",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
@@ -62,7 +62,7 @@ function ExpenseCategoryTable({ title, data, showParticularsColumn, totalAmount 
         <h3 style={{
           fontSize: "14px",
           fontWeight: 600,
-          color: "#12332B",
+          color: "#0A1D4D",
           textTransform: "uppercase",
           letterSpacing: "0.5px",
           margin: 0
@@ -113,7 +113,7 @@ function ExpenseCategoryTable({ title, data, showParticularsColumn, totalAmount 
                       {row.particulars || row.description || "—"}
                     </td>
                   )}
-                  <td style={{ padding: "12px 24px", textAlign: "right", fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                  <td style={{ padding: "12px 24px", textAlign: "right", fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                     {formatAmount(row.amount)}
                   </td>
                 </tr>
@@ -122,7 +122,7 @@ function ExpenseCategoryTable({ title, data, showParticularsColumn, totalAmount 
             
             {/* Subtotal Row */}
             <tr style={{ backgroundColor: "#F9FAFB", borderTop: "2px solid #E5E9F0" }}>
-              <td style={{ padding: "12px 24px", fontSize: "13px", fontWeight: 600, color: "#12332B" }}>
+              <td style={{ padding: "12px 24px", fontSize: "13px", fontWeight: 600, color: "#0A1D4D" }}>
                 SUBTOTAL
               </td>
               <td colSpan={showParticularsColumn ? 2 : 1}></td>
@@ -402,7 +402,7 @@ export function ExpenseSummaryReport() {
       {/* Header */}
       <div style={{
         padding: "20px 48px",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         background: "white",
         maxWidth: "1440px",
         width: "100%",
@@ -431,7 +431,7 @@ export function ExpenseSummaryReport() {
               <h1 style={{ 
                 fontSize: "20px", 
                 fontWeight: 600, 
-                color: "#12332B", 
+                color: "#0A1D4D", 
                 marginBottom: "2px"
               }}>
                 Expense Summary Report
@@ -488,7 +488,7 @@ export function ExpenseSummaryReport() {
         {/* Consolidated Total Card */}
         <div style={{
           backgroundColor: "white",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "12px",
           padding: "24px",
           display: "flex",

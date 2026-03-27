@@ -83,8 +83,7 @@ export function EmployeeFileModal({
           width: "1400px", 
           maxWidth: "95vw", 
           maxHeight: "90vh",
-          border: "1px solid #E5E9F0",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+          border: "1px solid #E5E9F0"
         }}
       >
         {/* Header */}
@@ -95,7 +94,7 @@ export function EmployeeFileModal({
           <div>
             <div className="flex items-center gap-3">
               <h2
-                style={{ fontSize: "24px", fontWeight: 600, color: "#12332B", letterSpacing: "-0.5px" }}
+                style={{ fontSize: "24px", fontWeight: 600, color: "#0A1D4D", letterSpacing: "-0.5px" }}
               >
                 {employee.fullName}
               </h2>
@@ -175,7 +174,7 @@ export function EmployeeFileModal({
               <p style={{ fontSize: "11px", color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
                 Designation
               </p>
-              <p style={{ fontSize: "15px", color: "#12332B", fontWeight: 600 }}>
+              <p style={{ fontSize: "15px", color: "#0A1D4D", fontWeight: 600 }}>
                 {employee.designation}
               </p>
             </div>
@@ -183,7 +182,7 @@ export function EmployeeFileModal({
               <p style={{ fontSize: "11px", color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
                 Date Hired / Regularization
               </p>
-              <p style={{ fontSize: "15px", color: "#12332B", fontWeight: 600 }}>
+              <p style={{ fontSize: "15px", color: "#0A1D4D", fontWeight: 600 }}>
                 {employee.regularization}
               </p>
             </div>
@@ -191,7 +190,7 @@ export function EmployeeFileModal({
               <p style={{ fontSize: "11px", color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
                 Employee ID
               </p>
-              <p style={{ fontSize: "15px", color: "#12332B", fontWeight: 600 }}>
+              <p style={{ fontSize: "15px", color: "#0A1D4D", fontWeight: 600 }}>
                 {employee.employeeId}
               </p>
             </div>
@@ -228,7 +227,7 @@ export function EmployeeFileModal({
                     padding: "16px 0",
                     fontSize: "14px",
                     fontWeight: activeTab === "personal" ? 600 : 500,
-                    color: activeTab === "personal" ? "#12332B" : "#667085",
+                    color: activeTab === "personal" ? "#0A1D4D" : "#667085",
                     background: "transparent",
                     border: "none",
                     borderBottom: activeTab === "personal" ? "2px solid #0F766E" : "2px solid transparent",
@@ -244,7 +243,7 @@ export function EmployeeFileModal({
                     padding: "16px 0",
                     fontSize: "14px",
                     fontWeight: activeTab === "employment" ? 600 : 500,
-                    color: activeTab === "employment" ? "#12332B" : "#667085",
+                    color: activeTab === "employment" ? "#0A1D4D" : "#667085",
                     background: "transparent",
                     border: "none",
                     borderBottom: activeTab === "employment" ? "2px solid #0F766E" : "2px solid transparent",
@@ -260,7 +259,7 @@ export function EmployeeFileModal({
                     padding: "16px 0",
                     fontSize: "14px",
                     fontWeight: activeTab === "emergency" ? 600 : 500,
-                    color: activeTab === "emergency" ? "#12332B" : "#667085",
+                    color: activeTab === "emergency" ? "#0A1D4D" : "#667085",
                     background: "transparent",
                     border: "none",
                     borderBottom: activeTab === "emergency" ? "2px solid #0F766E" : "2px solid transparent",
@@ -287,7 +286,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.lastName}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div>
@@ -297,7 +296,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.firstName}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div>
@@ -307,7 +306,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.middleName}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div>
@@ -317,7 +316,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.birthdate}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div>
@@ -338,7 +337,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.contactNumber}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div className="col-span-2">
@@ -348,7 +347,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.address || "Not provided"}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                 </div>
@@ -362,7 +361,7 @@ export function EmployeeFileModal({
                       Company
                     </Label>
                     <Select value={employee.company} disabled>
-                      <SelectTrigger className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]">
+                      <SelectTrigger className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -388,7 +387,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.designation}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div>
@@ -396,7 +395,7 @@ export function EmployeeFileModal({
                       Rate Type
                     </Label>
                     <Select value={employee.rateType || "Monthly"} disabled>
-                      <SelectTrigger className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]">
+                      <SelectTrigger className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -419,7 +418,7 @@ export function EmployeeFileModal({
                       <Input
                         value={employee.salary ? formatAmount(employee.salary) : "Not set"}
                         disabled
-                        className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px] pl-8"
+                        className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px] pl-8"
                         style={{ fontWeight: 600 }}
                       />
                     </div>
@@ -429,7 +428,7 @@ export function EmployeeFileModal({
                       Status
                     </Label>
                     <Select value={employee.status} disabled>
-                      <SelectTrigger className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]">
+                      <SelectTrigger className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -445,7 +444,7 @@ export function EmployeeFileModal({
                     <Input
                       value={employee.regularization}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                     />
                   </div>
                   <div className="col-span-2">
@@ -455,11 +454,11 @@ export function EmployeeFileModal({
                     <Textarea
                       value={employee.notes || "No notes"}
                       disabled
-                      className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px] min-h-[80px]"
+                      className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px] min-h-[80px]"
                     />
                   </div>
                   <div className="col-span-2">
-                    <div className="flex items-center justify-between p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB]">
+                    <div className="flex items-center justify-between p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E9F0]">
                       <Label className="text-[13px] text-[#0A1D4D]" style={{ fontWeight: 500 }}>
                         Included in Payroll?
                       </Label>
@@ -488,7 +487,7 @@ export function EmployeeFileModal({
                         <Input
                           value={employee.emergencyName}
                           disabled
-                          className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                          className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                         />
                       </div>
                       <div>
@@ -498,7 +497,7 @@ export function EmployeeFileModal({
                         <Input
                           value={employee.emergencyRelationship}
                           disabled
-                          className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                          className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                         />
                       </div>
                       <div>
@@ -508,7 +507,7 @@ export function EmployeeFileModal({
                         <Input
                           value={employee.emergencyContact}
                           disabled
-                          className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                          className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                         />
                       </div>
                     </div>
@@ -575,7 +574,7 @@ export function EmployeeFileModal({
                         <Input
                           value={employee.tinNumber || "Not provided"}
                           disabled
-                          className="bg-[#F9FAFB] border-[#E5E7EB] text-[14px]"
+                          className="bg-[#F9FAFB] border-[#E5E9F0] text-[14px]"
                         />
                       </div>
                     </div>

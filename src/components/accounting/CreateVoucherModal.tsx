@@ -57,7 +57,7 @@ function CategoryDropdown({
           borderRadius: "12px",
           border: "1px solid #E5E9F0",
           background: disabled ? "#F9FAFB" : "#FFFFFF",
-          color: value ? "#12332B" : "#667085",
+          color: value ? "#0A1D4D" : "#667085",
           fontWeight: value ? 500 : 400,
           fontSize: "14px",
           display: "flex",
@@ -126,7 +126,7 @@ function CategoryDropdown({
                         onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "#E8F5F3" : "transparent"; }}
                       >
                         <Check size={16} style={{ flexShrink: 0, color: "#0F766E", opacity: isSelected ? 1 : 0 }} />
-                        <div style={{ fontWeight: 500, color: "#12332B", fontSize: "14px" }}>{item}</div>
+                        <div style={{ fontWeight: 500, color: "#0A1D4D", fontSize: "14px" }}>{item}</div>
                       </div>
                     );
                   })}
@@ -299,7 +299,7 @@ export function CreateVoucherModal({
   const getInputStyle = (field: string) => {
     const isAutoFilled = autoFilledFields[field];
     return `border-[#E5E9F0] focus-visible:ring-[#0F766E] transition-colors ${
-      isAutoFilled ? "bg-green-50 text-[#12332B]" : "bg-white"
+      isAutoFilled ? "bg-green-50 text-[#0A1D4D]" : "bg-white"
     }`;
   };
 
@@ -857,7 +857,7 @@ export function CreateVoucherModal({
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-[#E5E9F0]">
           <div>
-            <h2 className="text-xl font-semibold text-[#12332B]">Create Voucher</h2>
+            <h2 className="text-xl font-semibold text-[#0A1D4D]">Create Voucher</h2>
             <p className="text-sm text-[#667085] mt-1">Enter voucher details and line items</p>
           </div>
           <button
@@ -936,18 +936,18 @@ export function CreateVoucherModal({
                 <div style={{
                   background: "white",
                   borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid #E5E9F0",
                   overflow: "hidden",
                 }}>
                   <div style={{
                     padding: "16px 24px",
-                    borderBottom: "1px solid #E5E7EB",
+                    borderBottom: "1px solid #E5E9F0",
                     background: "#F9FAFB",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
                   }}>
-                    <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                    <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                       Booking Details
                     </h3>
                   </div>
@@ -987,8 +987,8 @@ export function CreateVoucherModal({
                         {/* Read-only summary fields */}
                         <div style={{
                           background: "#FAFBFC",
-                          border: "1px solid #E5E7EB",
-                          borderRadius: "10px",
+                          border: "1px solid #E5E9F0",
+                          borderRadius: "8px",
                           padding: "16px 20px",
                           display: "flex",
                           flexDirection: "column",
@@ -998,7 +998,7 @@ export function CreateVoucherModal({
                             {/* Row 1: Linked Expense | Shipper/Consignee */}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Linked Expense</div>
-                              <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{(() => {
+                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{(() => {
                                 // Combine prop expenseNumber with fetched linked expenses from booking
                                 const allExpenses = [...linkedExpenseNumbers];
                                 if (expenseNumber && !allExpenses.includes(expenseNumber)) {
@@ -1014,7 +1014,7 @@ export function CreateVoucherModal({
                                   <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                                     {isExportBooking ? "Shipper" : "Consignee"}
                                   </div>
-                                  <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                                  <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                                     {isExportBooking ? (bookingFields.shipper || "—") : (bookingFields.consignee || "—")}
                                   </div>
                                 </div>
@@ -1023,7 +1023,7 @@ export function CreateVoucherModal({
                             {/* Row 2: Vessel / Voyage | BL Number (non-Trucking) or Delivery Address (Trucking) */}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                              <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{bookingFields.vesselVoyage || "—"}</div>
+                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingFields.vesselVoyage || "—"}</div>
                             </div>
                             {category === "Trucking" ? (
                               (() => {
@@ -1033,7 +1033,7 @@ export function CreateVoucherModal({
                                     <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                                       {isExportBooking ? "Loading Address" : "Delivery Address"}
                                     </div>
-                                    <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                                       {isExportBooking
                                         ? (truckingRecordData.loadingAddress || bookingFields.loadingAddress || "—")
                                         : (truckingRecordData.deliveryAddress || bookingFields.deliveryAddress || "—")}
@@ -1044,7 +1044,7 @@ export function CreateVoucherModal({
                             ) : (
                               <div>
                                 <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                                <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{bookingFields.blNumber || "—"}</div>
+                                <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingFields.blNumber || "—"}</div>
                               </div>
                             )}
                             {/* Row 3: Origin/Destination | Volume */}
@@ -1055,7 +1055,7 @@ export function CreateVoucherModal({
                                   <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                                     {isExportBooking ? "Destination" : "Origin"}
                                   </div>
-                                  <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                                  <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                                     {isExportBooking ? (bookingFields.destination || "—") : (bookingFields.origin || "—")}
                                   </div>
                                 </div>
@@ -1063,24 +1063,24 @@ export function CreateVoucherModal({
                             })()}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
-                              <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{computeVolumeSummary(bookingFields.containerNo, bookingFields.volume)}</div>
+                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(bookingFields.containerNo, bookingFields.volume)}</div>
                             </div>
                             {/* Row 4: Container No | Commodity */}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                              <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                                 {voucherContainers.filter(Boolean).join(", ") || bookingFields.containerNo || "—"}
                               </div>
                             </div>
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                              <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{bookingFields.commodity || "—"}</div>
+                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingFields.commodity || "—"}</div>
                             </div>
                             {/* Trucking Rate (Trucking only) */}
                             {category === "Trucking" && (
                               <div>
                                 <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Trucking Rate</div>
-                                <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{truckingRecordData.truckingRate || bookingFields.rate || "—"}</div>
+                                <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingRecordData.truckingRate || bookingFields.rate || "—"}</div>
                               </div>
                             )}
                           </div>
@@ -1096,7 +1096,7 @@ export function CreateVoucherModal({
                 {/* Table 1: Voucher Entries */}
                 <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
                     <div className="bg-[#FAFBFC] px-4 py-3 border-b border-[#E5E9F0] flex justify-between items-center">
-                        <h3 className="text-sm font-semibold text-[#12332B]">Voucher Entries</h3>
+                        <h3 className="text-sm font-semibold text-[#0A1D4D]">Voucher Entries</h3>
                         <Button 
                             type="button" 
                             variant="ghost" 
@@ -1125,7 +1125,7 @@ export function CreateVoucherModal({
                                                     <select
                                                         value={item.sopType || item.defaultSop || "SOP (MICP)"}
                                                         onChange={(e) => handleSopUpdate(item.id, 'sopType', e.target.value)}
-                                                        className="w-full h-9 pl-3 pr-8 rounded border border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] focus:ring-0 text-sm transition-colors text-[#12332B] bg-transparent appearance-none"
+                                                        className="w-full h-9 pl-3 pr-8 rounded border border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] focus:ring-0 text-sm transition-colors text-[#0A1D4D] bg-transparent appearance-none"
                                                     >
                                                         <option value={item.defaultSop || "SOP (MICP)"}>{item.defaultSop || "SOP (MICP)"}</option>
                                                         <option value="Facilitation">Facilitation</option>
@@ -1136,7 +1136,7 @@ export function CreateVoucherModal({
                                                     <Input
                                                         value={item.sopNumber || ""}
                                                         onChange={(e) => handleSopUpdate(item.id, 'sopNumber', e.target.value)}
-                                                        className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B] text-center"
+                                                        className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D] text-center"
                                                         placeholder="#"
                                                         title="Section Number"
                                                     />
@@ -1146,7 +1146,7 @@ export function CreateVoucherModal({
                                             <Input
                                                 value={item.description}
                                                 onChange={(e) => handleUpdateItem('particulars', item.id, 'description', e.target.value)}
-                                                className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B]"
+                                                className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D]"
                                                 placeholder="Enter description"
                                             />
                                         )}
@@ -1156,7 +1156,7 @@ export function CreateVoucherModal({
                                             type="number"
                                             value={item.amount || ""}
                                             onChange={(e) => handleUpdateItem('particulars', item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                            className="h-9 text-right border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B]"
+                                            className="h-9 text-right border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D]"
                                             placeholder="0.00"
                                         />
                                     </td>
@@ -1178,7 +1178,7 @@ export function CreateVoucherModal({
                 {/* Table 2: Distribution of Account */}
                 <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
                     <div className="bg-[#FAFBFC] px-4 py-3 border-b border-[#E5E9F0] flex justify-between items-center">
-                        <h3 className="text-sm font-semibold text-[#12332B]">Distribution of Account</h3>
+                        <h3 className="text-sm font-semibold text-[#0A1D4D]">Distribution of Account</h3>
                         <Button 
                             type="button" 
                             variant="ghost" 
@@ -1205,7 +1205,7 @@ export function CreateVoucherModal({
                                             <Input
                                                 value={item.description}
                                                 onChange={(e) => handleUpdateItem('distribution', item.id, 'description', e.target.value)}
-                                                className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B]"
+                                                className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D]"
                                                 placeholder="Enter description"
                                             />
                                         </td>
@@ -1214,7 +1214,7 @@ export function CreateVoucherModal({
                                                 type="number"
                                                 value={item.amount || ""}
                                                 onChange={(e) => handleUpdateItem('distribution', item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                                className="h-9 text-right border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B]"
+                                                className="h-9 text-right border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D]"
                                                 placeholder="0.00"
                                             />
                                         </td>
@@ -1246,7 +1246,7 @@ export function CreateVoucherModal({
         <div className="p-6 border-t border-[#E5E9F0] bg-white flex justify-between items-center">
             <div className="text-right">
                 <div className="text-xs text-[#667085]">Total Amount</div>
-                <div className="text-xl font-bold text-[#12332B]">₱{formatAmount(calculateTotal())}</div>
+                <div className="text-xl font-bold text-[#0A1D4D]">₱{formatAmount(calculateTotal())}</div>
             </div>
             <div className="flex gap-3">
                 <Button 

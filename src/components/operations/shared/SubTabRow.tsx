@@ -23,7 +23,7 @@ export function SubTabRow({ tabs, activeTab, onTabChange }: SubTabRowProps) {
       style={{
         display: "flex",
         gap: "0",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         background: "#F9FAFB",
         padding: "0 48px",
       }}
@@ -67,7 +67,7 @@ export function SubTabRow({ tabs, activeTab, onTabChange }: SubTabRowProps) {
               <span
                 style={{
                   padding: "1px 7px",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                   fontSize: "11px",
                   fontWeight: 600,
                   background: isActive ? "#0F766E" : "#F3F4F6",

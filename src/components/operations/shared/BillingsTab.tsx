@@ -130,7 +130,7 @@ export function BillingsTab({ bookingId, bookingNumber, projectId: bookingProjec
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "24px" }}>
           <div>
-            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#12332B", marginBottom: "8px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", marginBottom: "8px" }}>
               Billings
             </h3>
             <p style={{ fontSize: "14px", color: "#667085", lineHeight: "20px" }}>
@@ -215,15 +215,15 @@ export function BillingsTab({ bookingId, bookingNumber, projectId: bookingProjec
                         setSelectedBillingId(billing.id);
                       }
                     }}
-                    className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                   >
                     <td style={{ padding: "16px", fontSize: "14px", fontWeight: 500, color: "#0F766E" }}>
                       {billing.billingNumber}
                     </td>
-                    <td style={{ padding: "16px", fontSize: "14px", color: "#12332B" }}>
+                    <td style={{ padding: "16px", fontSize: "14px", color: "#0A1D4D" }}>
                       {billing.clientName}
                     </td>
-                    <td style={{ padding: "16px", fontSize: "14px", fontWeight: 600, color: "#12332B", textAlign: "left" }}>
+                    <td style={{ padding: "16px", fontSize: "14px", fontWeight: 600, color: "#0A1D4D", textAlign: "left" }}>
                       <div>{formatCurrency(billing.totalAmount, billing.currency)}</div>
                     </td>
                     <td style={{ padding: "16px", fontSize: "14px", color: "#667085" }}>

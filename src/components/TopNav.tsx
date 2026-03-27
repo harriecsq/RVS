@@ -159,10 +159,10 @@ export function TopNav({ currentPage, onNavigate, currentUser, userRole = "Admin
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="end" 
-                className="bg-white border-[#E5E7EB] min-w-[220px] rounded-lg shadow-lg"
+                className="bg-white border-[#E5E9F0] min-w-[220px] rounded-lg shadow-lg"
                 sideOffset={8}
               >
-                <div className="px-3 py-2 border-b border-[#E5E7EB]">
+                <div className="px-3 py-2 border-b border-[#E5E9F0]">
                   <p className="text-[14px] text-[#1F2937]">{currentUser.name}</p>
                   <p className="text-xs text-[#6B7280]">{currentUser.role}</p>
                 </div>
@@ -187,7 +187,7 @@ export function TopNav({ currentPage, onNavigate, currentUser, userRole = "Admin
                   <span className="text-[14px] text-[#1F2937]">Settings</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuSeparator className="my-1 bg-[#E5E7EB]" />
+                <DropdownMenuSeparator className="my-1 bg-[#E5E9F0]" />
                 
                 <DropdownMenuItem 
                   className="cursor-pointer h-10 px-3 hover:bg-[#FFF6F2] rounded transition-colors my-1"

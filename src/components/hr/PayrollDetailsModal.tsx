@@ -154,7 +154,7 @@ export function PayrollDetailsModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="border-b border-[#E5E9F0] px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h3 className="text-[16px] text-[#0A1D4D]" style={{ fontWeight: 600 }}>
               Payroll Details – {company} – {period}
@@ -169,7 +169,7 @@ export function PayrollDetailsModal({
                 <Button
                   onClick={() => setEditMode(false)}
                   variant="outline"
-                  className="h-9 px-4 rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="h-9 px-4 rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ fontWeight: 600 }}
                 >
                   Cancel
@@ -545,7 +545,7 @@ export function PayrollDetailsModal({
 
           {/* Right Settings Panel */}
           <div
-            className="border-l border-[#E5E7EB] bg-[#F9FAFB] flex-shrink-0 p-6 overflow-y-auto"
+            className="border-l border-[#E5E9F0] bg-[#F9FAFB] flex-shrink-0 p-6 overflow-y-auto"
             style={{ width: "280px" }}
           >
             <h4
@@ -575,7 +575,7 @@ export function PayrollDetailsModal({
                 </Label>
                 <div className="text-[12px] text-[#0A1D4D]">Nearest peso</div>
               </div>
-              <div className="pt-4 border-t border-[#E5E7EB]">
+              <div className="pt-4 border-t border-[#E5E9F0]">
                 <p className="text-[11px] text-[#6B7280] italic">
                   Note: Deductions handled manually for now.
                 </p>

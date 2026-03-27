@@ -134,7 +134,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
     <div style={{ padding: "32px 48px", maxWidth: "1400px", margin: "0 auto" }}>
       {/* Container matching Collections Tab design */}
       <div style={{ 
-        border: "1px solid #E5E7EB", 
+        border: "1px solid #E5E9F0", 
         borderRadius: "12px", 
         backgroundColor: "#FFFFFF",
         overflow: "hidden"
@@ -142,7 +142,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
         {/* Header */}
         <div style={{ 
           padding: "24px", 
-          borderBottom: "1px solid #E5E7EB",
+          borderBottom: "1px solid #E5E9F0",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center"
@@ -154,7 +154,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
             }}>
               Linked Billings
             </h3>
-            <p style={{ fontSize: "14px", color: "#12332B", marginTop: "4px", marginBottom: 0 }}>
+            <p style={{ fontSize: "14px", color: "#0A1D4D", marginTop: "4px", marginBottom: 0 }}>
               Invoices associated with Collection {collectionNumber}
             </p>
           </div>
@@ -170,7 +170,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
           <div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E7EB" }}>
+                <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Billing Number</th>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Client</th>
@@ -184,7 +184,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
                   <tr 
                     key={billing.id} 
                     style={{ 
-                      borderBottom: index < billings.length - 1 ? "1px solid #E5E7EB" : "none",
+                      borderBottom: index < billings.length - 1 ? "1px solid #E5E9F0" : "none",
                       transition: "background 0.15s ease",
                       cursor: "pointer"
                     }}
@@ -201,27 +201,27 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px" }}>
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {formatDate(billing.billingDate || billing.created_at)}
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px" }}>
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {billing.clientName || "—"}
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                      <div style={{ fontSize: "14px", color: "#12332B", fontWeight: 500 }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>
                         {formatCurrency(billing.totalAmount, billing.currency)}
                       </div>
                       {(billing.pendingAmount ?? billing.totalAmount) > 0 && (
-                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#DC2626", marginTop: "2px" }}>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444", marginTop: "2px" }}>
                           Pending: ₱{formatAmount(billing.pendingAmount ?? billing.totalAmount)}
                         </div>
                       )}
                     </td>
                     <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                      <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
                         {formatCurrency(billing.allocatedAmount, billing.currency)}
                       </div>
                     </td>
@@ -235,7 +235,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
           </div>
         ) : (
           <div style={{ padding: "48px 24px", textAlign: "center" }}>
-            <FileText size={40} style={{ color: "#E5E7EB", margin: "0 auto 12px" }} />
+            <FileText size={40} style={{ color: "#E5E9F0", margin: "0 auto 12px" }} />
             <p style={{ fontSize: "14px", color: "#667085", margin: 0 }}>
               No billings linked to this collection
             </p>

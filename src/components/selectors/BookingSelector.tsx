@@ -136,7 +136,7 @@ export function BookingSelector({
         >
           {selectedBooking ? (
             <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-              <span className="font-medium text-[#12332B] truncate w-full flex items-center gap-2">
+              <span className="font-medium text-[#0A1D4D] truncate w-full flex items-center gap-2">
                 {selectedBooking.trackingNo}
               </span>
               <span className="text-xs text-[#667085] truncate w-full">
@@ -178,7 +178,7 @@ export function BookingSelector({
                     className="flex flex-col items-start gap-1 py-3 cursor-pointer"
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-2 font-medium text-[#12332B]">
+                      <div className="flex items-center gap-2 font-medium text-[#0A1D4D]">
                         <span>{booking.trackingNo}</span>
                         {booking.id === value && <Check className="h-4 w-4 ml-2 text-[#0F766E]" />}
                       </div>

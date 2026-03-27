@@ -39,7 +39,7 @@ export function StandardSearchInput({
           width: '100%',
           padding: '10px 12px 10px 40px',
           border: '1px solid var(--neuron-ui-border)',
-          borderRadius: '8px',
+          borderRadius: '6px',
           fontSize: '14px',
           outline: 'none',
           color: disabled ? '#9CA3AF' : 'var(--neuron-ink-primary)',

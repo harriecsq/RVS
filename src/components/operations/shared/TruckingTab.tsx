@@ -71,7 +71,7 @@ export function TruckingTab({ bookingId, bookingType, currentUser }: TruckingTab
       <div style={{ padding: "32px 48px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
           <Truck size={44} style={{ color: "#D1D5DB", marginBottom: "14px" }} />
-          <p style={{ fontSize: "15px", fontWeight: 600, color: "#12332B", margin: "0 0 6px" }}>No trucking record</p>
+          <p style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>No trucking record</p>
           <p style={{ fontSize: "13px", color: "#667085", margin: "0 0 16px" }}>
             Add a trucking assignment for this booking.
           </p>

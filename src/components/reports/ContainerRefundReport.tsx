@@ -100,7 +100,7 @@ function KPICard({ label, value }: { label: string; value: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   let bg = "#F3F4F6";
-  let color = "#374151";
+  let color = "#344054";
 
   if (status.startsWith("REFUNDED")) {
     bg = "#DEF7EC";
@@ -110,7 +110,7 @@ function StatusBadge({ status }: { status: string }) {
     color = "#92400E";
   } else if (status === "Not Refunded") {
     bg = "#F3F4F6";
-    color = "#374151";
+    color = "#344054";
   }
 
   return (
@@ -419,7 +419,7 @@ export function ContainerRefundReport() {
               <h1 style={{ 
                 fontSize: "32px", 
                 fontWeight: 600, 
-                color: "#12332B", 
+                color: "#0A1D4D", 
                 marginBottom: "4px",
                 letterSpacing: "-1.2px"
               }}>
@@ -624,7 +624,7 @@ export function ContainerRefundReport() {
                       </td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.refundCheckNo || "—"}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.refundDate || "—"}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", color: (row.deduction ?? 0) > 0 ? "#DC2626" : "var(--neuron-ink-muted)", borderBottom: "1px solid var(--neuron-ui-border)", fontWeight: (row.deduction ?? 0) > 0 ? 600 : 400 }}>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: (row.deduction ?? 0) > 0 ? "#EF4444" : "var(--neuron-ink-muted)", borderBottom: "1px solid var(--neuron-ui-border)", fontWeight: (row.deduction ?? 0) > 0 ? 600 : 400 }}>
                         {row.deduction !== null ? formatCurrency(row.deduction) : "—"}
                       </td>
                     </tr>

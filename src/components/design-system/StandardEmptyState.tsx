@@ -45,7 +45,7 @@ export function StandardEmptyState({
         style={{
           fontSize: '16px',
           fontWeight: 600,
-          color: '#12332B',
+          color: '#0A1D4D',
           marginBottom: description || action ? '8px' : '0'
         }}
       >

@@ -357,7 +357,7 @@ export function InDepthProfitLossReport() {
       {/* Header */}
       <div style={{
         background: "white",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         padding: "20px 48px",
         maxWidth: "1440px",
         width: "100%",
@@ -383,7 +383,7 @@ export function InDepthProfitLossReport() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#12332B", marginBottom: "2px" }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", marginBottom: "2px" }}>
                 In-Depth Profit / Loss Report
               </h1>
               <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>Per-booking profit and loss analysis</p>
@@ -417,12 +417,12 @@ export function InDepthProfitLossReport() {
         <div style={{
           background: "white",
           borderRadius: "12px",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           overflow: "hidden",
           marginBottom: "24px"
         }}>
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>Select Booking</h3>
+          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>Select Booking</h3>
           </div>
           <div style={{ padding: "24px" }}>
             <BookingSelector
@@ -438,12 +438,12 @@ export function InDepthProfitLossReport() {
                 <div style={{
                   background: "white",
                   borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid #E5E9F0",
                   overflow: "hidden",
                   marginBottom: "24px"
                 }}>
-                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-                        <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>Booking Summary</h2>
+                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
+                        <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>Booking Summary</h2>
                     </div>
                     <div style={{ padding: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px 48px" }}>
                         {/* Column 1 */}
@@ -464,11 +464,11 @@ export function InDepthProfitLossReport() {
                                 {containerNos.length > 0 ? (
                                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                         {containerNos.map((c, i) => (
-                                            <span key={i} style={{ fontSize: "14px", fontWeight: 500, color: "#12332B" }}>{c}</span>
+                                            <span key={i} style={{ fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>{c}</span>
                                         ))}
                                     </div>
                                 ) : (
-                                    <span style={{ fontSize: "14px", fontWeight: 500, color: "#12332B" }}>—</span>
+                                    <span style={{ fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>—</span>
                                 )}
                             </div>
                             <SummaryField label="Releasing Date" value={releasingDate} />
@@ -480,17 +480,17 @@ export function InDepthProfitLossReport() {
                 <div style={{
                   background: "white",
                   borderRadius: "12px",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid #E5E9F0",
                   overflow: "hidden",
                   marginBottom: "24px"
                 }}>
-                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-                        <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>Particulars</h2>
+                    <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
+                        <h2 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>Particulars</h2>
                     </div>
                     <div>
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead>
-                                <tr style={{ background: "white", borderBottom: "1px solid #E5E7EB" }}>
+                                <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
                                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px" }}>Particulars</th>
                                     <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px" }}>Amount</th>
                                 </tr>
@@ -504,7 +504,7 @@ export function InDepthProfitLossReport() {
                                         // Voucher Group Header Row
                                         rows.push(
                                             <tr key={`header-${groupKey}`} style={{ background: "#F9FAFB" }}>
-                                                <td colSpan={2} style={{ padding: "12px 24px", fontSize: "14px", fontWeight: 700, color: "#12332B", borderBottom: "1px solid #E5E7EB" }}>
+                                                <td colSpan={2} style={{ padding: "12px 24px", fontSize: "14px", fontWeight: 700, color: "#0A1D4D", borderBottom: "1px solid #E5E9F0" }}>
                                                     Voucher: {expenseGroup.voucherNo}
                                                 </td>
                                             </tr>
@@ -532,15 +532,15 @@ export function InDepthProfitLossReport() {
                             </tbody>
                             <tfoot>
                                 {/* Total Expenses */}
-                                <tr style={{ background: "#F9FAFB", borderTop: "1px solid #E5E7EB" }}>
-                                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#12332B", textTransform: "uppercase" }}>Total Expenses</td>
-                                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#DC2626", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                <tr style={{ background: "#F9FAFB", borderTop: "1px solid #E5E9F0" }}>
+                                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" }}>Total Expenses</td>
+                                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#EF4444", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                                         PHP {formatAmount(totalExpenses)}
                                     </td>
                                 </tr>
                                 {/* Total Revenue */}
                                 <tr style={{ background: "#F9FAFB" }}>
-                                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#12332B", textTransform: "uppercase" }}>Total Revenue</td>
+                                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" }}>Total Revenue</td>
                                     <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700, color: "#0F766E", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                                         PHP {formatAmount(totalRevenue)}
                                     </td>
@@ -551,7 +551,7 @@ export function InDepthProfitLossReport() {
                                 </tr>
                                 {/* Net Profit / Loss */}
                                 <tr style={{ background: "#F9FAFB" }}>
-                                    <td style={{ padding: "24px", fontSize: "20px", fontWeight: 700, color: "#12332B", textTransform: "uppercase" }}>
+                                    <td style={{ padding: "24px", fontSize: "20px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" }}>
                                         {netProfit > 0 ? "Net Profit" : netProfit < 0 ? "Net Loss" : "Break Even"}
                                     </td>
                                     <td style={{
@@ -560,7 +560,7 @@ export function InDepthProfitLossReport() {
                                         fontWeight: 700,
                                         textAlign: "right",
                                         fontVariantNumeric: "tabular-nums",
-                                        color: netProfit > 0 ? "#0F766E" : netProfit < 0 ? "#DC2626" : "#667085"
+                                        color: netProfit > 0 ? "#0F766E" : netProfit < 0 ? "#EF4444" : "#667085"
                                     }}>
                                         PHP {formatAmount(Math.abs(netProfit))}
                                     </td>
@@ -580,7 +580,7 @@ function SummaryField({ label, value }: { label: string; value: string }) {
     return (
         <div style={{ marginBottom: "16px" }}>
             <span style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>{label}</span>
-            <span style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#12332B" }} title={value}>{value}</span>
+            <span style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }} title={value}>{value}</span>
         </div>
     );
 }

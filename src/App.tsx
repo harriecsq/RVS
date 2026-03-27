@@ -86,7 +86,7 @@ function LoginPage() {
         backgroundColor: "#FFFFFF",
         borderRadius: "16px",
         padding: "40px 48px",
-        border: "1px solid #E5E7EB",
+        border: "1px solid #E5E9F0",
       }}>
         {/* Logo and Header */}
         <div style={{
@@ -110,7 +110,7 @@ function LoginPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label htmlFor="email" style={{
               display: "block",
-              color: "#12332B",
+              color: "#0A1D4D",
               fontWeight: 500,
               fontSize: "14px",
             }}>
@@ -126,9 +126,9 @@ function LoginPage() {
                 width: "100%",
                 padding: "10px 14px",
                 borderRadius: "8px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 backgroundColor: "#F9FAFB",
-                color: "#12332B",
+                color: "#0A1D4D",
                 fontSize: "15px",
                 outline: "none",
                 boxSizing: "border-box",
@@ -142,7 +142,7 @@ function LoginPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <label htmlFor="password" style={{
                 display: "block",
-                color: "#12332B",
+                color: "#0A1D4D",
                 fontWeight: 500,
                 fontSize: "14px",
               }}>
@@ -172,9 +172,9 @@ function LoginPage() {
                 width: "100%",
                 padding: "10px 14px",
                 borderRadius: "8px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 backgroundColor: "#F9FAFB",
-                color: "#12332B",
+                color: "#0A1D4D",
                 fontSize: "15px",
                 outline: "none",
                 boxSizing: "border-box",
@@ -447,16 +447,16 @@ function BookingDetailPage() {
   if (!booking) {
     return (
       <RouteWrapper page="operations">
-        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7FAF8' }}>
+        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB' }}>
           <div style={{ textAlign: 'center' }}>
-            <h2 style={{ color: '#12332B', marginBottom: '8px' }}>Booking Not Found</h2>
-            <p style={{ color: '#6B7A76' }}>Booking ID: {bookingId}</p>
+            <h2 style={{ color: '#0A1D4D', marginBottom: '8px' }}>Booking Not Found</h2>
+            <p style={{ color: '#667085' }}>Booking ID: {bookingId}</p>
             <button 
               onClick={() => navigate('/operations')}
               style={{
                 marginTop: '16px',
                 padding: '8px 16px',
-                background: '#237F66',
+                background: '#0F766E',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -569,10 +569,10 @@ function HRPage() {
 function CalendarPage() {
   return (
     <RouteWrapper page="calendar">
-      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7FAF8' }}>
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB' }}>
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ color: '#12332B', marginBottom: '8px' }}>My Calendar</h2>
-          <p style={{ color: '#6B7A76' }}>Coming soon...</p>
+          <h2 style={{ color: '#0A1D4D', marginBottom: '8px' }}>My Calendar</h2>
+          <p style={{ color: '#667085' }}>Coming soon...</p>
         </div>
       </div>
     </RouteWrapper>
@@ -611,7 +611,7 @@ function ProfilePage() {
 function AdminPage() {
   return (
     <RouteWrapper page="admin">
-      <div style={{ padding: '32px', textAlign: 'center', color: '#6B7A76' }}>Admin module unavailable</div>
+      <div style={{ padding: '32px', textAlign: 'center', color: '#667085' }}>Admin module unavailable</div>
     </RouteWrapper>
   );
 }
@@ -631,7 +631,7 @@ function AppContent() {
         justifyContent: "center",
       }}>
         <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#6B7A76", fontSize: "15px", fontFamily: "'Inter', sans-serif" }}>Loading...</p>
+          <p style={{ color: "#667085", fontSize: "15px", fontFamily: "'Inter', sans-serif" }}>Loading...</p>
         </div>
       </div>
     );
@@ -769,7 +769,7 @@ export default function App() {
             style={{
               width: "120px",
               height: "3px",
-              backgroundColor: "#E5ECE9",
+              backgroundColor: "#E5E9F0",
               borderRadius: "2px",
               overflow: "hidden",
               position: "relative",
@@ -782,7 +782,7 @@ export default function App() {
                 left: 0,
                 height: "100%",
                 width: "40%",
-                backgroundColor: "#237F66",
+                backgroundColor: "#0F766E",
                 borderRadius: "2px",
                 animation: "neuronLoadSlide 1.2s ease-in-out infinite",
               }}

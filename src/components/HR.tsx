@@ -181,7 +181,7 @@ export function HR({ userRole }: HRProps) {
           }}
         >
           <div>
-            <h1 style={{ fontSize: "32px", fontWeight: 600, color: "#12332B", marginBottom: "4px", letterSpacing: "-1.2px" }}>
+            <h1 style={{ fontSize: "32px", fontWeight: 600, color: "#0A1D4D", marginBottom: "4px", letterSpacing: "-1.2px" }}>
               HR
             </h1>
             <p style={{ fontSize: "14px", color: "#667085" }}>
@@ -192,7 +192,7 @@ export function HR({ userRole }: HRProps) {
 
         {/* Filter Bar */}
         <div
-          className="bg-white border border-[#E5E7EB] rounded-[16px]"
+          className="bg-white border border-[#E5E9F0] rounded-[16px]"
           style={{
             padding: "16px 20px",
             marginBottom: "16px",
@@ -202,7 +202,7 @@ export function HR({ userRole }: HRProps) {
             <div className="flex-shrink-0">
               <Select value={filterCompany} onValueChange={setFilterCompany}>
                 <SelectTrigger
-                  className="h-11 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                  className="h-11 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                   style={{ width: "160px" }}
                 >
                   <SelectValue />
@@ -221,7 +221,7 @@ export function HR({ userRole }: HRProps) {
             <div className="flex-shrink-0">
               <Select value="Oct 1–15, 2025" onValueChange={() => {}}>
                 <SelectTrigger
-                  className="h-11 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                  className="h-11 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                   style={{ width: "180px" }}
                 >
                   <SelectValue />
@@ -237,7 +237,7 @@ export function HR({ userRole }: HRProps) {
             <div className="flex-shrink-0">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger
-                  className="h-11 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                  className="h-11 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                   style={{ width: "120px" }}
                 >
                   <SelectValue />
@@ -271,9 +271,9 @@ export function HR({ userRole }: HRProps) {
                   )}
                   style={{
                     fontWeight: activeSection === item.id ? 600 : 500,
-                    backgroundColor: activeSection === item.id ? "#E4EFEA" : "transparent",
-                    border: activeSection === item.id ? "1.5px solid #5FC4A1" : "1.5px solid transparent",
-                    color: activeSection === item.id ? "#237F66" : "#6B7280",
+                    backgroundColor: activeSection === item.id ? "#E8F5F3" : "transparent",
+                    border: activeSection === item.id ? "1.5px solid #0F766E" : "1.5px solid transparent",
+                    color: activeSection === item.id ? "#0F766E" : "#6B7280",
                   }}
                 >
                   <Icon className="w-4 h-4" />
@@ -305,11 +305,11 @@ export function HR({ userRole }: HRProps) {
 
             {activeSection === "Timekeeping" && (
               <div
-                className="bg-white border border-[#E5E7EB] rounded-[20px] overflow-visible flex flex-col"
+                className="bg-white border border-[#E5E9F0] rounded-[20px] overflow-visible flex flex-col"
               >
                 {/* Timekeeping Header */}
                 <div
-                  className="flex items-center justify-between border-b border-[#E5E7EB] flex-shrink-0"
+                  className="flex items-center justify-between border-b border-[#E5E9F0] flex-shrink-0"
                   style={{ padding: "20px 24px" }}
                 >
                   <h2
@@ -322,13 +322,13 @@ export function HR({ userRole }: HRProps) {
 
                 {/* Toolbar */}
                 <div
-                  className="flex items-center justify-between border-b border-[#E5E7EB] flex-shrink-0"
+                  className="flex items-center justify-between border-b border-[#E5E9F0] flex-shrink-0"
                   style={{ padding: "16px 24px" }}
                 >
                   <div className="flex-shrink-0">
                     <Select value={filterCompany} onValueChange={setFilterCompany}>
                       <SelectTrigger
-                        className="h-9 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                        className="h-9 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                         style={{ width: "140px" }}
                       >
                         <SelectValue />
@@ -369,7 +369,7 @@ export function HR({ userRole }: HRProps) {
                     <Button
                       onClick={() => toast.success("Exporting...")}
                       variant="outline"
-                      className="h-9 px-4 rounded-full border-[#E5E7EB] text-[13px]"
+                      className="h-9 px-4 rounded-full border-[#E5E9F0] text-[13px]"
                       style={{ fontWeight: 600 }}
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -500,11 +500,11 @@ export function HR({ userRole }: HRProps) {
 
             {activeSection === "Payroll" && (
               <div
-                className="bg-white border border-[#E5E7EB] rounded-[20px] overflow-visible flex flex-col"
+                className="bg-white border border-[#E5E9F0] rounded-[20px] overflow-visible flex flex-col"
               >
                 {/* Payroll Header */}
                 <div
-                  className="flex items-center justify-between border-b border-[#E5E7EB] flex-shrink-0"
+                  className="flex items-center justify-between border-b border-[#E5E9F0] flex-shrink-0"
                   style={{ padding: "20px 24px" }}
                 >
                   <h2
@@ -525,14 +525,14 @@ export function HR({ userRole }: HRProps) {
 
                 {/* Payroll Filters */}
                 <div
-                  className="border-b border-[#E5E7EB] flex-shrink-0"
+                  className="border-b border-[#E5E9F0] flex-shrink-0"
                   style={{ padding: "16px 24px" }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
                       <Select value="Oct 1–15, 2025" onValueChange={() => {}}>
                         <SelectTrigger
-                          className="h-9 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                          className="h-9 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                           style={{ width: "160px" }}
                         >
                           <SelectValue />
@@ -551,7 +551,7 @@ export function HR({ userRole }: HRProps) {
                     <div className="flex-shrink-0">
                       <Select value="All" onValueChange={() => {}}>
                         <SelectTrigger
-                          className="h-9 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                          className="h-9 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                           style={{ width: "140px" }}
                         >
                           <SelectValue />
@@ -570,7 +570,7 @@ export function HR({ userRole }: HRProps) {
                     <div className="flex-shrink-0">
                       <Select value="All" onValueChange={() => {}}>
                         <SelectTrigger
-                          className="h-9 rounded-full border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
+                          className="h-9 rounded-full border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors duration-150 text-[13px] px-4"
                           style={{ width: "120px" }}
                         >
                           <SelectValue />
@@ -592,7 +592,7 @@ export function HR({ userRole }: HRProps) {
                     {COMPANIES.map((company, idx) => (
                       <div
                         key={company}
-                        className="border border-[#E5E7EB] rounded-lg p-6 hover:border-[#0A1D4D] transition-colors cursor-pointer"
+                        className="border border-[#E5E9F0] rounded-lg p-6 hover:border-[#0A1D4D] transition-colors cursor-pointer"
                         onClick={() => handleOpenPayrollDetails(company)}
                       >
                         <div className="flex items-start justify-between mb-4">
@@ -621,7 +621,7 @@ export function HR({ userRole }: HRProps) {
                         </div>
                         <Button
                           variant="outline"
-                          className="w-full h-9 rounded-lg border-[#E5E7EB] text-[13px]"
+                          className="w-full h-9 rounded-lg border-[#E5E9F0] text-[13px]"
                           style={{ fontWeight: 600 }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -642,7 +642,7 @@ export function HR({ userRole }: HRProps) {
 
         {/* Developer Notes - Inside scroll area */}
         <div
-          className="p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg"
+          className="p-3 bg-[#F9FAFB] border border-[#E5E9F0] rounded-lg"
           style={{
             maxWidth: "1180px",
             width: "100%",

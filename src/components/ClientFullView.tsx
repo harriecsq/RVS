@@ -431,8 +431,8 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
           <div className="flex items-start justify-between gap-6" style={{ marginBottom: "24px" }}>
             {/* Left: Client Identity */}
             <div className="flex items-start gap-4 flex-1 min-w-0">
-              <Avatar className="w-12 h-12 shrink-0" style={{ backgroundColor: "#12332B" }}>
-                <AvatarFallback style={{ backgroundColor: "#12332B", color: "white" }}>
+              <Avatar className="w-12 h-12 shrink-0" style={{ backgroundColor: "#0A1D4D" }}>
+                <AvatarFallback style={{ backgroundColor: "#0A1D4D", color: "white" }}>
                   {getClientInitials(client.name)}
                 </AvatarFallback>
               </Avatar>
@@ -454,7 +454,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                 className="rounded-xl h-10 px-4"
                 style={{ 
                   borderColor: "#E5E9F0", 
-                  color: "#374151",
+                  color: "#344054",
                   backgroundColor: "white"
                 }}
               >
@@ -607,7 +607,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                                     <td className="py-4 px-4 text-[#0A1D4D]">
                                       {booking.bookingId}
                                     </td>
-                                    <td className="py-4 px-4 text-[#374151]">
+                                    <td className="py-4 px-4 text-[#344054]">
                                       {booking.services?.join(", ") || "N/A"}
                                     </td>
                                     <td className="py-4 px-4">
@@ -616,13 +616,13 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                                         className="px-2 py-0.5"
                                         style={{
                                           borderColor: "#E5E9F0",
-                                          color: "#374151"
+                                          color: "#344054"
                                         }}
                                       >
                                         {booking.mode || "N/A"}
                                       </Badge>
                                     </td>
-                                    <td className="py-4 px-4 text-[#374151]">
+                                    <td className="py-4 px-4 text-[#344054]">
                                       {booking.aolPol && booking.aodPod 
                                         ? `${booking.aolPol} → ${booking.aodPod}`
                                         : "N/A"}
@@ -671,7 +671,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                                     <td className="py-4 px-4 text-[#0A1D4D]">
                                       {booking.bookingId}
                                     </td>
-                                    <td className="py-4 px-4 text-[#374151]">
+                                    <td className="py-4 px-4 text-[#344054]">
                                       {booking.service || "N/A"}
                                     </td>
                                     <td className="py-4 px-4">
@@ -680,13 +680,13 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                                         className="px-2 py-0.5"
                                         style={{
                                           borderColor: "#E5E9F0",
-                                          color: "#374151"
+                                          color: "#344054"
                                         }}
                                       >
                                         {booking.mode || "N/A"}
                                       </Badge>
                                     </td>
-                                    <td className="py-4 px-4 text-[#374151]">
+                                    <td className="py-4 px-4 text-[#344054]">
                                       {booking.aolPol && booking.aodPod 
                                         ? `${booking.aolPol} → ${booking.aodPod}`
                                         : booking.pod 
@@ -752,13 +752,13 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                               <td className="py-4 px-4 text-[#0A1D4D]">
                                 {project.project_number}
                               </td>
-                              <td className="py-4 px-4 text-[#374151]">
+                              <td className="py-4 px-4 text-[#344054]">
                                 {project.quotation_number}
                               </td>
-                              <td className="py-4 px-4 text-[#374151]">
+                              <td className="py-4 px-4 text-[#344054]">
                                 {project.services?.join(", ") || "N/A"}
                               </td>
-                              <td className="py-4 px-4 text-[#374151]">
+                              <td className="py-4 px-4 text-[#344054]">
                                 ₱{formatAmount(project.total)}
                               </td>
                               <td className="py-4 px-4">
@@ -820,7 +820,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                                 className="px-2 py-0.5 flex items-center gap-1"
                                 style={{
                                   borderColor: "#E5E9F0",
-                                  color: "#374151"
+                                  color: "#344054"
                                 }}
                               >
                                 {getModeIcon(template.mode)}
@@ -859,7 +859,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
                             className="flex-1 rounded-lg"
                             style={{
                               borderColor: "#E5E9F0",
-                              color: "#374151",
+                              color: "#344054",
                               backgroundColor: "white"
                             }}
                           >
@@ -907,7 +907,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-[#374151]">Company Name *</Label>
+              <Label className="text-[#344054]">Company Name *</Label>
               <Input
                 defaultValue={client.name}
                 className="rounded-lg"
@@ -916,7 +916,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[#374151]">Contact Person *</Label>
+              <Label className="text-[#344054]">Contact Person *</Label>
               <Input
                 defaultValue={client.contactPerson}
                 className="rounded-lg"
@@ -926,7 +926,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[#374151]">Phone *</Label>
+                <Label className="text-[#344054]">Phone *</Label>
                 <Input
                   defaultValue={client.phone}
                   className="rounded-lg"
@@ -935,7 +935,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[#374151]">Email *</Label>
+                <Label className="text-[#344054]">Email *</Label>
                 <Input
                   type="email"
                   defaultValue={client.email}
@@ -946,7 +946,7 @@ export function ClientFullView({ clientId, bookings: allBookingsFromApp = [], on
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[#374151]">Address</Label>
+              <Label className="text-[#344054]">Address</Label>
               <Textarea
                 defaultValue={client.address}
                 rows={3}

@@ -81,7 +81,7 @@ function NeuronDropdown({
           fontSize: "14px",
           border: "1px solid #E5E9F0",
           borderRadius: "8px",
-          color: value ? "#12332B" : "#9CA3AF",
+          color: value ? "#0A1D4D" : "#9CA3AF",
           fontWeight: value ? 500 : 400,
           backgroundColor: "white",
           cursor: "pointer",
@@ -111,7 +111,7 @@ function NeuronDropdown({
             left: 0,
             right: 0,
             background: "white",
-            border: "1.5px solid #E5E7EB",
+            border: "1.5px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
             zIndex: 9999,
@@ -131,7 +131,7 @@ function NeuronDropdown({
                 fontSize: "14px",
                 fontWeight: 500,
                 cursor: "pointer",
-                color: "#12332B",
+                color: "#0A1D4D",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -219,7 +219,7 @@ function ShippingLineDropdown({
             left: 0,
             right: 0,
             background: "white",
-            border: "1.5px solid #E5E7EB",
+            border: "1.5px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
             zIndex: 9999,
@@ -230,7 +230,7 @@ function ShippingLineDropdown({
           <div
             style={{
               padding: "8px",
-              borderBottom: "1px solid #E5E7EB",
+              borderBottom: "1px solid #E5E9F0",
               position: "sticky" as const,
               top: 0,
               background: "white",
@@ -280,7 +280,7 @@ function ShippingLineDropdown({
                 alignItems: "center",
                 gap: "10px",
                 background: value === option ? "#F0FDF4" : "transparent",
-                borderBottom: index < filtered.length - 1 ? "1px solid #E5E7EB" : "none",
+                borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
                 transition: "all 0.15s ease",
               }}
               onMouseEnter={(e) => {
@@ -318,7 +318,7 @@ const neuronInputStyle: React.CSSProperties = {
   fontSize: "14px",
   border: "1px solid #E5E9F0",
   borderRadius: "8px",
-  color: "#12332B",
+  color: "#0A1D4D",
   backgroundColor: "white",
   outline: "none",
   transition: "all 0.2s",
@@ -661,10 +661,10 @@ export function CreateExportBookingPanel({
               onClick={handleClose}
               className="p-2 hover:bg-[#0F766E]/10 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-[#12332B]" />
+              <ArrowLeft className="w-5 h-5 text-[#0A1D4D]" />
             </button>
             <div>
-              <h2 className="text-2xl font-semibold text-[#12332B] mb-1">
+              <h2 className="text-2xl font-semibold text-[#0A1D4D] mb-1">
                 Create Export Booking
               </h2>
               <p className="text-sm text-[#667085]">
@@ -854,7 +854,7 @@ export function CreateExportBookingPanel({
                       left: 0,
                       right: 0,
                       background: "white",
-                      border: "1.5px solid #E5E7EB",
+                      border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
                       boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                       zIndex: 9999,
@@ -878,7 +878,7 @@ export function CreateExportBookingPanel({
                             alignItems: "center",
                             gap: "10px",
                             background: origin === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < 3 ? "1px solid #E5E7EB" : "none",
+                            borderBottom: index < 3 ? "1px solid #E5E9F0" : "none",
                             transition: "all 0.15s ease"
                           }}
                           onMouseEnter={(e) => {

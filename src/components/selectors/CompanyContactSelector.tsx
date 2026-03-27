@@ -120,7 +120,7 @@ export function CompanyContactSelector({
     height: "auto",
     minHeight: "42px",
     backgroundColor: disabled ? "#FAFBFC" : "white",
-    border: disabled ? "1px solid #E5E7EB" : "1px solid #0F766E",
+    border: disabled ? "1px solid #E5E9F0" : "1px solid #0F766E",
     borderRadius: "6px",
     fontSize: "14px",
     color: "var(--neuron-ink-primary)",
@@ -154,7 +154,7 @@ export function CompanyContactSelector({
               ) : selectedCompany ? (
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-[#0F766E]" />
-                  <span className="font-medium text-[#12332B]">{selectedCompany.name || selectedCompany.company_name}</span>
+                  <span className="font-medium text-[#0A1D4D]">{selectedCompany.name || selectedCompany.company_name}</span>
                 </div>
               ) : (
                 <span className="text-[#667085]">{disabled ? "—" : "Select company..."}</span>
@@ -170,7 +170,7 @@ export function CompanyContactSelector({
                   placeholder="Search companies..."
                   value={searchCompany}
                   onChange={(e) => setSearchCompany(e.target.value)}
-                  className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50 text-[#12332B]"
+                  className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50 text-[#0A1D4D]"
                 />
               </div>
               <CommandList>
@@ -188,12 +188,12 @@ export function CompanyContactSelector({
                         setOpenCompany(false);
                       }}
                       className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 data-[selected=true]:bg-gray-100"
-                      style={{ color: "#12332B" }}
+                      style={{ color: "#0A1D4D" }}
                     >
                       <Check
                         className={`h-4 w-4 ${company.id === companyId ? "opacity-100" : "opacity-0"} text-[#0F766E]`}
                       />
-                      <span style={{ color: "#12332B" }}>{company.name || company.company_name}</span>
+                      <span style={{ color: "#0A1D4D" }}>{company.name || company.company_name}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -228,7 +228,7 @@ export function CompanyContactSelector({
                 ) : selectedContact ? (
                   <div className="flex items-center gap-2 flex-1">
                     <User className="h-4 w-4 text-[#0F766E]" />
-                    <span className="font-medium text-[#12332B]">{selectedContact.name}</span>
+                    <span className="font-medium text-[#0A1D4D]">{selectedContact.name}</span>
                   </div>
                 ) : (
                   <span className="text-[#667085]">{disabled ? "—" : "Select contact..."}</span>
@@ -274,7 +274,7 @@ export function CompanyContactSelector({
                     placeholder="Search contacts..."
                     value={searchContact}
                     onChange={(e) => setSearchContact(e.target.value)}
-                    className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50 text-[#12332B]"
+                    className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50 text-[#0A1D4D]"
                   />
                 </div>
                 <CommandList>
@@ -292,13 +292,13 @@ export function CompanyContactSelector({
                           setOpenContact(false);
                         }}
                         className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 data-[selected=true]:bg-gray-100"
-                        style={{ color: "#12332B" }}
+                        style={{ color: "#0A1D4D" }}
                       >
                         <Check
                           className={`h-4 w-4 ${contact.id === contactId ? "opacity-100" : "opacity-0"} text-[#0F766E]`}
                         />
                         <div className="flex flex-col">
-                          <span style={{ color: "#12332B" }}>{contact.name}</span>
+                          <span style={{ color: "#0A1D4D" }}>{contact.name}</span>
                           {contact.title && <span className="text-xs" style={{ color: "#667085" }}>{contact.title}</span>}
                         </div>
                       </CommandItem>

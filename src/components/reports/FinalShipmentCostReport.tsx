@@ -588,7 +588,7 @@ export function FinalShipmentCostReport() {
               <h1 style={{ 
                 fontSize: "32px", 
                 fontWeight: 600, 
-                color: "#12332B", 
+                color: "#0A1D4D", 
                 marginBottom: "4px",
                 letterSpacing: "-1.2px"
               }}>
@@ -727,7 +727,7 @@ export function FinalShipmentCostReport() {
           <KPICard label="Total Shipments" value={totalShipments.toString()} />
           <KPICard label="Total Billing" value={formatCurrency(totalBilling)} />
           <KPICard label="Total Costing" value={formatCurrency(totalCosting)} />
-          <KPICard label="Total Profit" value={formatCurrency(totalProfit)} color={totalProfit >= 0 ? "var(--neuron-brand-green)" : "#DC2626"} />
+          <KPICard label="Total Profit" value={formatCurrency(totalProfit)} color={totalProfit >= 0 ? "var(--neuron-brand-green)" : "#EF4444"} />
         </div>
 
         {/* --- Data Table --- */}
@@ -794,7 +794,7 @@ export function FinalShipmentCostReport() {
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.soaNumber}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-primary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.billingAmount)}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.costingAmount)}</td>
-                      <td style={{ padding: "12px 16px", fontSize: "13px", color: row.profit >= 0 ? "#03543F" : "#DC2626", fontWeight: 600, borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.profit)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: row.profit >= 0 ? "#03543F" : "#EF4444", fontWeight: 600, borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.profit)}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.containerDeposit)}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{row.bankDetails}</td>
                       <td style={{ padding: "12px 16px", fontSize: "13px", color: "var(--neuron-ink-secondary)", borderBottom: "1px solid var(--neuron-ui-border)" }}>{formatCurrency(row.checkAmount)}</td>

@@ -264,12 +264,12 @@ const COMPANY_DATA: CompanySection[] = [
 export function EmployeeRosterExcel() {
   return (
     <div
-      className="bg-white border border-[#E5E7EB] rounded-[20px] overflow-hidden flex flex-col"
+      className="bg-white border border-[#E5E9F0] rounded-[20px] overflow-hidden flex flex-col"
       style={{ maxHeight: "640px" }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between border-b border-[#E5E7EB] flex-shrink-0"
+        className="flex items-center justify-between border-b border-[#E5E9F0] flex-shrink-0"
         style={{ padding: "20px 24px" }}
       >
         <h2

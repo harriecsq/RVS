@@ -35,10 +35,10 @@ export function StandardTextarea({
             display: 'block', 
             fontSize: '14px', 
             fontWeight: 500, 
-            color: error ? '#DC2626' : '#374151'
+            color: error ? '#EF4444' : '#344054'
           }}
         >
-          {label} {required && <span style={{ color: '#DC2626' }}>*</span>}
+          {label} {required && <span style={{ color: '#EF4444' }}>*</span>}
         </label>
       )}
       
@@ -52,8 +52,8 @@ export function StandardTextarea({
         style={{
           width: '100%',
           padding: '10px 12px',
-          border: `1px solid ${error ? '#DC2626' : 'var(--neuron-ui-border)'}`,
-          borderRadius: '8px',
+          border: `1px solid ${error ? '#EF4444' : 'var(--neuron-ui-border)'}`,
+          borderRadius: '6px',
           fontSize: '14px',
           outline: 'none',
           color: disabled ? '#9CA3AF' : 'var(--neuron-ink-primary)',
@@ -79,7 +79,7 @@ export function StandardTextarea({
         <span 
           style={{ 
             fontSize: '12px', 
-            color: error ? '#DC2626' : '#667085',
+            color: error ? '#EF4444' : '#667085',
             lineHeight: '1.4'
           }}
         >

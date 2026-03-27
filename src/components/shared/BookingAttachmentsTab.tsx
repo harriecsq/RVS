@@ -192,7 +192,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
                 fontSize: "11px",
                 fontWeight: 600,
                 padding: "2px 8px",
-                borderRadius: "10px",
+                borderRadius: "8px",
                 backgroundColor: isSubSection ? "#F3F4F6" : "rgba(15, 118, 110, 0.08)",
                 color: isSubSection ? "#667085" : "#0F766E",
               }}
@@ -295,7 +295,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
                   style={{
                     fontSize: "13px",
                     fontWeight: 500,
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -376,7 +376,7 @@ function AttachmentSection({ entityType, entityId, label, isSubSection }: Attach
           onClick={() => fileInputRef.current?.click()}
           style={{
             border: `2px dashed ${isDragOver ? "#0F766E" : "#E5E9F0"}`,
-            borderRadius: "10px",
+            borderRadius: "8px",
             padding: "28px 16px",
             display: "flex",
             flexDirection: "column",
@@ -439,7 +439,7 @@ function SectionCard({ icon, title, children, defaultOpen = true }: SectionCardP
         )}
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {icon}
-          <span style={{ fontSize: "15px", fontWeight: 600, color: "#12332B" }}>
+          <span style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D" }}>
             {title}
           </span>
         </div>

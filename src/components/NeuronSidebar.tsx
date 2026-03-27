@@ -177,9 +177,9 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
           borderRadius: "8px",
           transition: "all 0.15s",
           height: isSubItem ? "36px" : "40px",
-          backgroundColor: isActive ? "var(--neuron-state-selected, #E4EFEA)" : "transparent",
-          border: isActive ? "1.5px solid #5FC4A1" : "1.5px solid transparent",
-          color: isActive ? "#237F66" : "#2E5147",
+          backgroundColor: isActive ? "var(--neuron-state-selected, #E8F5F3)" : "transparent",
+          border: isActive ? "1.5px solid #0F766E" : "1.5px solid transparent",
+          color: isActive ? "#0F766E" : "#344054",
           fontWeight: isActive ? 600 : 400,
           justifyContent: isCollapsed ? "center" : "flex-start",
           paddingLeft: isCollapsed ? "0" : isSubItem ? "28px" : "12px",
@@ -188,7 +188,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
-            e.currentTarget.style.backgroundColor = "var(--neuron-state-hover, #F1F6F4)";
+            e.currentTarget.style.backgroundColor = "var(--neuron-state-hover, #F9FAFB)";
           }
         }}
         onMouseLeave={(e) => {
@@ -201,7 +201,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         <Icon 
           size={isSubItem ? 18 : 20} 
           style={{ 
-            color: isActive ? "#237F66" : "#6B7A76",
+            color: isActive ? "#0F766E" : "#667085",
             flexShrink: 0
           }} 
         />
@@ -223,7 +223,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         paddingBottom: "8px",
         fontSize: "11px",
         fontWeight: 600,
-        color: "#6B7A76",
+        color: "#667085",
         letterSpacing: "0.5px",
       }}
     >
@@ -251,7 +251,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         height: "100%",
         width: isCollapsed ? "72px" : "272px",
         backgroundColor: "var(--neuron-bg-elevated, #FFFFFF)",
-        borderRight: "1px solid var(--neuron-ui-border, #E5ECE9)",
+        borderRight: "1px solid var(--neuron-ui-border, #E5E9F0)",
         transition: "width 0.3s",
         willChange: "width",
         transform: "translateZ(0)",
@@ -538,7 +538,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         paddingRight: "16px", 
         paddingTop: "16px", 
         paddingBottom: "16px", 
-        borderTop: "1px solid var(--neuron-ui-border, #E5ECE9)" 
+        borderTop: "1px solid var(--neuron-ui-border, #E5E9F0)" 
       }}>
         {/* User Profile */}
         {currentUser && currentUser.name && (
@@ -553,8 +553,8 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
               paddingBottom: "8px",
               borderRadius: "8px",
               transition: "all 0.15s",
-              backgroundColor: currentPage === "profile" ? "var(--neuron-state-selected)" : "var(--neuron-bg-page, #F7FAF8)",
-              border: currentPage === "profile" ? "1.5px solid #5FC4A1" : "1.5px solid transparent",
+              backgroundColor: currentPage === "profile" ? "var(--neuron-state-selected)" : "var(--neuron-bg-page, #F8F9FB)",
+              border: currentPage === "profile" ? "1.5px solid #0F766E" : "1.5px solid transparent",
               minHeight: "48px",
               justifyContent: isCollapsed ? "center" : "flex-start",
               paddingLeft: isCollapsed ? "0" : "12px",
@@ -568,7 +568,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
             }}
             onMouseLeave={(e) => {
               if (currentPage !== "profile") {
-                e.currentTarget.style.backgroundColor = "var(--neuron-bg-page, #F7FAF8)";
+                e.currentTarget.style.backgroundColor = "var(--neuron-bg-page, #F8F9FB)";
               }
             }}
           >
@@ -580,8 +580,8 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
                 borderRadius: "9999px",
                 width: "32px",
                 height: "32px",
-                backgroundColor: "var(--neuron-brand-green-100, #E8F2EE)",
-                color: "var(--neuron-brand-green, #237F66)",
+                backgroundColor: "var(--neuron-brand-green-100, #E8F5F3)",
+                color: "var(--neuron-brand-green, #0F766E)",
                 fontSize: "14px",
                 fontWeight: 600,
                 flexShrink: 0,
@@ -596,7 +596,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
                   style={{ 
                     fontSize: "13px", 
                     fontWeight: 600, 
-                    color: "var(--neuron-ink-primary, #12332B)",
+                    color: "var(--neuron-ink-primary, #0A1D4D)",
                     lineHeight: "18px",
                     textAlign: "left",
                     overflow: "hidden",
@@ -609,7 +609,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
                 <div 
                   style={{ 
                     fontSize: "11px", 
-                    color: "var(--neuron-ink-muted, #6B7A76)",
+                    color: "var(--neuron-ink-muted, #667085)",
                     lineHeight: "14px",
                     textAlign: "left",
                     overflow: "hidden",
@@ -622,7 +622,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
                 <div 
                   style={{ 
                     fontSize: "11px", 
-                    color: "var(--neuron-ink-muted, #6B7A76)",
+                    color: "var(--neuron-ink-muted, #667085)",
                     lineHeight: "14px",
                     textAlign: "left",
                     overflow: "hidden",

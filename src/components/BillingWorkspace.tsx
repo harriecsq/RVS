@@ -100,7 +100,7 @@ interface BillingWorkspaceProps {
 // Status pill component
 function BillingStatusPill({ status }: { status: Billing["status"] }) {
   const statusConfig: Record<Billing["status"], { color: string; bg: string }> = {
-    "Draft": { color: "#0F766E", bg: "#E8F2EE" },
+    "Draft": { color: "#0F766E", bg: "#E8F5F3" },
     "Ready to print": { color: "#10B981", bg: "#D1FAE5" },
     "Posted": { color: "#667085", bg: "#F3F4F6" },
   };
@@ -224,7 +224,7 @@ function BillingEditor({
     <div>
       {/* Title Header */}
       <div className="mb-4">
-        <h3 className="text-[14px] font-medium text-[#12332B] mb-1">
+        <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-1">
           {mode === "create" ? "Create Billing" : `Billing: ${billing?.billingNo}`}
         </h3>
         <p className="text-[11px] text-[#667085]">
@@ -240,7 +240,7 @@ function BillingEditor({
         <div className="col-span-12 lg:col-span-8 space-y-4">
           {/* Section 1: Billing & Client Information */}
           <Card className="p-4 border border-[#E5E9F0]">
-            <h3 className="text-[13px] font-medium text-[#12332B] mb-4">
+            <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4">
               Billing & Client Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
@@ -251,7 +251,7 @@ function BillingEditor({
                 <Input
                   value={formData.clientName}
                   disabled
-                  className="rounded-lg border-[#E5E7EB] text-[13px] bg-[#F9FAFB]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px] bg-[#F9FAFB]"
                   style={{ height: "44px" }}
                 />
               </div>
@@ -264,7 +264,7 @@ function BillingEditor({
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                 />
               </div>
@@ -278,7 +278,7 @@ function BillingEditor({
                     setFormData({ ...formData, billTo: e.target.value })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., Mr. Sandesh Mhatre"
                 />
@@ -293,7 +293,7 @@ function BillingEditor({
                 <Input
                   value={formData.billingNo}
                   disabled
-                  className="rounded-lg border-[#E5E7EB] text-[13px] bg-[#F9FAFB]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px] bg-[#F9FAFB]"
                   style={{ height: "44px" }}
                 />
               </div>
@@ -307,7 +307,7 @@ function BillingEditor({
                     setFormData({ ...formData, clientAddress: e.target.value })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., MAHARASHTRA, INDIA"
                 />
@@ -320,7 +320,7 @@ function BillingEditor({
                 <Input
                   value={formData.bookingRef}
                   disabled
-                  className="rounded-lg border-[#E5E7EB] text-[13px] bg-[#F9FAFB]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px] bg-[#F9FAFB]"
                   style={{ height: "44px" }}
                 />
               </div>
@@ -332,7 +332,7 @@ function BillingEditor({
                   value={formData.notes || ""}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., Kindly make check payable to CONFORME CARGO EXPRESS"
                 />
@@ -342,7 +342,7 @@ function BillingEditor({
 
           {/* Section 2: Details of Cargo */}
           <Card className="p-4 bg-[#F9FAFB] border border-[#E5E9F0]">
-            <h3 className="text-[13px] font-medium text-[#12332B] mb-4">
+            <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4">
               Details of Cargo
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -354,7 +354,7 @@ function BillingEditor({
                   value={formData.destination || ""}
                   onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px] bg-white"
+                  className="rounded-lg border-[#E5E9F0] text-[13px] bg-white"
                   style={{ height: "44px" }}
                   placeholder="e.g., Manila, Philippines"
                 />
@@ -367,7 +367,7 @@ function BillingEditor({
                   value={formData.commodity || ""}
                   onChange={(e) => setFormData({ ...formData, commodity: e.target.value })}
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px] bg-white"
+                  className="rounded-lg border-[#E5E9F0] text-[13px] bg-white"
                   style={{ height: "44px" }}
                   placeholder="e.g., Personal Household Items"
                 />
@@ -380,7 +380,7 @@ function BillingEditor({
                   value={formData.measurement || ""}
                   onChange={(e) => setFormData({ ...formData, measurement: e.target.value })}
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px] bg-white"
+                  className="rounded-lg border-[#E5E9F0] text-[13px] bg-white"
                   style={{ height: "44px" }}
                   placeholder="e.g., 10 bxs"
                 />
@@ -394,14 +394,14 @@ function BillingEditor({
           {/* Section 3: Particular Charges */}
           <Card className="p-4 border border-[#E5E9F0]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[13px] font-medium text-[#12332B]">
+              <h3 className="text-[13px] font-medium text-[#0A1D4D]">
                 Particular Charges
               </h3>
               {canEdit && (
                 <Button
                   onClick={addLineItem}
                   variant="ghost"
-                  className="text-[#0F766E] hover:bg-[#E8F2EE] rounded-lg h-9 px-3 text-[13px]"
+                  className="text-[#0F766E] hover:bg-[#E8F5F3] rounded-lg h-9 px-3 text-[13px]"
                   style={{ fontWeight: 500 }}
                 >
                   <Plus className="w-4 h-4 mr-1" />
@@ -424,7 +424,7 @@ function BillingEditor({
                         updateLineItem(item.id, { description: e.target.value })
                       }
                       disabled={!canEdit}
-                      className="rounded-lg border-[#E5E7EB] text-[13px] resize-none w-full"
+                      className="rounded-lg border-[#E5E9F0] text-[13px] resize-none w-full"
                       style={{ minHeight: "44px" }}
                       placeholder="Description of charge or service"
                     />
@@ -437,7 +437,7 @@ function BillingEditor({
                         updateLineItem(item.id, { amount: Number(e.target.value) })
                       }
                       disabled={!canEdit}
-                      className="rounded-lg border-[#E5E7EB] text-[13px] text-right"
+                      className="rounded-lg border-[#E5E9F0] text-[13px] text-right"
                       style={{ height: "44px" }}
                       placeholder="0.00"
                     />
@@ -475,7 +475,7 @@ function BillingEditor({
           </Card>
 
           {/* Section 4: Payment Details */}
-          <Card className="p-4 border border-[#E5E7EB]">
+          <Card className="p-4 border border-[#E5E9F0]">
             <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4">
               Payment Details
             </h3>
@@ -496,7 +496,7 @@ function BillingEditor({
                     })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., BDO"
                 />
@@ -517,7 +517,7 @@ function BillingEditor({
                     })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., CONFORME CARGO EXPRESS"
                 />
@@ -538,7 +538,7 @@ function BillingEditor({
                     })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., 0014-8803-0454"
                 />
@@ -559,7 +559,7 @@ function BillingEditor({
                     })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., SM City Sucat A"
                 />
@@ -580,7 +580,7 @@ function BillingEditor({
                     })
                   }
                   disabled={!canEdit}
-                  className="rounded-lg border-[#E5E7EB] text-[13px]"
+                  className="rounded-lg border-[#E5E9F0] text-[13px]"
                   style={{ height: "44px" }}
                   placeholder="e.g., BNORPHMM"
                 />
@@ -595,7 +595,7 @@ function BillingEditor({
         {/* Right Column - Summary & Actions (4 columns) */}
         <div className="col-span-12 lg:col-span-4 space-y-4">
           {/* Billing Summary Card */}
-          <Card className="p-4 border border-[#E5E7EB]">
+          <Card className="p-4 border border-[#E5E9F0]">
             <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4">
               Billing Summary
             </h3>
@@ -627,7 +627,7 @@ function BillingEditor({
                 <p className="text-[11px] text-[#9CA3AF] mb-1">Status</p>
                 <BillingStatusPill status={formData.status || "Draft"} />
               </div>
-              <div className="pt-3 border-t border-[#E5E7EB]">
+              <div className="pt-3 border-t border-[#E5E9F0]">
                 <p className="text-[11px] text-[#9CA3AF] mb-1">Total Amount</p>
                 <p className="text-[18px] text-[#0A1D4D]" style={{ fontWeight: 700 }}>
                   ₱{formatAmount(calculateTotal())}
@@ -637,7 +637,7 @@ function BillingEditor({
           </Card>
 
           {/* Actions Card */}
-          <Card className="p-4 border border-[#E5E7EB]">
+          <Card className="p-4 border border-[#E5E9F0]">
             <h3 className="text-[13px] font-medium text-[#0A1D4D] mb-4">
               Actions
             </h3>
@@ -654,7 +654,7 @@ function BillingEditor({
                   <Button
                     onClick={() => handleSave(false)}
                     variant="outline"
-                    className="w-full border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg text-[13px]"
+                    className="w-full border-[#E5E9F0] hover:bg-[#F9FAFB] rounded-lg text-[13px]"
                     style={{ height: "44px", fontWeight: 500 }}
                   >
                     Save as Draft
@@ -685,7 +685,7 @@ function BillingEditor({
                   <Button
                     onClick={() => setShowExcelPreview(true)}
                     variant="outline"
-                    className="w-full border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg text-[13px]"
+                    className="w-full border-[#E5E9F0] hover:bg-[#F9FAFB] rounded-lg text-[13px]"
                     style={{ height: "44px" }}
                   >
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
@@ -701,7 +701,7 @@ function BillingEditor({
                       }
                     }}
                     variant="outline"
-                    className="w-full border-[#E5E7EB] hover:bg-[#F9FAFB] rounded-lg text-[13px]"
+                    className="w-full border-[#E5E9F0] hover:bg-[#F9FAFB] rounded-lg text-[13px]"
                     style={{ height: "44px" }}
                   >
                     <Printer className="w-4 h-4 mr-2" />
@@ -753,7 +753,7 @@ function BillingEditor({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header - Fixed */}
-            <div className="border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between flex-shrink-0 bg-white z-20">
+            <div className="border-b border-[#E5E9F0] px-6 py-4 flex items-center justify-between flex-shrink-0 bg-white z-20">
               <div>
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-1">
                   Excel Invoice Preview
@@ -782,7 +782,7 @@ function BillingEditor({
                     {Array.from({ length: 50 }, (_, i) => (
                       <div
                         key={i}
-                        className="h-[36px] border-b border-[#E5E7EB] flex items-center justify-center text-[11px] text-[#64748B]"
+                        className="h-[36px] border-b border-[#E5E9F0] flex items-center justify-center text-[11px] text-[#64748B]"
                       >
                         {i + 1}
                       </div>
@@ -797,7 +797,7 @@ function BillingEditor({
                     {["A", "B", "C", "D", "E", "F", "G", "H"].map((col, idx) => (
                       <div
                         key={col}
-                        className="flex items-center justify-center text-[11px] text-[#64748B] border-r border-[#E5E7EB] flex-shrink-0"
+                        className="flex items-center justify-center text-[11px] text-[#64748B] border-r border-[#E5E9F0] flex-shrink-0"
                         style={{ 
                           width: idx === 0 ? "100px" : idx === 7 ? "120px" : "140px"
                         }}
@@ -810,12 +810,12 @@ function BillingEditor({
                   {/* Sheet Grid - 8 Column Layout */}
                   <div className="bg-white">
                     {/* Grid System - 8 Columns */}
-                    <div className="grid grid-cols-8 border-l border-[#E5E7EB]">
+                    <div className="grid grid-cols-8 border-l border-[#E5E9F0]">
                       {/* Row 1: Empty */}
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div
                           key={`r1-${i}`}
-                          className="border-r border-b border-[#E5E7EB] h-[36px]"
+                          className="border-r border-b border-[#E5E9F0] h-[36px]"
                           style={{ 
                             width: i === 0 ? "100px" : i === 7 ? "120px" : "140px"
                           }}
@@ -823,7 +823,7 @@ function BillingEditor({
                       ))}
 
                       {/* Row 2-3: Bill To (spans A-F) and Date (H) */}
-                      <div className="col-span-6 border-r border-b border-[#E5E7EB] p-3" style={{ minHeight: "72px" }}>
+                      <div className="col-span-6 border-r border-b border-[#E5E9F0] p-3" style={{ minHeight: "72px" }}>
                         <p className="text-[16px] text-[#0F172A]" style={{ fontWeight: 700 }}>
                           MR. SANDESH MHATRE
                         </p>
@@ -831,8 +831,8 @@ function BillingEditor({
                           MAHARASHTRA, INDIA
                         </p>
                       </div>
-                      <div className="border-r border-b border-[#E5E7EB]"></div>
-                      <div className="border-r border-b border-[#E5E7EB] p-3 flex items-start justify-end">
+                      <div className="border-r border-b border-[#E5E9F0]"></div>
+                      <div className="border-r border-b border-[#E5E9F0] p-3 flex items-start justify-end">
                         <p className="text-[13px] text-[#0F172A]" style={{ fontWeight: 700 }}>
                           4/21/2025
                         </p>
@@ -842,12 +842,12 @@ function BillingEditor({
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div
                           key={`r4-${i}`}
-                          className="border-r border-b border-[#E5E7EB] h-[36px]"
+                          className="border-r border-b border-[#E5E9F0] h-[36px]"
                         ></div>
                       ))}
 
                       {/* Row 5-8: Details of Cargo (spans A-H) */}
-                      <div className="col-span-8 border-r border-b border-[#E5E7EB] p-3" style={{ minHeight: "144px" }}>
+                      <div className="col-span-8 border-r border-b border-[#E5E9F0] p-3" style={{ minHeight: "144px" }}>
                         <p className="text-[12px] text-[#475569] mb-3 uppercase tracking-wide" style={{ fontWeight: 700 }}>
                           DETAILS OF CARGO
                         </p>
@@ -871,7 +871,7 @@ function BillingEditor({
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div
                           key={`r9-${i}`}
-                          className="border-r border-b border-[#E5E7EB] h-[36px]"
+                          className="border-r border-b border-[#E5E9F0] h-[36px]"
                         ></div>
                       ))}
 
@@ -888,7 +888,7 @@ function BillingEditor({
                       </div>
 
                       {/* Row 11-12: Door-Door Rate (A-F) and Amount (H) */}
-                      <div className="col-span-6 border-r border-b border-[#E5E7EB] p-3" style={{ minHeight: "72px" }}>
+                      <div className="col-span-6 border-r border-b border-[#E5E9F0] p-3" style={{ minHeight: "72px" }}>
                         <p className="text-[13px] text-[#0F172A] mb-1" style={{ fontWeight: 700 }}>
                           DOOR-DOOR RATE
                         </p>
@@ -896,8 +896,8 @@ function BillingEditor({
                           (Pickup, Freight, Permits/Lodgement & Customs Formalities)
                         </p>
                       </div>
-                      <div className="border-r border-b border-[#E5E7EB]"></div>
-                      <div className="border-r border-b border-[#E5E7EB] p-3 flex items-center justify-end">
+                      <div className="border-r border-b border-[#E5E9F0]"></div>
+                      <div className="border-r border-b border-[#E5E9F0] p-3 flex items-center justify-end">
                         <p className="text-[13px] text-[#0F172A]" style={{ fontWeight: 700 }}>
                           ₱82,500.00
                         </p>
@@ -915,12 +915,12 @@ function BillingEditor({
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div
                           key={`r14-${i}`}
-                          className="border-r border-b border-[#E5E7EB] h-[36px]"
+                          className="border-r border-b border-[#E5E9F0] h-[36px]"
                         ></div>
                       ))}
 
                       {/* Row 15: Grand Total (A-H, horizontal layout) */}
-                      <div className="col-span-8 border-r border-b border-[#E5E7EB] px-3 py-3 flex items-center justify-between" style={{ height: "48px" }}>
+                      <div className="col-span-8 border-r border-b border-[#E5E9F0] px-3 py-3 flex items-center justify-between" style={{ height: "48px" }}>
                         <p className="text-[12px] text-[#0F172A] uppercase tracking-wide" style={{ fontWeight: 700 }}>
                           GRAND TOTAL
                         </p>
@@ -933,12 +933,12 @@ function BillingEditor({
                       {Array.from({ length: 8 }).map((_, i) => (
                         <div
                           key={`r16-${i}`}
-                          className="border-r border-b border-[#E5E7EB] h-[36px]"
+                          className="border-r border-b border-[#E5E9F0] h-[36px]"
                         ></div>
                       ))}
 
                       {/* Row 17-22: Payment Details (A-H) */}
-                      <div className="col-span-8 border-r border-b border-[#E5E7EB] p-3" style={{ minHeight: "216px" }}>
+                      <div className="col-span-8 border-r border-b border-[#E5E9F0] p-3" style={{ minHeight: "216px" }}>
                         <p className="text-[12px] text-[#0F172A] mb-4">
                           Kindly make check payable to "CONFORME CARGO EXPRESS"
                         </p>
@@ -971,7 +971,7 @@ function BillingEditor({
                         Array.from({ length: 8 }).map((_, colIdx) => (
                           <div
                             key={`extra-r${rowIdx}-c${colIdx}`}
-                            className="border-r border-b border-[#E5E7EB] h-[36px]"
+                            className="border-r border-b border-[#E5E9F0] h-[36px]"
                           ></div>
                         ))
                       )}
@@ -982,7 +982,7 @@ function BillingEditor({
             </div>
 
             {/* Modal Footer - Fixed */}
-            <div className="border-t border-[#E5E7EB] px-6 py-4 flex items-center justify-end gap-3 flex-shrink-0 bg-white z-20">
+            <div className="border-t border-[#E5E9F0] px-6 py-4 flex items-center justify-end gap-3 flex-shrink-0 bg-white z-20">
               <Button
                 onClick={() => setShowExcelPreview(false)}
                 variant="ghost"
@@ -1019,7 +1019,7 @@ function BillingEditor({
             className="bg-white h-full w-full max-w-2xl shadow-2xl overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b border-[#E5E7EB] px-6 py-4 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-white border-b border-[#E5E9F0] px-6 py-4 flex items-center justify-between z-10">
               <div>
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-1">
                   SOA Print Layout (Preview)
@@ -1040,7 +1040,7 @@ function BillingEditor({
 
             <div className="p-6 space-y-6">
               {/* Preview Image */}
-              <div className="border border-[#E5E7EB] rounded-lg overflow-hidden bg-[#F9FAFB]">
+              <div className="border border-[#E5E9F0] rounded-lg overflow-hidden bg-[#F9FAFB]">
                 <img
                   src={soaPreviewImage}
                   alt="SOA Print Layout Preview"
@@ -1049,7 +1049,7 @@ function BillingEditor({
               </div>
 
               {/* Field Mapping Info */}
-              <Card className="p-4 border border-[#E5E7EB] bg-[#F9FAFB]">
+              <Card className="p-4 border border-[#E5E9F0] bg-[#F9FAFB]">
                 <h4 className="text-[13px] font-medium text-[#0A1D4D] mb-3">
                   Field Alignment Guide
                 </h4>
@@ -1118,7 +1118,7 @@ function BillingsList({
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h3 className="text-[14px] font-medium text-[#12332B] mb-1">
+          <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-1">
             Billings for this booking
           </h3>
           <p className="text-[11px] text-[#667085]">
@@ -1136,9 +1136,9 @@ function BillingsList({
 
       {/* Billings Table */}
       {billings.length > 0 ? (
-        <div className="border border-[#E5E7EB] rounded-lg overflow-hidden">
+        <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
           <table className="w-full">
-            <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB]">
+            <thead className="bg-[#F9FAFB] border-b border-[#E5E9F0]">
               <tr>
                 <th className="px-4 py-3 text-left text-[11px] font-medium text-[#6B7280] uppercase tracking-wider">
                   Billing No.
@@ -1175,7 +1175,7 @@ function BillingsList({
                   role="button"
                   aria-label={`Open billing ${billing.billingNo}`}
                   className={cn(
-                    "border-b border-[#E5E7EB] cursor-pointer transition-colors duration-150 hover:bg-[#F9FAFB]",
+                    "border-b border-[#E5E9F0] cursor-pointer transition-colors duration-150 hover:bg-[#F9FAFB]",
                     index === billings.length - 1 && "border-b-0"
                   )}
                 >
@@ -1240,7 +1240,7 @@ function BillingsList({
           </table>
         </div>
       ) : (
-        <div className="border border-[#E5E7EB] rounded-lg p-12">
+        <div className="border border-[#E5E9F0] rounded-lg p-12">
           <div className="text-center">
             <div className="w-16 h-16 bg-[#F9FAFB] rounded-full flex items-center justify-center mx-auto mb-4">
               <Plus className="w-8 h-8 text-[#9CA3AF]" />

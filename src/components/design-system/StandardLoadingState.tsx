@@ -22,7 +22,7 @@ export function StandardLoadingState({
           width: '40px',
           height: '40px',
           margin: '0 auto 16px',
-          border: '3px solid #E5E7EB',
+          border: '3px solid #E5E9F0',
           borderTopColor: 'var(--neuron-teal)',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite'

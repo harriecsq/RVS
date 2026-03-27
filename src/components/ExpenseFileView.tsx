@@ -81,7 +81,7 @@ export function ExpenseFileView({ expense, onBack }: ExpenseFileViewProps) {
             align-items: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 2px solid #E5E7EB;
+            border-bottom: 2px solid #E5E9F0;
           }
           .print-logo {
             font-size: 20px;
@@ -133,7 +133,7 @@ export function ExpenseFileView({ expense, onBack }: ExpenseFileViewProps) {
               variant="outline"
               size="sm"
               onClick={handlePrint}
-              className="border-[#E5E7EB] text-[#0A1D4D] hover:bg-[#F9FAFB]"
+              className="border-[#E5E9F0] text-[#0A1D4D] hover:bg-[#F9FAFB]"
             >
               <Printer className="w-4 h-4 mr-2" />
               Print
@@ -143,59 +143,59 @@ export function ExpenseFileView({ expense, onBack }: ExpenseFileViewProps) {
 
         {/* Summary Section - 2x2 Grid */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <Card className="p-4 bg-white border border-[#E5E7EB] rounded-lg">
+          <Card className="p-4 bg-white border border-[#E5E9F0] rounded-lg">
             <p className="text-xs text-[#6B7280] mb-2 uppercase tracking-wide">Amount</p>
             <p className="text-2xl text-[#0A1D4D]">₱{formatAmount(expense.amount)}</p>
           </Card>
 
-          <Card className="p-4 bg-white border border-[#E5E7EB] rounded-lg">
+          <Card className="p-4 bg-white border border-[#E5E9F0] rounded-lg">
             <p className="text-xs text-[#6B7280] mb-2 uppercase tracking-wide">Type</p>
             <p className="text-2xl text-[#0A1D4D]">{expense.type}</p>
           </Card>
 
-          <Card className="p-4 bg-white border border-[#E5E7EB] rounded-lg">
+          <Card className="p-4 bg-white border border-[#E5E9F0] rounded-lg">
             <p className="text-xs text-[#6B7280] mb-2 uppercase tracking-wide">Linked Booking</p>
             <p className="text-2xl text-[#0A1D4D]">{expense.bookingNo}</p>
           </Card>
 
-          <Card className="p-4 bg-white border border-[#E5E7EB] rounded-lg">
+          <Card className="p-4 bg-white border border-[#E5E9F0] rounded-lg">
             <p className="text-xs text-[#6B7280] mb-2 uppercase tracking-wide">Date Incurred</p>
             <p className="text-2xl text-[#0A1D4D]">{expense.date}</p>
           </Card>
         </div>
 
         {/* Main Details Section */}
-        <Card className="p-6 bg-white border border-[#E5E7EB] rounded-lg mb-6">
+        <Card className="p-6 bg-white border border-[#E5E9F0] rounded-lg mb-6">
           <h3 className="text-[#0A1D4D] mb-4">Details</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-[#E5E7EB]">
+            <div className="flex items-center justify-between py-3 border-b border-[#E5E9F0]">
               <span className="text-sm text-[#6B7280]">Booking No</span>
               <span className="text-sm text-[#1F2937]">{expense.bookingNo}</span>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b border-[#E5E7EB]">
+            <div className="flex items-center justify-between py-3 border-b border-[#E5E9F0]">
               <span className="text-sm text-[#6B7280]">Route</span>
               <span className="text-sm text-[#1F2937]">{route}</span>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b border-[#E5E7EB]">
+            <div className="flex items-center justify-between py-3 border-b border-[#E5E9F0]">
               <span className="text-sm text-[#6B7280]">Entered By</span>
               <span className="text-sm text-[#1F2937]">{expense.enteredBy}</span>
             </div>
 
-            <div className="flex items-start justify-between py-3 border-b border-[#E5E7EB]">
+            <div className="flex items-start justify-between py-3 border-b border-[#E5E9F0]">
               <span className="text-sm text-[#6B7280]">Description</span>
               <span className="text-sm text-[#1F2937] text-right max-w-md">
                 {expense.description || "No description provided"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b border-[#E5E7EB]">
+            <div className="flex items-center justify-between py-3 border-b border-[#E5E9F0]">
               <span className="text-sm text-[#6B7280]">Vendor</span>
               <span className="text-sm text-[#1F2937]">{vendor}</span>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b border-[#E5E7EB]">
+            <div className="flex items-center justify-between py-3 border-b border-[#E5E9F0]">
               <span className="text-sm text-[#6B7280]">Payment Method</span>
               <span className="text-sm text-[#1F2937]">{paymentMethod}</span>
             </div>
@@ -214,13 +214,13 @@ export function ExpenseFileView({ expense, onBack }: ExpenseFileViewProps) {
         </Card>
 
         {/* Attachments Section */}
-        <Card className="p-6 bg-white border border-[#E5E7EB] rounded-lg mb-6">
+        <Card className="p-6 bg-white border border-[#E5E9F0] rounded-lg mb-6">
           <h3 className="text-[#0A1D4D] mb-4">Attachments</h3>
           <div className="space-y-3">
             {attachments.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg hover:bg-white transition-colors"
+                className="flex items-center justify-between p-3 bg-[#F9FAFB] border border-[#E5E9F0] rounded-lg hover:bg-white transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {file.type === "image" ? (
@@ -251,7 +251,7 @@ export function ExpenseFileView({ expense, onBack }: ExpenseFileViewProps) {
         </Card>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB] no-print">
+        <div className="flex items-center justify-between pt-4 border-t border-[#E5E9F0] no-print">
           <p className="text-sm text-[#6B7280]">
             Last updated by {lastUpdatedBy} · {lastUpdatedDate} {lastUpdatedTime}
           </p>

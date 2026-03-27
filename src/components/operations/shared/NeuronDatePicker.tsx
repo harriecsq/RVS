@@ -6,7 +6,7 @@
  *  - Calendar icon on the right toggles a calendar popup
  *  - Popup: Month & Year dropdowns, 7-column day grid, Clear & Today footer
  *  - Today's date: teal border ring; selected date: filled teal bg
- *  - Neuron design system: #12332B text, #0F766E accent, stroke borders, no shadows
+ *  - Neuron design system: #0A1D4D text, #0F766E accent, stroke borders, no shadows
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -147,7 +147,7 @@ function InlineDropdown({
           cursor: "pointer",
           fontSize: "14px",
           fontWeight: 600,
-          color: "#12332B",
+          color: "#0A1D4D",
           padding: "4px 8px",
           borderRadius: "6px",
           backgroundColor: open ? "#F0FAF8" : "transparent",
@@ -165,7 +165,7 @@ function InlineDropdown({
             left: 0,
             marginTop: "4px",
             backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
             zIndex: 10000,
@@ -181,11 +181,11 @@ function InlineDropdown({
               style={{
                 padding: "6px 12px",
                 fontSize: "13px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 cursor: "pointer",
                 backgroundColor: value === opt.value ? "#F0FAF8" : "transparent",
               }}
-              onMouseEnter={(e) => { if (value !== opt.value) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+              onMouseEnter={(e) => { if (value !== opt.value) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt.value ? "#F0FAF8" : "transparent"; }}
             >
               {opt.label}
@@ -331,9 +331,9 @@ export function NeuronDatePicker({
           maxLength={10}
           className="w-full px-4 py-2.5 rounded-lg border transition-colors"
           style={{
-            borderColor: "#E5E7EB",
+            borderColor: "#E5E9F0",
             fontSize: "14px",
-            color: "#12332B",
+            color: "#0A1D4D",
             outline: "none",
             backgroundColor: "#FFFFFF",
             paddingRight: "40px",
@@ -375,7 +375,7 @@ export function NeuronDatePicker({
             zIndex: 99999,
             width: "308px",
             backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "12px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             padding: "16px",
@@ -484,7 +484,7 @@ export function NeuronDatePicker({
                       ? "#FFFFFF"
                       : isOtherMonth
                       ? "#D1D5DB"
-                      : "#12332B",
+                      : "#0A1D4D",
                     backgroundColor: isSelected ? "#0F766E" : "transparent",
                     border: isToday && !isSelected ? "2px solid #0F766E" : "2px solid transparent",
                     borderRadius: "8px",
@@ -513,7 +513,7 @@ export function NeuronDatePicker({
               alignItems: "center",
               marginTop: "12px",
               paddingTop: "12px",
-              borderTop: "1px solid #E5E7EB",
+              borderTop: "1px solid #E5E9F0",
             }}
           >
             <button
@@ -528,7 +528,7 @@ export function NeuronDatePicker({
                 color: "#667085",
                 padding: "4px 0",
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#DC2626"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#EF4444"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#667085"; }}
             >
               Clear

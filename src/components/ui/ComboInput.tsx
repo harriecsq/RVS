@@ -167,7 +167,7 @@ export function ComboInput({
             display: "block",
             fontSize: "13px",
             fontWeight: 500,
-            color: "#12332B",
+            color: "#0A1D4D",
             marginBottom: "8px",
           }}
         >
@@ -188,7 +188,7 @@ export function ComboInput({
             // Dynamic padding: less right padding when no chevron
             padding: showChevron ? "10px 36px 10px 12px" : "10px 12px",
             fontSize: "14px",
-            color: "#12332B",
+            color: "#0A1D4D",
             // Green background when options are available
             backgroundColor: isMatch ? "#E8F5F3" : "white",
             // Green border when options are available
@@ -305,7 +305,7 @@ export function ComboInput({
                   style={{
                     padding: "10px 16px",
                     fontSize: "14px",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     cursor: "pointer",
                     backgroundColor: isHighlighted
                       ? "#0F766E0A"

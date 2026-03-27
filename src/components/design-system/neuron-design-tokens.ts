@@ -22,7 +22,7 @@ export const NEURON_COLORS = {
 
   // Text Colors
   text: {
-    primary: '#12332B',        // Main text color (deep green)
+    primary: '#0A1D4D',        // Main text color (dark navy)
     secondary: '#667085',      // Secondary text, labels, captions
     tertiary: '#98A2B3',       // Placeholder text, disabled states
     white: '#FFFFFF',          // White text (on dark backgrounds)
@@ -34,14 +34,14 @@ export const NEURON_COLORS = {
     primary: '#FFFFFF',        // Pure white, main background
     secondary: '#F9FAFB',      // Light gray, secondary background
     tertiary: '#F3F4F6',       // Slightly darker gray
-    success: '#E8F2EE',        // Light green tint
+    success: '#E8F5F3',        // Light green tint
     gradient: 'linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)', // Metadata bar gradient
   },
 
   // Border Colors
   border: {
     primary: '#E5E9F0',        // Main border color (light gray)
-    secondary: '#E5E7EB',      // Alternative border
+    secondary: '#E5E9F0',      // Alternative border (unified with primary)
     tertiary: '#D0D5DD',       // Slightly darker border
     focus: '#0F766E',          // Focus state border (teal green)
     separator: '#0F766E',      // Separator lines (teal green with opacity)
@@ -64,7 +64,7 @@ export const NEURON_COLORS = {
   // Interactive States
   interactive: {
     hover: '#F9FAFB',          // Hover background
-    pressed: '#E8F2EE',        // Pressed/active background
+    pressed: '#E8F5F3',        // Pressed/active background
     disabled: '#F3F4F6',       // Disabled background
     focusRing: 'rgba(15, 118, 110, 0.1)', // Focus ring
   },
@@ -133,7 +133,7 @@ export const NEURON_SPACING = {
 
   // Component Padding
   component: {
-    card: '32px',
+    card: '20px',
     section: '24px',
     input: '10px 12px',
     button: '10px 20px',
@@ -176,7 +176,7 @@ export const NEURON_BORDERS = {
   // Border Styles (pre-composed)
   style: {
     default: '1px solid #E5E9F0',
-    secondary: '1px solid #E5E7EB',
+    secondary: '1px solid #E5E9F0',
     tertiary: '1.5px solid #D0D5DD',
     focus: '1px solid #0F766E',
     separator: '1px solid #E5E9F0',
@@ -235,12 +235,12 @@ export const NEURON_STYLES = {
     alignItems: 'center',
   } as React.CSSProperties,
 
-  // Section Cards (white cards with shadow)
+  // Section Cards (stroke-based, no shadows)
   sectionCard: {
     background: NEURON_COLORS.background.primary,
     borderRadius: NEURON_BORDERS.radius.xl,
     padding: NEURON_SPACING.component.card,
-    boxShadow: NEURON_SHADOWS.base,
+    border: NEURON_BORDERS.style.default,
     marginBottom: NEURON_SPACING['2xl'],
   } as React.CSSProperties,
 

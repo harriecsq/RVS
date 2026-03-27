@@ -92,7 +92,7 @@ function TableRow({ label, amount, isTotal = false }: { label: string; amount: n
       borderTop: isTotal ? "2px solid #E5E9F0" : "none",
       marginTop: isTotal ? "4px" : "0",
       fontWeight: isTotal ? 700 : 400,
-      color: isTotal ? "#12332B" : "#4B5563"
+      color: isTotal ? "#0A1D4D" : "#4B5563"
     }}>
       <div>{label}</div>
       <div style={{ textAlign: "right" }}>
@@ -449,7 +449,7 @@ export function ProfitLossPeriodReport() {
       <div style={{
         padding: "20px 48px",
         background: "white",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         maxWidth: "1440px",
         width: "100%",
         margin: "0 auto"
@@ -474,7 +474,7 @@ export function ProfitLossPeriodReport() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#12332B", marginBottom: "2px" }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", marginBottom: "2px" }}>
                 Profit/Loss per Period
               </h1>
               <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>
@@ -530,18 +530,18 @@ export function ProfitLossPeriodReport() {
             {/* Card Container */}
             <div style={{ 
               backgroundColor: "white", 
-              border: "1px solid #E5E7EB", 
+              border: "1px solid #E5E9F0", 
               borderRadius: "12px", 
               overflow: "hidden",
               marginBottom: "32px"
             }}>
               
               {/* Revenue Header */}
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
                 <h3 style={{ 
                   fontSize: "14px", 
                   fontWeight: 600, 
-                  color: "#12332B", 
+                  color: "#0A1D4D", 
                   textTransform: "uppercase", 
                   letterSpacing: "0.5px",
                   margin: 0
@@ -560,11 +560,11 @@ export function ProfitLossPeriodReport() {
               </div>
 
               {/* Expenses Header */}
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", borderTop: "1px solid #E5E7EB", background: "#F9FAFB" }}>
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", borderTop: "1px solid #E5E9F0", background: "#F9FAFB" }}>
                 <h3 style={{ 
                   fontSize: "14px", 
                   fontWeight: 600, 
-                  color: "#12332B", 
+                  color: "#0A1D4D", 
                   textTransform: "uppercase", 
                   letterSpacing: "0.5px",
                   margin: 0
@@ -606,7 +606,7 @@ export function ProfitLossPeriodReport() {
               <div style={{ 
                 fontSize: "32px", 
                 fontWeight: 700, 
-                color: netProfit >= 0 ? "#15803D" : "#B91C1C", // Green if pos, Red if neg
+                color: netProfit >= 0 ? "#15803D" : "#EF4444", // Green if pos, Red if neg
                 lineHeight: "1"
               }}>
                 {netProfit < 0 ? "-" : ""}₱{formatAmount(Math.abs(netProfit))}

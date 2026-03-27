@@ -308,9 +308,9 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
   // Helper for input styling
   const getInputStyle = (field: string, hasError: boolean) => {
     const isAutoFilled = autoFilledFields[field];
-    return `h-11 border-[#E5E7EB] rounded-lg transition-colors text-[13px] font-medium ${
+    return `h-11 border-[#E5E9F0] rounded-lg transition-colors text-[13px] font-medium ${
       hasError ? "border-red-500" : ""
-    } ${isAutoFilled ? "bg-green-50 text-[#12332B]" : "bg-white"}`;
+    } ${isAutoFilled ? "bg-green-50 text-[#0A1D4D]" : "bg-white"}`;
   };
 
   // Generate tracking number based on JJB schema: {LOADTYPE}-{DELTYPE}-{###}-{MODE}
@@ -617,7 +617,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
           <Button
             variant="ghost"
             onClick={onBack}
-            className="hover:bg-[#E4EFEA] rounded-lg h-9 px-3 -ml-3 text-[#12332B]"
+            className="hover:bg-[#E8F5F3] rounded-lg h-9 px-3 -ml-3 text-[#0A1D4D]"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -631,7 +631,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
           <div className="flex items-start justify-between">
             {/* Left: Page Title */}
             <div className="flex flex-col gap-2">
-              <h1 style={{ fontSize: '32px', fontWeight: 600, color: '#12332B', lineHeight: '1.2', marginBottom: '4px', letterSpacing: '-1.2px' }}>
+              <h1 style={{ fontSize: '32px', fontWeight: 600, color: '#0A1D4D', lineHeight: '1.2', marginBottom: '4px', letterSpacing: '-1.2px' }}>
                 Create New Booking
               </h1>
               <div className="flex flex-col gap-1">
@@ -640,7 +640,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                     Creating a booking for {prefilledClient.name}
                   </p>
                 )}
-                <p style={{ fontSize: '14px', color: '#6B7A76' }}>
+                <p style={{ fontSize: '14px', color: '#667085' }}>
                   Configure shipment type, mode, and details
                 </p>
                 {bookingSource === "template" && prefilledTemplate && (
@@ -650,7 +650,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                     </p>
                     <button
                       onClick={handleClearTemplate}
-                      className="text-[13px] text-[#6B7A76] hover:text-[#12332B] underline"
+                      className="text-[13px] text-[#667085] hover:text-[#0A1D4D] underline"
                     >
                       Clear template
                     </button>
@@ -664,7 +664,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
               <Button
                 onClick={() => setShowSaveTemplateModal(true)}
                 variant="outline"
-                className="border-[#E5ECE9] text-[#2E5147] hover:bg-[#F1F6F4] rounded-xl h-12 px-6"
+                className="border-[#E5E9F0] text-[#344054] hover:bg-[#F9FAFB] rounded-xl h-12 px-6"
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save as Template
@@ -694,7 +694,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                   <div className="space-y-6">
                     {/* Shipment Type Pills */}
                     <div>
-                      <Label className="text-[11px] text-[#6B7A76] mb-3 block">
+                      <Label className="text-[11px] text-[#667085] mb-3 block">
                         Shipment Type <span className="text-red-500">*</span>
                       </Label>
                       <div className="flex gap-2">
@@ -712,7 +712,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                               "flex-1 px-4 py-3 rounded-lg text-[13px] font-medium transition-all border",
                               shipmentType === type.value
                                 ? "bg-[#0F766E] text-white border-[#0F766E]"
-                                : "bg-white text-[#6B7A76] border-[#E5ECE9] hover:border-[#237F66] hover:bg-[#F7FAF8]"
+                                : "bg-white text-[#667085] border-[#E5E9F0] hover:border-[#0F766E] hover:bg-[#F8F9FB]"
                             )}
                           >
                             {type.label}
@@ -724,7 +724,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                     {/* Mode of Transport (AIR/SEA) - Conditional */}
                     {showModeSelector && (
                       <div>
-                        <Label className="text-[11px] text-[#6B7A76] mb-3 block">
+                        <Label className="text-[11px] text-[#667085] mb-3 block">
                           Mode of Transport <span className="text-red-500">*</span>
                         </Label>
                         <div className="flex gap-2">
@@ -740,7 +740,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                                 "flex-1 px-4 py-3 rounded-lg text-[13px] font-medium transition-all border flex items-center justify-center gap-2",
                                 mode === transportMode.value
                                   ? "bg-[#0F766E] text-white border-[#0F766E]"
-                                  : "bg-white text-[#6B7A76] border-[#E5ECE9] hover:border-[#237F66] hover:bg-[#F7FAF8]"
+                                  : "bg-white text-[#667085] border-[#E5E9F0] hover:border-[#0F766E] hover:bg-[#F8F9FB]"
                               )}
                             >
                               <transportMode.icon className="w-4 h-4" />
@@ -753,7 +753,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
 
                     {/* Load Type (LCL/FCL) */}
                     <div>
-                      <Label className="text-[11px] text-[#6B7A76] mb-3 block">
+                      <Label className="text-[11px] text-[#667085] mb-3 block">
                         Load Type <span className="text-red-500">*</span>
                         {mode === "AIR" && (
                           <span className="text-[#6B7280] text-[10px] ml-2">(Locked to LCL for AIR)</span>
@@ -773,7 +773,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                               "flex-1 px-4 py-3 rounded-lg text-[13px] font-medium transition-all border",
                               loadType === load.value
                                 ? "bg-[#0F766E] text-white border-[#0F766E]"
-                                : "bg-white text-[#6B7A76] border-[#E5ECE9] hover:border-[#237F66] hover:bg-[#F7FAF8]",
+                                : "bg-white text-[#667085] border-[#E5E9F0] hover:border-[#0F766E] hover:bg-[#F8F9FB]",
                               mode === "AIR" && load.value === "FCL" && "opacity-30 cursor-not-allowed"
                             )}
                           >
@@ -794,7 +794,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         Template
                       </Label>
                       <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
-                        <SelectTrigger className="h-11 border-[#E5E7EB] rounded-lg text-[13px] font-medium">
+                        <SelectTrigger className="h-11 border-[#E5E9F0] rounded-lg text-[13px] font-medium">
                           <SelectValue placeholder="No template" />
                         </SelectTrigger>
                         <SelectContent>
@@ -820,7 +820,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                   <div className="mb-6">
                     <h2 className="text-[14px] font-medium text-[#0A1D4D] mb-1">Shipment Details</h2>
                     <p className="text-[11px] text-[#6B7280]">Enter shipment information and route details</p>
-                    <div className="mt-4 border-b border-[#E5E7EB]"></div>
+                    <div className="mt-4 border-b border-[#E5E9F0]"></div>
                   </div>
 
                   <div className="space-y-6">
@@ -864,7 +864,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                       
                       {/* Dropdown suggestions for EXPORT */}
                       {openClientDropdown && shipmentType === "EXPS" && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-[#E5E7EB] rounded-lg shadow-lg overflow-hidden">
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-[#E5E9F0] rounded-lg shadow-lg overflow-hidden">
                           <div className="max-h-[300px] overflow-y-auto">
                             {clients
                               .filter(client => 
@@ -952,7 +952,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         
                         {/* Dropdown suggestions for IMPORT */}
                         {openClientDropdown && shipmentType === "IMPS" && (
-                          <div className="absolute z-50 w-full mt-1 bg-white border border-[#E5E7EB] rounded-lg shadow-lg overflow-hidden">
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-[#E5E9F0] rounded-lg shadow-lg overflow-hidden">
                             <div className="max-h-[300px] overflow-y-auto">
                               {clients
                                 .filter(client => 
@@ -1112,7 +1112,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                           value={formData.weightUnit} 
                           onValueChange={(value) => setFormData({ ...formData, weightUnit: value })}
                         >
-                          <SelectTrigger className="h-11 w-24 border-[#E5E7EB] rounded-lg text-[13px] font-medium">
+                          <SelectTrigger className="h-11 w-24 border-[#E5E9F0] rounded-lg text-[13px] font-medium">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1298,8 +1298,8 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         }}
                         placeholder="Enter any special handling instructions or notes"
                         rows={4}
-                        className={`border-[#E5E7EB] rounded-lg transition-colors resize-none text-[13px] font-medium ${
-                          autoFilledFields["specialInstructions"] ? "bg-green-50 text-[#12332B]" : "bg-white"
+                        className={`border-[#E5E9F0] rounded-lg transition-colors resize-none text-[13px] font-medium ${
+                          autoFilledFields["specialInstructions"] ? "bg-green-50 text-[#0A1D4D]" : "bg-white"
                         }`}
                       />
                     </div>
@@ -1309,7 +1309,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                 {/* Billing Information Section */}
                 <Card key={`billing-${selectedTemplate || 'no-template'}`} className="p-6 bg-white border border-[#E5E9F0] rounded-xl">
                   <div className="mb-6">
-                    <h2 className="text-[14px] font-semibold text-[#12332B] mb-1">Billing Information</h2>
+                    <h2 className="text-[14px] font-semibold text-[#0A1D4D] mb-1">Billing Information</h2>
                     <p className="text-[11px] text-[#667085]">Create a billing invoice for this booking</p>
                     <div className="mt-4 border-b border-[#E5E9F0]"></div>
                   </div>
@@ -1318,7 +1318,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                     {/* Billing & Client Information */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5">
                       <div>
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Client Name
                         </Label>
                         <Input
@@ -1330,7 +1330,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         />
                       </div>
                       <div>
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Billing Date
                         </Label>
                         <DatePicker
@@ -1341,7 +1341,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         />
                       </div>
                       <div>
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Bill To / Attention To
                         </Label>
                         <Input
@@ -1353,7 +1353,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         />
                       </div>
                       <div>
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Billing No.
                         </Label>
                         <Input
@@ -1364,7 +1364,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         />
                       </div>
                       <div>
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Client Address / Location
                         </Label>
                         <Input
@@ -1376,7 +1376,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         />
                       </div>
                       <div>
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Company
                         </Label>
                         <Select value={billingData.company} onValueChange={(value) => setBillingData({ ...billingData, company: value })}>
@@ -1394,7 +1394,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                         </Select>
                       </div>
                       <div className="md:col-span-2">
-                        <Label className="text-[13px] text-[#12332B] mb-2 block font-medium">
+                        <Label className="text-[13px] text-[#0A1D4D] mb-2 block font-medium">
                           Notes / Remarks <span className="text-[#667085] font-normal">(Optional)</span>
                         </Label>
                         <Input
@@ -1410,7 +1410,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                     {/* Particular Charges */}
                     <div className="mt-8">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-[14px] font-semibold text-[#12332B]">
+                        <h3 className="text-[14px] font-semibold text-[#0A1D4D]">
                           Particular Charges
                         </h3>
                         <Button
@@ -1467,7 +1467,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                       {/* Total */}
                       <div className="mt-6 pt-4 border-t border-[#E5E9F0]">
                         <div className="flex justify-between items-center">
-                          <span className="text-[15px] font-semibold text-[#12332B]">GRAND TOTAL</span>
+                          <span className="text-[15px] font-semibold text-[#0A1D4D]">GRAND TOTAL</span>
                           <span className="text-[24px] font-bold text-[#0F766E]">
                             ₱{formatAmount(calculateBillingTotal())}
                           </span>
@@ -1477,12 +1477,12 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
 
                     {/* Payment Details */}
                     <div className="mt-8 p-6 bg-[#F9FAFB] rounded-xl border border-[#E5E9F0]">
-                      <h3 className="text-[14px] font-semibold text-[#12332B] mb-5">
+                      <h3 className="text-[14px] font-semibold text-[#0A1D4D] mb-5">
                         Payment Details
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                         <div>
-                          <Label className="text-[12px] text-[#12332B] mb-2 block font-medium">
+                          <Label className="text-[12px] text-[#0A1D4D] mb-2 block font-medium">
                             Bank Name
                           </Label>
                           <Input
@@ -1499,7 +1499,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                           />
                         </div>
                         <div>
-                          <Label className="text-[12px] text-[#12332B] mb-2 block font-medium">
+                          <Label className="text-[12px] text-[#0A1D4D] mb-2 block font-medium">
                             Account Name
                           </Label>
                           <Input
@@ -1516,7 +1516,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                           />
                         </div>
                         <div>
-                          <Label className="text-[12px] text-[#12332B] mb-2 block font-medium">
+                          <Label className="text-[12px] text-[#0A1D4D] mb-2 block font-medium">
                             Account No.
                           </Label>
                           <Input
@@ -1533,7 +1533,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                           />
                         </div>
                         <div>
-                          <Label className="text-[12px] text-[#12332B] mb-2 block font-medium">
+                          <Label className="text-[12px] text-[#0A1D4D] mb-2 block font-medium">
                             Branch
                           </Label>
                           <Input
@@ -1550,7 +1550,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <Label className="text-[12px] text-[#12332B] mb-2 block font-medium">
+                          <Label className="text-[12px] text-[#0A1D4D] mb-2 block font-medium">
                             Swift Code
                           </Label>
                           <Input
@@ -1659,7 +1659,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                   </Card>
 
                   {/* Helper Note */}
-                  <div className="mt-4 p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB]">
+                  <div className="mt-4 p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E9F0]">
                     <p className="text-[11px] text-[#6B7280] leading-relaxed">
                       <span className="font-semibold text-[#0A1D4D]">Tip:</span> The tracking number updates automatically based on your shipment type, mode, and load type selections.
                     </p>
@@ -1667,32 +1667,32 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
 
                   {/* Billing Summary */}
                   <Card className="mt-4 p-6 bg-[#F9FAFB] border border-[#E5E9F0] rounded-xl">
-                    <h3 className="text-[14px] font-semibold text-[#12332B] mb-5">
+                    <h3 className="text-[14px] font-semibold text-[#0A1D4D] mb-5">
                       Billing Summary
                     </h3>
                     
                     <div className="space-y-4 mb-6">
                       <div>
                         <div className="text-[11px] text-[#667085] mb-1">Client</div>
-                        <div className="text-[13px] text-[#12332B] font-medium">
+                        <div className="text-[13px] text-[#0A1D4D] font-medium">
                           {billingData.clientName || "—"}
                         </div>
                       </div>
                       <div>
                         <div className="text-[11px] text-[#667085] mb-1">Date</div>
-                        <div className="text-[13px] text-[#12332B] font-medium">
+                        <div className="text-[13px] text-[#0A1D4D] font-medium">
                           {billingData.billingDate}
                         </div>
                       </div>
                       <div>
                         <div className="text-[11px] text-[#667085] mb-1">Linked Booking</div>
-                        <div className="text-[13px] text-[#12332B] font-medium">
+                        <div className="text-[13px] text-[#0A1D4D] font-medium">
                           {trackingNumber || "—"}
                         </div>
                       </div>
                       <div>
                         <div className="text-[11px] text-[#667085] mb-1">Company</div>
-                        <div className="text-[13px] text-[#12332B] font-medium">
+                        <div className="text-[13px] text-[#0A1D4D] font-medium">
                           {billingData.company || "—"}
                         </div>
                       </div>
@@ -1706,7 +1706,7 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
                     </div>
 
                     <div className="p-3 bg-[#0F766E]/5 rounded-lg border border-[#0F766E]/20">
-                      <p className="text-[11px] text-[#12332B] leading-relaxed">
+                      <p className="text-[11px] text-[#0A1D4D] leading-relaxed">
                         <span className="font-semibold">Auto-Invoice:</span> If billing details are filled, an invoice will be automatically generated when you create the booking.
                       </p>
                     </div>
@@ -1735,20 +1735,20 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-[13px] text-[#374151]">Template Name *</Label>
+              <Label className="text-[13px] text-[#344054]">Template Name *</Label>
               <Input
                 value={templateName || (bookingSource === "template" && prefilledTemplate ? prefilledTemplate.templateName : "")}
                 onChange={(e) => setTemplateName(e.target.value)}
                 placeholder="e.g., Standard Retail Shipment"
-                className="border-[#E5E7EB] rounded-lg"
+                className="border-[#E5E9F0] rounded-lg"
               />
             </div>
 
             {bookingSource === "new" && (
               <div className="space-y-2">
-                <Label className="text-[13px] text-[#374151]">Attach to Client (Optional)</Label>
+                <Label className="text-[13px] text-[#344054]">Attach to Client (Optional)</Label>
                 <Select>
-                  <SelectTrigger className="border-[#E5E7EB] rounded-lg">
+                  <SelectTrigger className="border-[#E5E9F0] rounded-lg">
                     <SelectValue placeholder="Select a client" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1762,9 +1762,9 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
               </div>
             )}
 
-            <div className="p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E7EB]">
+            <div className="p-4 bg-[#F9FAFB] rounded-lg border border-[#E5E9F0]">
               <p className="text-[12px] text-[#6B7280] mb-2">Template will include:</p>
-              <ul className="text-[11px] text-[#374151] space-y-1 list-disc list-inside">
+              <ul className="text-[11px] text-[#344054] space-y-1 list-disc list-inside">
                 <li>Shipment Type: {shipmentType === "IMPS" ? "Import" : shipmentType === "EXPS" ? "Export" : shipmentType === "DOM" ? "Domestic" : "Trucking"}</li>
                 <li>Mode: {mode}</li>
                 <li>Load Type: {loadType}</li>
@@ -1775,14 +1775,14 @@ export function CreateBooking({ onBack, onSubmit, prefilledClientId, prefilledTe
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#E5E7EB]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#E5E9F0]">
             <Button
               variant="outline"
               onClick={() => {
                 setShowSaveTemplateModal(false);
                 setTemplateName("");
               }}
-              className="border-[#E5E7EB] rounded-lg"
+              className="border-[#E5E9F0] rounded-lg"
             >
               Cancel
             </Button>

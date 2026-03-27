@@ -69,7 +69,7 @@ const LABEL_STYLE: React.CSSProperties = {
 const VALUE_BOX: React.CSSProperties = {
   padding: "10px 12px",
   fontSize: "14px",
-  color: "#12332B",
+  color: "#0A1D4D",
   background: "#F9FAFB",
   border: "1px solid #E5E9F0",
   borderRadius: "8px",
@@ -87,7 +87,7 @@ const SUMMARY_LABEL: React.CSSProperties = {
 
 const SUMMARY_VALUE: React.CSSProperties = {
   fontSize: "13px",
-  color: "#12332B",
+  color: "#0A1D4D",
   fontWeight: 500,
   lineHeight: "1.4",
 };
@@ -112,13 +112,13 @@ function ReadField({ label, value }: { label: string; value?: string | null }) {
 
 function VendorPill({ vendor }: { vendor: string }) {
   const v = TRUCKING_VENDORS.find((v) => v.name === vendor);
-  if (!v) return <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: "10px", fontSize: "13px", fontWeight: 600, backgroundColor: "#F3F4F6", border: "1px solid #E5E7EB", color: "#6B7280", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{vendor || "—"}</span>;
+  if (!v) return <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, backgroundColor: "#F3F4F6", border: "1px solid #E5E9F0", color: "#6B7280", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{vendor || "—"}</span>;
   return (
     <span style={{
       display: "inline-flex",
       alignItems: "center",
       padding: "4px 12px",
-      borderRadius: "10px",
+      borderRadius: "8px",
       fontSize: "13px",
       fontWeight: 600,
       backgroundColor: hexToRgba(v.hex, 0.08),
@@ -138,17 +138,17 @@ function InfoCard({ title, children, style }: { title: string; children: React.R
     <div style={{
       background: "white",
       borderRadius: "12px",
-      border: "1px solid #E5E7EB",
+      border: "1px solid #E5E9F0",
       overflow: "hidden",
       marginBottom: "24px",
       ...style,
     }}>
       <div style={{
         padding: "20px 24px",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         background: "#F9FAFB",
       }}>
-        <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
           {title}
         </h3>
       </div>
@@ -183,9 +183,9 @@ function EditTextInput({
         width: "100%",
         padding: "10px 12px",
         borderRadius: "8px",
-        border: "1px solid #E5E7EB",
+        border: "1px solid #E5E9F0",
         fontSize: "14px",
-        color: "#12332B",
+        color: "#0A1D4D",
         outline: "none",
         backgroundColor: "#FFFFFF",
         boxSizing: "border-box",
@@ -207,9 +207,9 @@ function EditTextArea({
         width: "100%",
         padding: "10px 12px",
         borderRadius: "8px",
-        border: "1px solid #E5E7EB",
+        border: "1px solid #E5E9F0",
         fontSize: "14px",
-        color: "#12332B",
+        color: "#0A1D4D",
         outline: "none",
         fontFamily: "inherit",
         backgroundColor: "#FFFFFF",
@@ -260,13 +260,13 @@ function EditNeuronDropdown({
           width: "100%",
           padding: "10px 12px",
           borderRadius: "8px",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           cursor: "pointer",
           fontSize: "14px",
-          color: value ? "#12332B" : "#9CA3AF",
+          color: value ? "#0A1D4D" : "#9CA3AF",
           backgroundColor: "#FFFFFF",
           boxSizing: "border-box",
         }}
@@ -284,7 +284,7 @@ function EditNeuronDropdown({
             marginTop: "4px",
             background: "white",
             borderRadius: "8px",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             maxHeight: "220px",
             overflowY: "auto",
             zIndex: 9999,
@@ -299,13 +299,13 @@ function EditNeuronDropdown({
                 padding: "8px 12px",
                 cursor: "pointer",
                 fontSize: "14px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 backgroundColor: value === opt ? "#F0FAF8" : "transparent",
               }}
-              onMouseEnter={(e) => { if (value !== opt) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+              onMouseEnter={(e) => { if (value !== opt) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt ? "#F0FAF8" : "transparent"; }}
             >
               {opt}
@@ -348,14 +348,14 @@ function EditVendorDropdown({ value, onChange }: { value: string; onChange: (v: 
           width: "100%",
           padding: "10px 12px",
           borderRadius: "8px",
-          border: vendor ? `1px solid ${hexToRgba(vendor.hex, 0.3)}` : "1px solid #E5E7EB",
+          border: vendor ? `1px solid ${hexToRgba(vendor.hex, 0.3)}` : "1px solid #E5E9F0",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           cursor: "pointer",
           fontSize: "14px",
           backgroundColor: vendor ? hexToRgba(vendor.hex, 0.08) : "#FFFFFF",
-          color: vendor ? vendor.hex : "#12332B",
+          color: vendor ? vendor.hex : "#0A1D4D",
           fontWeight: vendor ? 500 : 400,
           boxSizing: "border-box",
         }}
@@ -377,13 +377,13 @@ function EditVendorDropdown({ value, onChange }: { value: string; onChange: (v: 
             marginTop: "4px",
             background: "white",
             borderRadius: "8px",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             zIndex: 9999,
             boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
             overflow: "hidden",
           }}
         >
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E7EB" }}>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
             <input
               autoFocus
               type="text"
@@ -395,9 +395,9 @@ function EditVendorDropdown({ value, onChange }: { value: string; onChange: (v: 
                 width: "100%",
                 padding: "6px 12px",
                 borderRadius: "6px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 fontSize: "14px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 outline: "none",
                 backgroundColor: "#FFFFFF",
                 boxSizing: "border-box",
@@ -421,11 +421,11 @@ function EditVendorDropdown({ value, onChange }: { value: string; onChange: (v: 
                   gap: "12px",
                   backgroundColor: value === v.name ? "#F0FAF8" : "transparent",
                 }}
-                onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+                onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === v.name ? "#F0FAF8" : "transparent"; }}
               >
                 <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
-                <span style={{ color: "#12332B" }}>{v.name}</span>
+                <span style={{ color: "#0A1D4D" }}>{v.name}</span>
                 {value === v.name && <Check size={14} style={{ color: "#0F766E", marginLeft: "auto" }} />}
               </div>
             ))}
@@ -447,8 +447,8 @@ function EditTagChip({ label, onRemove }: { label: string; onRemove: () => void 
         borderRadius: "4px",
         fontSize: "12px",
         fontWeight: 600,
-        backgroundColor: "#E4EFEA",
-        color: "#12332B",
+        backgroundColor: "#E8F5F3",
+        color: "#0A1D4D",
         border: "1px solid #C1D9CC",
       }}
     >
@@ -456,7 +456,7 @@ function EditTagChip({ label, onRemove }: { label: string; onRemove: () => void 
       <button
         type="button"
         onClick={onRemove}
-        style={{ background: "none", border: "none", cursor: "pointer", color: "#12332B", padding: 0, display: "flex", alignItems: "center", opacity: 0.5 }}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "#0A1D4D", padding: 0, display: "flex", alignItems: "center", opacity: 0.5 }}
       >
         <X size={11} />
       </button>
@@ -502,7 +502,7 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
             width: "100%",
             padding: "10px 12px",
             borderRadius: "8px",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             display: "flex",
             alignItems: "center",
             gap: "8px",
@@ -524,14 +524,14 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
               marginTop: "4px",
               background: "white",
               borderRadius: "8px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               maxHeight: "300px",
               overflowY: "auto",
               zIndex: 9999,
               boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
             }}
           >
-            <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E7EB" }}>
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
               <input
                 autoFocus
                 type="text"
@@ -543,9 +543,9 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
                   width: "100%",
                   padding: "6px 12px",
                   borderRadius: "6px",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid #E5E9F0",
                   fontSize: "14px",
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -567,13 +567,13 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
                         padding: "8px 16px",
                         cursor: "pointer",
                         fontSize: "14px",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         display: "flex",
                         alignItems: "center",
                         gap: "10px",
                         backgroundColor: selected.includes(tag.key) ? "#F0FAF8" : "transparent",
                       }}
-                      onMouseEnter={(e) => { if (!selected.includes(tag.key)) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+                      onMouseEnter={(e) => { if (!selected.includes(tag.key)) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = selected.includes(tag.key) ? "#F0FAF8" : "transparent"; }}
                     >
                       <div
@@ -629,7 +629,7 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: "4px", display: "flex", alignItems: "center" }}
+      style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: "4px", display: "flex", alignItems: "center" }}
     >
       <Trash2 size={15} />
     </button>
@@ -650,11 +650,11 @@ function StatusTagPill({ label, onRemove }: { label: string; onRemove?: () => vo
         alignItems: "center",
         gap: "4px",
         padding: "4px 12px",
-        borderRadius: "10px",
+        borderRadius: "8px",
         fontSize: "13px",
         fontWeight: 600,
-        backgroundColor: "#E4EFEA",
-        color: "#12332B",
+        backgroundColor: "#E8F5F3",
+        color: "#0A1D4D",
         border: "1px solid #C1D9CC",
         letterSpacing: "0.03em",
         whiteSpace: "nowrap",
@@ -670,7 +670,7 @@ function StatusTagPill({ label, onRemove }: { label: string; onRemove?: () => vo
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: "#12332B",
+            color: "#0A1D4D",
             padding: 0,
             display: "flex",
             alignItems: "center",
@@ -765,11 +765,11 @@ function StatusTagBar({
               display: "inline-flex",
               alignItems: "center",
               padding: "4px 12px",
-              borderRadius: "10px",
+              borderRadius: "8px",
               fontSize: "13px",
               fontWeight: 600,
-              backgroundColor: "#E4EFEA",
-              color: "#12332B",
+              backgroundColor: "#E8F5F3",
+              color: "#0A1D4D",
               border: "1px solid #C1D9CC",
               letterSpacing: "0.03em",
             }}
@@ -800,7 +800,7 @@ function StatusTagBar({
               alignItems: "center",
               gap: "4px",
               padding: "4px 10px",
-              borderRadius: "10px",
+              borderRadius: "8px",
               border: "1px dashed #C1D9CC",
               background: "rgba(255,255,255,0.6)",
               color: "#0F766E",
@@ -838,13 +838,13 @@ function StatusTagBar({
               maxHeight: 340,
               background: "white",
               borderRadius: "8px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               boxShadow: "0 8px 30px rgba(0,0,0,0.14)",
               zIndex: 99999,
               overflowY: "auto",
             }}
           >
-            <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E7EB" }}>
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
               <input
                 autoFocus
                 type="text"
@@ -856,9 +856,9 @@ function StatusTagBar({
                   width: "100%",
                   padding: "6px 12px",
                   borderRadius: "6px",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid #E5E9F0",
                   fontSize: "14px",
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -889,7 +889,7 @@ function StatusTagBar({
                         padding: "8px 16px",
                         cursor: "pointer",
                         fontSize: "14px",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         display: "flex",
                         alignItems: "center",
                         gap: "10px",
@@ -897,7 +897,7 @@ function StatusTagBar({
                       }}
                       onMouseEnter={(e) => {
                         if (!selected.includes(tag.key))
-                          (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8";
+                          (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB";
                       }}
                       onMouseLeave={(e) => {
                         (e.currentTarget as HTMLDivElement).style.backgroundColor =
@@ -1282,7 +1282,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
       {/* ── Header ── */}
       <div style={{
         background: "white",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         padding: "20px 48px",
         flexShrink: 0,
         ...(embedded ? { position: "sticky" as const, top: 0, zIndex: 10 } : {})
@@ -1315,7 +1315,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
               <h1 style={{
                 fontSize: "20px",
                 fontWeight: 600,
-                color: "#12332B",
+                color: "#0A1D4D",
                 marginBottom: "0",
                 margin: 0,
               }}>
@@ -1372,7 +1372,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                     alignItems: "center",
                     gap: "8px",
                     padding: "10px 20px",
-                    backgroundColor: showActivity ? "#E8F2EE" : "white",
+                    backgroundColor: showActivity ? "#E8F5F3" : "white",
                     border: `1.5px solid ${showActivity ? "#0F766E" : "#E5E9F0"}`,
                     borderRadius: "8px",
                     fontSize: "14px",
@@ -1437,7 +1437,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Created Date
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
             {currentRecord.createdAt ? new Date(currentRecord.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}
           </div>
         </div>
@@ -1493,19 +1493,19 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
             <div style={{
               background: "white",
               borderRadius: "12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               overflow: "hidden",
               marginBottom: "24px",
             }}>
               <div style={{
                 padding: "16px 24px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
                 background: "#F9FAFB",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Booking Details
                 </h3>
               </div>
@@ -1629,7 +1629,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                                     display: "inline-block",
                                     fontSize: "12px",
                                     fontWeight: 600,
-                                    color: "#12332B",
+                                    color: "#0A1D4D",
                                   }}
                                 >
                                   {c.containerNo || "—"}
@@ -1786,7 +1786,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                         key={di}
                         style={{
                           border: "1px solid #E5E9F0",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           padding: "20px",
                           backgroundColor: "#FFFFFF",
                         }}
@@ -1822,7 +1822,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                                 <button
                                   type="button"
                                   onClick={() => updateDrop(di, "unloadingEnd", "")}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: "4px", display: "flex" }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: "4px", display: "flex" }}
                                 >
                                   <X size={15} />
                                 </button>
@@ -1860,7 +1860,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                         key={i}
                         style={{
                           border: "1px solid #E5E9F0",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           padding: "20px",
                           marginBottom: i < r.deliveryDrops.length - 1 ? "16px" : "0",
                           backgroundColor: "#FFFFFF",
@@ -1907,7 +1907,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                         key={ai}
                         style={{
                           border: "1px solid #E5E9F0",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           padding: "20px",
                           backgroundColor: "#FFFFFF",
                         }}
@@ -1976,7 +1976,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                         key={ai}
                         style={{
                           border: "1px solid #E5E9F0",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           padding: "20px",
                           marginBottom: ai < r.deliveryAddresses.length - 1 ? "16px" : "0",
                           backgroundColor: "#FFFFFF",
@@ -2036,7 +2036,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                           key={ri}
                           style={{
                             border: "1px solid #E5E9F0",
-                            borderRadius: "10px",
+                            borderRadius: "8px",
                             padding: "20px",
                             backgroundColor: "#FFFFFF",
                           }}
@@ -2082,11 +2082,11 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                               display: "inline-flex",
                               alignItems: "center",
                               padding: "4px 12px",
-                              borderRadius: "10px",
+                              borderRadius: "8px",
                               fontSize: "13px",
                               fontWeight: 600,
-                              backgroundColor: "#E4EFEA",
-                              color: "#12332B",
+                              backgroundColor: "#E8F5F3",
+                              color: "#0A1D4D",
                               border: "1px solid #C1D9CC",
                             }}
                           >
@@ -2103,7 +2103,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                             key={ri}
                             style={{
                               border: "1px solid #E5E9F0",
-                              borderRadius: "10px",
+                              borderRadius: "8px",
                               padding: "20px",
                               backgroundColor: "#FFFFFF",
                             }}
@@ -2218,7 +2218,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                           key={li}
                           style={{
                             border: "1px solid #E5E9F0",
-                            borderRadius: "10px",
+                            borderRadius: "8px",
                             padding: "20px",
                             backgroundColor: "#FFFFFF",
                           }}
@@ -2247,7 +2247,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                                 <button
                                   type="button"
                                   onClick={() => toggleLocationShowEnd(li, false)}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: "4px", display: "flex" }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: "4px", display: "flex" }}
                                 >
                                   <X size={15} />
                                 </button>
@@ -2284,7 +2284,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                         key={li}
                         style={{
                           border: "1px solid #E5E9F0",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           padding: "20px",
                           marginBottom: li < r.emptyReturnLocations.length - 1 ? "16px" : "0",
                           backgroundColor: "#FFFFFF",
@@ -2376,9 +2376,9 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
             padding: "32px",
             maxWidth: "420px",
             width: "90%",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
           }}>
-            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#12332B", margin: "0 0 12px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 12px" }}>
               Delete Trucking Record
             </h3>
             <p style={{ fontSize: "14px", color: "#667085", margin: "0 0 24px", lineHeight: "1.5" }}>
@@ -2396,7 +2396,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                   fontWeight: 600,
                   border: "none",
                   borderRadius: "8px",
-                  background: "#DC2626",
+                  background: "#EF4444",
                   color: "#FFFFFF",
                   cursor: "pointer",
                 }}
@@ -2425,9 +2425,9 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
             padding: "32px",
             maxWidth: "420px",
             width: "90%",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
           }}>
-            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#12332B", margin: "0 0 12px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 12px" }}>
               Discard Changes?
             </h3>
             <p style={{ fontSize: "14px", color: "#667085", margin: "0 0 24px", lineHeight: "1.5" }}>
@@ -2445,7 +2445,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                   fontWeight: 600,
                   border: "none",
                   borderRadius: "8px",
-                  background: "#DC2626",
+                  background: "#EF4444",
                   color: "#FFFFFF",
                   cursor: "pointer",
                 }}

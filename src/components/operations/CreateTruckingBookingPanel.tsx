@@ -26,9 +26,9 @@ const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
   borderRadius: "8px",
-  border: "1px solid #E5E7EB",
+  border: "1px solid #E5E9F0",
   fontSize: "14px",
-  color: "#12332B",
+  color: "#0A1D4D",
   outline: "none",
   backgroundColor: "#FFFFFF",
   boxSizing: "border-box" as const,
@@ -64,16 +64,16 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
     <div style={{
       background: "white",
       borderRadius: "12px",
-      border: "1px solid #E5E7EB",
+      border: "1px solid #E5E9F0",
       overflow: "hidden",
       marginBottom: "24px",
     }}>
       <div style={{
         padding: "20px 24px",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         background: "#F9FAFB",
       }}>
-        <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+        <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
           {title}
         </h3>
       </div>
@@ -191,17 +191,16 @@ export function CreateTruckingBookingPanel({
           height: "100%",
           width: "680px",
           background: "white",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           zIndex: 50,
           display: "flex",
           flexDirection: "column",
-          borderLeft: "1px solid #E5E7EB",
+          borderLeft: "1px solid #E5E9F0",
         }}
       >
         {/* ── Header ── */}
         <div style={{
           padding: "20px 48px",
-          borderBottom: "1px solid #E5E7EB",
+          borderBottom: "1px solid #E5E9F0",
           background: "white",
           flexShrink: 0,
         }}>
@@ -225,7 +224,7 @@ export function CreateTruckingBookingPanel({
             </button>
 
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                 Create Trucking Booking
               </h1>
               <p style={{ fontSize: "13px", color: "#667085", margin: "2px 0 0" }}>
@@ -250,7 +249,7 @@ export function CreateTruckingBookingPanel({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                 {/* Customer Name spans full row */}
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <FieldLabel>Customer Name <span style={{ color: "#C94F3D" }}>*</span></FieldLabel>
+                  <FieldLabel>Customer Name <span style={{ color: "#EF4444" }}>*</span></FieldLabel>
                   <input
                     type="text"
                     value={formData.customerName}
@@ -565,7 +564,7 @@ export function CreateTruckingBookingPanel({
         {/* ── Footer ── */}
         <div style={{
           padding: "16px 48px",
-          borderTop: "1px solid #E5E7EB",
+          borderTop: "1px solid #E5E9F0",
           background: "white",
           display: "flex",
           justifyContent: "flex-end",

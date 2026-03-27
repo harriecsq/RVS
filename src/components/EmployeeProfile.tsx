@@ -88,7 +88,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
             <h1 style={{ 
               fontSize: "28px", 
               fontWeight: 600, 
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "8px"
             }}>
               Employee Profile
@@ -102,7 +102,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
             style={{
               border: "1px solid var(--neuron-ui-border)",
               backgroundColor: "#FFFFFF",
-              color: "#12332B",
+              color: "#0A1D4D",
               fontSize: "13px",
               fontWeight: 500
             }}
@@ -153,7 +153,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                 <h2 style={{ 
                   fontSize: "24px", 
                   fontWeight: 600, 
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   marginBottom: "4px"
                 }}>
                   {employeeData.name}
@@ -197,7 +197,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                 </div>
                 <p style={{ 
                   fontSize: "14px", 
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   paddingLeft: "24px"
                 }}>
                   {employeeData.email}
@@ -220,7 +220,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                 </div>
                 <p style={{ 
                   fontSize: "14px", 
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   paddingLeft: "24px"
                 }}>
                   {employeeData.phone}
@@ -243,7 +243,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                 </div>
                 <p style={{ 
                   fontSize: "14px", 
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   paddingLeft: "24px"
                 }}>
                   {employeeData.location}
@@ -266,7 +266,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                 </div>
                 <p style={{ 
                   fontSize: "14px", 
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   paddingLeft: "24px"
                 }}>
                   {employeeData.joinDate}
@@ -286,7 +286,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
             <h3 style={{ 
               fontSize: "16px", 
               fontWeight: 600, 
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "16px"
             }}>
               Department Information
@@ -330,7 +330,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                 </div>
                 <p style={{ 
                   fontSize: "14px", 
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   paddingLeft: "24px"
                 }}>
                   {employeeData.role}
@@ -350,7 +350,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
             <h3 style={{ 
               fontSize: "16px", 
               fontWeight: 600, 
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "8px"
             }}>
               Account Actions
@@ -366,9 +366,9 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
               onClick={logout}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors"
               style={{
-                border: "1px solid #DC2626",
+                border: "1px solid #EF4444",
                 backgroundColor: "#FFFFFF",
-                color: "#DC2626",
+                color: "#EF4444",
                 fontSize: "13px",
                 fontWeight: 500,
                 cursor: "pointer"
@@ -478,7 +478,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                       borderRadius: "6px",
                       fontSize: "13px",
                       backgroundColor: "white",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       cursor: "pointer"
                     }}
                   >
@@ -512,7 +512,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                       borderRadius: "6px",
                       fontSize: "13px",
                       backgroundColor: "white",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       cursor: "pointer"
                     }}
                   >
@@ -565,7 +565,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                     borderRadius: "8px",
                     fontSize: "13px",
                     fontWeight: 600,
-                    color: devOverride?.enabled ? "#12332B" : "#9CA3AF",
+                    color: devOverride?.enabled ? "#0A1D4D" : "#9CA3AF",
                     cursor: devOverride?.enabled ? "pointer" : "not-allowed",
                     transition: "all 0.2s ease"
                   }}

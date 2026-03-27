@@ -171,7 +171,7 @@ export function ClientSelector({
             borderRadius: '12px',
             border: '1px solid #E5E9F0',
             background: disabled ? '#F9FAFB' : '#FFFFFF',
-            color: selectedClient ? '#12332B' : '#667085',
+            color: selectedClient ? '#0A1D4D' : '#667085',
             fontWeight: selectedClient ? 500 : 400,
             fontSize: '14px'
           }}
@@ -180,7 +180,7 @@ export function ClientSelector({
             "Loading clients..."
           ) : selectedClient ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-              <span style={{ fontWeight: 600, color: '#12332B' }}>{selectedClient.name}</span>
+              <span style={{ fontWeight: 600, color: '#0A1D4D' }}>{selectedClient.name}</span>
               <span style={{ fontSize: '12px', color: '#667085' }}>{selectedClient.industry}</span>
             </div>
           ) : (
@@ -202,7 +202,7 @@ export function ClientSelector({
                 border: 'none',
                 outline: 'none',
                 fontSize: '14px',
-                color: '#12332B'
+                color: '#0A1D4D'
               }}
             />
           </div>
@@ -234,7 +234,7 @@ export function ClientSelector({
                   style={{ color: '#0F766E' }}
                 />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: '#12332B', fontSize: '14px' }}>
+                  <div style={{ fontWeight: 600, color: '#0A1D4D', fontSize: '14px' }}>
                     {client.name}
                   </div>
                   <div style={{ fontSize: '12px', color: '#667085' }}>

@@ -376,7 +376,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
       {/* Header — matches voucher creation panel */}
       <div className="flex items-center justify-between px-8 py-6 border-b border-[#E5E9F0]">
         <div>
-          <h2 className="text-xl font-semibold text-[#12332B]">Create Collection</h2>
+          <h2 className="text-xl font-semibold text-[#0A1D4D]">Create Collection</h2>
           <p className="text-sm text-[#667085] mt-1">Record payment received from customer</p>
         </div>
         <button
@@ -400,7 +400,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               <select
                 value={formData.paymentMethod}
                 onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                className="w-full h-10 px-3 rounded-md border border-[#E5E9F0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-[#12332B]"
+                className="w-full h-10 px-3 rounded-md border border-[#E5E9F0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-[#0A1D4D]"
               >
                 <option value="" disabled>Select method</option>
                 {PAYMENT_METHODS.map((method) => (
@@ -423,7 +423,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               <Input
                 value={formData.referenceNumber}
                 onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                className="h-10 border-[#E5E9F0] text-sm text-[#12332B] focus-visible:ring-[#0F766E]"
+                className="h-10 border-[#E5E9F0] text-sm text-[#0A1D4D] focus-visible:ring-[#0F766E]"
                 placeholder="Check # or Transaction ID"
               />
             </div>
@@ -433,7 +433,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               <Input
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="h-10 border-[#E5E9F0] text-sm text-[#12332B] focus-visible:ring-[#0F766E]"
+                className="h-10 border-[#E5E9F0] text-sm text-[#0A1D4D] focus-visible:ring-[#0F766E]"
                 placeholder="Optional notes"
               />
             </div>
@@ -443,13 +443,13 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
           <div style={{
             background: "white",
             borderRadius: "12px",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             overflow: "hidden",
           }}>
             {/* Card Header */}
             <div style={{
               padding: "14px 24px",
-              borderBottom: "1px solid #E5E7EB",
+              borderBottom: "1px solid #E5E9F0",
               background: "#F9FAFB",
               display: "flex",
               alignItems: "center",
@@ -457,7 +457,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               borderRadius: "12px 12px 0 0",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Select Invoices
                 </h3>
                 <span style={{
@@ -466,7 +466,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                   color: "#667085",
                   backgroundColor: "#F3F4F6",
                   padding: "2px 8px",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                 }}>
                   {billings.length} outstanding
                 </span>
@@ -529,7 +529,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                     border: "1px solid #E5E9F0",
                     backgroundColor: "#FFFFFF",
                     fontSize: "13px",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     outline: "none",
                     transition: "border-color 0.15s ease",
                   }}
@@ -565,7 +565,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                     border: "1px solid #E5E9F0",
                     backgroundColor: "#FFFFFF",
                     fontSize: "13px",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     outline: "none",
                     transition: "border-color 0.15s ease",
                   }}
@@ -602,7 +602,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "#D1D5DB";
-                    e.currentTarget.style.color = "#374151";
+                    e.currentTarget.style.color = "#344054";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = "#E5E9F0";
@@ -653,7 +653,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                         key={billing.id}
                         style={{
                           padding: "12px 24px",
-                          borderBottom: "1px solid #E5E7EB",
+                          borderBottom: "1px solid #E5E9F0",
                           backgroundColor: "#FAFFFE",
                         }}
                       >
@@ -691,10 +691,10 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                               <div>
-                                <div style={{ fontWeight: 500, color: "#12332B", fontSize: "13px" }}>
+                                <div style={{ fontWeight: 500, color: "#0A1D4D", fontSize: "13px" }}>
                                   {billing.billingNumber}
                                 </div>
-                                <div style={{ fontSize: "12px", color: "#374151", marginTop: "1px" }}>
+                                <div style={{ fontSize: "12px", color: "#344054", marginTop: "1px" }}>
                                   {companyDisplay}
                                   {clientDisplay && (
                                     <span style={{ color: "#9CA3AF" }}> · {clientDisplay}</span>
@@ -727,7 +727,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                                     max={balance}
                                     placeholder=""
                                     className={`w-full h-8 pl-7 pr-3 text-right text-sm border border-[#E5E9F0] rounded-md focus:border-[#0F766E] outline-none transition-colors ${
-                                      autoFilledAllocations.has(billing.id) ? "bg-green-50 text-[#12332B]" : "bg-white text-[#12332B]"
+                                      autoFilledAllocations.has(billing.id) ? "bg-green-50 text-[#0A1D4D]" : "bg-white text-[#0A1D4D]"
                                     }`}
                                     onClick={(e) => e.stopPropagation()}
                                   />
@@ -749,7 +749,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                 padding: "10px 24px",
                 background: "#F9FAFB",
                 borderBottom: "1px solid #F0F2F5",
-                borderTop: selectedBillings.length > 0 ? "1px solid #E5E7EB" : "none",
+                borderTop: selectedBillings.length > 0 ? "1px solid #E5E9F0" : "none",
               }}>
                 <span style={{
                   fontSize: "13px",
@@ -766,7 +766,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                 <div className="text-center py-6 text-sm text-[#667085]">Loading invoices...</div>
               ) : billings.length === 0 ? (
                 <div className="text-center py-10 text-[#667085]">
-                  <div style={{ fontSize: "14px", fontWeight: 500, color: "#374151", marginBottom: "4px" }}>
+                  <div style={{ fontSize: "14px", fontWeight: 500, color: "#344054", marginBottom: "4px" }}>
                     All invoices are fully collected
                   </div>
                   <div style={{ fontSize: "13px" }}>
@@ -775,7 +775,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                 </div>
               ) : availableBillings.length === 0 ? (
                 <div className="text-center py-8 text-[#667085]">
-                  <div style={{ fontSize: "13px", fontWeight: 500, color: "#374151", marginBottom: "4px" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 500, color: "#344054", marginBottom: "4px" }}>
                     {hasActiveFilters
                       ? "No matching invoices found"
                       : "All outstanding invoices have been added"}
@@ -830,10 +830,10 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                               <div>
-                                <div style={{ fontWeight: 500, color: "#12332B", fontSize: "13px" }}>
+                                <div style={{ fontWeight: 500, color: "#0A1D4D", fontSize: "13px" }}>
                                   {billing.billingNumber}
                                 </div>
-                                <div style={{ fontSize: "12px", color: "#374151", marginTop: "1px" }}>
+                                <div style={{ fontSize: "12px", color: "#344054", marginTop: "1px" }}>
                                   {companyDisplay}
                                   {clientDisplay && (
                                     <span style={{ color: "#9CA3AF" }}> · {clientDisplay}</span>
@@ -842,7 +842,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                               </div>
                               <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontSize: "11px", color: "#667085" }}>Balance</div>
-                                <div style={{ fontWeight: 600, color: "#12332B", fontSize: "13px" }}>₱{formatAmount(balance)}</div>
+                                <div style={{ fontWeight: 600, color: "#0A1D4D", fontSize: "13px" }}>₱{formatAmount(balance)}</div>
                               </div>
                             </div>
                             <div style={{ fontSize: "11px", color: "#667085", marginTop: "2px" }}>
@@ -866,7 +866,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
       <div className="p-6 border-t border-[#E5E9F0] bg-white flex justify-between items-center">
         <div>
           <div className="text-xs text-[#667085]">Total Payment</div>
-          <div className="text-xl font-bold text-[#12332B]">₱{formatAmount(totalAmount)}</div>
+          <div className="text-xl font-bold text-[#0A1D4D]">₱{formatAmount(totalAmount)}</div>
         </div>
         <div className="flex gap-3">
           <Button 

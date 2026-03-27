@@ -45,11 +45,11 @@ export function ActionsDropdown({
           padding: "10px 20px",
           height: "40px",
           background: "white",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "8px",
           fontSize: "14px",
           fontWeight: 600,
-          color: "#12332B",
+          color: "#0A1D4D",
           cursor: "pointer",
           transition: "all 0.15s ease"
         }}
@@ -59,7 +59,7 @@ export function ActionsDropdown({
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = "white";
-          e.currentTarget.style.borderColor = "#E5E7EB";
+          e.currentTarget.style.borderColor = "#E5E9F0";
         }}
       >
         <MoreVertical size={16} />
@@ -74,7 +74,7 @@ export function ActionsDropdown({
             top: "calc(100% + 4px)",
             right: 0,
             background: "white",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
             minWidth: "200px",
@@ -93,7 +93,7 @@ export function ActionsDropdown({
                   gap: "12px",
                   padding: "10px 16px",
                   fontSize: "14px",
-                  color: "#374151",
+                  color: "#344054",
                   fontWeight: 500
                 }}
               >
@@ -116,7 +116,7 @@ export function ActionsDropdown({
                   background: "transparent",
                   border: "none",
                   fontSize: "14px",
-                  color: "#374151",
+                  color: "#344054",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "background 0.15s ease"
@@ -147,7 +147,7 @@ export function ActionsDropdown({
                   background: "transparent",
                   border: "none",
                   fontSize: "14px",
-                  color: "#374151",
+                  color: "#344054",
                   cursor: "pointer",
                   textAlign: "left",
                   transition: "background 0.15s ease"
@@ -167,7 +167,7 @@ export function ActionsDropdown({
               <div
                 style={{
                   height: "1px",
-                  background: "#E5E7EB",
+                  background: "#E5E9F0",
                   margin: "8px 0"
                 }}
               />
@@ -189,7 +189,7 @@ export function ActionsDropdown({
               background: "transparent",
               border: "none",
               fontSize: "14px",
-              color: "#DC2626",
+              color: "#EF4444",
               cursor: "pointer",
               textAlign: "left",
               transition: "background 0.15s ease"

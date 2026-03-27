@@ -274,7 +274,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             <h1 style={{ 
               fontSize: "32px", 
               fontWeight: 600, 
-              color: "#12332B", 
+              color: "#0A1D4D", 
               marginBottom: "4px",
               letterSpacing: "-1.2px"
             }}>
@@ -330,11 +330,11 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             style={{
               width: "100%",
               padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
               outline: "none",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
             }}
           />
@@ -364,10 +364,10 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             onChange={(e) => setStatusFilter(e.target.value as ExpenseStatus | "all")}
             style={{
               padding: "10px 12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
               outline: "none",
               cursor: "pointer",
@@ -388,10 +388,10 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             onChange={(e) => setCategoryFilter(e.target.value)}
             style={{
               padding: "10px 12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
               outline: "none",
               cursor: "pointer",
@@ -409,10 +409,10 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             onChange={(e) => setPaymentMethodFilter(e.target.value)}
             style={{
               padding: "10px 12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
               outline: "none",
               cursor: "pointer",
@@ -445,11 +445,11 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       <div style={{ padding: "0 48px 48px 48px" }}>
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="text-[#12332B]/60">Loading expenses...</div>
+            <div className="text-[#0A1D4D]/60">Loading expenses...</div>
           </div>
         ) : filteredExpenses.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-[#12332B]/60 mb-2">
+            <div className="text-[#0A1D4D]/60 mb-2">
               {searchTerm || statusFilter !== "all" 
                 ? "No expenses match your filters" 
                 : "No expenses yet"}
@@ -463,14 +463,14 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
           </div>
         ) : (
           <div style={{
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "12px",
             overflow: "hidden",
             backgroundColor: "#FFFFFF"
           }}>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#12332B]/10">
+                <tr className="border-b border-[#0A1D4D]/10">
                   <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
                     Expense Details
                   </th>
@@ -492,7 +492,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
                 {filteredExpenses.map((expense) => (
                   <tr
                     key={expense.id}
-                    className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                     onClick={() => {
                       setSelectedExpense(expense);
                       setShowViewScreen(true);
@@ -505,7 +505,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
                           <div style={{ 
                             fontSize: "14px", 
                             fontWeight: 600, 
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             marginBottom: "2px"
                           }}>
                             {expense.expenseNumber}
@@ -523,7 +523,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {expense.companyName || expense.clientName || "—"}
                       </div>
                       {expense.companyName && expense.clientName && expense.companyName !== expense.clientName && (
@@ -533,7 +533,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
                       )}
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B", textAlign: "left" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D", textAlign: "left" }}>
                         ₱{formatAmount(expense.amount)}
                       </div>
                       {expense.pendingAmount !== undefined && expense.pendingAmount > 0 ? (
@@ -548,7 +548,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
                       <NeuronStatusPill status={expense.status} />
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "13px", color: "#12332B" }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
                         {new Date(expense.expenseDate || expense.createdAt).toLocaleDateString()}
                       </div>
                     </td>

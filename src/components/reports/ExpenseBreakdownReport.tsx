@@ -18,7 +18,7 @@ export function ExpenseBreakdownReport({ entries, period, generatedAt, companyNa
   const totalExpenses = entries.reduce((sum, e) => sum + e.totalAmount, 0);
 
   return (
-    <div className="bg-white rounded-lg border border-[#E5E7EB] overflow-hidden">
+    <div className="bg-white rounded-lg border border-[#E5E9F0] overflow-hidden">
       <div style={{ fontFamily: "Arial, sans-serif", padding: "40px", backgroundColor: "#FFFFFF" }}>
         {/* Header */}
         <div className="text-center mb-6">

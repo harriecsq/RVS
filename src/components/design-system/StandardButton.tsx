@@ -26,7 +26,7 @@ interface StandardButtonProps {
  * Design specs:
  * - Primary: Teal bg (#0F766E), white text
  * - Secondary: White bg, gray border, dark text
- * - Danger: Red bg (#DC2626), white text
+ * - Danger: Red bg (#EF4444), white text
  * - Height: 40px
  * - Padding: 10px 20px
  * - Radius: 8px
@@ -93,10 +93,10 @@ export function StandardButton({
       hoverColor: "var(--ds-teal-primary)",
     },
     danger: {
-      background: "#DC2626",
+      background: "#EF4444",
       color: "var(--ds-white)",
-      border: "1px solid #DC2626",
-      hoverBackground: "#B91C1C",
+      border: "1px solid #EF4444",
+      hoverBackground: "#DC2626",
       hoverColor: "var(--ds-white)",
     },
   };

@@ -461,14 +461,14 @@ export function CreateBillingScreen({
               onClick={onBack}
               className="p-2 hover:bg-[#0F766E]/10 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-[#12332B]" />
+              <ArrowLeft className="w-5 h-5 text-[#0A1D4D]" />
             </button>
             <div>
               <h1
                 style={{
                   fontSize: "28px",
                   fontWeight: 600,
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   letterSpacing: "-0.5px",
                 }}
               >
@@ -491,18 +491,18 @@ export function CreateBillingScreen({
             <div style={{
               background: "white",
               borderRadius: "12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               overflow: "hidden",
             }}>
               <div style={{
                 padding: "16px 24px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
                 background: "#F9FAFB",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Booking Details
                 </h3>
               </div>
@@ -542,8 +542,8 @@ export function CreateBillingScreen({
                     {/* Read-only summary fields */}
                     <div style={{
                       background: "#FAFBFC",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: "10px",
+                      border: "1px solid #E5E9F0",
+                      borderRadius: "8px",
                       padding: "16px 20px",
                       display: "flex",
                       flexDirection: "column",
@@ -554,70 +554,70 @@ export function CreateBillingScreen({
                         {selectedBooking?.shipmentType?.toLowerCase() === 'export' && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{shipper || "—"}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{shipper || "—"}</div>
                           </div>
                         )}
                         {selectedBooking?.shipmentType?.toLowerCase() === 'import' && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{consignee || "—"}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{consignee || "—"}</div>
                           </div>
                         )}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client Name</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{clientName || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{clientName || "—"}</div>
                         </div>
                         {companyName && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Company</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{companyName}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{companyName}</div>
                           </div>
                         )}
                         {/* Row 2: BL Number | Vessel / Voyage */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{blNumber || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{blNumber || "—"}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{vessel || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{vessel || "—"}</div>
                         </div>
                         {/* Row 3: Container No | Origin (POL) */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{containerNumbers.filter(Boolean).join(", ") || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{containerNumbers.filter(Boolean).join(", ") || "—"}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin (POL)</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{origin || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{origin || "—"}</div>
                         </div>
                         {/* Row 4: Destination (POD) | Volume */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Destination (POD)</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{destination || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{destination || "—"}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{computeVolumeSummary(containerNumbers, volume)}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(containerNumbers, volume)}</div>
                         </div>
                         {/* Row 5: Commodity (conditional) */}
                         {commodity && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{commodity}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{commodity}</div>
                           </div>
                         )}
                       </div>
 
                       {/* Linked Expenses badge */}
-                      <div style={{ borderTop: "1px solid #E5E7EB", paddingTop: "12px", marginTop: "2px" }}>
+                      <div style={{ borderTop: "1px solid #E5E9F0", paddingTop: "12px", marginTop: "2px" }}>
                         {expenses.length > 0 ? (
                           <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 10px", background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#059669" }}>
                             <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10B981" }} />
                             {expenses.length} Linked Expense{expenses.length > 1 ? 's' : ''} Found
                           </div>
                         ) : (
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 10px", background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#6B7280" }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 10px", background: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "12px", fontWeight: 500, color: "#6B7280" }}>
                             <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#9CA3AF" }} />
                             No Linked Expenses
                           </div>
@@ -631,7 +631,7 @@ export function CreateBillingScreen({
 
             {/* ── BILLING DATE & EXCHANGE RATE (separate editable fields) ── */}
             <Card className="p-6 border border-[#E5E9F0] shadow-sm">
-              <h3 className="text-base font-semibold text-[#12332B] mb-5">Billing Settings</h3>
+              <h3 className="text-base font-semibold text-[#0A1D4D] mb-5">Billing Settings</h3>
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <Label className="text-[13px] font-medium text-[#667085] mb-2 block">
@@ -660,7 +660,7 @@ export function CreateBillingScreen({
             <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
               <div className="bg-[#FAFBFC] px-4 py-3 border-b border-[#E5E9F0] flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-[#12332B]">Billing Particulars</h3>
+                  <h3 className="text-sm font-semibold text-[#0A1D4D]">Billing Particulars</h3>
                 </div>
                 <Button
                   type="button"
@@ -692,7 +692,7 @@ export function CreateBillingScreen({
                         <Input
                           value={particular.particulars}
                           onChange={(e) => updateParticular(particular.id, "particulars", e.target.value)}
-                          className="h-9 border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B] text-sm"
+                          className="h-9 border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D] text-sm"
                           placeholder="Enter description"
                         />
                       </td>
@@ -701,7 +701,7 @@ export function CreateBillingScreen({
                           type="number"
                           value={particular.volumeQty}
                           onChange={(e) => updateParticular(particular.id, "volumeQty", e.target.value)}
-                          className="h-9 text-right border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B] text-sm"
+                          className="h-9 text-right border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D] text-sm"
                         />
                       </td>
                       <td className="p-2">
@@ -709,7 +709,7 @@ export function CreateBillingScreen({
                           type="number"
                           value={particular.unitCost}
                           onChange={(e) => updateParticular(particular.id, "unitCost", e.target.value)}
-                          className="h-9 text-right border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B] text-sm"
+                          className="h-9 text-right border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D] text-sm"
                           placeholder="0.00"
                         />
                       </td>
@@ -728,7 +728,7 @@ export function CreateBillingScreen({
                         </div>
                       </td>
                       <td className="p-2">
-                        <div className="h-9 flex items-center justify-end px-3 bg-[#F9FAFB] rounded-md border border-[#E5E9F0] text-sm font-medium text-[#12332B]">
+                        <div className="h-9 flex items-center justify-end px-3 bg-[#F9FAFB] rounded-md border border-[#E5E9F0] text-sm font-medium text-[#0A1D4D]">
                           {formatAmount(particular.amount)}
                         </div>
                       </td>
@@ -747,7 +747,7 @@ export function CreateBillingScreen({
                 <tfoot className="bg-[#FAFBFC] border-t border-[#E5E9F0]">
                   <tr>
                     <td colSpan={5} className="px-4 py-3 text-right text-xs font-semibold text-[#667085] uppercase">Subtotal</td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-[#12332B]">
+                    <td className="px-4 py-3 text-right text-sm font-bold text-[#0A1D4D]">
                       ₱{formatAmount(billingParticulars.reduce((sum, p) => sum + p.amount, 0))}
                     </td>
                     <td></td>
@@ -766,7 +766,7 @@ export function CreateBillingScreen({
                   </div>
                 )}
               </div>
-              <div className="text-3xl font-bold text-[#12332B]">
+              <div className="text-3xl font-bold text-[#0A1D4D]">
                 ₱{formatAmount(billingParticulars.reduce((sum, p) => sum + p.amount, 0))}
               </div>
             </div>

@@ -146,7 +146,7 @@ export function PayeeSelector({
         borderRadius: '6px',
         border: '1px solid #E5E9F0',
         background: disabled ? '#F9FAFB' : '#FFFFFF',
-        color: value ? '#12332B' : '#667085',
+        color: value ? '#0A1D4D' : '#667085',
         fontWeight: value ? 500 : 400,
         fontSize: '14px',
         display: 'flex',
@@ -163,7 +163,7 @@ export function PayeeSelector({
         borderRadius: '12px',
         border: '1px solid #E5E9F0',
         background: disabled ? '#F9FAFB' : '#FFFFFF',
-        color: value ? '#12332B' : '#667085',
+        color: value ? '#0A1D4D' : '#667085',
         fontWeight: value ? 500 : 400,
         fontSize: '14px',
         display: 'flex',
@@ -255,7 +255,7 @@ export function PayeeSelector({
                 border: 'none',
                 outline: 'none',
                 fontSize: '14px',
-                color: '#12332B',
+                color: '#0A1D4D',
                 background: 'transparent',
               }}
             />
@@ -352,7 +352,7 @@ export function PayeeSelector({
                       <div
                         style={{
                           fontWeight: 600,
-                          color: '#12332B',
+                          color: '#0A1D4D',
                           fontSize: '14px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',

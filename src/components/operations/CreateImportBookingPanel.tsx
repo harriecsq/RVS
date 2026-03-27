@@ -605,7 +605,7 @@ export function CreateBrokerageBookingPanel({
           left: 0,
           right: 0,
           background: "white",
-          border: "1.5px solid #E5E7EB",
+          border: "1.5px solid #E5E9F0",
           borderRadius: "8px",
           boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
           zIndex: 50,
@@ -613,7 +613,7 @@ export function CreateBrokerageBookingPanel({
           overflowY: "auto"
         }}>
           {searchable && setSearchValue && (
-            <div style={{ padding: "8px", borderBottom: "1px solid #E5E7EB", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+            <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
               <input
                 type="text"
                 value={searchValue || ""}
@@ -654,7 +654,7 @@ export function CreateBrokerageBookingPanel({
                 alignItems: "center",
                 gap: "10px",
                 background: value === option ? "#F0FDF4" : "transparent",
-                borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E7EB" : "none",
+                borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
                 transition: "all 0.15s ease"
               }}
               onMouseEnter={(e) => {
@@ -745,10 +745,10 @@ export function CreateBrokerageBookingPanel({
               onClick={handleClose}
               className="p-2 hover:bg-[#0F766E]/10 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-[#12332B]" />
+              <ArrowLeft className="w-5 h-5 text-[#0A1D4D]" />
             </button>
             <div>
-              <h2 className="text-2xl font-semibold text-[#12332B] mb-1">
+              <h2 className="text-2xl font-semibold text-[#0A1D4D] mb-1">
                 Create Import Booking
               </h2>
               <p className="text-sm text-[#667085]">
@@ -821,7 +821,7 @@ export function CreateBrokerageBookingPanel({
                   fontSize: "14px",
                   border: "1px solid #E5E9F0",
                   borderRadius: "8px",
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   backgroundColor: "white",
                   outline: "none",
                   transition: "all 0.2s",
@@ -854,7 +854,7 @@ export function CreateBrokerageBookingPanel({
                     fontSize: "14px",
                     border: "1px solid #E5E9F0",
                     borderRadius: "8px",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     backgroundColor: "white",
                     outline: "none",
                     transition: "all 0.2s",
@@ -886,7 +886,7 @@ export function CreateBrokerageBookingPanel({
                     fontSize: "14px",
                     border: "1px solid #E5E9F0",
                     borderRadius: "8px",
-                    color: "#12332B",
+                    color: "#0A1D4D",
                     backgroundColor: "white",
                     outline: "none",
                     transition: "all 0.2s",
@@ -922,7 +922,7 @@ export function CreateBrokerageBookingPanel({
                         fontSize: "14px",
                         border: "1px solid #E5E9F0",
                         borderRadius: "8px",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         backgroundColor: "white",
                         outline: "none",
                         height: "42px",
@@ -1061,7 +1061,7 @@ export function CreateBrokerageBookingPanel({
                       left: 0,
                       right: 0,
                       background: "white",
-                      border: "1.5px solid #E5E7EB",
+                      border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
                       boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                       zIndex: 50,
@@ -1085,7 +1085,7 @@ export function CreateBrokerageBookingPanel({
                             alignItems: "center",
                             gap: "10px",
                             background: pod === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < 3 ? "1px solid #E5E7EB" : "none",
+                            borderBottom: index < 3 ? "1px solid #E5E9F0" : "none",
                             transition: "all 0.15s ease"
                           }}
                           onMouseEnter={(e) => {
@@ -1160,7 +1160,7 @@ export function CreateBrokerageBookingPanel({
                       left: 0,
                       right: 0,
                       background: "white",
-                      border: "1.5px solid #E5E7EB",
+                      border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
                       boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                       zIndex: 50,
@@ -1169,7 +1169,7 @@ export function CreateBrokerageBookingPanel({
                       display: "flex",
                       flexDirection: "column",
                     }}>
-                      <div style={{ padding: "8px", borderBottom: "1px solid #E5E7EB" }}>
+                      <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
                         <input
                           type="text"
                           value={sectionSearch}
@@ -1209,7 +1209,7 @@ export function CreateBrokerageBookingPanel({
                               alignItems: "center",
                               gap: "10px",
                               background: section === option ? "#F0FDF4" : "transparent",
-                              borderBottom: index < arr.length - 1 ? "1px solid #E5E7EB" : "none",
+                              borderBottom: index < arr.length - 1 ? "1px solid #E5E9F0" : "none",
                               transition: "all 0.15s ease",
                             }}
                             onMouseEnter={(e) => {
@@ -1451,7 +1451,7 @@ export function CreateBrokerageBookingPanel({
                       fontSize: "14px",
                       border: "1px solid #E5E9F0",
                       borderRadius: "8px",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       backgroundColor: "white",
                       outline: "none",
                       height: "42px",
@@ -1490,7 +1490,7 @@ export function CreateBrokerageBookingPanel({
                         left: 0,
                         right: 0,
                         background: "white",
-                        border: "1.5px solid #E5E7EB",
+                        border: "1.5px solid #E5E9F0",
                         borderRadius: "8px",
                         boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                         zIndex: 50,
@@ -1509,7 +1509,7 @@ export function CreateBrokerageBookingPanel({
                               cursor: "pointer",
                               color: "#111827",
                               background: grossWeightUnit === unit ? "#F0FDF4" : "transparent",
-                              borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E7EB" : "none",
+                              borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none",
                             }}
                             onMouseEnter={(e) => {
                               if (grossWeightUnit !== unit) e.currentTarget.style.background = "#F9FAFB";
@@ -1574,7 +1574,7 @@ export function CreateBrokerageBookingPanel({
                       left: 0,
                       right: 0,
                       background: "white",
-                      border: "1.5px solid #E5E7EB",
+                      border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
                       boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                       zIndex: 50,
@@ -1598,7 +1598,7 @@ export function CreateBrokerageBookingPanel({
                             alignItems: "center",
                             gap: "10px",
                             background: status === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < IMPORT_STATUS_OPTIONS.length - 1 ? "1px solid #E5E7EB" : "none",
+                            borderBottom: index < IMPORT_STATUS_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
                             transition: "all 0.15s ease"
                           }}
                           onMouseEnter={(e) => {
@@ -1651,7 +1651,7 @@ export function CreateBrokerageBookingPanel({
                       left: 0,
                       right: 0,
                       background: "white",
-                      border: "1.5px solid #E5E7EB",
+                      border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
                       boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                       zIndex: 50,
@@ -1675,7 +1675,7 @@ export function CreateBrokerageBookingPanel({
                             alignItems: "center",
                             gap: "10px",
                             background: shippingLineStatus === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < 2 ? "1px solid #E5E7EB" : "none",
+                            borderBottom: index < 2 ? "1px solid #E5E9F0" : "none",
                             transition: "all 0.15s ease"
                           }}
                           onMouseEnter={(e) => {

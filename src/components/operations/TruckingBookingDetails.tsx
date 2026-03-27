@@ -116,14 +116,14 @@ export function TruckingBookingDetails({
             onClick={onBack}
             className="p-2 hover:bg-[#0F766E]/10 rounded-lg transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-[#12332B]" />
+            <ArrowLeft className="w-5 h-5 text-[#0A1D4D]" />
           </button>
           
           <div>
             <h1 style={{ 
               fontSize: "20px",
               fontWeight: 600,
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "2px"
             }}>
               {booking.customerName}
@@ -153,14 +153,14 @@ export function TruckingBookingDetails({
             fontSize: "13px",
             fontWeight: 500,
             backgroundColor: booking.status === "Draft" ? "#F3F4F6" : 
-                           booking.status === "In Progress" ? "#E8F2EE" :
+                           booking.status === "In Progress" ? "#E8F5F3" :
                            booking.status === "Completed" ? "#D1FAE5" :
                            booking.status === "Cancelled" ? "#FEE2E2" : "#FFF3E0",
             color: booking.status === "Draft" ? "#6B7280" :
                    booking.status === "In Progress" ? "#0F766E" :
                    booking.status === "Completed" ? "#10B981" :
                    booking.status === "Cancelled" ? "#EF4444" : "#F59E0B",
-            border: `1px solid ${booking.status === "Draft" ? "#E5E7EB" : 
+            border: `1px solid ${booking.status === "Draft" ? "#E5E9F0" : 
                                  booking.status === "In Progress" ? "#0F766E33" :
                                  booking.status === "Completed" ? "#10B98133" :
                                  booking.status === "Cancelled" ? "#EF444433" : "#F59E0B33"}`
@@ -253,7 +253,7 @@ function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
           top: "0",
           bottom: "0",
           width: "2px",
-          backgroundColor: "#E5E7EB"
+          backgroundColor: "#E5E9F0"
         }} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -371,7 +371,7 @@ function LockedField({ label, value, tooltip }: { label: string; value: string; 
       <div style={{
         padding: "10px 14px",
         backgroundColor: "#F9FAFB",
-        border: "1px solid #E5E7EB",
+        border: "1px solid #E5E9F0",
         borderRadius: "6px",
         fontSize: "14px",
         color: "#6B7280",
@@ -452,7 +452,7 @@ function EditableField({
         <div style={{
           padding: "10px 14px",
           backgroundColor: "#F9FAFB",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "6px",
           fontSize: "14px",
           color: "#6B7280",
@@ -553,7 +553,7 @@ function EditableField({
           position: "relative",
           padding: "10px 14px",
           backgroundColor: isEmpty ? "white" : "#FAFBFC",
-          border: `1px solid ${isEmpty && required ? "#FCD34D" : "#E5E7EB"}`,
+          border: `1px solid ${isEmpty && required ? "#FCD34D" : "#E5E9F0"}`,
           borderRadius: "6px",
           fontSize: "14px",
           color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
@@ -566,7 +566,7 @@ function EditableField({
           e.currentTarget.style.backgroundColor = "white";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = isEmpty && required ? "#FCD34D" : "#E5E7EB";
+          e.currentTarget.style.borderColor = isEmpty && required ? "#FCD34D" : "#E5E9F0";
           e.currentTarget.style.backgroundColor = isEmpty ? "white" : "#FAFBFC";
         }}
       >

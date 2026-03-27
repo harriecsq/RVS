@@ -56,7 +56,7 @@ interface BookingsProps {
 // Status pill component
 function StatusPill({ status }: { status: string }) {
   const statusConfig: Record<string, { bg: string; text: string }> = {
-    "For Delivery": { bg: "#E8F2EE", text: "#0F766E" },
+    "For Delivery": { bg: "#E8F5F3", text: "#0F766E" },
     "In Transit": { bg: "#FFF3E0", text: "#F25C05" },
     "Delivered": { bg: "#E8F5E9", text: "#10b981" },
     "Created": { bg: "#F3F4F6", text: "#6B7280" },
@@ -241,7 +241,7 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
           }}
         >
           <div>
-            <h1 style={{ fontSize: "32px", fontWeight: 600, color: "#12332B", marginBottom: "4px", letterSpacing: "-1.2px" }}>
+            <h1 style={{ fontSize: "32px", fontWeight: 600, color: "#0A1D4D", marginBottom: "4px", letterSpacing: "-1.2px" }}>
               Bookings
             </h1>
             <p style={{ fontSize: "14px", color: "#667085" }}>
@@ -258,7 +258,7 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
                 borderRadius: "16px",
                 background: "transparent",
                 border: "1px solid #E5E9F0",
-                color: "#12332B",
+                color: "#0A1D4D",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -356,7 +356,7 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
                 borderRadius: "12px",
                 background: "#FFFFFF",
                 outline: "none",
-                color: "#12332B",
+                color: "#0A1D4D",
                 fontFamily: "inherit",
               }}
             />
@@ -372,7 +372,7 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
               background: "transparent",
               fontSize: "14px",
               fontWeight: 500,
-              color: "#12332B",
+              color: "#0A1D4D",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -478,7 +478,7 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
                         </div>
 
                         {/* Client */}
-                        <div style={{ fontSize: "14px", color: "#12332B" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {booking.client}
                         </div>
 

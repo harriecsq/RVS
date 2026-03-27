@@ -735,7 +735,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
             <span style={{
               fontSize: "12px",
               fontWeight: 600,
-              color: "#12332B",
+              color: "#0A1D4D",
               textTransform: "uppercase" as const,
               letterSpacing: "0.03em"
             }}>
@@ -804,7 +804,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                                 padding: "9px 12px",
                                 fontSize: "13px",
                                 fontWeight: 500,
-                                color: "#12332B",
+                                color: "#0A1D4D",
                                 background: "white",
                                 border: "none",
                                 cursor: "pointer",
@@ -880,9 +880,9 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 display: "flex",
                 alignItems: "center",
                 gap: "4px",
-                color: "#DC2626",
+                color: "#EF4444",
                 background: "transparent",
-                border: "1px solid #DC2626",
+                border: "1px solid #EF4444",
                 cursor: "pointer",
                 padding: "4px 10px",
                 borderRadius: "6px",
@@ -933,18 +933,18 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                           style={{
                             height: "36px",
                             width: "100%",
-                            border: "1px solid #E5E7EB",
+                            border: "1px solid #E5E9F0",
                             borderRadius: "4px",
                             padding: "0 10px",
                             fontSize: "14px",
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             background: "white",
                             outline: "none",
                             boxSizing: "border-box" as const,
                             transition: "border-color 0.15s ease"
                           }}
                           onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                          onBlur={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+                          onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                         />
                       </td>
                       {/* Unit Price */}
@@ -960,11 +960,11 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               height: "36px",
                               flex: 1,
                               minWidth: 0,
-                              border: "1px solid #E5E7EB",
+                              border: "1px solid #E5E9F0",
                               borderRadius: "4px",
                               padding: "0 6px",
                               fontSize: "13px",
-                              color: "#12332B",
+                              color: "#0A1D4D",
                               background: "white",
                               outline: "none",
                               textAlign: "right" as const,
@@ -972,7 +972,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               transition: "border-color 0.15s ease"
                             }}
                             onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                           />
                           <select
                             value={item.currency || "PHP"}
@@ -980,7 +980,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                             style={{
                               height: "36px",
                               width: "58px",
-                              border: "1px solid #E5E7EB",
+                              border: "1px solid #E5E9F0",
                               borderRadius: "4px",
                               padding: "0 2px",
                               fontSize: "11px",
@@ -992,7 +992,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               transition: "border-color 0.15s ease"
                             }}
                             onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                           >
                             <option value="PHP">PHP</option>
                             <option value="USD">USD</option>
@@ -1004,7 +1004,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                             style={{
                               height: "36px",
                               width: "70px",
-                              border: "1px solid #E5E7EB",
+                              border: "1px solid #E5E9F0",
                               borderRadius: "4px",
                               padding: "0 2px",
                               fontSize: "11px",
@@ -1015,7 +1015,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               transition: "border-color 0.15s ease"
                             }}
                             onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                           >
                             <option value="40">PER 40</option>
                             <option value="20">PER 20</option>
@@ -1024,7 +1024,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         </div>
                       </td>
                       {/* Volume */}
-                      <td style={{ padding: "8px 16px", width: "15%", textAlign: "right", fontSize: "14px", color: "#12332B", fontWeight: 600, background: "#FAFBFC" }}>
+                      <td style={{ padding: "8px 16px", width: "15%", textAlign: "right", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, background: "#FAFBFC" }}>
                         ₱{formatAmount(volumeAmount)}
                       </td>
                       {/* Voucher No */}
@@ -1039,7 +1039,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                             borderRadius: "6px",
                             padding: "0 8px",
                             fontSize: "13px",
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             background: "transparent",
                             outline: "none",
                             appearance: "none" as const,
@@ -1063,7 +1063,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                       </td>
                       {/* Voucher Amount */}
                       <td style={{ padding: "8px", width: "10%" }}>
-                        <div style={{ padding: "0 10px", fontSize: "14px", color: "#12332B", textAlign: "right", fontWeight: 500, lineHeight: "36px" }}>
+                        <div style={{ padding: "0 10px", fontSize: "14px", color: "#0A1D4D", textAlign: "right", fontWeight: 500, lineHeight: "36px" }}>
                           ₱{formatAmount(item.amount || 0)}
                         </div>
                       </td>
@@ -1096,7 +1096,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   <td colSpan={4} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
                     Subtotal
                   </td>
-                  <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#12332B" }}>
+                  <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
                     ₱{formatAmount(categoryTotal)}
                   </td>
                   <td></td>
@@ -1146,7 +1146,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
             <tbody>
               {unreconciledItems.map((item) => (
                 <tr key={item.id} style={{ borderBottom: "1px solid #E5E9F0" }}>
-                  <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500, color: "#12332B" }}>{item.particulars}</td>
+                  <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>{item.particulars}</td>
                   <td style={{ padding: "12px 16px" }}>
                     <span style={{
                       background: "#F3F4F6",
@@ -1155,12 +1155,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                       color: "#4B5563",
                       fontSize: "12px",
                       fontWeight: 500,
-                      border: "1px solid #E5E7EB"
+                      border: "1px solid #E5E9F0"
                     }}>
                       {item.voucherNo}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#12332B" }}>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
                     ₱{formatAmount(item.amount)}
                   </td>
                   <td style={{ padding: "12px 16px", textAlign: "center" }}>
@@ -1190,7 +1190,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                           fontWeight: 500,
                           color: "#1F2937",
                           background: "white",
-                          border: "1px solid #E5E7EB",
+                          border: "1px solid #E5E9F0",
                           padding: "4px 8px",
                           borderRadius: "4px",
                           cursor: "pointer",
@@ -1223,7 +1223,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           justifyContent: "space-between",
           alignItems: "center"
         }}>
-          <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+          <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
             Charge Categories & Line Items
           </h3>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -1317,7 +1317,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         padding: "9px 12px",
                         fontSize: "14px",
                         fontWeight: 500,
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         background: "white",
                         border: "none",
                         cursor: "pointer",
@@ -1391,7 +1391,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         padding: "9px 12px",
                         fontSize: "14px",
                         fontWeight: 500,
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         background: "white",
                         border: "none",
                         cursor: "pointer",
@@ -1454,7 +1454,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                     <span style={{
                       fontSize: "12px",
                       fontWeight: 600,
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       textTransform: "uppercase" as const,
                       letterSpacing: "0.03em"
                     }}>
@@ -1534,7 +1534,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                                       padding: "9px 12px",
                                       fontSize: "13px",
                                       fontWeight: 500,
-                                      color: "#12332B",
+                                      color: "#0A1D4D",
                                       background: "white",
                                       border: "none",
                                       cursor: "pointer",
@@ -1609,9 +1609,9 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         display: "flex",
                         alignItems: "center",
                         gap: "4px",
-                        color: "#DC2626",
+                        color: "#EF4444",
                         background: "transparent",
-                        border: "1px solid #DC2626",
+                        border: "1px solid #EF4444",
                         cursor: "pointer",
                         padding: "4px 10px",
                         borderRadius: "6px",
@@ -1667,18 +1667,18 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               style={{
                                 height: "36px",
                                 width: "100%",
-                                border: "1px solid #E5E7EB",
+                                border: "1px solid #E5E9F0",
                                 borderRadius: "4px",
                                 padding: "0 10px",
                                 fontSize: "14px",
-                                color: "#12332B",
+                                color: "#0A1D4D",
                                 background: "white",
                                 outline: "none",
                                 boxSizing: "border-box" as const,
                                 transition: "border-color 0.15s ease"
                               }}
                               onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                             />
                           </td>
                           {/* Voucher No */}
@@ -1693,7 +1693,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                                 borderRadius: "6px",
                                 padding: "0 8px",
                                 fontSize: "13px",
-                                color: "#12332B",
+                                color: "#0A1D4D",
                                 background: "transparent",
                                 outline: "none",
                                 appearance: "none" as const,
@@ -1725,11 +1725,11 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               style={{
                                 height: "36px",
                                 width: "100%",
-                                border: "1px solid #E5E7EB",
+                                border: "1px solid #E5E9F0",
                                 borderRadius: "4px",
                                 padding: "0 10px",
                                 fontSize: "14px",
-                                color: "#12332B",
+                                color: "#0A1D4D",
                                 background: "white",
                                 outline: "none",
                                 textAlign: "right" as const,
@@ -1737,7 +1737,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                                 transition: "border-color 0.15s ease"
                               }}
                               onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E7EB"}
+                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                             />
                           </td>
                           {/* Actions */}
@@ -1769,7 +1769,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         <td colSpan={2} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
                           Subtotal
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#12332B" }}>
+                        <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
                           ₱{formatAmount(categoryTotal)}
                         </td>
                         <td></td>
@@ -1790,13 +1790,13 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tfoot>
             <tr style={{ background: "#F0F4F3", borderTop: "2px solid #E5E9F0" }}>
-              <td colSpan={2} style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 700, color: "#12332B", textTransform: "uppercase" as const, letterSpacing: "0.03em", width: "65%" }}>
+              <td colSpan={2} style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" as const, letterSpacing: "0.03em", width: "65%" }}>
                 Grand Total
                 {isImport && (
                   <div style={{ fontSize: "11px", fontWeight: 400, color: "#667085", marginTop: "2px" }}>(Excludes Refundable Deposits)</div>
                 )}
               </td>
-              <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "18px", fontWeight: 700, color: "#12332B", width: "25%" }}>
+              <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "18px", fontWeight: 700, color: "#0A1D4D", width: "25%" }}>
                 ₱{formatAmount(grandTotal)}
               </td>
               <td style={{ width: "4%" }}></td>
@@ -1822,7 +1822,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           alignItems: "center"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+            <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
               Refundable Deposits
             </h3>
             <span style={{
@@ -1899,7 +1899,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         borderRadius: "6px",
                         padding: "0 10px",
                         fontSize: "14px",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         background: "transparent",
                         outline: "none",
                         boxSizing: "border-box" as const,
@@ -1922,7 +1922,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         borderRadius: "6px",
                         padding: "0 8px",
                         fontSize: "13px",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         background: "transparent",
                         outline: "none",
                         appearance: "none" as const,
@@ -1957,7 +1957,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         borderRadius: "6px",
                         padding: "0 10px",
                         fontSize: "14px",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         background: "transparent",
                         outline: "none",
                         textAlign: "right" as const,
@@ -1996,7 +1996,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 <td colSpan={2} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
                   Subtotal
                 </td>
-                <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#12332B" }}>
+                <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
                   ₱{formatAmount(calculateTotal(tables.refundableDeposits))}
                 </td>
                 <td></td>

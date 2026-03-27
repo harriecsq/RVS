@@ -57,10 +57,10 @@ function FilterDropdown({
           padding: "10px 12px",
           fontSize: "14px",
           fontWeight: 400,
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "8px",
           background: "#FFFFFF",
-          color: "#12332B",
+          color: "#0A1D4D",
           cursor: "pointer",
           whiteSpace: "nowrap" as const,
           boxSizing: "border-box" as const,
@@ -77,7 +77,7 @@ function FilterDropdown({
             left: 0,
             marginTop: "4px",
             backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
             zIndex: 1000,
@@ -93,12 +93,12 @@ function FilterDropdown({
               style={{
                 padding: "9px 14px",
                 fontSize: "13px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 cursor: "pointer",
                 backgroundColor: value === opt.value ? "#F0FAF8" : "transparent",
                 fontWeight: value === opt.value ? 600 : 400,
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt.value ? "#F0FAF8" : "transparent"; }}
             >
               {opt.label}
@@ -164,10 +164,10 @@ function StatusTagFilter({
           padding: "10px 12px",
           fontSize: "14px",
           fontWeight: 400,
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           borderRadius: "8px",
           background: "#FFFFFF",
-          color: hasSelection ? "#0F766E" : "#12332B",
+          color: hasSelection ? "#0F766E" : "#0A1D4D",
           cursor: "pointer",
           whiteSpace: "nowrap" as const,
           boxSizing: "border-box" as const,
@@ -184,7 +184,7 @@ function StatusTagFilter({
             left: 0,
             marginTop: "4px",
             backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
             zIndex: 1000,
@@ -195,7 +195,7 @@ function StatusTagFilter({
           }}
         >
           {/* Match mode toggle */}
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E9F0", display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ fontSize: "12px", color: "#667085", fontWeight: 500, marginRight: "4px" }}>Match:</span>
             {(["all", "any"] as const).map((mode) => (
               <button
@@ -228,7 +228,7 @@ function StatusTagFilter({
                   borderRadius: "4px",
                   cursor: "pointer",
                   backgroundColor: "transparent",
-                  color: "#DC2626",
+                  color: "#EF4444",
                 }}
               >
                 Clear
@@ -237,7 +237,7 @@ function StatusTagFilter({
           </div>
 
           {/* Search */}
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E7EB" }}>
+          <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
             <input
               autoFocus
               type="text"
@@ -249,9 +249,9 @@ function StatusTagFilter({
                 width: "100%",
                 padding: "6px 12px",
                 borderRadius: "6px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 fontSize: "14px",
-                color: "#12332B",
+                color: "#0A1D4D",
                 outline: "none",
                 boxSizing: "border-box",
               }}
@@ -287,14 +287,14 @@ function StatusTagFilter({
                           padding: "8px 16px",
                           cursor: "pointer",
                           fontSize: "14px",
-                          color: "#12332B",
+                          color: "#0A1D4D",
                           display: "flex",
                           alignItems: "center",
                           gap: "10px",
                           backgroundColor: isSelected ? "#F0FAF8" : "transparent",
                         }}
                         onMouseEnter={(e) => {
-                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8";
+                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB";
                         }}
                         onMouseLeave={(e) => {
                           (e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? "#F0FAF8" : "transparent";
@@ -386,11 +386,11 @@ function StatusPill({ tags }: { tags: string[] }) {
             display: "inline-flex",
             alignItems: "center",
             padding: "2px 8px",
-            borderRadius: "10px",
+            borderRadius: "8px",
             fontSize: "11px",
             fontWeight: 700,
-            backgroundColor: "#E4EFEA",
-            color: "#12332B",
+            backgroundColor: "#E8F5F3",
+            color: "#0A1D4D",
             border: "1px solid #C1D9CC",
             whiteSpace: "nowrap" as const,
           }}
@@ -521,12 +521,12 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
       {/* ── Header ── */}
       <div style={{
         padding: "32px 48px 20px",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
           <div>
-            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#12332B", margin: 0 }}>Trucking</h1>
+            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#0A1D4D", margin: 0 }}>Trucking</h1>
             <p style={{ fontSize: "14px", color: "#667085", margin: "4px 0 0" }}>
               Manage trucking assignments and delivery coordination
             </p>
@@ -569,10 +569,10 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
             style={{
               width: "100%",
               padding: "10px 14px 10px 42px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
-              color: "#12332B",
+              color: "#0A1D4D",
               outline: "none",
               boxSizing: "border-box",
               backgroundColor: "#FFFFFF",
@@ -615,7 +615,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
         ) : filtered.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "300px" }}>
             <Truck size={48} style={{ color: "#D1D5DB", marginBottom: "16px" }} />
-            <p style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: "0 0 6px" }}>
+            <p style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>
               {records.length === 0 ? "No trucking records yet" : "No results found"}
             </p>
             <p style={{ fontSize: "14px", color: "#667085", margin: 0 }}>
@@ -623,7 +623,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
             </p>
           </div>
         ) : (
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
+          <div style={{ border: "1px solid #E5E9F0", borderRadius: "12px", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: "13%" }} />
@@ -634,7 +634,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
               <col style={{ width: "38%" }} />
             </colgroup>
             <thead>
-              <tr style={{ borderBottom: "1px solid #E5E7EB", backgroundColor: "#F9FAFB" }}>
+              <tr style={{ borderBottom: "1px solid #E5E9F0", backgroundColor: "#F9FAFB" }}>
                 {[
                   "Trucking Ref #",
                   "BL Number",
@@ -675,7 +675,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                   padding: "16px 16px",
                   verticalAlign: "middle",
                   fontSize: "13px",
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -689,11 +689,11 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                     key={r.id}
                     onClick={() => setSelectedRecord(r)}
                     style={{
-                      borderBottom: "1px solid #E5E7EB",
+                      borderBottom: "1px solid #E5E9F0",
                       cursor: "pointer",
                       transition: "background-color 120ms",
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "#F7FAF8"; }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "#F8F9FB"; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "transparent"; }}
                   >
                     <td style={{ ...truncCell, fontWeight: 600 }} title={refDisplay !== "—" ? refDisplay : undefined}>

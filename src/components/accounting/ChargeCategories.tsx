@@ -243,7 +243,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
       <div className="bg-white border-b border-[#E5E9F0] p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-[#0F766E]" />
-          <h3 className="text-[#12332B] font-semibold">
+          <h3 className="text-[#0A1D4D] font-semibold">
             CHARGE CATEGORIES & LINE ITEMS
           </h3>
         </div>
@@ -307,7 +307,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
                 <button
                   type="button"
                   onClick={() => toggleCategory(category.id)}
-                  className="text-[#667085] hover:text-[#12332B]"
+                  className="text-[#667085] hover:text-[#0A1D4D]"
                 >
                   {category.isExpanded ? (
                     <ChevronDown className="w-4 h-4" />
@@ -320,7 +320,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
                   onChange={(e) =>
                     updateCategoryName(category.id, e.target.value.toUpperCase())
                   }
-                  className="font-semibold text-[#12332B] border-0 shadow-none focus-visible:ring-0 px-0 h-auto uppercase max-w-xs"
+                  className="font-semibold text-[#0A1D4D] border-0 shadow-none focus-visible:ring-0 px-0 h-auto uppercase max-w-xs"
                 />
                 <span className="text-sm text-[#667085]">
                   ({category.items.length} item{category.items.length !== 1 ? "s" : ""})
@@ -344,7 +344,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
                 <button
                   type="button"
                   onClick={() => deleteCategory(category.id)}
-                  className="text-[#DC2626] hover:bg-red-50 p-1.5 rounded"
+                  className="text-[#EF4444] hover:bg-red-50 p-1.5 rounded"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -466,7 +466,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
                         {/* Container Multiplier (#X40'HC) - Conditional: Read-only or Editable */}
                         {item.autoMultiply ? (
                           // AUTO-MULTIPLY ON: Read-only, show calculated value
-                          <div className="text-sm text-[#12332B] font-medium text-center bg-[#FAFBFC] px-3 py-2 rounded border border-[#E5E9F0]">
+                          <div className="text-sm text-[#0A1D4D] font-medium text-center bg-[#FAFBFC] px-3 py-2 rounded border border-[#E5E9F0]">
                             {item.per === "40"
                               ? formatAmount(item.unitPrice * containerCount)
                               : "-"}
@@ -496,7 +496,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
                         </div>
 
                         {/* Voucher Amount */}
-                        <div className="text-sm text-[#12332B] font-medium text-right">
+                        <div className="text-sm text-[#0A1D4D] font-medium text-right">
                           {formatAmount(calculateItemAmount(item))}
                         </div>
 
@@ -504,7 +504,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
                         <button
                           type="button"
                           onClick={() => deleteItem(category.id, item.id)}
-                          className="text-[#DC2626] hover:bg-red-50 p-1.5 rounded ml-2"
+                          className="text-[#EF4444] hover:bg-red-50 p-1.5 rounded ml-2"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -522,7 +522,7 @@ export function ChargeCategories({ containerCount = 0, onChange, onChargesChange
       <div className="bg-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-[#0F766E]" />
-          <h3 className="text-[#12332B] font-semibold">
+          <h3 className="text-[#0A1D4D] font-semibold">
             GRAND TOTAL
           </h3>
         </div>

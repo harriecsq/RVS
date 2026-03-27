@@ -45,7 +45,7 @@ export function DeliveryStatusControl({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="border-[#E5E7EB] hover:border-[#0A1D4D] hover:bg-[#0A1D4D]/5 rounded-lg h-10 px-4 min-w-[180px] justify-between"
+          className="border-[#E5E9F0] hover:border-[#0A1D4D] hover:bg-[#0A1D4D]/5 rounded-lg h-10 px-4 min-w-[180px] justify-between"
         >
           <div className="flex items-center gap-2">
             <span className="text-[11px] uppercase tracking-wide text-[#6B7280] font-medium">

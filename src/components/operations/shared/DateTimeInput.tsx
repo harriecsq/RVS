@@ -41,10 +41,10 @@ function parseDisplayToISO(display: string): string | null {
 const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
   padding: "9px 12px",
-  border: "1px solid #E5E7EB",
+  border: "1px solid #E5E9F0",
   borderRadius: "8px",
   fontSize: "14px",
-  color: "#12332B",
+  color: "#0A1D4D",
   backgroundColor: "#FFFFFF",
   outline: "none",
   boxSizing: "border-box" as const,

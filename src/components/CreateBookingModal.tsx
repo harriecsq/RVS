@@ -90,7 +90,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
+          border: "1px solid #E5E9F0",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -105,7 +105,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
           }}
         >
           <div>
-            <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#12332B", marginBottom: "4px" }}>
+            <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", marginBottom: "4px" }}>
               Create Booking
             </h2>
             <p style={{ fontSize: "13px", color: "#667085" }}>
@@ -153,7 +153,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                 {/* Client Name & Delivery Date */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Client Name
                     </label>
                     <input
@@ -169,7 +169,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -182,7 +182,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Delivery Date
                     </label>
                     <input
@@ -198,7 +198,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -213,7 +213,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
 
                 {/* Bill To / Attention To */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                     Bill To / Attention To
                   </label>
                   <input
@@ -228,7 +228,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                       borderRadius: "8px",
                       background: "#FFFFFF",
                       outline: "none",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       fontFamily: "inherit",
                     }}
                     onFocus={(e) => {
@@ -246,7 +246,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                 {/* Client Address & Company */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Client Address / Location
                     </label>
                     <input
@@ -261,7 +261,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -274,7 +274,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Company
                     </label>
                     <select
@@ -288,7 +288,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                         cursor: "pointer",
                       }}
@@ -309,7 +309,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                 {/* Pickup & Dropoff Locations */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Pickup Location
                     </label>
                     <input
@@ -325,7 +325,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -338,7 +338,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Dropoff Location
                     </label>
                     <input
@@ -354,7 +354,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -369,7 +369,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
 
                 {/* Booking Reference */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                     Booking Ref
                   </label>
                   <input
@@ -384,7 +384,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                       borderRadius: "8px",
                       background: "#FFFFFF",
                       outline: "none",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       fontFamily: "inherit",
                     }}
                     onFocus={(e) => {
@@ -399,7 +399,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                 {/* Commodity & Measurement */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Commodity
                     </label>
                     <input
@@ -414,7 +414,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -427,7 +427,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                    <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                       Measurement
                     </label>
                     <input
@@ -442,7 +442,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                         borderRadius: "8px",
                         background: "#FFFFFF",
                         outline: "none",
-                        color: "#12332B",
+                        color: "#0A1D4D",
                         fontFamily: "inherit",
                       }}
                       onFocus={(e) => {
@@ -457,7 +457,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
 
                 {/* Notes / Remarks */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}>
                     Notes / Remarks <span style={{ fontSize: "11px", color: "#667085", fontWeight: 400 }}>(Optional)</span>
                   </label>
                   <textarea
@@ -472,7 +472,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                       borderRadius: "8px",
                       background: "#FFFFFF",
                       outline: "none",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       fontFamily: "inherit",
                       resize: "vertical",
                     }}
@@ -497,42 +497,42 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                   top: 0,
                 }}
               >
-                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", marginBottom: "16px" }}>
+                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", marginBottom: "16px" }}>
                   Booking Summary
                 </h3>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
                   <div>
                     <div style={{ fontSize: "11px", color: "#667085", marginBottom: "4px" }}>Client</div>
-                    <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                       {formData.clientName || "—"}
                     </div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: "11px", color: "#667085", marginBottom: "4px" }}>Date</div>
-                    <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                       {formData.deliveryDate ? new Date(formData.deliveryDate).toLocaleDateString() : "—"}
                     </div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: "11px", color: "#667085", marginBottom: "4px" }}>Linked Booking</div>
-                    <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                       {formData.bookingRef || "—"}
                     </div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: "11px", color: "#667085", marginBottom: "4px" }}>Company</div>
-                    <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                       {formData.company || "—"}
                     </div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: "11px", color: "#667085", marginBottom: "4px" }}>Route</div>
-                    <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                       {formData.pickupLocation && formData.dropoffLocation
                         ? `${formData.pickupLocation} → ${formData.dropoffLocation}`
                         : "—"}
@@ -593,7 +593,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit }: CreateBookingM
                 borderRadius: "8px",
                 border: "1px solid #E5E9F0",
                 background: "#FFFFFF",
-                color: "#12332B",
+                color: "#0A1D4D",
                 fontSize: "14px",
                 fontWeight: 500,
                 cursor: "pointer",

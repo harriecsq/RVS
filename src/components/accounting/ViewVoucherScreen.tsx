@@ -163,7 +163,7 @@ const TableSection = ({
 }) => (
   <div className="border border-[#E5E9F0] rounded-lg overflow-hidden mb-6">
       <div className="bg-[#FAFBFC] px-4 py-3 border-b border-[#E5E9F0] flex justify-between items-center">
-          <h3 className="text-sm font-semibold text-[#12332B]">{title}</h3>
+          <h3 className="text-sm font-semibold text-[#0A1D4D]">{title}</h3>
           {isEditing && (
               <StandardButton 
                   variant="ghost" 
@@ -199,7 +199,7 @@ const TableSection = ({
                                               <select
                                                   value={item.sopType || item.defaultSop || "SOP (MICP)"}
                                                   onChange={(e) => onSopUpdate(item.id, 'sopType', e.target.value)}
-                                                  className="w-full h-9 pl-3 pr-8 rounded border border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] focus:ring-0 text-sm transition-colors text-[#12332B] bg-transparent appearance-none"
+                                                  className="w-full h-9 pl-3 pr-8 rounded border border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] focus:ring-0 text-sm transition-colors text-[#0A1D4D] bg-transparent appearance-none"
                                               >
                                                   <option value={item.defaultSop || "SOP (MICP)"}>{item.defaultSop || "SOP (MICP)"}</option>
                                                   <option value="Facilitation">Facilitation</option>
@@ -210,7 +210,7 @@ const TableSection = ({
                                               <Input
                                                   value={item.sopNumber || ""}
                                                   onChange={(e) => onSopUpdate(item.id, 'sopNumber', e.target.value)}
-                                                  className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B] text-center"
+                                                  className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D] text-center"
                                                   placeholder="#"
                                                   title="Section Number"
                                               />
@@ -220,12 +220,12 @@ const TableSection = ({
                                       <Input
                                           value={item.description || ""}
                                           onChange={(e) => onUpdateItem(type, item.id, 'description', e.target.value)}
-                                          className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B]"
+                                          className="h-9 border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D]"
                                           placeholder="Enter description"
                                       />
                                   )
                               ) : (
-                                  <div className="h-9 flex items-center text-sm text-[#12332B] px-2">{item.description}</div>
+                                  <div className="h-9 flex items-center text-sm text-[#0A1D4D] px-2">{item.description}</div>
                               )}
                           </td>
                           <td className="p-2">
@@ -234,11 +234,11 @@ const TableSection = ({
                                       type="number"
                                       value={item.amount || ""}
                                       onChange={(e) => onUpdateItem(type, item.id, 'amount', parseFloat(e.target.value) || 0)}
-                                      className="h-9 text-right border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#12332B]"
+                                      className="h-9 text-right border-transparent hover:border-[#E5E9F0] focus:border-[#0F766E] bg-transparent text-[#0A1D4D]"
                                       placeholder="0.00"
                                   />
                               ) : (
-                                  <div className="h-9 flex items-center justify-end text-sm text-[#12332B] px-2">
+                                  <div className="h-9 flex items-center justify-end text-sm text-[#0A1D4D] px-2">
                                       ₱{formatAmount(item.amount || 0)}
                                   </div>
                               )}
@@ -624,7 +624,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
       {/* Metadata Bar */}
       <div style={{
-        background: voucher.status === "Draft" ? "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)" :
+        background: voucher.status === "Draft" ? "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)" :
                    voucher.status === "For Approval" ? "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)" :
                    voucher.status === "Approved" ? "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)" :
                    voucher.status === "Paid" ? "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)" :
@@ -645,7 +645,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
             style={{
               fontSize: "14px",
               fontWeight: 600,
-              color: "#12332B"
+              color: "#0A1D4D"
             }}
           >
             {voucher.status}
@@ -668,22 +668,22 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
         <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
         <div>
           <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Payee</div>
-          <div className="text-sm font-semibold text-[#12332B]">{voucher.payee || "—"}</div>
+          <div className="text-sm font-semibold text-[#0A1D4D]">{voucher.payee || "—"}</div>
         </div>
         <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
         <div>
           <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Total Amount</div>
-          <div className="text-xl font-bold text-[#12332B]">₱{formatAmount(calculateTotal())}</div>
+          <div className="text-xl font-bold text-[#0A1D4D]">₱{formatAmount(calculateTotal())}</div>
         </div>
         <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
         <div>
           <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Voucher Date</div>
-          <div className="text-sm font-semibold text-[#12332B]">{formatDate(isEditing ? (editedVoucher?.voucherDate || voucher.voucherDate) : voucher.voucherDate)}</div>
+          <div className="text-sm font-semibold text-[#0A1D4D]">{formatDate(isEditing ? (editedVoucher?.voucherDate || voucher.voucherDate) : voucher.voucherDate)}</div>
         </div>
         <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
         <div>
           <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Created Date</div>
-          <div className="text-sm font-semibold text-[#12332B]">{formatDate(voucher.created_at)}</div>
+          <div className="text-sm font-semibold text-[#0A1D4D]">{formatDate(voucher.created_at)}</div>
         </div>
       </div>
 
@@ -714,18 +714,18 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
             <div style={{
               background: "white",
               borderRadius: "12px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               overflow: "hidden",
             }}>
               <div style={{
                 padding: "16px 24px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
                 background: "#F9FAFB",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Booking Details
                 </h3>
               </div>
@@ -817,7 +817,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                           Linked Booking
                         </div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {displayVoucher?.booking?.bookingId || displayVoucher?.bookingId || "—"}
                         </div>
                       </div>
@@ -827,7 +827,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                           Linked Expense
                         </div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {linkedExpenseNumbers.length > 0 ? linkedExpenseNumbers.join(", ") : "—"}
                         </div>
                       </div>
@@ -837,13 +837,13 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                         {shipperLabel}
                       </div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                         {shipperValue || "—"}
                       </div>
                     </div>
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{displayVoucher?.vesselVoy || "—"}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.vesselVoy || "—"}</div>
                     </div>
                     {/* Row 3: BL Number (non-Trucking) or Delivery Address (Trucking) | Origin/Destination */}
                     {currentCategory === "Trucking" ? (
@@ -851,7 +851,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                           {isExport ? "Loading Address" : "Delivery Address"}
                         </div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {isExport
                             ? (truckingRecordData.loadingAddress || displayVoucher?.booking?.loadingAddress || displayVoucher?.booking?.origin || "—")
                             : (truckingRecordData.deliveryAddress || displayVoucher?.booking?.deliveryAddress || displayVoucher?.booking?.pod || displayVoucher?.booking?.portOfDestination || "—")}
@@ -860,37 +860,37 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                     ) : (
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{displayVoucher?.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.blNumber || "—"}</div>
                       </div>
                     )}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                         {originLabel}
                       </div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                         {originValue || "—"}
                       </div>
                     </div>
                     {/* Row 4: Volume | Container No */}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{computeVolumeSummary(displayVoucher?.containerNumbers || [], displayVoucher?.volume || "")}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(displayVoucher?.containerNumbers || [], displayVoucher?.volume || "")}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                         {(displayVoucher?.containerNumbers || []).filter(Boolean).join(", ") || "—"}
                       </div>
                     </div>
                     {/* Row 5: Commodity | Trucking Rate (Trucking only) */}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{displayVoucher?.commodity || "—"}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.commodity || "—"}</div>
                     </div>
                     {currentCategory === "Trucking" && (
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Trucking Rate</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{truckingRecordData.truckingRate || displayVoucher?.booking?.rate || displayVoucher?.booking?.truckingRates || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingRecordData.truckingRate || displayVoucher?.booking?.rate || displayVoucher?.booking?.truckingRates || "—"}</div>
                       </div>
                     )}
                   </div>
@@ -900,9 +900,9 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           )}
 
           {/* General Information */}
-          <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
-            <div className="px-6 py-5 border-b border-[#E5E7EB] bg-[#F9FAFB]">
-              <h3 className="text-base font-semibold text-[#12332B] m-0">General Information</h3>
+          <div className="bg-white rounded-xl border border-[#E5E9F0] overflow-hidden">
+            <div className="px-6 py-5 border-b border-[#E5E9F0] bg-[#F9FAFB]">
+              <h3 className="text-base font-semibold text-[#0A1D4D] m-0">General Information</h3>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-2 gap-6">
@@ -932,7 +932,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                        <select
                          value={editedVoucher?.category || ""}
                          onChange={(e) => setEditedVoucher(prev => prev ? ({...prev, category: e.target.value}) : null)}
-                         className="w-full h-[42px] px-3 rounded-md border border-[#E5E9F0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-[#12332B]"
+                         className="w-full h-[42px] px-3 rounded-md border border-[#E5E9F0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-[#0A1D4D]"
                        >
                          <option value="" disabled>Select Category</option>
                          <optgroup label="Booking Costing">
@@ -1040,8 +1040,8 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
-          <div className="bg-white rounded-xl p-8 max-w-[480px] w-[90%] border border-[#E5E7EB]">
-            <h3 className="text-lg font-semibold text-[#12332B] mb-3">Delete Voucher</h3>
+          <div className="bg-white rounded-xl p-8 max-w-[480px] w-[90%] border border-[#E5E9F0]">
+            <h3 className="text-lg font-semibold text-[#0A1D4D] mb-3">Delete Voucher</h3>
             <p className="text-sm text-[#667085] mb-6 leading-relaxed">
               Are you sure you want to delete this voucher ({voucher.voucherNumber})? This action cannot be undone.
             </p>

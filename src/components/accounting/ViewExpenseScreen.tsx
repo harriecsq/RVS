@@ -866,7 +866,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     <div key={i} style={{
                       padding: "10px 12px",
                       fontSize: "14px",
-                      color: "#12332B",
+                      color: "#0A1D4D",
                       background: "#F9FAFB",
                       border: "1px solid #E5E9F0",
                       borderRadius: "8px"
@@ -901,7 +901,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                             type="text"
                             value={c}
                             onChange={(e) => handleChange(i, e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", fontSize: "14px", color: "#12332B", background: "white", border: "1px solid #E5E7EB", borderRadius: "8px" }}
+                            style={{ width: "100%", padding: "10px 12px", fontSize: "14px", color: "#0A1D4D", background: "white", border: "1px solid #E5E9F0", borderRadius: "8px" }}
                             placeholder={`Container #${i + 1}`}
                         />
                         <button
@@ -1393,7 +1393,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         background: "#FFFFFF",
         padding: "32px 48px"
       }}>
-        <div style={{ color: "#DC2626" }}>Expense not found</div>
+        <div style={{ color: "#EF4444" }}>Expense not found</div>
         {onBack && (
           <button onClick={onBack} style={{ marginTop: "16px" }}>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1534,7 +1534,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                 style={{
                   fontSize: "15px",
                   fontWeight: 600,
-                  color: "#12332B",
+                  color: "#0A1D4D",
                   textTransform: "uppercase",
                   border: "none",
                   background: "transparent",
@@ -1547,7 +1547,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
             ) : (
               <span
                 onClick={() => toggleCategory(categoryName)}
-                style={{ fontSize: "15px", fontWeight: 600, color: "#12332B", textTransform: "uppercase", cursor: "pointer" }}
+                style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", textTransform: "uppercase", cursor: "pointer" }}
               >
                 {isExportTemplate ? formatCategoryName(categoryName) : categoryName}
               </span>
@@ -1619,7 +1619,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                   padding: "9px 12px",
                                   fontSize: "13px",
                                   fontWeight: 500,
-                                  color: "#12332B",
+                                  color: "#0A1D4D",
                                   background: "white",
                                   border: "none",
                                   cursor: "pointer",
@@ -1696,9 +1696,9 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                   display: "flex",
                   alignItems: "center",
                   gap: "4px",
-                  color: "#DC2626",
+                  color: "#EF4444",
                   background: "transparent",
-                  border: "1px solid #DC2626",
+                  border: "1px solid #EF4444",
                   cursor: "pointer",
                   padding: "4px 10px",
                   borderRadius: "6px",
@@ -1712,7 +1712,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                 ✕ Remove
               </button>
             )}
-            <div style={{ fontSize: "15px", fontWeight: 600, color: "#12332B", minWidth: "100px", textAlign: "right" }}>
+            <div style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", minWidth: "100px", textAlign: "right" }}>
               ₱{formatAmount(categoryTotal)}
             </div>
           </div>
@@ -1749,7 +1749,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
                       return (
                         <tr key={index} style={{ borderBottom: index < items.length - 1 ? "1px solid #E5E9F0" : "none" }}>
-                          <td style={{ padding: "12px 16px", fontSize: "14px", color: "#12332B" }}>
+                          <td style={{ padding: "12px 16px", fontSize: "14px", color: "#0A1D4D" }}>
                             {isEditing ? (
                               <input
                                 type="text"
@@ -1766,7 +1766,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                   width: "100%",
                                   padding: "6px 8px",
                                   fontSize: "14px",
-                                  border: "1px solid #E5E7EB",
+                                  border: "1px solid #E5E9F0",
                                   borderRadius: "4px",
                                   background: "white"
                                 }}
@@ -1809,7 +1809,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           >
                             {voucherNo || (isEditing ? "+ Link" : "—")}
                           </td>
-                          <td style={{ padding: "12px 16px", fontSize: "14px", color: "#12332B", textAlign: "right" }}>
+                          <td style={{ padding: "12px 16px", fontSize: "14px", color: "#0A1D4D", textAlign: "right" }}>
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1833,11 +1833,11 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                   width: "100px",
                                   padding: "6px 8px",
                                   fontSize: "14px",
-                                  border: "1px solid #E5E7EB",
+                                  border: "1px solid #E5E9F0",
                                   borderRadius: "4px",
                                   background: isLinked ? "#F3F4F6" : "white",
                                   textAlign: "right",
-                                  color: isLinked ? "#6B7280" : "#12332B",
+                                  color: isLinked ? "#6B7280" : "#0A1D4D",
                                   cursor: isLinked ? "not-allowed" : "text"
                                 }}
                               />
@@ -1847,7 +1847,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           </td>
                           {(isRefundCategory && !isEditing) && (
                             <>
-                                <td style={{ padding: "12px 16px", textAlign: "center", fontSize: "13px", color: "#DC2626", fontWeight: 600 }}>
+                                <td style={{ padding: "12px 16px", textAlign: "center", fontSize: "13px", color: "#EF4444", fontWeight: 600 }}>
                                     {(() => {
                                         // Only show deduction if Refunded (refundDateRefunded exists)
                                         if (item.refundDateRefunded) {
@@ -1869,7 +1869,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                             ? { label: `REFUNDED (${formatDateForDisplay(item.refundDateRefunded)})`, color: "#03543F", bg: "#DEF7EC", border: "1px solid #03543F" }
                                             : item.refundDateSubmitted 
                                                 ? { label: "Waiting for Approval", color: "#92400E", bg: "#FFF8F1", border: "1px solid #92400E" }
-                                                : { label: "Not Refunded", color: "#374151", bg: "#F3F4F6", border: "1px solid #E5E7EB" };
+                                                : { label: "Not Refunded", color: "#344054", bg: "#F3F4F6", border: "1px solid #E5E9F0" };
                                         
                                         return (
                                             <span style={{ 
@@ -1943,7 +1943,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                   background: "transparent",
                                   border: "none",
                                   cursor: "pointer",
-                                  color: "#DC2626",
+                                  color: "#EF4444",
                                   padding: "4px",
                                   display: "flex",
                                   alignItems: "center",
@@ -1997,7 +1997,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                       return (
                       <tr key={index} style={{ borderBottom: index < items.length - 1 ? "1px solid #E5E9F0" : "none" }}>
                         {/* Particulars */}
-                        <td style={{ padding: "12px 16px", fontSize: "14px", color: "#12332B" }}>
+                        <td style={{ padding: "12px 16px", fontSize: "14px", color: "#0A1D4D" }}>
                           {isEditing ? (
                             <input
                               type="text"
@@ -2014,7 +2014,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                 width: "100%",
                                 padding: "6px 8px",
                                 fontSize: "14px",
-                                border: "1px solid #E5E7EB",
+                                border: "1px solid #E5E9F0",
                                 borderRadius: "4px",
                                 background: "white"
                               }}
@@ -2024,7 +2024,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           )}
                         </td>
                         {/* Unit Price (number input + currency dropdown + per selector — all inline) */}
-                        <td style={{ padding: "12px 16px", fontSize: "14px", color: "#12332B", textAlign: "right" }}>
+                        <td style={{ padding: "12px 16px", fontSize: "14px", color: "#0A1D4D", textAlign: "right" }}>
                           {isEditing ? (
                             <div style={{ display: "flex", alignItems: "center", gap: "4px", justifyContent: "flex-end" }}>
                                 <input
@@ -2050,11 +2050,11 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     minWidth: 0,
                                     padding: "6px 6px",
                                     fontSize: "13px",
-                                    border: "1px solid #E5E7EB",
+                                    border: "1px solid #E5E9F0",
                                     borderRadius: "4px",
                                     background: isLinked ? "#F3F4F6" : "white",
                                     textAlign: "right",
-                                    color: isLinked ? "#6B7280" : "#12332B",
+                                    color: isLinked ? "#6B7280" : "#0A1D4D",
                                     cursor: isLinked ? "not-allowed" : "text"
                                   }}
                                 />
@@ -2077,10 +2077,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     width: "62px",
                                     padding: "6px 2px",
                                     fontSize: "11px",
-                                    border: "1px solid #E5E7EB",
+                                    border: "1px solid #E5E9F0",
                                     borderRadius: "4px",
                                     background: "white",
-                                    color: "#12332B",
+                                    color: "#0A1D4D",
                                     cursor: "pointer"
                                   }}
                                 >
@@ -2108,7 +2108,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     width: "72px",
                                     padding: "6px 2px",
                                     fontSize: "11px",
-                                    border: "1px solid #E5E7EB",
+                                    border: "1px solid #E5E9F0",
                                     borderRadius: "4px",
                                     background: isLinked ? "#F3F4F6" : "white",
                                     color: isLinked ? "#6B7280" : "#667085",
@@ -2133,7 +2133,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         <td style={{ 
                           padding: "12px 16px", 
                           fontSize: "14px", 
-                          color: "#12332B", 
+                          color: "#0A1D4D", 
                           textAlign: "right",
                           background: "#FAFBFC",
                           fontWeight: 500,
@@ -2181,7 +2181,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         <td style={{ 
                           padding: "12px 16px", 
                           fontSize: "14px", 
-                          color: "#12332B", 
+                          color: "#0A1D4D", 
                           textAlign: "right", 
                           fontWeight: voucherNo ? 600 : 400,
                           width: "130px"
@@ -2196,7 +2196,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                 background: "transparent",
                                 border: "none",
                                 cursor: "pointer",
-                                color: "#DC2626",
+                                color: "#EF4444",
                                 padding: "4px",
                                 display: "flex",
                                 alignItems: "center",
@@ -2293,7 +2293,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                 alignItems: "center",
                 gap: "8px",
                 padding: "10px 20px",
-                backgroundColor: showTimeline ? "#E8F2EE" : "white",
+                backgroundColor: showTimeline ? "#E8F5F3" : "white",
                 border: `1.5px solid ${showTimeline ? "#0F766E" : "#E5E9F0"}`,
                 borderRadius: "8px",
                 fontSize: "14px",
@@ -2365,13 +2365,13 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
       {!embedded && (<div style={{
         background: (() => {
           switch (expense.status) {
-            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
             case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
             case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
             case "Paid": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
             case "Partially Paid": return "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)";
             case "Rejected": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
-            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
           }
         })(),
         borderBottom: "1.5px solid #0F766E",
@@ -2386,7 +2386,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Total Amount
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "#12332B" }}>
+          <div style={{ fontSize: "20px", fontWeight: 700, color: "#0A1D4D" }}>
             ₱{formatAmount(grandTotal)}
           </div>
         </div>
@@ -2458,7 +2458,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
               top: "calc(100% + 4px)",
               left: 0,
               background: "white",
-              border: "1.5px solid #E5E7EB",
+              border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
               zIndex: 50,
@@ -2474,7 +2474,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     fontSize: "14px",
                     fontWeight: 500,
                     cursor: "pointer",
-                    borderBottom: index < 5 ? "1px solid #E5E7EB" : "none",
+                    borderBottom: index < 5 ? "1px solid #E5E9F0" : "none",
                     background: expense.status === status ? "#F0FDF4" : "white",
                     color: status === "Draft" ? "#6B7280" :
                            status === "Approved" ? "#3B82F6" :
@@ -2508,7 +2508,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Date Created
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
             {formatDate(expense.expenseDate)}
           </div>
         </div>
@@ -2540,19 +2540,19 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           <div style={{
             background: "white",
             borderRadius: "12px",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             overflow: "hidden",
             marginBottom: "24px",
           }}>
             <div style={{
               padding: "16px 24px",
-              borderBottom: "1px solid #E5E7EB",
+              borderBottom: "1px solid #E5E9F0",
               background: "#F9FAFB",
               display: "flex",
               alignItems: "center",
               gap: "8px",
             }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                 Booking Details
               </h3>
             </div>
@@ -2614,7 +2614,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                   <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                     Linked Booking
                   </div>
-                  <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                  <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                     {bookings.length > 0
                       ? (bookings[0].bookingId || bookings[0].bookingNumber || bookings[0].booking_number || "—")
                       : "—"}
@@ -2630,27 +2630,27 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.shipperConsignee || (bookings.length > 0 ? ((bookings[0] as any).companyName || (bookings[0] as any).company_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.shipperConsignee || (bookings.length > 0 ? ((bookings[0] as any).companyName || (bookings[0] as any).company_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.client || (bookings.length > 0 ? ((bookings[0] as any).contactPersonName || (bookings[0] as any).contact_person_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.client || (bookings.length > 0 ? ((bookings[0] as any).contactPersonName || (bookings[0] as any).contact_person_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Port of Destination (POD)</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.pod || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.pod || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.commodity || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.commodity || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.blNumber || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {(() => {
                             const raw = expense?.containerNumbers;
                             let containers: string[] = [];
@@ -2666,21 +2666,21 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Weight</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {expense.weight || (bookings.length > 0 ? (bookings[0] as any).weight || (bookings[0] as any).grossWeight || (bookings[0] as any).gross_weight || "—" : "—")}
                         </div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel/Voyage</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.vesselVoyage || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.vesselVoyage || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.origin || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.origin || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Releasing Date</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{formatDate(expense.releasingDate) || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formatDate(expense.releasingDate) || "—"}</div>
                       </div>
                     </div>
                   </>
@@ -2692,31 +2692,31 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.shipperConsignee || (bookings.length > 0 ? ((bookings[0] as any).companyName || (bookings[0] as any).company_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || expense.clientShipper || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.shipperConsignee || (bookings.length > 0 ? ((bookings[0] as any).companyName || (bookings[0] as any).company_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || expense.clientShipper || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.client || (bookings.length > 0 ? ((bookings[0] as any).contactPersonName || (bookings[0] as any).contact_person_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.client || (bookings.length > 0 ? ((bookings[0] as any).contactPersonName || (bookings[0] as any).contact_person_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel/Voyage</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.vesselVoyage || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.vesselVoyage || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Destination</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.destination || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.destination || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.commodity || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.commodity || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>B/L Number</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.blNumber || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {(() => {
                             const raw = expense?.containerNumbers;
                             let containers: string[] = [];
@@ -2733,7 +2733,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     </div>
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>
-                      <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{truckingLoadingAddress || expense.loadingAddress || "—"}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingLoadingAddress || expense.loadingAddress || "—"}</div>
                     </div>
                   </>
                 )}
@@ -2748,24 +2748,24 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
               borderRadius: "12px",
               overflow: "hidden",
               marginBottom: "24px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
             }}>
               <div style={{
                 padding: "16px 24px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid #E5E9F0",
                 background: "#F9FAFB",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Exchange Rate
                 </h3>
               </div>
               <div style={{ padding: "20px 24px" }}>
                 <div>
                   <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Exchange Rate</div>
-                  <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{expense.exchangeRate || "—"}</div>
+                  <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.exchangeRate || "—"}</div>
                 </div>
               </div>
             </div>
@@ -2792,7 +2792,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #E5E7EB" }}>
+                  <tr style={{ borderBottom: "1px solid #E5E9F0" }}>
                     <th style={{ textAlign: "left", padding: "12px", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" }}>Particulars</th>
                     <th style={{ textAlign: "left", padding: "12px", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" }}>Voucher No</th>
                     <th style={{ textAlign: "right", padding: "12px", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" }}>Amount</th>
@@ -2801,14 +2801,14 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                 </thead>
                 <tbody>
                   {unreconciledItems.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: "1px solid #E5E7EB" }}>
-                      <td style={{ padding: "12px", fontSize: "14px", color: "#12332B", fontWeight: 500 }}>
+                    <tr key={item.id} style={{ borderBottom: "1px solid #E5E9F0" }}>
+                      <td style={{ padding: "12px", fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>
                         {item.description}
                       </td>
                       <td style={{ padding: "12px", fontSize: "14px", color: "#0F766E", fontWeight: 500 }}>
                         {item.voucherNumber}
                       </td>
-                      <td style={{ padding: "12px", fontSize: "14px", color: "#12332B", fontWeight: 600, textAlign: "right" }}>
+                      <td style={{ padding: "12px", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, textAlign: "right" }}>
                         ₱{formatAmount(item.amount || 0)}
                       </td>
                       <td style={{ padding: "12px", textAlign: "right" }}>
@@ -2843,7 +2843,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                 fontWeight: 500,
                                 color: "#1F2937",
                                 background: "white",
-                                border: "1px solid #E5E7EB",
+                                border: "1px solid #E5E9F0",
                                 borderRadius: "6px",
                                 cursor: "pointer",
                                 transition: "all 0.15s ease",
@@ -2905,7 +2905,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                 alignItems: "center",
                 justifyContent: "space-between"
               }}>
-                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Charge Categories & Line Items
                 </h3>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -2998,7 +2998,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     padding: "9px 12px",
                                     fontSize: "14px",
                                     fontWeight: 500,
-                                    color: "#12332B",
+                                    color: "#0A1D4D",
                                     background: "white",
                                     border: "none",
                                     cursor: "pointer",
@@ -3038,10 +3038,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         padding: "8px 20px",
                         fontSize: "13px",
                         fontWeight: voucherLinkFilter === "ALL" ? 600 : 500,
-                        border: voucherLinkFilter === "ALL" ? "none" : "1px solid #E5E7EB",
+                        border: voucherLinkFilter === "ALL" ? "none" : "1px solid #E5E9F0",
                         borderRadius: "999px",
                         background: voucherLinkFilter === "ALL" ? "#0F766E" : "#FFFFFF",
-                        color: voucherLinkFilter === "ALL" ? "#FFFFFF" : "#12332B",
+                        color: voucherLinkFilter === "ALL" ? "#FFFFFF" : "#0A1D4D",
                         cursor: "pointer",
                         transition: "all 0.2s ease",
                       }}
@@ -3054,10 +3054,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         padding: "8px 20px",
                         fontSize: "13px",
                         fontWeight: voucherLinkFilter === "LINKED" ? 600 : 500,
-                        border: voucherLinkFilter === "LINKED" ? "none" : "1px solid #E5E7EB",
+                        border: voucherLinkFilter === "LINKED" ? "none" : "1px solid #E5E9F0",
                         borderRadius: "999px",
                         background: voucherLinkFilter === "LINKED" ? "#0F766E" : "#FFFFFF",
-                        color: voucherLinkFilter === "LINKED" ? "#FFFFFF" : "#12332B",
+                        color: voucherLinkFilter === "LINKED" ? "#FFFFFF" : "#0A1D4D",
                         cursor: "pointer",
                         transition: "all 0.2s ease",
                       }}
@@ -3070,10 +3070,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         padding: "8px 20px",
                         fontSize: "13px",
                         fontWeight: voucherLinkFilter === "UNLINKED" ? 600 : 500,
-                        border: voucherLinkFilter === "UNLINKED" ? "none" : "1px solid #E5E7EB",
+                        border: voucherLinkFilter === "UNLINKED" ? "none" : "1px solid #E5E9F0",
                         borderRadius: "999px",
                         background: voucherLinkFilter === "UNLINKED" ? "#0F766E" : "#FFFFFF",
-                        color: voucherLinkFilter === "UNLINKED" ? "#FFFFFF" : "#12332B",
+                        color: voucherLinkFilter === "UNLINKED" ? "#FFFFFF" : "#0A1D4D",
                         cursor: "pointer",
                         transition: "all 0.2s ease",
                       }}
@@ -3114,12 +3114,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                   justifyContent: "space-between"
                 }}>
                   <div>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#12332B", textTransform: "uppercase" as const, letterSpacing: "0.03em" }}>Total</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" as const, letterSpacing: "0.03em" }}>Total</span>
                     {expense.documentTemplate === "IMPORT" && (
                       <div style={{ fontSize: "11px", fontWeight: 400, color: "#667085", marginTop: "2px" }}>(Excludes Refundable Deposits)</div>
                     )}
                   </div>
-                  <span style={{ fontSize: "18px", fontWeight: 700, color: "#12332B" }}>
+                  <span style={{ fontSize: "18px", fontWeight: 700, color: "#0A1D4D" }}>
                     ₱{formatAmount(grandTotal)}
                   </span>
                 </div>
@@ -3132,7 +3132,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     justifyContent: "space-between",
                     marginTop: "8px",
                     paddingTop: "8px",
-                    borderTop: "1px solid #E5E7EB"
+                    borderTop: "1px solid #E5E9F0"
                   }}>
                     <span style={{ fontSize: "14px", fontWeight: 600, color: "#0F766E" }}>
                       Amount for Billing
@@ -3210,7 +3210,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                   borderRadius: "8px",
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px", alignItems: "center" }}>
-                    <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#12332B", textTransform: "uppercase", margin: 0 }}>
+                    <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase", margin: 0 }}>
                       Billing Calculator
                     </h4>
                     <button 
@@ -3255,12 +3255,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           style={{
                             width: "100%",
                             padding: "8px 12px 8px 45px",
-                            border: billingCalcMode === "margin" ? "2px solid #0F766E" : "1px solid #E5E7EB",
+                            border: billingCalcMode === "margin" ? "2px solid #0F766E" : "1px solid #E5E9F0",
                             borderRadius: "6px",
                             outline: "none",
                             fontSize: "14px",
                             fontWeight: 600,
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             backgroundColor: "white"
                           }}
                         />
@@ -3295,12 +3295,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           style={{
                             width: "100%",
                             padding: "8px 30px 8px 12px",
-                            border: billingCalcMode === "percent" ? "2px solid #0F766E" : "1px solid #E5E7EB",
+                            border: billingCalcMode === "percent" ? "2px solid #0F766E" : "1px solid #E5E9F0",
                             borderRadius: "6px",
                             outline: "none",
                             fontSize: "14px",
                             fontWeight: 600,
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             backgroundColor: "white"
                           }}
                         />
@@ -3341,12 +3341,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           style={{
                             width: "100%",
                             padding: "8px 12px 8px 45px",
-                            border: billingCalcMode === "total" ? "2px solid #0F766E" : "1px solid #E5E7EB",
+                            border: billingCalcMode === "total" ? "2px solid #0F766E" : "1px solid #E5E9F0",
                             borderRadius: "6px",
                             outline: "none",
                             fontSize: "14px",
                             fontWeight: 600,
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             backgroundColor: "white"
                           }}
                         />
@@ -3454,14 +3454,14 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
               padding: "32px",
               maxWidth: "480px",
               width: "90%",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{
               fontSize: "18px",
               fontWeight: 600,
-              color: "#12332B",
+              color: "#0A1D4D",
               marginBottom: "12px",
             }}>
               Delete Expense
@@ -3525,8 +3525,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
             }} 
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ padding: "16px", borderBottom: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>Select Voucher Item</h3>
+            <div style={{ padding: "16px", borderBottom: "1px solid #E5E9F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>Select Voucher Item</h3>
               <button 
                 onClick={() => setLinkingLineItem(null)} 
                 style={{ background: "none", border: "none", cursor: "pointer", color: "#667085", display: "flex", alignItems: "center" }}
@@ -3537,7 +3537,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
             
             <div style={{ padding: "16px", overflowY: "auto" }}>
               {hasVoucherLinked(linkingLineItem) && (
-                <div style={{ marginBottom: "16px", padding: "12px", background: "#F3F4F6", borderRadius: "8px", border: "1px solid #E5E7EB" }}>
+                <div style={{ marginBottom: "16px", padding: "12px", background: "#F3F4F6", borderRadius: "8px", border: "1px solid #E5E9F0" }}>
                   <div style={{ fontSize: "13px", color: "#667085", marginBottom: "4px" }}>Currently Linked:</div>
                   <div style={{ fontWeight: 600, color: "#0F766E" }}>
                      {linkingLineItem.voucherNo || getLinkedVoucherInfo(linkingLineItem)?.voucherNumber}
@@ -3549,8 +3549,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                       width: "100%",
                       padding: "8px",
                       background: "white",
-                      border: "1px solid #DC2626",
-                      color: "#DC2626",
+                      border: "1px solid #EF4444",
+                      color: "#EF4444",
                       borderRadius: "6px",
                       fontWeight: 500,
                       fontSize: "13px",
@@ -3580,17 +3580,17 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                          alignItems: "center",
                          padding: "12px",
                          background: "white",
-                         border: "1px solid #E5E7EB",
+                         border: "1px solid #E5E9F0",
                          borderRadius: "8px",
                          cursor: "pointer",
                          textAlign: "left",
                          transition: "all 0.2s ease"
                        }}
                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#0F766E"; e.currentTarget.style.background = "#F0FDFA"; }}
-                       onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.background = "white"; }}
+                       onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E9F0"; e.currentTarget.style.background = "white"; }}
                      >
                        <div>
-                         <div style={{ fontSize: "14px", fontWeight: 500, color: "#12332B" }}>{item.description}</div>
+                         <div style={{ fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>{item.description}</div>
                          <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>
                            <span style={{ background: "#F3F4F6", padding: "2px 6px", borderRadius: "4px", marginRight: "6px" }}>{item.voucherNumber}</span>
                          </div>

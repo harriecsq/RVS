@@ -122,7 +122,7 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "24px" }}>
         <div>
-          <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#12332B", marginBottom: "8px" }}>
+          <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", marginBottom: "8px" }}>
             Expenses
           </h3>
           <p style={{ fontSize: "14px", color: "#667085", lineHeight: "20px" }}>
@@ -167,7 +167,7 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
             borderRadius: "12px"
           }}>
             <div style={{ fontSize: "13px", color: "#667085", marginBottom: "8px" }}>Total Expenses</div>
-            <div style={{ fontSize: "24px", fontWeight: 600, color: "#12332B" }}>
+            <div style={{ fontSize: "24px", fontWeight: 600, color: "#0A1D4D" }}>
               ₱{formatAmount(expensesSummary?.totalExpenses || expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0))}
             </div>
           </div>
@@ -188,8 +188,8 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
             border: "1px solid #E5E9F0",
             borderRadius: "12px"
           }}>
-            <div style={{ fontSize: "13px", color: "#DC2626", marginBottom: "8px", fontWeight: 600 }}>Outstanding</div>
-            <div style={{ fontSize: "24px", fontWeight: 600, color: "#DC2626" }}>
+            <div style={{ fontSize: "13px", color: "#EF4444", marginBottom: "8px", fontWeight: 600 }}>Outstanding</div>
+            <div style={{ fontSize: "24px", fontWeight: 600, color: "#EF4444" }}>
               ₱{formatAmount(expensesSummary?.expensesOutstanding !== undefined ? expensesSummary.expensesOutstanding : ((expensesSummary?.totalExpenses || expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0)) - (expensesSummary?.totalVouchers || 0)))}
             </div>
           </div>
@@ -231,10 +231,10 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
         </div>
       ) : (
         <>
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
+          <div style={{ border: "1px solid #E5E9F0", borderRadius: "12px", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#12332B]/10">
+                <tr className="border-b border-[#0A1D4D]/10">
                   <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
                     Expense Details
                   </th>
@@ -256,7 +256,7 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
                 {expenses.map((expense, index) => (
                   <tr
                     key={expense.id}
-                    className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                     onClick={() => {
                       if (onExpenseSelect) {
                         onExpenseSelect(expense.id, expense.expenseNumber);
@@ -271,7 +271,7 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <CreditCard size={20} color="#0F766E" style={{ flexShrink: 0 }} />
                         <div>
-                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", marginBottom: "2px" }}>
+                          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", marginBottom: "2px" }}>
                             {expense.expenseNumber}
                           </div>
                           {(expense.bookingNumber || expense.projectNumber) && (
@@ -284,12 +284,12 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {expense.clientName || "—"}
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B", fontWeight: 600, textAlign: "left" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 600, textAlign: "left" }}>
                         ₱{formatAmount(expense.amount)}
                       </div>
                     </td>

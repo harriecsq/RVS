@@ -396,11 +396,11 @@ export function EmployeesList({ filterCompany, userRole, onEmployeeClick }: Empl
 
   return (
     <div
-      className="bg-white border border-[#E5E7EB] rounded-[20px] overflow-visible flex flex-col"
+      className="bg-white border border-[#E5E9F0] rounded-[20px] overflow-visible flex flex-col"
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between border-b border-[#E5E7EB] flex-shrink-0"
+        className="flex items-center justify-between border-b border-[#E5E9F0] flex-shrink-0"
         style={{ padding: "20px 24px" }}
       >
         <h2
@@ -414,10 +414,10 @@ export function EmployeesList({ filterCompany, userRole, onEmployeeClick }: Empl
       {/* List (no scroll - page-level scrolling) */}
       <div className="flex-1" style={{ padding: "0" }}>
         {filteredData.map((group, groupIdx) => (
-          <div key={groupIdx} className="border-b border-[#E5E7EB] last:border-b-0">
+          <div key={groupIdx} className="border-b border-[#E5E9F0] last:border-b-0">
             {/* Company Section Header */}
             <div
-              className="sticky top-0 bg-[#F9FAFB] border-b border-[#E5E7EB] z-10"
+              className="sticky top-0 bg-[#F9FAFB] border-b border-[#E5E9F0] z-10"
               style={{ padding: "16px 24px" }}
             >
               <h3
@@ -430,7 +430,7 @@ export function EmployeesList({ filterCompany, userRole, onEmployeeClick }: Empl
             </div>
 
             {/* Table Header */}
-            <div className="bg-white border-b border-[#E5E7EB]" style={{ padding: "0 24px" }}>
+            <div className="bg-white border-b border-[#E5E9F0]" style={{ padding: "0 24px" }}>
               <div className="grid grid-cols-12 gap-4 py-3">
                 <div className="col-span-4">
                   <p
@@ -481,7 +481,7 @@ export function EmployeesList({ filterCompany, userRole, onEmployeeClick }: Empl
                 <div
                   key={employee.id}
                   onClick={() => onEmployeeClick(employee)}
-                  className="grid grid-cols-12 gap-4 py-4 border-b border-[#E5E7EB] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+                  className="grid grid-cols-12 gap-4 py-4 border-b border-[#E5E9F0] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
                   style={{ padding: "16px 24px" }}
                 >
                   {/* Name with Avatar */}

@@ -184,14 +184,14 @@ export function BillingsScreen() {
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "#FFFFFF" }}>
       {/* Page Header */}
-      <div style={{ padding: "32px 48px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
+      <div style={{ padding: "32px 48px", borderBottom: "1px solid #E5E9F0", flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <div>
             <h1
               style={{
                 fontSize: "32px",
                 fontWeight: 600,
-                color: "#12332B",
+                color: "#0A1D4D",
                 letterSpacing: "-1.2px",
                 margin: 0,
                 marginBottom: "8px",
@@ -230,11 +230,11 @@ export function BillingsScreen() {
             style={{
               width: "100%",
               padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
               borderRadius: "8px",
               fontSize: "14px",
               outline: "none",
-              color: "#12332B",
+              color: "#0A1D4D",
               backgroundColor: "#FFFFFF",
             }}
           />
@@ -345,20 +345,20 @@ export function BillingsScreen() {
                   return (
                   <tr
                     key={billingId || Math.random()}
-                    className="border-b border-[#12332B]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
+                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
                     onClick={() => handleViewBilling(billingId)}
                   >
                     <td className="py-4 px-4">
                       <div style={{ 
                         fontSize: "14px", 
                         fontWeight: 600, 
-                        color: "#12332B"
+                        color: "#0A1D4D"
                       }}>
                         {billing.billingNumber}
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {billing.companyName || billing.clientName || "—"}
                       </div>
                       {billing.companyName && billing.clientName && billing.companyName !== billing.clientName && (
@@ -369,17 +369,17 @@ export function BillingsScreen() {
                     </td>
 
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#12332B"}}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D"}}>
                         {formatCurrency(billing.totalAmount, billing.currency)}
                       </div>
                       {(billing.pendingAmount ?? billing.totalAmount) > 0 && (
-                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#DC2626", marginTop: "2px" }}>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444", marginTop: "2px" }}>
                           Pending: ₱{formatAmount(billing.pendingAmount ?? billing.totalAmount)}
                         </div>
                       )}
                     </td>
                     <td className="py-4 px-4">
-                      <div style={{ fontSize: "13px", color: "#12332B" }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
                         {formatDate(billing.billingDate || billing.created_at)}
                       </div>
                     </td>

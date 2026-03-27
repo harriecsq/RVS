@@ -320,7 +320,7 @@ export function ActivityLogPage() {
       <div className="h-full flex items-center justify-center" style={{ backgroundColor: "#FEFEFE" }}>
         <div className="text-center" style={{ maxWidth: "400px" }}>
           <Activity size={48} style={{ color: "#E87A3D", margin: "0 auto 16px" }} />
-          <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#12332B", marginBottom: "8px" }}>
+          <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", marginBottom: "8px" }}>
             Access Denied
           </h2>
           <p style={{ fontSize: "14px", color: "#667085", lineHeight: "1.5" }}>
@@ -343,7 +343,7 @@ export function ActivityLogPage() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <Activity size={24} style={{ color: "#0F766E" }} />
-            <h1 style={{ fontSize: "28px", fontWeight: 600, color: "#12332B" }}>
+            <h1 style={{ fontSize: "28px", fontWeight: 600, color: "#0A1D4D" }}>
               Activity Log
             </h1>
             <span style={{
@@ -439,7 +439,7 @@ export function ActivityLogPage() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <Filter size={16} style={{ color: "#667085" }} />
-              <span style={{ fontSize: "13px", fontWeight: 600, color: "#12332B" }}>Filters:</span>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D" }}>Filters:</span>
             </div>
             
             <div style={{ minWidth: "160px" }}>
@@ -516,7 +516,7 @@ export function ActivityLogPage() {
               style={{
                 border: "1px solid var(--neuron-ui-border)",
                 backgroundColor: "#FFFFFF",
-                color: "#12332B"
+                color: "#0A1D4D"
               }}
             />
           </div>
@@ -591,7 +591,7 @@ export function ActivityLogPage() {
                 >
                   {/* Time */}
                   <div className="col-span-2 flex flex-col">
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#12332B" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D" }}>
                       {getRelativeTime(activity.timestamp)}
                     </span>
                     <span style={{ fontSize: "11px", color: "#9CA3AF" }}>
@@ -601,7 +601,7 @@ export function ActivityLogPage() {
                   
                   {/* User */}
                   <div className="col-span-2 flex flex-col">
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#12332B" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D" }}>
                       {activity.user_name}
                     </span>
                     <span style={{ fontSize: "11px", color: "#667085" }}>
@@ -637,7 +637,7 @@ export function ActivityLogPage() {
                   
                   {/* Action */}
                   <div className="col-span-4 flex items-center">
-                    <span style={{ fontSize: "13px", color: "#374151" }}>
+                    <span style={{ fontSize: "13px", color: "#344054" }}>
                       {formatActivityAction(activity)}
                     </span>
                   </div>

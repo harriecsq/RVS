@@ -85,7 +85,7 @@ export function StatusEditDropdown({
             top: "calc(100% + 8px)",
             right: 0,
             background: "#FFFFFF",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
             zIndex: 1000,

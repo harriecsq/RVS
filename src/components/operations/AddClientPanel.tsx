@@ -164,12 +164,12 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
               onClick={handleClose}
               className="p-2 hover:bg-[#0F766E]/10 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-[#12332B]" />
+              <ArrowLeft className="w-5 h-5 text-[#0A1D4D]" />
             </button>
             
             {/* Title Block */}
             <div>
-              <h2 className="text-2xl font-semibold text-[#12332B] mb-1">
+              <h2 className="text-2xl font-semibold text-[#0A1D4D] mb-1">
                 Add New Client
               </h2>
               <p className="text-sm text-[#667085]">
@@ -186,7 +186,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4">
                 <Building2 size={16} style={{ color: "#0F766E" }} />
-                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   Company Information
                 </h3>
               </div>
@@ -197,9 +197,9 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   <label
                     htmlFor="company_name"
                     className="block mb-1.5"
-                    style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}
+                    style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}
                   >
-                    Company Name <span style={{ color: "#C94F3D" }}>*</span>
+                    Company Name <span style={{ color: "#EF4444" }}>*</span>
                   </label>
                   <input
                     id="company_name"
@@ -222,9 +222,9 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   <label
                     htmlFor="address"
                     className="block mb-1.5"
-                    style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}
+                    style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}
                   >
-                    Address <span style={{ color: "#C94F3D" }}>*</span>
+                    Address <span style={{ color: "#EF4444" }}>*</span>
                   </label>
                   <input
                     id="address"
@@ -247,7 +247,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   <label
                     htmlFor="phone"
                     className="block mb-1.5"
-                    style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}
+                    style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}
                   >
                     Phone
                   </label>
@@ -271,7 +271,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   <label
                     htmlFor="email"
                     className="block mb-1.5"
-                    style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}
+                    style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}
                   >
                     Email
                   </label>
@@ -295,7 +295,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   <label
                     htmlFor="status"
                     className="block mb-1.5"
-                    style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}
+                    style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}
                   >
                     Status
                   </label>
@@ -315,7 +315,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   <label
                     htmlFor="notes"
                     className="block mb-1.5"
-                    style={{ fontSize: "13px", fontWeight: 500, color: "#12332B" }}
+                    style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D" }}
                   >
                     Notes
                   </label>
@@ -341,7 +341,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <User size={16} style={{ color: "#0F766E" }} />
-                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                     Contacts
                   </h3>
                 </div>
@@ -362,7 +362,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
               </div>
 
               {contacts.length === 0 ? (
-                <div className="text-center py-8 border border-dashed rounded-lg" style={{ backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" }}>
+                <div className="text-center py-8 border border-dashed rounded-lg" style={{ backgroundColor: "#F9FAFB", borderColor: "#E5E9F0" }}>
                   <p className="text-sm" style={{ color: "#667085" }}>No contacts added yet.</p>
                   <button 
                     type="button"
@@ -399,7 +399,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                         style={{ borderColor: "var(--neuron-ui-border)" }}
                       >
                         {/* Name */}
-                        <div className="font-medium text-sm truncate" style={{ color: "#12332B" }}>
+                        <div className="font-medium text-sm truncate" style={{ color: "#0A1D4D" }}>
                           {contact.name}
                         </div>
 
@@ -529,12 +529,12 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
               padding: "24px",
               maxWidth: "480px",
               width: "90%",
-              border: "1px solid #E5E7EB",
+              border: "1px solid #E5E9F0",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#12332B" }}>Add New Contact</h3>
+              <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D" }}>Add New Contact</h3>
               <button 
                 onClick={() => setShowAddContactModal(false)}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "#667085" }}
@@ -546,7 +546,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
             <form onSubmit={handleAddContact}>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#12332B" }}>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#0A1D4D" }}>
                     Name <span style={{ color: "#EF4444" }}>*</span>
                   </label>
                   <input
@@ -555,13 +555,13 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                     value={newContact.name}
                     onChange={e => setNewContact({...newContact, name: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{ borderColor: "#E5E7EB" }}
+                    style={{ borderColor: "#E5E9F0" }}
                     placeholder="e.g. John Doe"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#12332B" }}>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#0A1D4D" }}>
                     Job Title
                   </label>
                   <input
@@ -569,14 +569,14 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                     value={newContact.title}
                     onChange={e => setNewContact({...newContact, title: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{ borderColor: "#E5E7EB" }}
+                    style={{ borderColor: "#E5E9F0" }}
                     placeholder="e.g. Logistics Manager"
                   />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: "#12332B" }}>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: "#0A1D4D" }}>
                       Email
                     </label>
                     <input
@@ -584,12 +584,12 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                       value={newContact.email}
                       onChange={e => setNewContact({...newContact, email: e.target.value})}
                       className="w-full px-3 py-2 rounded-lg border text-sm"
-                      style={{ borderColor: "#E5E7EB" }}
+                      style={{ borderColor: "#E5E9F0" }}
                       placeholder="john@example.com"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: "#12332B" }}>
+                    <label className="block text-sm font-medium mb-1.5" style={{ color: "#0A1D4D" }}>
                       Phone
                     </label>
                     <input
@@ -597,21 +597,21 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                       value={newContact.phone}
                       onChange={e => setNewContact({...newContact, phone: e.target.value})}
                       className="w-full px-3 py-2 rounded-lg border text-sm"
-                      style={{ borderColor: "#E5E7EB" }}
+                      style={{ borderColor: "#E5E9F0" }}
                       placeholder="+63 9..."
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#12332B" }}>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: "#0A1D4D" }}>
                     Notes
                   </label>
                   <textarea
                     value={newContact.notes}
                     onChange={e => setNewContact({...newContact, notes: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border text-sm"
-                    style={{ borderColor: "#E5E7EB" }}
+                    style={{ borderColor: "#E5E9F0" }}
                     rows={3}
                     placeholder="Additional details..."
                   />
@@ -626,7 +626,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   style={{ 
                     backgroundColor: "white", 
                     borderColor: "#D1D5DB", 
-                    color: "#374151" 
+                    color: "#344054" 
                   }}
                 >
                   Cancel

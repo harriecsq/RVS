@@ -205,7 +205,7 @@ export function VatReturnsReport() {
       <div style={{
         padding: "20px 48px",
         background: "white",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid #E5E9F0",
         maxWidth: "1440px",
         width: "100%",
         margin: "0 auto"
@@ -232,7 +232,7 @@ export function VatReturnsReport() {
             <h1 style={{ 
               fontSize: "20px", 
               fontWeight: 600, 
-              color: "#12332B", 
+              color: "#0A1D4D", 
               marginBottom: "2px"
             }}>
               VAT Returns
@@ -249,13 +249,13 @@ export function VatReturnsReport() {
         {/* Booking Selector Card */}
         <div style={{ 
           backgroundColor: "white", 
-          border: "1px solid #E5E7EB", 
+          border: "1px solid #E5E9F0", 
           borderRadius: "12px", 
           overflow: "hidden",
           marginBottom: "24px"
         }}>
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>Select Booking</h3>
+          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>Select Booking</h3>
           </div>
           <div style={{ padding: "24px" }}>
             <div style={{ width: "100%" }}>
@@ -271,15 +271,15 @@ export function VatReturnsReport() {
         {/* Editable Form Card */}
         <div style={{ 
           backgroundColor: "white", 
-          border: "1px solid #E5E7EB", 
+          border: "1px solid #E5E9F0", 
           borderRadius: "12px", 
           overflow: "hidden",
           marginBottom: "24px",
           opacity: selectedBookingId ? 1 : 0.6,
           pointerEvents: selectedBookingId ? "auto" : "none"
         }}>
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+          <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
               Shipment Details
             </h3>
           </div>
@@ -295,7 +295,7 @@ export function VatReturnsReport() {
                 type="text"
                 value={formData.date}
                 onChange={(e) => handleInputChange("date", e.target.value)}
-                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#12332B" }}
+                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#0A1D4D" }}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
               />
@@ -310,7 +310,7 @@ export function VatReturnsReport() {
                 type="text"
                 value={formData.vesselVoy}
                 onChange={(e) => handleInputChange("vesselVoy", e.target.value)}
-                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#12332B" }}
+                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#0A1D4D" }}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
               />
@@ -325,7 +325,7 @@ export function VatReturnsReport() {
                 type="text"
                 value={formData.blNumber}
                 onChange={(e) => handleInputChange("blNumber", e.target.value)}
-                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#12332B" }}
+                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#0A1D4D" }}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
               />
@@ -340,7 +340,7 @@ export function VatReturnsReport() {
                 type="text"
                 value={formData.loadedAt}
                 onChange={(e) => handleInputChange("loadedAt", e.target.value)}
-                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#12332B" }}
+                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#0A1D4D" }}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
               />
@@ -355,7 +355,7 @@ export function VatReturnsReport() {
                 type="text"
                 value={formData.destination}
                 onChange={(e) => handleInputChange("destination", e.target.value)}
-                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#12332B" }}
+                style={{ width: "100%", minHeight: "42px", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#0A1D4D" }}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
               />
@@ -370,7 +370,7 @@ export function VatReturnsReport() {
                 value={formData.jobDescription}
                 onChange={(e) => handleInputChange("jobDescription", e.target.value)}
                 rows={3}
-                style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#12332B", resize: "vertical" }}
+                style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", color: "#0A1D4D", resize: "vertical" }}
                 onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                 onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
               />

@@ -70,7 +70,7 @@ function ReportRow({ item, onClick }: { item: ReportItem; onClick: () => void })
         <div style={{ 
           fontSize: "15px", 
           fontWeight: 600, 
-          color: "#12332B",
+          color: "#0A1D4D",
           marginBottom: "4px" 
         }}>
           {item.name}
@@ -98,7 +98,7 @@ export function Reports() {
         <h1 style={{ 
           fontSize: "32px", 
           fontWeight: 600, 
-          color: "#12332B", 
+          color: "#0A1D4D", 
           marginBottom: "4px",
           letterSpacing: "-1.2px"
         }}>

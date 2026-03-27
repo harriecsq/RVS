@@ -351,12 +351,12 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
       <div style={{
         background: (() => {
           switch (currentCollection.status) {
-            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
             case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
             case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
             case "Collected": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
             case "Cancelled": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
-            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
           }
         })(),
         borderBottom: "1.5px solid #0F766E",
@@ -426,7 +426,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
               top: "calc(100% + 4px)",
               left: 0,
               background: "white",
-              border: "1.5px solid #E5E7EB",
+              border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
               zIndex: 50,
@@ -448,7 +448,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                            status === "Collected" ? "#10B981" :
                            status === "Cancelled" ? "#EF4444" : "#667085",
                     background: status === currentCollection.status ? "#F0FDF4" : "transparent",
-                    borderBottom: index < COLLECTION_STATUSES.length - 1 ? "1px solid #E5E7EB" : "none",
+                    borderBottom: index < COLLECTION_STATUSES.length - 1 ? "1px solid #E5E9F0" : "none",
                     transition: "all 0.15s ease"
                   }}
                   onMouseEnter={(e) => {
@@ -477,7 +477,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Amount
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "#12332B" }}>
+          <div style={{ fontSize: "20px", fontWeight: 700, color: "#0A1D4D" }}>
             ₱{formatAmount(computedAmount)}
           </div>
         </div>
@@ -490,7 +490,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Collection Date
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
             {currentCollection.collectionDate ? formatDate(currentCollection.collectionDate) : "—"}
           </div>
         </div>
@@ -503,7 +503,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Created Date
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
             {currentCollection.createdAt ? formatDate(currentCollection.createdAt) : formatDate(new Date().toISOString())}
           </div>
         </div>
@@ -529,16 +529,16 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
             <div style={{
               background: "white",
           borderRadius: "12px",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           overflow: "hidden",
           marginBottom: "24px"
         }}>
           <div style={{
             padding: "20px 24px",
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #E5E9F0",
             background: "#F9FAFB"
           }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
               Collection Details
             </h3>
           </div>
@@ -643,18 +643,18 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
         <div style={{
           background: "white",
           borderRadius: "12px",
-          border: "1px solid #E5E7EB",
+          border: "1px solid #E5E9F0",
           overflow: "hidden"
         }}>
           <div style={{
             padding: "20px 24px",
-            borderBottom: "1px solid #E5E7EB",
+            borderBottom: "1px solid #E5E9F0",
             background: "#F9FAFB",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center"
           }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
               Payment Allocation
             </h3>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -695,7 +695,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
 
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>
+              <tr style={{ background: "#F9FAFB", borderBottom: "1px solid #E5E9F0" }}>
                 <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Invoice #</th>
                 <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Booking</th>
                 <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Applied Amount</th>
@@ -708,7 +708,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
               {isEditing ? (
                 editedAllocations.length > 0 ? (
                   editedAllocations.map((alloc, index) => (
-                    <tr key={alloc.billingId || index} style={{ borderBottom: "1px solid #E5E7EB" }}>
+                    <tr key={alloc.billingId || index} style={{ borderBottom: "1px solid #E5E9F0" }}>
                       <td style={{ padding: "12px 24px" }}>
                         <input
                           type="text"
@@ -724,7 +724,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                             padding: "8px 12px",
                             fontSize: "14px",
                             fontWeight: 500,
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             border: "1.5px solid #E5E9F0",
                             borderRadius: "6px",
                             outline: "none",
@@ -777,7 +777,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                               padding: "8px 12px",
                               fontSize: "14px",
                               fontWeight: 500,
-                              color: "#12332B",
+                              color: "#0A1D4D",
                               border: "1.5px solid #E5E9F0",
                               borderRadius: "6px",
                               outline: "none",
@@ -821,14 +821,14 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
               ) : (
                 allocations.length > 0 ? (
                   allocations.map((alloc, index) => (
-                    <tr key={index} style={{ borderBottom: "1px solid #E5E7EB" }}>
-                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#12332B", fontWeight: 500 }}>
+                    <tr key={index} style={{ borderBottom: "1px solid #E5E9F0" }}>
+                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>
                         {alloc.billingNumber}
                       </td>
                       <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0F766E" }}>
                         {alloc.bookingNumber || alloc.projectNumber || "—"}
                       </td>
-                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#12332B", textAlign: "right" }}>
+                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0A1D4D", textAlign: "right" }}>
                         ₱{formatAmount(alloc.amount)}
                       </td>
                     </tr>
@@ -847,12 +847,12 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
               if (displayAllocations.length === 0) return null;
               const total = displayAllocations.reduce((sum, a) => sum + (a.amount || 0), 0);
               return (
-                <tfoot style={{ background: "#F9FAFB", borderTop: "2px solid #E5E7EB" }}>
+                <tfoot style={{ background: "#F9FAFB", borderTop: "2px solid #E5E9F0" }}>
                   <tr>
-                    <td colSpan={isEditing ? 2 : 2} style={{ padding: "16px 24px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: "#12332B" }}>
+                    <td colSpan={isEditing ? 2 : 2} style={{ padding: "16px 24px", textAlign: "right", fontSize: "13px", fontWeight: 600, color: "#0A1D4D" }}>
                       Total Allocated:
                     </td>
-                    <td style={{ padding: "16px 24px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#12332B" }}>
+                    <td style={{ padding: "16px 24px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
                       ₱{formatAmount(total)}
                     </td>
                     {isEditing && <td></td>}
@@ -922,7 +922,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
             <h2 style={{ 
               fontSize: "20px", 
               fontWeight: 600, 
-              color: "#12332B", 
+              color: "#0A1D4D", 
               marginBottom: "12px" 
             }}>
               Delete Collection?

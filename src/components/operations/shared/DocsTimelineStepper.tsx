@@ -307,7 +307,7 @@ export function DocsTimelineStepper({ timeline, onUpdate }: DocsTimelineStepperP
             backgroundColor: "white",
             borderRadius: "8px",
             boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-            border: "1px solid #E5E7EB",
+            border: "1px solid #E5E9F0",
             zIndex: 50,
             padding: "16px",
             display: "flex",
@@ -374,7 +374,7 @@ export function DocsTimelineStepper({ timeline, onUpdate }: DocsTimelineStepperP
           </div>
 
           {showClearConfirm ? (
-            <div style={{ background: "#FEF2F2", padding: "8px", borderRadius: "4px", fontSize: "12px", color: "#B91C1C" }}>
+            <div style={{ background: "#FEF2F2", padding: "8px", borderRadius: "4px", fontSize: "12px", color: "#EF4444" }}>
               <div style={{ marginBottom: "8px" }}>
                 Clearing <strong>{STEPS[activeStepIndex].label}</strong> will also clear later steps. Continue?
               </div>
@@ -387,7 +387,7 @@ export function DocsTimelineStepper({ timeline, onUpdate }: DocsTimelineStepperP
                 </button>
                 <button 
                   onClick={handleClear}
-                  style={{ padding: "4px 8px", background: "#DC2626", border: "none", borderRadius: "4px", cursor: "pointer", color: "white", fontWeight: 500 }}
+                  style={{ padding: "4px 8px", background: "#EF4444", border: "none", borderRadius: "4px", cursor: "pointer", color: "white", fontWeight: 500 }}
                 >
                   Confirm Clear
                 </button>
@@ -401,7 +401,7 @@ export function DocsTimelineStepper({ timeline, onUpdate }: DocsTimelineStepperP
                   background: "none", 
                   border: "none", 
                   cursor: "pointer", 
-                  color: "#DC2626", 
+                  color: "#EF4444", 
                   fontSize: "12px",
                   display: "flex",
                   alignItems: "center",

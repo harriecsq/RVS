@@ -303,7 +303,7 @@ export function ExampleDetailView({ recordId, onBack }: ExampleDetailViewProps) 
  * 
  * 4. Colors:
  *    - Section titles = TEAL GREEN (#0F766E)
- *    - Text = DEEP GREEN (#12332B)
+ *    - Text = DEEP GREEN (#0A1D4D)
  *    - Labels = GRAY (#667085)
  * 
  * 5. Spacing:

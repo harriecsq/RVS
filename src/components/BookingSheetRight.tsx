@@ -178,14 +178,13 @@ export function BookingSheetRight({
       {/* Drawer Panel */}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 bottom-0 w-[480px] bg-[#F9FAFB] border-l border-[#E5E7EB] flex flex-col transition-all overflow-hidden"
+        className="fixed top-0 right-0 bottom-0 w-[480px] bg-[#F9FAFB] border-l border-[#E5E9F0] flex flex-col transition-all overflow-hidden"
         style={{
           transform: overlayState === 'open' ? 'translateX(0)' : 'translateX(100%)',
           opacity: overlayState === 'open' ? 1 : 0,
           transitionDuration: `${currentDuration}ms`,
           transitionTimingFunction: easing,
           transitionProperty: 'transform, opacity',
-          boxShadow: '-4px 0 16px rgba(0, 0, 0, 0.08)',
           zIndex: 50,
         }}
         role="dialog"
@@ -200,7 +199,7 @@ export function BookingSheetRight({
         onTouchEnd={handleDragEnd}
       >
         {/* Header - Sticky */}
-        <div className="bg-white p-6 flex items-start justify-between border-b border-[#E5E7EB] sticky top-0 z-30">
+        <div className="bg-white p-6 flex items-start justify-between border-b border-[#E5E9F0] sticky top-0 z-30">
           <div className="flex-1">
             <h1 
               id="booking-sheet-title"
@@ -231,7 +230,7 @@ export function BookingSheetRight({
         <div className="flex-1 overflow-y-auto" style={{ scrollBehavior: 'smooth', WebkitOverflowScrolling: 'touch' }}>
           <div className="p-6 space-y-6">
             {/* Section 1: Overview - Key Facts two-column grid */}
-            <Card className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm">
+            <Card className="bg-white border border-[#E5E9F0] rounded-xl shadow-sm">
               <div className="p-5">
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-4">Overview</h3>
                 
@@ -294,7 +293,7 @@ export function BookingSheetRight({
             </Card>
 
             {/* Section 2: Shipment Details (Static) */}
-            <Card className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm">
+            <Card className="bg-white border border-[#E5E9F0] rounded-xl shadow-sm">
               <div className="p-5">
                 <h3 className="text-[14px] font-medium text-[#0A1D4D] mb-4">Shipment Details</h3>
                 
@@ -348,7 +347,7 @@ export function BookingSheetRight({
             </Card>
             
             {/* Section 3: Expenses Summary */}
-            <Card className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm">
+            <Card className="bg-white border border-[#E5E9F0] rounded-xl shadow-sm">
               <div className="p-5">
                 <div className="flex items-center gap-1.5 mb-4">
                   <DollarSign className="w-4 h-4 text-[#6B7280]" />
@@ -357,7 +356,7 @@ export function BookingSheetRight({
                 
                 <div className="space-y-3">
                   {/* Last 3 expenses */}
-                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E9F0]">
                     <div className="flex-1">
                       <p className="text-[13px] text-[#0A1D4D] mb-1">Fuel Costs</p>
                       <Badge className="bg-[#D1FAE5] text-[#10B981] border-0 h-5 px-2 text-[10px]">
@@ -367,7 +366,7 @@ export function BookingSheetRight({
                     <p className="text-[13px] font-medium text-[#0A1D4D]">₱3,500</p>
                   </div>
                   
-                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E9F0]">
                     <div className="flex-1">
                       <p className="text-[13px] text-[#0A1D4D] mb-1">Toll Fees</p>
                       <Badge className="bg-[#FFF3E0] text-[#F25C05] border-0 h-5 px-2 text-[10px]">
@@ -377,7 +376,7 @@ export function BookingSheetRight({
                     <p className="text-[13px] font-medium text-[#0A1D4D]">₱850</p>
                   </div>
                   
-                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#E5E9F0]">
                     <div className="flex-1">
                       <p className="text-[13px] text-[#0A1D4D] mb-1">Port Charges</p>
                       <Badge className="bg-[#D1FAE5] text-[#10B981] border-0 h-5 px-2 text-[10px]">
@@ -402,7 +401,7 @@ export function BookingSheetRight({
             </Card>
 
             {/* Section 4: Documents */}
-            <Card className="bg-white border border-[#E5E7EB] rounded-xl shadow-sm">
+            <Card className="bg-white border border-[#E5E9F0] rounded-xl shadow-sm">
               <div className="p-5">
                 <div className="flex items-center gap-1.5 mb-4">
                   <FileText className="w-4 h-4 text-[#6B7280]" />
@@ -412,7 +411,7 @@ export function BookingSheetRight({
                 <Button 
                   variant="outline"
                   onClick={onPrintWaybill}
-                  className="w-full justify-start border-[#E5E7EB] hover:border-[#0A1D4D] hover:bg-[#0A1D4D]/5 text-[#0A1D4D] rounded-lg h-10 text-[13px]"
+                  className="w-full justify-start border-[#E5E9F0] hover:border-[#0A1D4D] hover:bg-[#0A1D4D]/5 text-[#0A1D4D] rounded-lg h-10 text-[13px]"
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Print Waybill
@@ -422,7 +421,7 @@ export function BookingSheetRight({
           </div>
 
           {/* Sticky Footer - View Full Booking CTA */}
-          <div className="p-6 border-t border-[#E5E7EB] bg-white sticky bottom-0 z-20">
+          <div className="p-6 border-t border-[#E5E9F0] bg-white sticky bottom-0 z-20">
             <Button 
               onClick={() => onViewFullBooking?.(booking.id)}
               className="w-full bg-[#F25C05] hover:bg-[#D84D00] text-white shadow-sm rounded-lg h-11"

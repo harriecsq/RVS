@@ -144,7 +144,7 @@ interface CreateTruckingModalProps {
 /** Shared label */
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-sm font-medium mb-2" style={{ color: "#12332B" }}>
+    <label className="block text-sm font-medium mb-2" style={{ color: "#0A1D4D" }}>
       {children}
     </label>
   );
@@ -155,7 +155,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="text-xs font-bold uppercase tracking-widest mb-4 pb-2"
-      style={{ color: "#667085", borderBottom: "1px solid #E5E7EB", letterSpacing: "0.08em" }}
+      style={{ color: "#667085", borderBottom: "1px solid #E5E9F0", letterSpacing: "0.08em" }}
     >
       {children}
     </div>
@@ -174,7 +174,7 @@ function TextInput({
       placeholder={placeholder}
       disabled={disabled}
       className="w-full px-4 py-2.5 rounded-lg border transition-colors"
-      style={{ borderColor: "#E5E7EB", fontSize: "14px", color: "#12332B", outline: "none", backgroundColor: "#FFFFFF" }}
+      style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", backgroundColor: "#FFFFFF" }}
     />
   );
 }
@@ -224,7 +224,7 @@ function NeuronDropdown({
       <div
         onClick={() => setOpen(!open)}
         className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer"
-        style={{ borderColor: "#E5E7EB", fontSize: "14px", color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF", ...style }}
+        style={{ borderColor: "#E5E9F0", fontSize: "14px", color: value ? "#0A1D4D" : "#9CA3AF", backgroundColor: "#FFFFFF", ...style }}
       >
         <span>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
@@ -234,7 +234,7 @@ function NeuronDropdown({
           className="absolute left-0 right-0 mt-1 bg-white rounded-lg border overflow-auto"
           style={{
             top: "100%", zIndex: 9999, maxHeight: "220px",
-            borderColor: "#E5E7EB", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
+            borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
           }}
         >
           {options.map((opt) => (
@@ -243,10 +243,10 @@ function NeuronDropdown({
               onClick={() => { onChange(opt); setOpen(false); }}
               className="px-4 py-2 cursor-pointer flex items-center justify-between"
               style={{
-                fontSize: "14px", color: "#12332B",
+                fontSize: "14px", color: "#0A1D4D",
                 backgroundColor: value === opt ? "#F0FAF8" : "transparent",
               }}
-              onMouseEnter={(e) => { if (value !== opt) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+              onMouseEnter={(e) => { if (value !== opt) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt ? "#F0FAF8" : "transparent"; }}
             >
               {opt}
@@ -287,7 +287,7 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
       <div
         onClick={() => setOpen(!open)}
         className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer"
-        style={{ borderColor: "#E5E7EB", fontSize: "14px", backgroundColor: "#FFFFFF" }}
+        style={{ borderColor: "#E5E9F0", fontSize: "14px", backgroundColor: "#FFFFFF" }}
       >
         {vendor ? (
           <span
@@ -310,10 +310,10 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
           className="absolute left-0 right-0 mt-1 bg-white rounded-lg border overflow-hidden"
           style={{
             top: "100%", zIndex: 9999,
-            borderColor: "#E5E7EB", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
+            borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
           }}
         >
-          <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E7EB" }}>
+          <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
             <input
               autoFocus
               type="text"
@@ -322,7 +322,7 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
               onChange={(e) => setSearch(e.target.value)}
               onClick={(e) => e.stopPropagation()}
               className="w-full px-3 py-1.5 rounded-md border text-sm"
-              style={{ borderColor: "#E5E7EB", color: "#12332B", outline: "none", fontSize: "14px", backgroundColor: "#FFFFFF" }}
+              style={{ borderColor: "#E5E9F0", color: "#0A1D4D", outline: "none", fontSize: "14px", backgroundColor: "#FFFFFF" }}
             />
           </div>
           <div className="overflow-auto" style={{ maxHeight: "220px" }}>
@@ -335,11 +335,11 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
                 onClick={() => { onChange(v.name); setOpen(false); }}
                 className="px-4 py-2 cursor-pointer flex items-center gap-3"
                 style={{ fontSize: "14px", backgroundColor: value === v.name ? "#F0FAF8" : "transparent" }}
-                onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+                onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === v.name ? "#F0FAF8" : "transparent"; }}
               >
                 <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
-                <span style={{ color: "#12332B" }}>{v.name}</span>
+                <span style={{ color: "#0A1D4D" }}>{v.name}</span>
                 {value === v.name && <Check size={14} style={{ color: "#0F766E", marginLeft: "auto" }} />}
               </div>
             ))}
@@ -355,14 +355,14 @@ function TagChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
-      style={{ backgroundColor: "#E4EFEA", color: "#12332B", border: "1px solid #C1D9CC" }}
+      style={{ backgroundColor: "#E8F5F3", color: "#0A1D4D", border: "1px solid #C1D9CC" }}
     >
       {label}
       <button
         type="button"
         onClick={onRemove}
         className="flex items-center opacity-50 hover:opacity-100 transition-opacity"
-        style={{ background: "none", border: "none", cursor: "pointer", color: "#12332B", padding: 0 }}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "#0A1D4D", padding: 0 }}
       >
         <X size={11} />
       </button>
@@ -406,7 +406,7 @@ function TagSelector({ selected, onChange }: { selected: string[]; onChange: (ta
         <div
           onClick={() => setOpen(!open)}
           className="w-full px-4 py-2.5 rounded-lg border flex items-center gap-2 cursor-pointer"
-          style={{ borderColor: "#E5E7EB", backgroundColor: "#FFFFFF" }}
+          style={{ borderColor: "#E5E9F0", backgroundColor: "#FFFFFF" }}
         >
           <Search size={14} style={{ color: "#9CA3AF" }} />
           <span className="text-sm" style={{ color: "#9CA3AF" }}>Add tags...</span>
@@ -416,10 +416,10 @@ function TagSelector({ selected, onChange }: { selected: string[]; onChange: (ta
             className="absolute left-0 right-0 mt-1 bg-white rounded-lg border overflow-auto"
             style={{
               top: "100%", zIndex: 9999, maxHeight: "300px",
-              borderColor: "#E5E7EB", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
+              borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
             }}
           >
-            <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E7EB" }}>
+            <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
               <input
                 autoFocus
                 type="text"
@@ -428,7 +428,7 @@ function TagSelector({ selected, onChange }: { selected: string[]; onChange: (ta
                 onChange={(e) => setSearch(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
                 className="w-full px-3 py-1.5 rounded-md border text-sm"
-                style={{ borderColor: "#E5E7EB", color: "#12332B", outline: "none" }}
+                style={{ borderColor: "#E5E9F0", color: "#0A1D4D", outline: "none" }}
               />
             </div>
             {TRUCKING_TAG_GROUPS.map((group) => {
@@ -445,10 +445,10 @@ function TagSelector({ selected, onChange }: { selected: string[]; onChange: (ta
                       onClick={(e) => { e.stopPropagation(); toggle(tag.key); }}
                       className="px-4 py-2 cursor-pointer flex items-center gap-2.5"
                       style={{
-                        fontSize: "14px", color: "#12332B",
+                        fontSize: "14px", color: "#0A1D4D",
                         backgroundColor: selected.includes(tag.key) ? "#F0FAF8" : "transparent",
                       }}
-                      onMouseEnter={(e) => { if (!selected.includes(tag.key)) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F7FAF8"; }}
+                      onMouseEnter={(e) => { if (!selected.includes(tag.key)) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = selected.includes(tag.key) ? "#F0FAF8" : "transparent"; }}
                     >
                       <div
@@ -495,7 +495,7 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       className="p-1 hover:bg-red-50 rounded transition-colors"
-      style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626" }}
+      style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}
     >
       <Trash2 size={15} />
     </button>
@@ -838,27 +838,26 @@ export function CreateTruckingModal({
         className="fixed right-0 top-0 h-full bg-white z-50 flex flex-col"
         style={{
           width: "820px",
-          borderLeft: "1px solid #E5E7EB",
-          boxShadow: "-4px 0 32px rgba(0,0,0,0.12)",
+          borderLeft: "1px solid #E5E9F0",
           animation: "slideInRight 0.3s ease-out",
         }}
       >
         {/* ── Header ── */}
         <div
           className="px-10 py-8 border-b flex-shrink-0"
-          style={{ borderColor: "#E5E7EB", backgroundColor: "#FFFFFF" }}
+          style={{ borderColor: "#E5E9F0", backgroundColor: "#FFFFFF" }}
         >
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={onClose}
               className="p-2 rounded-lg transition-colors hover:bg-[#0F766E]/10"
-              style={{ color: "#12332B" }}
+              style={{ color: "#0A1D4D" }}
             >
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h2 className="text-2xl font-semibold" style={{ color: "#12332B" }}>
+              <h2 className="text-2xl font-semibold" style={{ color: "#0A1D4D" }}>
                 {existingRecord ? "Edit Trucking" : "New Trucking"}
               </h2>
               <p className="text-sm mt-0.5" style={{ color: "#667085" }}>
@@ -915,8 +914,8 @@ export function CreateTruckingModal({
                   <div
                     style={{
                       background: "#FAFBFC",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: "10px",
+                      border: "1px solid #E5E9F0",
+                      borderRadius: "8px",
                       padding: "16px 20px",
                       display: "flex",
                       flexDirection: "column",
@@ -927,7 +926,7 @@ export function CreateTruckingModal({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {linkedBookingData.customerName || linkedBookingData.client_name || linkedBookingData.clientName || "—"}
                         </div>
                       </div>
@@ -935,7 +934,7 @@ export function CreateTruckingModal({
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
                           {(form.linkedBookingType || "").toLowerCase().includes("export") ? "Shipper" : "Consignee"}
                         </div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                           {(form.linkedBookingType || "").toLowerCase().includes("export")
                             ? (linkedBookingData.shipper || "—")
                             : (linkedBookingData.consignee || "—")}
@@ -961,7 +960,7 @@ export function CreateTruckingModal({
                                   display: "inline-block",
                                   fontSize: "12px",
                                   fontWeight: 600,
-                                  color: "#12332B",
+                                  color: "#0A1D4D",
                                 }}
                               >
                                 {c.containerNo || "—"}
@@ -971,7 +970,7 @@ export function CreateTruckingModal({
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Size</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                             {(() => {
                               const counts: Record<string, number> = {};
                               for (const c of form.containers) { const s = c.size || "Unknown"; counts[s] = (counts[s] || 0) + 1; }
@@ -986,19 +985,19 @@ export function CreateTruckingModal({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity Items</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{form.commodityItems || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{form.commodityItems || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipping Line</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{form.shippingLine || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{form.shippingLine || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{form.vesselVoyage || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{form.vesselVoyage || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>B/L Number</div>
-                        <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{form.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{form.blNumber || "—"}</div>
                       </div>
                     </div>
                   </div>
@@ -1092,10 +1091,10 @@ export function CreateTruckingModal({
                   <div
                     key={di}
                     className="rounded-xl p-5 space-y-4"
-                    style={{ border: "1px solid #E5E7EB", backgroundColor: "#FAFAFA" }}
+                    style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold" style={{ color: "#12332B" }}>Drop {di + 1}</span>
+                      <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Drop {di + 1}</span>
                       {form.deliveryDrops.length > 1 && <RemoveBtn onClick={() => removeDrop(di)} />}
                     </div>
 
@@ -1129,7 +1128,7 @@ export function CreateTruckingModal({
                               type="button"
                               onClick={() => updateDrop(di, "unloadingEnd", "")}
                               className="p-1 hover:bg-red-50 rounded transition-colors"
-                              style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626" }}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}
                             >
                               <X size={15} />
                             </button>
@@ -1161,7 +1160,7 @@ export function CreateTruckingModal({
                         rows={5}
                         placeholder="Enter any additional notes or instructions..."
                         className="w-full px-4 py-2.5 rounded-lg border resize-y"
-                        style={{ borderColor: "#E5E7EB", fontSize: "14px", color: "#12332B", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
+                        style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
                       />
                     </div>
                   </div>
@@ -1178,10 +1177,10 @@ export function CreateTruckingModal({
                   <div
                     key={ai}
                     className="rounded-xl p-5 space-y-4"
-                    style={{ border: "1px solid #E5E7EB", backgroundColor: "#FAFAFA" }}
+                    style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold" style={{ color: "#12332B" }}>Address {ai + 1}</span>
+                      <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Address {ai + 1}</span>
                       {form.deliveryAddresses.length > 1 && <RemoveBtn onClick={() => removeAddress(ai)} />}
                     </div>
 
@@ -1232,7 +1231,7 @@ export function CreateTruckingModal({
                         rows={5}
                         placeholder="Enter any additional notes or instructions..."
                         className="w-full px-4 py-2.5 rounded-lg border resize-y"
-                        style={{ borderColor: "#E5E7EB", fontSize: "14px", color: "#12332B", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
+                        style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
                       />
                     </div>
                   </div>
@@ -1285,7 +1284,7 @@ export function CreateTruckingModal({
                   onChange={(e) => set("truckingSoa", e.target.value)}
                   placeholder="Enter SOA number"
                   className="w-full px-4 py-2.5 rounded-lg border transition-colors"
-                  style={{ borderColor: "#E5E7EB", fontSize: "14px", color: "#12332B", outline: "none", backgroundColor: "#FFFFFF" }}
+                  style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", backgroundColor: "#FFFFFF" }}
                 />
               </div>
             </div>
@@ -1301,10 +1300,10 @@ export function CreateTruckingModal({
                   <div
                     key={ri}
                     className="rounded-xl p-5 space-y-4"
-                    style={{ border: "1px solid #E5E7EB", backgroundColor: "#FAFAFA" }}
+                    style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold" style={{ color: "#12332B" }}>Drop {ri + 1}</span>
+                      <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Drop {ri + 1}</span>
                       <RemoveBtn onClick={() => removeRemarksDrop(ri)} />
                     </div>
                     <div>
@@ -1343,10 +1342,10 @@ export function CreateTruckingModal({
                   <div
                     key={li}
                     className="rounded-xl p-5 space-y-4"
-                    style={{ border: "1px solid #E5E7EB", backgroundColor: "#FAFAFA" }}
+                    style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold" style={{ color: "#12332B" }}>Location {li + 1}</span>
+                      <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Location {li + 1}</span>
                       <RemoveBtn onClick={() => removeLocation(li)} />
                     </div>
                     <div>
@@ -1370,7 +1369,7 @@ export function CreateTruckingModal({
                             type="button"
                             onClick={() => toggleLocationShowEnd(li, false)}
                             className="p-1 hover:bg-red-50 rounded transition-colors"
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626" }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}
                           >
                             <X size={15} />
                           </button>
@@ -1459,7 +1458,7 @@ export function CreateTruckingModal({
                 rows={4}
                 placeholder="Additional notes..."
                 className="w-full px-4 py-2.5 rounded-lg border resize-y"
-                style={{ borderColor: "#E5E7EB", fontSize: "14px", color: "#12332B", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF" }}
+                style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF" }}
               />
             </div>
 
@@ -1471,14 +1470,14 @@ export function CreateTruckingModal({
         {/* ── Footer ── */}
         <div
           className="px-10 py-5 flex items-center justify-end gap-3 flex-shrink-0"
-          style={{ borderTop: "1px solid #E5E7EB", backgroundColor: "#FFFFFF" }}
+          style={{ borderTop: "1px solid #E5E9F0", backgroundColor: "#FFFFFF" }}
         >
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
             className="px-6 py-2.5 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#E5E7EB", color: "#667085", background: "#FFFFFF" }}
+            style={{ borderColor: "#E5E9F0", color: "#667085", background: "#FFFFFF" }}
           >
             Cancel
           </button>

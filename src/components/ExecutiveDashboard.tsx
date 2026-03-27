@@ -55,18 +55,18 @@ interface HeroMetricProps {
 
 // Color constants — used in inline styles throughout
 const C = {
-  ink: '#12332B',
-  muted: '#6B7A76',
+  ink: '#0A1D4D',
+  muted: '#667085',
   teal: '#0F766E',
-  red: '#C94F3D',
+  red: '#EF4444',
   redLight: '#EF4444',
-  green: '#237F66',
+  green: '#0F766E',
   tealLight: '#14B8A6',
   orange: '#F97316',
   orangeDark: '#D97706',
   border: '#E5E9F0',
   bg: '#F9FAFB',
-  pillGreen: '#E8F2EE',
+  pillGreen: '#E8F5F3',
   pillYellow: '#FEF3C7',
   alertBg: '#FEF2F2',
   alertBorder: '#FEE2E2',
@@ -127,7 +127,7 @@ const HeroMetric = memo(({
           
           {subtext && (
             <>
-              <span style={{ color: '#E5ECE9' }}>·</span>
+              <span style={{ color: '#E5E9F0' }}>·</span>
               <span style={{ fontSize: '11px', color: C.muted }}>
                 {subtext}
               </span>
@@ -222,11 +222,11 @@ export function ExecutiveDashboard({ currentUser }: ExecutiveDashboardProps) {
                 className="w-[180px]"
                 style={{ 
                   background: '#FFFFFF', 
-                  border: '1px solid #E5ECE9', 
+                  border: '1px solid #E5E9F0', 
                   borderRadius: '8px',
                   padding: '8px 12px',
                   fontSize: '14px',
-                  color: '#12332B',
+                  color: '#0A1D4D',
                   height: '40px',
                   display: 'flex',
                   alignItems: 'center',

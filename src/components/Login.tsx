@@ -42,7 +42,7 @@ export function Login({ onLogin }: LoginProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <Card className="w-full max-w-md p-10 bg-white border border-[#E5E7EB] shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg">
+      <Card className="w-full max-w-md p-10 bg-white border border-[#E5E9F0] shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg">
         <div className="mb-10 text-center">
           <div className="inline-block p-4 bg-[#0A1D4D] rounded-lg mb-4">
             <h1 className="text-white">JJB OS</h1>
@@ -63,7 +63,7 @@ export function Login({ onLogin }: LoginProps) {
               }}
               placeholder="Enter your email"
               required
-              className={`rounded-lg border-[#E5E7EB] focus:border-[#F25C05] focus:ring-[#F25C05]/20 transition-all duration-200 h-12 ${
+              className={`rounded-lg border-[#E5E9F0] focus:border-[#F25C05] focus:ring-[#F25C05]/20 transition-all duration-200 h-12 ${
                 emailError ? "border-red-500" : ""
               }`}
             />
@@ -81,7 +81,7 @@ export function Login({ onLogin }: LoginProps) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              className="rounded-lg border-[#E5E7EB] focus:border-[#F25C05] focus:ring-[#F25C05]/20 transition-all duration-200 h-12"
+              className="rounded-lg border-[#E5E9F0] focus:border-[#F25C05] focus:ring-[#F25C05]/20 transition-all duration-200 h-12"
             />
           </div>
 

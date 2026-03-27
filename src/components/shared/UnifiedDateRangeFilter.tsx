@@ -129,7 +129,7 @@ function InlineDropdown({
         onClick={() => setOpen(!open)}
         style={{
           display: "flex", alignItems: "center", gap: "4px", cursor: "pointer",
-          fontSize: "14px", fontWeight: 600, color: "#12332B",
+          fontSize: "14px", fontWeight: 600, color: "#0A1D4D",
           padding: "4px 8px", borderRadius: "6px",
           backgroundColor: open ? "#F0FAF8" : "transparent", userSelect: "none",
         }}
@@ -140,7 +140,7 @@ function InlineDropdown({
       {open && (
         <div style={{
           position: "absolute", top: "100%", left: 0, marginTop: "4px",
-          backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "8px",
+          backgroundColor: "#FFFFFF", border: "1px solid #E5E9F0", borderRadius: "8px",
           boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 10000,
           maxHeight: "200px", overflowY: "auto", minWidth: "120px",
         }}>
@@ -149,10 +149,10 @@ function InlineDropdown({
               key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
               style={{
-                padding: "6px 12px", fontSize: "13px", color: "#12332B", cursor: "pointer",
+                padding: "6px 12px", fontSize: "13px", color: "#0A1D4D", cursor: "pointer",
                 backgroundColor: value === opt.value ? "#F0FAF8" : "transparent",
               }}
-              onMouseEnter={e => { if (value !== opt.value) (e.currentTarget).style.backgroundColor = "#F7FAF8"; }}
+              onMouseEnter={e => { if (value !== opt.value) (e.currentTarget).style.backgroundColor = "#F8F9FB"; }}
               onMouseLeave={e => { (e.currentTarget).style.backgroundColor = value === opt.value ? "#F0FAF8" : "transparent"; }}
             >
               {opt.label}
@@ -285,7 +285,7 @@ export function SingleDateInput({
             border: "1px solid #E5E9F0",
             borderRadius: "12px",
             fontSize: "14px",
-            color: "#12332B",
+            color: "#0A1D4D",
             outline: "none",
             backgroundColor: "#FFFFFF",
             transition: "border-color 0.15s",
@@ -313,7 +313,7 @@ export function SingleDateInput({
           ref={popoverRef}
           style={{
             position: "absolute", top: popoverPos.top, left: popoverPos.left, zIndex: 99999,
-            width: "308px", backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB",
+            width: "308px", backgroundColor: "#FFFFFF", border: "1px solid #E5E9F0",
             borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             padding: "16px", fontFamily: "inherit",
           }}
@@ -370,7 +370,7 @@ export function SingleDateInput({
                   style={{
                     width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "13px", fontWeight: isSelected || isToday ? 600 : 400,
-                    color: isSelected ? "#FFFFFF" : isOtherMonth ? "#D1D5DB" : "#12332B",
+                    color: isSelected ? "#FFFFFF" : isOtherMonth ? "#D1D5DB" : "#0A1D4D",
                     backgroundColor: isSelected ? "#0F766E" : "transparent",
                     border: isToday && !isSelected ? "2px solid #0F766E" : "2px solid transparent",
                     borderRadius: "8px", cursor: "pointer", margin: "auto", transition: "background-color 0.15s",
@@ -385,12 +385,12 @@ export function SingleDateInput({
           </div>
 
           {/* Footer: Clear + Today */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E7EB" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E9F0" }}>
             <button
               type="button"
               onClick={() => { onChange(""); setDisplay(""); setOpen(false); }}
               style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "#667085", padding: "4px 0" }}
-              onMouseEnter={e => { (e.currentTarget).style.color = "#DC2626"; }}
+              onMouseEnter={e => { (e.currentTarget).style.color = "#EF4444"; }}
               onMouseLeave={e => { (e.currentTarget).style.color = "#667085"; }}
             >
               Clear

@@ -948,13 +948,13 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
       {!embedded && (<div style={{
         background: (() => {
           switch (billing.status) {
-            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
             case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
             case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
             case "Completed": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
             case "Partially Collected": return "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)";
             case "Cancelled": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
-            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)";
+            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
           }
         })(),
         borderBottom: "1.5px solid #0F766E",
@@ -969,7 +969,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Total Amount
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "#12332B" }}>
+          <div style={{ fontSize: "20px", fontWeight: 700, color: "#0A1D4D" }}>
             ₱{formatAmount(billing.totalAmount)}
           </div>
         </div>
@@ -1041,7 +1041,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
               top: "calc(100% + 4px)",
               left: 0,
               background: "white",
-              border: "1.5px solid #E5E7EB",
+              border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
               zIndex: 50,
@@ -1057,7 +1057,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                     fontSize: "14px",
                     fontWeight: 500,
                     cursor: "pointer",
-                    borderBottom: index < 5 ? "1px solid #E5E7EB" : "none",
+                    borderBottom: index < 5 ? "1px solid #E5E9F0" : "none",
                     background: billing.status === status ? "#F0FDF4" : "white",
                     color: status === "Draft" ? "#6B7280" :
                            status === "For Approval" ? "#F59E0B" :
@@ -1091,7 +1091,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Billing Date
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
             {billing.billingDate ? formatDate(billing.billingDate) : "—"}
           </div>
         </div>
@@ -1104,7 +1104,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
             Created Date
           </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
             {formatDate(billing.created_at)}
           </div>
         </div>
@@ -1118,7 +1118,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
             <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
               Project
             </div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+            <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
               {billing.projectName}
             </div>
           </div>
@@ -1153,19 +1153,19 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
               <div style={{
                 background: "white",
                 borderRadius: "12px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 overflow: "hidden",
                 marginBottom: "24px"
               }}>
                 <div style={{
                   padding: "16px 24px",
-                  borderBottom: "1px solid #E5E7EB",
+                  borderBottom: "1px solid #E5E9F0",
                   background: "#F9FAFB",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
                 }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                     Booking Details
                   </h3>
                 </div>
@@ -1274,59 +1274,59 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                         {isExport && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dShipper || "—"}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dShipper || "—"}</div>
                           </div>
                         )}
                         {isImport && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dConsignee || "—"}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dConsignee || "—"}</div>
                           </div>
                         )}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client Name</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dClientName || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dClientName || "—"}</div>
                         </div>
                         {dCompanyName && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Company</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dCompanyName}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dCompanyName}</div>
                           </div>
                         )}
                         {/* Row 2: B/L Number | Vessel / Voyage */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>B/L Number</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dBlNumber || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dBlNumber || "—"}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dVessel || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dVessel || "—"}</div>
                         </div>
                         {/* Row 3: Container No | Origin (POL) */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                             {dContainers.length > 0 ? dContainers.join(", ") : "—"}
                           </div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin (POL)</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dOrigin || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dOrigin || "—"}</div>
                         </div>
                         {/* Row 4: Destination (POD) | Volume */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Destination (POD)</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dDestination || "—"}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dDestination || "—"}</div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
-                          <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{computeVolumeSummary(dContainers, dVolume)}</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(dContainers, dVolume)}</div>
                         </div>
                         {/* Row 5: Commodity (conditional) */}
                         {dCommodity && (
                           <div>
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                            <div style={{ fontSize: "13px", color: "#12332B", fontWeight: 500 }}>{dCommodity}</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dCommodity}</div>
                           </div>
                         )}
                       </div>
@@ -1340,16 +1340,16 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
               <div style={{
                 background: "white",
                 borderRadius: "12px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid #E5E9F0",
                 overflow: "hidden",
                 marginBottom: "24px"
               }}>
                 <div style={{
                   padding: "16px 24px",
-                  borderBottom: "1px solid #E5E7EB",
+                  borderBottom: "1px solid #E5E9F0",
                   background: "#F9FAFB"
                 }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                     Billing Settings
                   </h3>
                 </div>
@@ -1404,7 +1404,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                   justifyContent: "space-between",
                   alignItems: "center"
                 }}>
-                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                     Billing Particulars
                   </h3>
                   {isEditing && (
@@ -1511,7 +1511,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                     borderRadius: "6px",
                                     padding: "0 10px",
                                     fontSize: "14px",
-                                    color: "#12332B",
+                                    color: "#0A1D4D",
                                     background: "transparent",
                                     outline: "none",
                                     boxSizing: "border-box" as const,
@@ -1530,7 +1530,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                   padding: "0 12px",
                                   fontSize: "14px",
                                   fontWeight: 500,
-                                  color: "#12332B"
+                                  color: "#0A1D4D"
                                 }}>{particular.particulars}</div>
                               )}
                             </td>
@@ -1568,7 +1568,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                         border: "none",
                                         padding: "0 8px",
                                         fontSize: "14px",
-                                        color: "#12332B",
+                                        color: "#0A1D4D",
                                         background: "transparent",
                                         outline: "none",
                                         textAlign: "right" as const,
@@ -1597,8 +1597,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                     padding: "0 12px",
                                     fontSize: "14px",
                                     fontWeight: 500,
-                                    color: "#12332B"
-                                  }}>{particular.volumeQty}{volLabel ? <span style={{ color: "#12332B", fontWeight: 500, marginLeft: "1px" }}>x{volLabel}</span> : ""}</div>
+                                    color: "#0A1D4D"
+                                  }}>{particular.volumeQty}{volLabel ? <span style={{ color: "#0A1D4D", fontWeight: 500, marginLeft: "1px" }}>x{volLabel}</span> : ""}</div>
                                 );
                               })()}
                             </td>
@@ -1623,7 +1623,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                     borderRadius: "6px",
                                     padding: "0 10px",
                                     fontSize: "14px",
-                                    color: "#12332B",
+                                    color: "#0A1D4D",
                                     background: "transparent",
                                     outline: "none",
                                     textAlign: "right" as const,
@@ -1644,7 +1644,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                   padding: "0 12px",
                                   fontSize: "14px",
                                   fontWeight: 500,
-                                  color: "#12332B"
+                                  color: "#0A1D4D"
                                 }}>
                                   {formatAmount(particular.unitCost)}
                                 </div>
@@ -1659,7 +1659,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                 justifyContent: "flex-end",
                                 fontSize: "14px",
                                 fontWeight: 500,
-                                color: "#12332B"
+                                color: "#0A1D4D"
                               }}>
                                 {formatAmount(particular.total || (particular.volumeQty * particular.unitCost))}
                               </div>
@@ -1730,7 +1730,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                                 padding: "0 12px",
                                 fontSize: "14px",
                                 fontWeight: 500,
-                                color: "#12332B"
+                                color: "#0A1D4D"
                               }}>
                                 {formatAmount(particular.amount)}
                               </div>
@@ -1774,8 +1774,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                       alignItems: "center",
                       justifyContent: "space-between"
                     }}>
-                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#12332B", textTransform: "uppercase" as const, letterSpacing: "0.03em" }}>Total</span>
-                      <span style={{ fontSize: "18px", fontWeight: 700, color: "#12332B" }}>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" as const, letterSpacing: "0.03em" }}>Total</span>
+                      <span style={{ fontSize: "18px", fontWeight: 700, color: "#0A1D4D" }}>
                         ₱{formatAmount(editedParticulars.reduce((sum, p) => sum + p.amount, 0))}
                       </span>
                     </div>
@@ -1819,8 +1819,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                           key={card.label}
                           style={{
                             flex: 1,
-                            border: "1px solid #E5E7EB",
-                            borderRadius: "10px",
+                            border: "1px solid #E5E9F0",
+                            borderRadius: "8px",
                             padding: "20px 24px",
                             backgroundColor: "#FFFFFF",
                           }}
@@ -1835,7 +1835,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                           <div style={{
                             fontSize: "24px",
                             fontWeight: 700,
-                            color: "#12332B",
+                            color: "#0A1D4D",
                             marginTop: "8px",
                           }}>{card.value}</div>
                         </div>
@@ -1846,7 +1846,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
 
                 {/* Container matching Vouchers Tab design */}
                 <div style={{ 
-                  border: "1px solid #E5E7EB", 
+                  border: "1px solid #E5E9F0", 
                   borderRadius: "12px", 
                   backgroundColor: "#FFFFFF",
                   overflow: "hidden"
@@ -1854,13 +1854,13 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                   {/* Header */}
                   <div style={{ 
                     padding: "24px", 
-                    borderBottom: "1px solid #E5E7EB",
+                    borderBottom: "1px solid #E5E9F0",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center"
                   }}>
                     <div>
-                      <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#12332B", margin: 0 }}>
+                      <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                         Collections
                       </h3>
                       <p style={{ fontSize: "14px", color: "#667085", marginTop: "4px", marginBottom: 0 }}>
@@ -1901,7 +1901,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                     <div>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                          <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E7EB" }}>
+                          <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                             <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Collection Number</th>
                             <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
                             <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payment Method</th>
@@ -1914,7 +1914,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                             <tr 
                               key={collection.id || index} 
                               style={{ 
-                                borderBottom: index < collections.length - 1 ? "1px solid #E5E7EB" : "none",
+                                borderBottom: index < collections.length - 1 ? "1px solid #E5E9F0" : "none",
                                 transition: "background 0.15s ease",
                                 cursor: "pointer"
                               }}
@@ -1923,22 +1923,22 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                               onMouseLeave={(e) => e.currentTarget.style.background = "#FFFFFF"}
                             >
                               <td style={{ padding: "16px 24px" }}>
-                                <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                                <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
                                   {collection.collectionNumber}
                                 </div>
                               </td>
                               <td style={{ padding: "16px 24px" }}>
-                                <div style={{ fontSize: "14px", color: "#12332B" }}>
+                                <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                                   {formatDate(collection.collectionDate)}
                                 </div>
                               </td>
                               <td style={{ padding: "16px 24px" }}>
-                                <div style={{ fontSize: "14px", color: "#12332B" }}>
+                                <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                                   {collection.paymentMethod || "—"}
                                 </div>
                               </td>
                               <td style={{ padding: "16px 24px", textAlign: "left" }}>
-                                <div style={{ fontSize: "14px", color: "#12332B" }}>
+                                <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                                   ₱{formatAmount((collection as any).allocatedAmount ?? collection.amount)}
                                 </div>
                               </td>
@@ -1952,7 +1952,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                     </div>
                   ) : (
                     <div style={{ padding: "48px 24px", textAlign: "center" }}>
-                      <DollarSign size={40} style={{ color: "#E5E7EB", margin: "0 auto 12px" }} />
+                      <DollarSign size={40} style={{ color: "#E5E9F0", margin: "0 auto 12px" }} />
                       <p style={{ fontSize: "14px", color: "#667085", margin: 0 }}>
                         No collections recorded for this billing yet
                       </p>
@@ -2024,7 +2024,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                   borderRadius: "6px",
                   border: "1px solid #D1D5DB",
                   backgroundColor: "white",
-                  color: "#374151",
+                  color: "#344054",
                   fontSize: "14px",
                   fontWeight: 500,
                   cursor: "pointer"
@@ -2037,7 +2037,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                 style={{
                   padding: "8px 16px",
                   borderRadius: "6px",
-                  backgroundColor: "#DC2626",
+                  backgroundColor: "#EF4444",
                   color: "white",
                   fontSize: "14px",
                   fontWeight: 500,
