@@ -33,7 +33,7 @@ interface BrokerageBooking {
   docsTimeline?: { step: string; datetime: string | null }[];
 }
 
-interface BrokerageBookingsProps {
+interface ImportBookingsProps {
   currentUser?: { name: string; email: string; department: string } | null;
 }
 
@@ -73,7 +73,7 @@ const isBright = (hex: string) => {
   return ["#FFFF00", "#00FFFF", "#00FF00"].includes(hex.toUpperCase());
 };
 
-export function BrokerageBookings({ currentUser }: BrokerageBookingsProps = {}) {
+export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
   const [bookings, setBookings] = useState<BrokerageBooking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);

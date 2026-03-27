@@ -20,7 +20,12 @@
       "Read(//c/Users/Harrie/Downloads/RVS/Realrvsupdated/**)",
       "Bash(done)",
       "Bash(node:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(curl -s http://localhost:3000/src/App.tsx)",
+      "Bash(find src:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

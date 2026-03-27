@@ -32,7 +32,7 @@ import {
 import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png";
 import { useUser } from "../hooks/useUser";
 
-export type Page = "dashboard" | "projects" | "ops-forwarding" | "ops-brokerage" | "ops-export" | "ops-import" | "ops-trucking" | "ops-projects" | "ops-requests" | "ops-clients" | "operations" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
+export type Page = "dashboard" | "projects" | "ops-export" | "ops-import" | "ops-trucking" | "ops-projects" | "ops-requests" | "ops-clients" | "operations" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
 
 // SVG for Philippine Peso icon
 const Vector = () => (

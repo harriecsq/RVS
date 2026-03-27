@@ -28,7 +28,6 @@ import { EmployeeProfile } from "./components/EmployeeProfile";
 import { CreateBooking } from "./components/CreateBooking";
 import { BookingFullView } from "./components/operations/BookingFullView";
 import { ImportBookings } from "./components/operations/ImportBookings";
-import { OthersBookings } from "./components/operations/OthersBookings";
 import { projectId, publicAnonKey } from './utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
 import { ExportBookings } from "./components/operations/ExportBookings";
@@ -236,9 +235,6 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
     if (path.startsWith("/operations/export")) return "ops-export";
     if (path.startsWith("/operations/import")) return "ops-import";
     if (path.startsWith("/operations/trucking")) return "ops-trucking";
-    if (path.startsWith("/operations/forwarding")) return "ops-forwarding";
-    if (path.startsWith("/operations/brokerage")) return "ops-brokerage";
-    if (path.startsWith("/operations/others")) return "ops-others";
     if (path.startsWith("/operations")) return "operations";
     if (path.startsWith("/reports")) return "reports";
     if (path.startsWith("/projects")) return "projects";
@@ -267,9 +263,6 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
       "ops-export": "/operations/export",
       "ops-import": "/operations/import",
       "ops-trucking": "/operations/trucking",
-      "ops-forwarding": "/operations/forwarding",
-      "ops-brokerage": "/operations/brokerage",
-      "ops-others": "/operations/others",
       "acct-vouchers": "/accounting/vouchers",
       "acct-billings": "/accounting/billings",
       "acct-collections": "/accounting/collections",
@@ -401,14 +394,6 @@ function OperationsProjectsPage() {
   );
 }
 
-function ForwardingBookingsPage() {
-  return (
-    <RouteWrapper page="ops-forwarding">
-      <Bookings />
-    </RouteWrapper>
-  );
-}
-
 function ExportBookingsPage() {
   return (
     <RouteWrapper page="ops-export">
@@ -420,7 +405,7 @@ function ExportBookingsPage() {
 function ImportBookingsPage() {
   return (
     <RouteWrapper page="ops-import">
-      <BrokerageBookings />
+      <ImportBookings />
     </RouteWrapper>
   );
 }
@@ -721,12 +706,9 @@ function AppContent() {
         <Route path="/operations/:bookingId" element={<BookingDetailPage />} />
         <Route path="/operations/clients" element={<OperationsClientsPage />} />
         <Route path="/operations/projects" element={<OperationsProjectsPage />} />
-        <Route path="/operations/forwarding" element={<ForwardingBookingsPage />} />
         <Route path="/operations/export" element={<ExportBookingsPage />} />
         <Route path="/operations/import" element={<ImportBookingsPage />} />
         <Route path="/operations/trucking" element={<TruckingModulePage />} />
-        <Route path="/operations/brokerage" element={<RouteWrapper page="ops-brokerage"><BrokerageBookings /></RouteWrapper>} />
-        <Route path="/operations/others" element={<RouteWrapper page="ops-others"><OthersBookings /></RouteWrapper>} />
         {/* <Route path="/operations/reports" element={<RouteWrapper page="ops-reports"><OperationsReports /></RouteWrapper>} /> */}
         
         {/* Accounting */}

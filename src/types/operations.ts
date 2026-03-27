@@ -68,61 +68,6 @@ export type ExecutionStatus =
   | "On Hold"
   | "Cancelled";
 
-export interface ForwardingBooking {
-  id: string;
-  bookingId: string;
-  date?: string;
-  customerName: string;
-  companyName?: string;
-  clientId?: string;
-  contactId?: string;
-  contactPersonName?: string;
-  status: ExecutionStatus;
-
-  // Shipment Details
-  consignee?: string;
-  shipper?: string;
-  mblMawb?: string;
-  blNumber?: string;
-  containerNo?: string;
-  commodity?: string;
-  volume?: string;
-  vesselVoyage?: string;
-  origin?: string;
-  pod?: string;
-  shippingLine?: string;
-
-  // Operational Details
-  section?: string;
-  accountOwner?: string;
-  accountHandler?: string;
-  projectNumber?: string;
-  projectName?: string;
-  projectId?: string;
-  quotationReferenceNumber?: string;
-
-  // Dates
-  eta?: string;
-  etd?: string;
-  ata?: string;
-  atd?: string;
-
-  // Cargo Details
-  cargoType?: string;
-  containerSize?: string;
-  containerQty?: number;
-  grossWeight?: string;
-  dimensions?: string;
-  mode?: string;
-  incoterms?: string;
-  deliveryAddress?: string;
-
-  // Metadata
-  createdAt: string;
-  updatedAt: string;
-  created_by?: string;
-}
-
 export interface BrokerageBooking {
   id: string;
   bookingId: string;
@@ -230,36 +175,6 @@ export interface TruckingBooking {
   deliveryDate?: string;
   eta?: string;
   etd?: string;
-
-  // Metadata
-  createdAt: string;
-  updatedAt: string;
-  created_by?: string;
-}
-
-export interface OthersBooking {
-  id: string;
-  bookingId: string;
-  date?: string;
-  customerName: string;
-  companyName?: string;
-  clientId?: string;
-  contactId?: string;
-  contactPersonName?: string;
-  status: ExecutionStatus;
-
-  // Service Details
-  serviceDescription?: string;
-  serviceType?: string;
-
-  // Operational Details
-  section?: string;
-  accountOwner?: string;
-  accountHandler?: string;
-  projectNumber?: string;
-  projectName?: string;
-  projectId?: string;
-  quotationReferenceNumber?: string;
 
   // Metadata
   createdAt: string;
