@@ -8,7 +8,6 @@ import { CollectionBillingsTab } from "./CollectionBillingsTab";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
-import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
 
@@ -871,16 +870,6 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                 disabled={!isEditing}
               />
 
-              {/* Approval / Sign-off Section */}
-              <ApprovalSignoffSection
-                preparedBy={isEditing ? editedPreparedBy : ((currentCollection as any)?.preparedBy || "")}
-                checkedBy={isEditing ? editedCheckedBy : ((currentCollection as any)?.checkedBy || "")}
-                approvedBy={isEditing ? editedApprovedBy : ((currentCollection as any)?.approvedBy || "")}
-                onPreparedByChange={setEditedPreparedBy}
-                onCheckedByChange={setEditedCheckedBy}
-                onApprovedByChange={setEditedApprovedBy}
-                disabled={!isEditing}
-              />
 
           </div>
         )}

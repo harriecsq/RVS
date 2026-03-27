@@ -11,7 +11,6 @@ import { RefundPopover } from "./RefundPopover";
 import { formatAmount } from "../../utils/formatAmount";
 import { EXPORT_STANDARD_PARTICULARS, getAvailableExportSuggestions } from "./ExpenseCostingTables";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
-import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
 
@@ -3408,16 +3407,6 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
               disabled={!isEditing}
             />
 
-            {/* Approval / Sign-off Section */}
-            <ApprovalSignoffSection
-              preparedBy={(displayedExpense as any).preparedBy || ""}
-              checkedBy={(displayedExpense as any).checkedBy || ""}
-              approvedBy={(displayedExpense as any).approvedBy || ""}
-              onPreparedByChange={(val) => editedExpense && setEditedExpense({ ...editedExpense, preparedBy: val } as any)}
-              onCheckedByChange={(val) => editedExpense && setEditedExpense({ ...editedExpense, checkedBy: val } as any)}
-              onApprovedByChange={(val) => editedExpense && setEditedExpense({ ...editedExpense, approvedBy: val } as any)}
-              disabled={!isEditing}
-            />
             </div>
           </div>
         )}

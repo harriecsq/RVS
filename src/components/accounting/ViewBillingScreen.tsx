@@ -12,7 +12,6 @@ import { formatAmount } from "../../utils/formatAmount";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
-import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { Paperclip } from "lucide-react";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -1793,16 +1792,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                 disabled={!isEditing}
               />
 
-              {/* Approval / Sign-off Section */}
-              <ApprovalSignoffSection
-                preparedBy={isEditing ? editedPreparedBy : ((billing as any)?.preparedBy || "")}
-                checkedBy={isEditing ? editedCheckedBy : ((billing as any)?.checkedBy || "")}
-                approvedBy={isEditing ? editedApprovedBy : ((billing as any)?.approvedBy || "")}
-                onPreparedByChange={setEditedPreparedBy}
-                onCheckedByChange={setEditedCheckedBy}
-                onApprovedByChange={setEditedApprovedBy}
-                disabled={!isEditing}
-              />
 
           </div>
         ) : (

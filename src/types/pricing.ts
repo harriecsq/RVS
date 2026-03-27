@@ -1,6 +1,5 @@
 // Pricing / Projects / Quotations Types
 
-export type ProjectStatus = "Active" | "Completed" | "On Hold" | "Cancelled";
 export type BookingStatus = "No Bookings Yet" | "Partially Booked" | "Fully Booked";
 
 export interface QuotationChargeCategory {
@@ -118,74 +117,6 @@ export interface OthersDetails {
   contactPerson?: string;
   contact_number?: string;
   contactNumber?: string;
-
-  [key: string]: any;
-}
-
-export interface Project {
-  id: string;
-  project_number: string;
-  quotation_id?: string;
-  quotation_number?: string;
-  customer_id?: string;
-  customer_name?: string;
-  client_id?: string;
-  client_name?: string;
-  client_ids?: string[];
-  client_names?: string[];
-  company_name?: string;
-
-  // Project metadata
-  status: ProjectStatus;
-  booking_status?: BookingStatus;
-  movement?: string;
-  currency?: string;
-  total?: number;
-
-  // Service & cargo info
-  services?: string[];
-  services_metadata?: InquiryService[];
-  commodity?: string;
-  cargo_type?: string;
-
-  // Routing
-  pol_aol?: string;
-  pod_aod?: string;
-  collection_address?: string;
-  delivery_address?: string;
-
-  // Carrier info
-  carrier?: string;
-  shipping_line?: string;
-
-  // Cargo details
-  gross_weight?: number;
-  dimensions?: string;
-
-  // Dates
-  shipment_ready_date?: string;
-  requested_etd?: string;
-  requested_eta?: string;
-  created_at?: string;
-  updated_at?: string;
-
-  // Additional info
-  special_instructions?: string;
-  remarks?: string;
-  created_by?: string;
-  owner_id?: string;
-  owner_name?: string;
-
-  // Pricing breakdown from quotation
-  charge_categories?: QuotationChargeCategory[];
-
-  // Linked bookings
-  linkedBookings?: {
-    bookingId: string;
-    bookingNumber: string;
-    serviceType: string;
-    status: string;
-  }[];
 
   [key: string]: any;
 }

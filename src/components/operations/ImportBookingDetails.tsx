@@ -6,7 +6,6 @@ import { ExpensesSubTabs } from "./shared/ExpensesSubTabs";
 import { TruckingTab } from "./shared/TruckingTab";
 import { ProjectSelector } from "../selectors/ProjectSelector";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
-import type { Project } from "../../types/pricing";
 import { DocsTimelineStepper, DocsTimelineStep } from "./shared/DocsTimelineStepper";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { StandardButton } from "../design-system/StandardButton";
@@ -18,7 +17,6 @@ import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
-import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
 
@@ -2736,16 +2734,6 @@ function BookingInformationTab({
         disabled={!isEditing}
       />
 
-      {/* Approval / Sign-off Section */}
-      <ApprovalSignoffSection
-        preparedBy={getFieldVal("preparedBy")}
-        checkedBy={getFieldVal("checkedBy")}
-        approvedBy={getFieldVal("approvedBy")}
-        onPreparedByChange={(val) => setEditData({ ...editData, preparedBy: val } as any)}
-        onCheckedByChange={(val) => setEditData({ ...editData, checkedBy: val } as any)}
-        onApprovedByChange={(val) => setEditData({ ...editData, approvedBy: val } as any)}
-        disabled={!isEditing}
-      />
     </div>
   );
 }

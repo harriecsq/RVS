@@ -7,7 +7,6 @@ import { StandardButton } from "../design-system";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
-import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { Input } from "../ui/input";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
@@ -1025,16 +1024,6 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
             disabled={!isEditing}
           />
 
-          {/* Approval / Sign-off Section */}
-          <ApprovalSignoffSection
-            preparedBy={(isEditing && editedVoucher ? editedVoucher : voucher)?.preparedBy || ""}
-            checkedBy={(isEditing && editedVoucher ? editedVoucher : voucher)?.checkedBy || ""}
-            approvedBy={(isEditing && editedVoucher ? editedVoucher : voucher)?.approvedBy || ""}
-            onPreparedByChange={(val) => editedVoucher && setEditedVoucher({ ...editedVoucher, preparedBy: val } as any)}
-            onCheckedByChange={(val) => editedVoucher && setEditedVoucher({ ...editedVoucher, checkedBy: val } as any)}
-            onApprovedByChange={(val) => editedVoucher && setEditedVoucher({ ...editedVoucher, approvedBy: val } as any)}
-            disabled={!isEditing}
-          />
 
         </div>
       </div>

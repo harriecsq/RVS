@@ -19,7 +19,6 @@ import { StandardTabs } from "../design-system/StandardTabs";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
-import { ApprovalSignoffSection } from "../shared/ApprovalSignoffSection";
 import { NotesSection } from "../shared/NotesSection";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
@@ -2349,16 +2348,6 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
             disabled={!isEditing}
           />
 
-          {/* Approval / Sign-off Section */}
-          <ApprovalSignoffSection
-            preparedBy={(r as any).preparedBy || ""}
-            checkedBy={(r as any).checkedBy || ""}
-            approvedBy={(r as any).approvedBy || ""}
-            onPreparedByChange={(val) => set("preparedBy" as any, val as any)}
-            onCheckedByChange={(val) => set("checkedBy" as any, val as any)}
-            onApprovedByChange={(val) => set("approvedBy" as any, val as any)}
-            disabled={!isEditing}
-          />
         </div>
         )}
 

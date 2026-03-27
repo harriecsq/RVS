@@ -14,8 +14,6 @@ import { BillingsScreen } from "./components/accounting/BillingsScreen";
 import { CollectionsScreen } from "./components/accounting/CollectionsScreen";
 import { ExpensesScreen } from "./components/accounting/ExpensesScreen";
 import { HR } from "./components/HR";
-import { ProjectsModule } from "./components/projects/ProjectsModule";
-import { ProjectsList } from "./components/operations/ProjectsList";
 import { Reports } from "./components/Reports";
 import { ContainerRefundReport } from "./components/reports/ContainerRefundReport";
 import { FinalShipmentCostReport } from "./components/reports/FinalShipmentCostReport";
@@ -231,13 +229,11 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
     if (path === "/" || path === "/dashboard") return "dashboard";
     if (path.startsWith("/operations/requests")) return "ops-requests";
     if (path.startsWith("/operations/clients")) return "ops-clients";
-    if (path.startsWith("/operations/projects")) return "ops-projects";
     if (path.startsWith("/operations/export")) return "ops-export";
     if (path.startsWith("/operations/import")) return "ops-import";
     if (path.startsWith("/operations/trucking")) return "ops-trucking";
     if (path.startsWith("/operations")) return "operations";
     if (path.startsWith("/reports")) return "reports";
-    if (path.startsWith("/projects")) return "projects";
     if (path.startsWith("/accounting/vouchers")) return "acct-vouchers";
     if (path.startsWith("/accounting/billings")) return "acct-billings";
     if (path.startsWith("/accounting/collections")) return "acct-collections";
@@ -254,12 +250,10 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
   const handleNavigate = (page: Page) => {
     const routeMap: Record<Page, string> = {
       "dashboard": "/dashboard",
-      "projects": "/projects",
       "operations": "/operations",
       "reports": "/reports",
       "ops-requests": "/operations/requests",
       "ops-clients": "/operations/clients",
-      "ops-projects": "/operations/projects",
       "ops-export": "/operations/export",
       "ops-import": "/operations/import",
       "ops-trucking": "/operations/trucking",
@@ -346,19 +340,6 @@ function VatReturnsReportPage() {
   );
 }
 
-// Unified Projects Page (Bridge Module for BD and Operations)
-function ProjectsPage() {
-  const { user } = useUser();
-  
-  return (
-    <RouteWrapper page="projects">
-      <ProjectsModule 
-        currentUser={user || undefined}
-      />
-    </RouteWrapper>
-  );
-}
-
 // Operations Routes
 function OperationsPage() {
   const { user } = useUser();
@@ -376,18 +357,6 @@ function OperationsClientsPage() {
   return (
     <RouteWrapper page="ops-clients">
       <ClientsModule 
-        currentUser={user || undefined}
-      />
-    </RouteWrapper>
-  );
-}
-
-function OperationsProjectsPage() {
-  const { user } = useUser();
-  
-  return (
-    <RouteWrapper page="ops-projects">
-      <ProjectsList 
         currentUser={user || undefined}
       />
     </RouteWrapper>
@@ -697,15 +666,12 @@ function AppContent() {
         <Route path="/reports/profit-loss-period" element={<ProfitLossPeriodReportPage />} />
         <Route path="/reports/vat-returns" element={<VatReturnsReportPage />} />
 
-        {/* Unified Projects Page */}
-        <Route path="/projects" element={<ProjectsPage />} />
         
         {/* Operations */}
         <Route path="/operations" element={<OperationsPage />} />
         <Route path="/operations/create" element={<CreateBookingPage />} />
         <Route path="/operations/:bookingId" element={<BookingDetailPage />} />
         <Route path="/operations/clients" element={<OperationsClientsPage />} />
-        <Route path="/operations/projects" element={<OperationsProjectsPage />} />
         <Route path="/operations/export" element={<ExportBookingsPage />} />
         <Route path="/operations/import" element={<ImportBookingsPage />} />
         <Route path="/operations/trucking" element={<TruckingModulePage />} />
