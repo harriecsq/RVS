@@ -3262,8 +3262,18 @@ app.get("/make-server-ce0d67b8/bookings", async (c) => {
     
     // Get all bookings from ALL prefixes (new workflow - comprehensive)
     const bookings = await kv.getByPrefix("booking:");
-    const exportBookings = await kv.getByPrefix("export_booking:");
-    const importBookings = await kv.getByPrefix("import_booking:");
+    const exportBookingsRaw = await kv.getByPrefix("export_booking:");
+    const importBookingsRaw = await kv.getByPrefix("import_booking:");
+    const exportBookings = await Promise.all(
+      exportBookingsRaw.map((booking: any) =>
+        migrateExportBookingIfNeeded(booking, booking.bookingId || booking.id),
+      ),
+    );
+    const importBookings = await Promise.all(
+      importBookingsRaw.map((booking: any) =>
+        migrateImportBookingIfNeeded(booking, booking.bookingId || booking.id),
+      ),
+    );
     const forwardingBookings = await kv.getByPrefix("forwarding_booking:");
     const truckingBookings = await kv.getByPrefix("trucking_booking:");
     const brokerageBookings = await kv.getByPrefix("brokerage_booking:");
@@ -3400,8 +3410,14 @@ app.get("/make-server-ce0d67b8/bookings/:id", async (c) => {
     for (const prefix of prefixes) {
       const booking = await kv.get(`${prefix}${id}`);
       if (booking) {
+        let normalized = booking;
+        if (prefix === "import_booking:") {
+          normalized = await migrateImportBookingIfNeeded(booking, id);
+        } else if (prefix === "export_booking:") {
+          normalized = await migrateExportBookingIfNeeded(booking, id);
+        }
         console.log(`Fetched booking from ${prefix}${id}`);
-        return c.json({ success: true, data: booking });
+        return c.json({ success: true, data: normalized });
       }
     }
     
@@ -3496,6 +3512,10 @@ app.get("/make-server-ce0d67b8/trucking-records", async (c) => {
     if (linkedBookingId) {
       records = records.filter((r: any) => r.linkedBookingId === linkedBookingId);
     }
+    const shouldEnrich = Boolean(linkedBookingId);
+    if (shouldEnrich) {
+      records = await Promise.all(records.map((record: any) => enrichTruckingRecordWithLinkedTags(record)));
+    }
     records.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     console.log(`Fetched ${records.length} trucking records`);
     return c.json({ success: true, data: records });
@@ -3511,7 +3531,8 @@ app.get("/make-server-ce0d67b8/trucking-records/:id", async (c) => {
     const id = c.req.param("id");
     const record = await kv.get(`trucking-record:${id}`);
     if (!record) return c.json({ success: false, error: "Not found" }, 404);
-    return c.json({ success: true, data: record });
+    const enriched = await enrichTruckingRecordWithLinkedTags(record);
+    return c.json({ success: true, data: enriched });
   } catch (error) {
     console.error("Error fetching trucking record:", error);
     return c.json({ success: false, error: String(error) }, 500);
@@ -3531,6 +3552,60 @@ app.put("/make-server-ce0d67b8/trucking-records/:id", async (c) => {
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating trucking record:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-tags", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const newTags = dedupeTags(Array.isArray(body.shipmentTags) ? body.shipmentTags : []);
+    const user = String(body.user || "Unknown");
+
+    const record = await kv.get(`trucking-record:${id}`);
+    if (!record) {
+      return c.json({ success: false, error: "Trucking record not found" }, 404);
+    }
+
+    if (!record.linkedBookingId) {
+      return c.json({ success: false, error: "No linked booking" }, 400);
+    }
+
+    const prefix = getLinkedBookingPrefix(record.linkedBookingType);
+    if (!prefix) {
+      return c.json({ success: false, error: "Linked booking type is unsupported" }, 400);
+    }
+
+    const linkedBooking = await kv.get(`${prefix}${record.linkedBookingId}`);
+    if (!linkedBooking) {
+      return c.json({ success: false, error: "Linked booking not found" }, 404);
+    }
+
+    const migratedBooking =
+      prefix === "import_booking:"
+        ? await migrateImportBookingIfNeeded(linkedBooking, record.linkedBookingId)
+        : await migrateExportBookingIfNeeded(linkedBooking, record.linkedBookingId);
+
+    const previousTags = dedupeTags(migratedBooking.shipmentTags || []);
+    const historyEntries = createTagHistoryEntries(previousTags, newTags, user, "shipment");
+    const updatedBooking = {
+      ...migratedBooking,
+      shipmentTags: newTags,
+      tagHistory: [...(migratedBooking.tagHistory || []), ...historyEntries],
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`${prefix}${record.linkedBookingId}`, updatedBooking);
+
+    return c.json({
+      success: true,
+      data: {
+        shipmentTags: updatedBooking.shipmentTags || [],
+        tagHistory: updatedBooking.tagHistory || [],
+      },
+    });
+  } catch (error) {
+    console.error("Error updating linked booking shipment tags:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
@@ -5720,12 +5795,254 @@ function generateBookingId(type: string): string {
   return `${prefix}-${year}-${random}`;
 }
 
+type TagHistoryEntry = {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: "tag_added" | "tag_removed";
+  tag: string;
+  tagLabel: string;
+  layer: "shipment" | "operational";
+};
+
+const STATUS_TAG_LABELS: Record<string, string> = {
+  "awaiting-discharge": "Awaiting Discharge",
+  "ready-gatepass": "Ready Gatepass / For Delivery",
+  "for-gatepass": "For Gatepass",
+  "delivered": "Delivered",
+  "awaiting-stowage": "Awaiting Stowage",
+  "awaiting-signed-docs": "Awaiting Signed Docs",
+  "cro": "CRO",
+  "for-web": "For WEB",
+  "for-debit": "For Debit",
+  "for-final": "For Final",
+  "for-lodgement": "For Lodgement",
+  "with-eta": "With ETA",
+  "without-eta": "Without ETA",
+  "returned": "Returned",
+  "awaiting-discharge-cro": "Awaiting Discharge & CRO",
+  "with-stowage-discharged": "With Stowage / Discharged & Awaiting Signed Docs",
+  "for-debit-for-final": "For Debit For Final",
+  "awaiting-trucking": "Awaiting Trucking",
+  "checking-trucking": "Checking Trucking",
+  "looking-truck": "Looking for a Truck",
+  "requesting-rates": "Requesting Rates",
+  "booked": "Booked",
+  "schedule": "Schedule",
+  "re-schedule": "Re-Schedule",
+  "awaiting-address": "Awaiting Address",
+  "awaiting-schedule": "Awaiting Schedule",
+  "client-will-handle": "Client Will Handle",
+  "client-will-handle-trucking": "Client Will Handle the Trucking",
+};
+
+const SHIPMENT_TAG_KEYS = new Set([
+  "awaiting-discharge",
+  "ready-gatepass",
+  "for-gatepass",
+  "delivered",
+  "awaiting-stowage",
+  "awaiting-signed-docs",
+  "cro",
+  "for-web",
+  "for-debit",
+  "for-final",
+  "for-lodgement",
+  "with-eta",
+  "without-eta",
+  "returned",
+  "awaiting-discharge-cro",
+  "with-stowage-discharged",
+  "for-debit-for-final",
+]);
+
+const LEGACY_IMPORT_STATUS_TO_TAGS: Record<string, string[]> = {
+  "For Gatepass": ["for-gatepass"],
+  "Awaiting Discharge & CRO": ["awaiting-discharge", "cro"],
+  "For Debit For Final": ["for-debit", "for-final"],
+  "For Lodgement": ["for-lodgement"],
+  "Awaiting Stowage": ["awaiting-stowage"],
+  "With Stowage / Discharged & Awaiting Signed Docs": ["with-stowage-discharged"],
+  "With ETA": ["with-eta"],
+  "Without ETA": ["without-eta"],
+  "Delivered": ["delivered"],
+  "Returned": ["returned"],
+};
+
+const LEGACY_EXPORT_STATUS_TO_TAGS: Record<string, string[]> = {
+  Delivered: ["delivered"],
+  Completed: ["delivered"],
+};
+
+function dedupeTags(tags: string[]): string[] {
+  return Array.from(new Set((tags || []).filter(Boolean)));
+}
+
+function getTagLabel(tagKey: string): string {
+  return STATUS_TAG_LABELS[tagKey] || tagKey;
+}
+
+function createTagHistoryEntries(
+  oldTags: string[],
+  newTags: string[],
+  user: string,
+  layer: "shipment" | "operational" = "shipment",
+): TagHistoryEntry[] {
+  const oldSet = new Set(oldTags || []);
+  const newSet = new Set(newTags || []);
+  const now = new Date().toISOString();
+  const actor = user || "Unknown";
+  const entries: TagHistoryEntry[] = [];
+
+  for (const tag of newSet) {
+    if (!oldSet.has(tag)) {
+      entries.push({
+        id: crypto.randomUUID(),
+        timestamp: now,
+        user: actor,
+        action: "tag_added",
+        tag,
+        tagLabel: getTagLabel(tag),
+        layer,
+      });
+    }
+  }
+
+  for (const tag of oldSet) {
+    if (!newSet.has(tag)) {
+      entries.push({
+        id: crypto.randomUUID(),
+        timestamp: now,
+        user: actor,
+        action: "tag_removed",
+        tag,
+        tagLabel: getTagLabel(tag),
+        layer,
+      });
+    }
+  }
+
+  return entries;
+}
+
+async function migrateImportBookingIfNeeded(booking: any, id: string): Promise<any> {
+  if (!booking) return booking;
+  if (Array.isArray(booking.shipmentTags)) return booking;
+
+  const mappedTags = LEGACY_IMPORT_STATUS_TO_TAGS[String(booking.status || "")] || [];
+  const migrated = {
+    ...booking,
+    shipmentTags: dedupeTags(mappedTags),
+    tagHistory: Array.isArray(booking.tagHistory) ? booking.tagHistory : [],
+  };
+  await kv.set(`import_booking:${id}`, migrated);
+  return migrated;
+}
+
+async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<any> {
+  if (!booking) return booking;
+  if (Array.isArray(booking.shipmentTags)) return booking;
+
+  const mappedTags = LEGACY_EXPORT_STATUS_TO_TAGS[String(booking.status || "")] || [];
+  const migrated = {
+    ...booking,
+    shipmentTags: dedupeTags(mappedTags),
+    tagHistory: Array.isArray(booking.tagHistory) ? booking.tagHistory : [],
+  };
+  await kv.set(`export_booking:${id}`, migrated);
+  return migrated;
+}
+
+function getLinkedBookingPrefix(linkedBookingType?: string): "import_booking:" | "export_booking:" | null {
+  const type = String(linkedBookingType || "").toLowerCase();
+  if (type.includes("import")) return "import_booking:";
+  if (type.includes("export")) return "export_booking:";
+  return null;
+}
+
+async function fetchLinkedBooking(record: any): Promise<any | null> {
+  if (!record?.linkedBookingId) return null;
+  const prefix = getLinkedBookingPrefix(record?.linkedBookingType);
+  if (!prefix) return null;
+  const booking = await kv.get(`${prefix}${record.linkedBookingId}`);
+  if (!booking) return null;
+
+  if (prefix === "import_booking:") {
+    return await migrateImportBookingIfNeeded(booking, record.linkedBookingId);
+  }
+  return await migrateExportBookingIfNeeded(booking, record.linkedBookingId);
+}
+
+async function migrateShipmentTagsFromTruckingRemarks(record: any): Promise<any> {
+  if (!record || !Array.isArray(record.remarks) || !record.linkedBookingId) return record;
+  const prefix = getLinkedBookingPrefix(record.linkedBookingType);
+  if (!prefix) return record;
+
+  const shipmentTags = dedupeTags(record.remarks.filter((tag: string) => SHIPMENT_TAG_KEYS.has(tag)));
+  if (shipmentTags.length === 0) return record;
+
+  const operationalTags = dedupeTags(record.remarks.filter((tag: string) => !SHIPMENT_TAG_KEYS.has(tag)));
+  const linkedBooking = await kv.get(`${prefix}${record.linkedBookingId}`);
+  if (!linkedBooking) return record;
+
+  const migratedBooking =
+    prefix === "import_booking:"
+      ? await migrateImportBookingIfNeeded(linkedBooking, record.linkedBookingId)
+      : await migrateExportBookingIfNeeded(linkedBooking, record.linkedBookingId);
+
+  const mergedShipmentTags = dedupeTags([...(migratedBooking.shipmentTags || []), ...shipmentTags]);
+  const mergedHistory = [
+    ...(migratedBooking.tagHistory || []),
+    ...createTagHistoryEntries(
+      migratedBooking.shipmentTags || [],
+      mergedShipmentTags,
+      "System migration",
+      "shipment",
+    ),
+  ];
+  const updatedBooking = {
+    ...migratedBooking,
+    shipmentTags: mergedShipmentTags,
+    tagHistory: mergedHistory,
+    updatedAt: new Date().toISOString(),
+  };
+  await kv.set(`${prefix}${record.linkedBookingId}`, updatedBooking);
+
+  const updatedRecord = {
+    ...record,
+    remarks: operationalTags,
+    updatedAt: new Date().toISOString(),
+  };
+  await kv.set(`trucking-record:${record.id}`, updatedRecord);
+  return updatedRecord;
+}
+
+async function enrichTruckingRecordWithLinkedTags(record: any): Promise<any> {
+  const migratedRecord = await migrateShipmentTagsFromTruckingRemarks(record);
+  const linkedBooking = await fetchLinkedBooking(migratedRecord);
+  if (!linkedBooking) {
+    return {
+      ...migratedRecord,
+      linkedBookingShipmentTags: [],
+      linkedBookingTagHistory: [],
+    };
+  }
+  return {
+    ...migratedRecord,
+    linkedBookingShipmentTags: linkedBooking.shipmentTags || [],
+    linkedBookingTagHistory: linkedBooking.tagHistory || [],
+  };
+}
+
 // ==================== EXPORT BOOKINGS ====================
 
 // Get all export bookings
 app.get("/make-server-ce0d67b8/export-bookings", async (c) => {
   try {
-    const bookings = await kv.getByPrefix("export_booking:");
+    const bookingsRaw = await kv.getByPrefix("export_booking:");
+    const bookings = await Promise.all(
+      bookingsRaw.map((booking: any) => migrateExportBookingIfNeeded(booking, booking.bookingId || booking.id)),
+    );
     
     // Sort by createdAt descending (newest first)
     bookings.sort((a: any, b: any) => 
@@ -5745,12 +6062,12 @@ app.get("/make-server-ce0d67b8/export-bookings", async (c) => {
 app.get("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const booking = await kv.get(`export_booking:${id}`);
+    const bookingRaw = await kv.get(`export_booking:${id}`);
     
-    if (!booking) {
+    if (!bookingRaw) {
       return c.json({ success: false, error: "Booking not found" }, 404);
     }
-    
+    const booking = await migrateExportBookingIfNeeded(bookingRaw, id);
     return c.json({ success: true, data: booking });
   } catch (error) {
     console.error("Error fetching export booking:", error);
@@ -5822,6 +6139,36 @@ app.put("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
   }
 });
 
+app.put("/make-server-ce0d67b8/export-bookings/:id/shipment-tags", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const newTags = dedupeTags(Array.isArray(body.shipmentTags) ? body.shipmentTags : []);
+    const user = String(body.user || "Unknown");
+
+    const existingRaw = await kv.get(`export_booking:${id}`);
+    if (!existingRaw) {
+      return c.json({ success: false, error: "Booking not found" }, 404);
+    }
+    const existing = await migrateExportBookingIfNeeded(existingRaw, id);
+
+    const oldTags = dedupeTags(existing.shipmentTags || []);
+    const historyEntries = createTagHistoryEntries(oldTags, newTags, user, "shipment");
+    const updated = {
+      ...existing,
+      shipmentTags: newTags,
+      tagHistory: [...(existing.tagHistory || []), ...historyEntries],
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`export_booking:${id}`, updated);
+
+    return c.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating export booking shipment tags:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
 // Delete export booking
 app.delete("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
   try {
@@ -5889,7 +6236,10 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
 // Get all import bookings
 app.get("/make-server-ce0d67b8/import-bookings", async (c) => {
   try {
-    const bookings = await kv.getByPrefix("import_booking:");
+    const bookingsRaw = await kv.getByPrefix("import_booking:");
+    const bookings = await Promise.all(
+      bookingsRaw.map((booking: any) => migrateImportBookingIfNeeded(booking, booking.bookingId || booking.id)),
+    );
     
     // Sort by createdAt descending (newest first)
     bookings.sort((a: any, b: any) => 
@@ -5909,12 +6259,12 @@ app.get("/make-server-ce0d67b8/import-bookings", async (c) => {
 app.get("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const booking = await kv.get(`import_booking:${id}`);
+    const bookingRaw = await kv.get(`import_booking:${id}`);
     
-    if (!booking) {
+    if (!bookingRaw) {
       return c.json({ success: false, error: "Booking not found" }, 404);
     }
-    
+    const booking = await migrateImportBookingIfNeeded(bookingRaw, id);
     return c.json({ success: true, data: booking });
   } catch (error) {
     console.error("Error fetching import booking:", error);
@@ -5982,6 +6332,36 @@ app.put("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating import booking:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-tags", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const newTags = dedupeTags(Array.isArray(body.shipmentTags) ? body.shipmentTags : []);
+    const user = String(body.user || "Unknown");
+
+    const existingRaw = await kv.get(`import_booking:${id}`);
+    if (!existingRaw) {
+      return c.json({ success: false, error: "Booking not found" }, 404);
+    }
+    const existing = await migrateImportBookingIfNeeded(existingRaw, id);
+
+    const oldTags = dedupeTags(existing.shipmentTags || []);
+    const historyEntries = createTagHistoryEntries(oldTags, newTags, user, "shipment");
+    const updated = {
+      ...existing,
+      shipmentTags: newTags,
+      tagHistory: [...(existing.tagHistory || []), ...historyEntries],
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`import_booking:${id}`, updated);
+
+    return c.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating import booking shipment tags:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });

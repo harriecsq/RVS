@@ -2,41 +2,52 @@ import { ReactNode } from "react";
 
 interface NeuronPageHeaderProps {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   action?: ReactNode;
+  padding?: string;
+  borderBottom?: boolean;
 }
 
-export function NeuronPageHeader({ title, subtitle, action }: NeuronPageHeaderProps) {
+export function NeuronPageHeader({
+  title,
+  subtitle,
+  action,
+  padding = "32px 48px 24px 48px",
+  borderBottom = false,
+}: NeuronPageHeaderProps) {
   return (
-    <div 
+    <div
       className="flex items-start justify-between"
       style={{
-        padding: "32px 32px 24px 32px",
-        borderBottom: "1px solid var(--neuron-ui-border)",
-        background: "var(--neuron-bg-page)",
+        padding,
+        borderBottom: borderBottom ? "1px solid var(--neuron-ui-border)" : undefined,
+        background: "#FFFFFF",
       }}
     >
       <div>
-        <h1 
+        <h1
           style={{
-            fontSize: "28px",
+            fontSize: "32px",
             fontWeight: 600,
-            color: "var(--neuron-ink-primary)",
-            lineHeight: "36px",
+            color: "#0A1D4D",
+            lineHeight: "40px",
             marginBottom: "4px",
+            letterSpacing: "-1.2px",
           }}
         >
           {title}
         </h1>
-        <p 
-          style={{
-            fontSize: "14px",
-            color: "var(--neuron-ink-muted)",
-            lineHeight: "20px",
-          }}
-        >
-          {subtitle}
-        </p>
+        {subtitle && (
+          <p
+            style={{
+              fontSize: "14px",
+              color: "#667085",
+              lineHeight: "20px",
+            }}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
       {action && <div>{action}</div>}
     </div>

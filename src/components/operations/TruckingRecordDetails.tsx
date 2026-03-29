@@ -9,7 +9,6 @@
  * - Field labels: 13px/#667085/500, values in bordered boxes
  */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { ArrowLeft, Edit3, Clock, Truck, Save, X, ChevronDown, Check, Search, Plus, Trash2, Link2 } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
@@ -20,10 +19,12 @@ import { BookingSelector } from "../selectors/BookingSelector";
 import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
+import { StatusTagBar as SharedStatusTagBar } from "../shared/StatusTagBar";
+import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
+import type { TagHistoryEntry } from "../../types/operations";
 import {
-  ALL_TRUCKING_TAGS,
   TRUCKING_TAG_GROUPS,
   TRUCKING_VENDORS,
   EMPTY_RETURN_OPTIONS,
@@ -33,8 +34,11 @@ import {
   getStatusSummary,
   hexToRgba,
 } from "../../utils/truckingTags";
+import { getOperationalTags } from "../../utils/statusTags";
 import { formatDateTime } from "./shared/DateTimeInput";
 import { API_BASE_URL } from '@/utils/api-config';
+
+const OPERATIONAL_TRUCKING_TAGS = getOperationalTags("trucking");
 
 /** Convert "HH:mm" (24h) to "h:mm AM/PM" */
 function formatTimeAmPm(time: string | undefined | null): string {
@@ -55,6 +59,7 @@ interface TruckingRecordDetailsProps {
   currentUser?: { name: string; email: string; department: string } | null;
   /** When true, hides the back arrow button. Used when rendered inline inside a booking tab. */
   embedded?: boolean;
+  onBookingTagsUpdated?: () => void;
 }
 
 // ─── Display helpers (matching ViewExpenseScreen) ────────────────────────────
@@ -480,7 +485,7 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
   const toggle = (key: string) =>
     onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
 
-  const filtered = ALL_TRUCKING_TAGS.filter(
+  const filtered = OPERATIONAL_TRUCKING_TAGS.filter(
     (t) => !search || t.label.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -491,7 +496,7 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
           <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No tags selected</span>
         )}
         {selected.map((key) => {
-          const tag = ALL_TRUCKING_TAGS.find((t) => t.key === key);
+          const tag = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === key);
           return <EditTagChip key={key} label={tag?.label || key} onRemove={() => toggle(key)} />;
         })}
       </div>
@@ -639,299 +644,6 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 // ─── Summary-bar Status Tag Picker ──────────────────────────────────────────
 
 /** Pill with hover-to-remove "×" for the summary bar */
-function StatusTagPill({ label, onRemove }: { label: string; onRemove?: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <span
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "4px 12px",
-        borderRadius: "8px",
-        fontSize: "13px",
-        fontWeight: 600,
-        backgroundColor: "#E8F5F3",
-        color: "#0A1D4D",
-        border: "1px solid #C1D9CC",
-        letterSpacing: "0.03em",
-        whiteSpace: "nowrap",
-        cursor: onRemove ? "default" : undefined,
-        transition: "all 0.12s ease",
-      }}
-    >
-      {label}
-      {onRemove && hovered && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#0A1D4D",
-            padding: 0,
-            display: "flex",
-            alignItems: "center",
-            opacity: 0.6,
-            marginLeft: "2px",
-          }}
-        >
-          <X size={12} />
-        </button>
-      )}
-    </span>
-  );
-}
-
-/** Inline status tag picker used in the summary bar – portal-based dropdown */
-function StatusTagBar({
-  selected,
-  onChange,
-  disabled,
-}: {
-  selected: string[];
-  onChange: (tags: string[]) => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 320 });
-
-  const groupOrder: Record<string, number> = { operations: 0, documentation: 1, financial: 2, client: 3 };
-
-  const sortedSelected = [...selected].sort((a, b) => {
-    const ta = ALL_TRUCKING_TAGS.find((t) => t.key === a);
-    const tb = ALL_TRUCKING_TAGS.find((t) => t.key === b);
-    return (groupOrder[ta?.group || ""] ?? 99) - (groupOrder[tb?.group || ""] ?? 99);
-  });
-
-  const toggle = useCallback(
-    (key: string) => {
-      onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
-    },
-    [selected, onChange],
-  );
-
-  const reposition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPos({ top: rect.bottom + 6, left: rect.left, width: Math.max(rect.width, 320) });
-  }, []);
-
-  // Reposition on open / scroll / resize
-  useEffect(() => {
-    if (!open) return;
-    reposition();
-    const handler = () => reposition();
-    window.addEventListener("scroll", handler, true);
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("scroll", handler, true);
-      window.removeEventListener("resize", handler);
-    };
-  }, [open, reposition]);
-
-  // Click outside to close
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        triggerRef.current?.contains(e.target as Node) ||
-        dropdownRef.current?.contains(e.target as Node)
-      )
-        return;
-      setOpen(false);
-      setSearch("");
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  const filtered = ALL_TRUCKING_TAGS.filter(
-    (t) => !search || t.label.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  return (
-    <>
-      {/* Selected pills + add button */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-        {sortedSelected.length === 0 && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              padding: "4px 12px",
-              borderRadius: "8px",
-              fontSize: "13px",
-              fontWeight: 600,
-              backgroundColor: "#E8F5F3",
-              color: "#0A1D4D",
-              border: "1px solid #C1D9CC",
-              letterSpacing: "0.03em",
-            }}
-          >
-            —
-          </span>
-        )}
-        {sortedSelected.map((key) => {
-          const tag = ALL_TRUCKING_TAGS.find((t) => t.key === key);
-          return (
-            <StatusTagPill
-              key={key}
-              label={tag?.label || key}
-              onRemove={disabled ? undefined : () => toggle(key)}
-            />
-          );
-        })}
-
-        {/* "+ Add" trigger button */}
-        {!disabled && (
-          <button
-            ref={triggerRef}
-            onClick={() => {
-              if (open) { setOpen(false); setSearch(""); } else { setOpen(true); }
-            }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "4px 10px",
-              borderRadius: "8px",
-              border: "1px dashed #C1D9CC",
-              background: "rgba(255,255,255,0.6)",
-              color: "#0F766E",
-              fontSize: "12px",
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.9)";
-              e.currentTarget.style.borderColor = "#0F766E";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.6)";
-              e.currentTarget.style.borderColor = "#C1D9CC";
-            }}
-          >
-            <Plus size={12} />
-            Add
-          </button>
-        )}
-      </div>
-
-      {/* Portal dropdown (z-index 99999, positioned via getBoundingClientRect) */}
-      {open &&
-        createPortal(
-          <div
-            ref={dropdownRef}
-            style={{
-              position: "fixed",
-              top: pos.top,
-              left: pos.left,
-              width: pos.width,
-              maxHeight: 340,
-              background: "white",
-              borderRadius: "8px",
-              border: "1px solid #E5E9F0",
-              boxShadow: "0 8px 30px rgba(0,0,0,0.14)",
-              zIndex: 99999,
-              overflowY: "auto",
-            }}
-          >
-            <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
-              <input
-                autoFocus
-                type="text"
-                placeholder="Search tags..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: "100%",
-                  padding: "6px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid #E5E9F0",
-                  fontSize: "14px",
-                  color: "#0A1D4D",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            {TRUCKING_TAG_GROUPS.map((group) => {
-              const groupTags = filtered.filter((t) => t.group === group.id);
-              if (!groupTags.length) return null;
-              return (
-                <div key={group.id}>
-                  <div
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      color: "#9CA3AF",
-                      letterSpacing: "0.07em",
-                    }}
-                  >
-                    {group.label}
-                  </div>
-                  {groupTags.map((tag) => (
-                    <div
-                      key={tag.key}
-                      onClick={(e) => { e.stopPropagation(); toggle(tag.key); }}
-                      style={{
-                        padding: "8px 16px",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                        color: "#0A1D4D",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        backgroundColor: selected.includes(tag.key) ? "#F0FAF8" : "transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!selected.includes(tag.key))
-                          (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLDivElement).style.backgroundColor =
-                          selected.includes(tag.key) ? "#F0FAF8" : "transparent";
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: 4,
-                          flexShrink: 0,
-                          border: `1.5px solid ${selected.includes(tag.key) ? "#0F766E" : "#D1D5DB"}`,
-                          backgroundColor: selected.includes(tag.key) ? "#0F766E" : "transparent",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {selected.includes(tag.key) && <Check size={10} color="white" />}
-                      </div>
-                      {tag.label}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>,
-          document.body,
-        )}
-    </>
-  );
-}
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 /** Compute size summary from containers: "2x20GP, 1x40HC" */
@@ -947,11 +659,25 @@ function computeSizeSummary(containers: { containerNo: string; size: string }[])
     .join(", ");
 }
 
-export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, embedded = false }: TruckingRecordDetailsProps) {
+export function TruckingRecordDetails({
+  record,
+  onBack,
+  onUpdate,
+  currentUser,
+  embedded = false,
+  onBookingTagsUpdated,
+}: TruckingRecordDetailsProps) {
   const [activeTab, setActiveTab] = useState<"trucking-info" | "attachments">("trucking-info");
   const [showActivity, setShowActivity] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(record);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [linkedShipmentTags, setLinkedShipmentTags] = useState<string[]>(
+    ((record as any).linkedBookingShipmentTags || []) as string[],
+  );
+  const [linkedTagHistory, setLinkedTagHistory] = useState<TagHistoryEntry[]>(
+    ((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[],
+  );
+  const [isShipmentTagsSaving, setIsShipmentTagsSaving] = useState(false);
 
   // ── Inline edit state ──
   const [isEditing, setIsEditing] = useState(false);
@@ -968,6 +694,13 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
   const [linkedBookingData, setLinkedBookingData] = useState<any>(null);
   const [isLoadingLinkedBooking, setIsLoadingLinkedBooking] = useState(false);
 
+  useEffect(() => {
+    setCurrentRecord(record);
+    setEditForm({ ...record });
+    setLinkedShipmentTags(((record as any).linkedBookingShipmentTags || []) as string[]);
+    setLinkedTagHistory(((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[]);
+  }, [record]);
+
   const fetchLinkedBooking = useCallback(async (bookingId: string, autoFill = false) => {
     if (!bookingId) {
       setLinkedBookingData(null);
@@ -982,6 +715,8 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
       if (result.success && result.data) {
         const b = result.data;
         setLinkedBookingData(b);
+        setLinkedShipmentTags(Array.isArray((b as any).shipmentTags) ? (b as any).shipmentTags : []);
+        setLinkedTagHistory(Array.isArray((b as any).tagHistory) ? (b as any).tagHistory : []);
         
         if (autoFill) {
           // Helper to extract container size from a string (e.g. "1x40HC" or "40HQ")
@@ -1067,8 +802,8 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
   // Sorted tags for display
   const groupOrder: Record<string, number> = { operations: 0, documentation: 1, financial: 2, client: 3 };
   const sortedTags = [...(r.remarks || [])].sort((a, b) => {
-    const ta = ALL_TRUCKING_TAGS.find((t) => t.key === a);
-    const tb = ALL_TRUCKING_TAGS.find((t) => t.key === b);
+    const ta = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === a);
+    const tb = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === b);
     return (groupOrder[ta?.group || ""] ?? 99) - (groupOrder[tb?.group || ""] ?? 99);
   });
 
@@ -1144,6 +879,53 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
       }
     },
     [currentRecord, isEditing, onUpdate],
+  );
+
+  const handleLinkedShipmentTagsChange = useCallback(
+    async (newTags: string[]) => {
+      if (!currentRecord.linkedBookingId) {
+        toast.error("No linked booking to update");
+        return;
+      }
+
+      const previousTags = linkedShipmentTags;
+      setLinkedShipmentTags(newTags);
+      setIsShipmentTagsSaving(true);
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/trucking-records/${currentRecord.id}/update-booking-tags`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${publicAnonKey}`,
+            },
+            body: JSON.stringify({
+              shipmentTags: newTags,
+              user: currentUser?.name || "Unknown",
+            }),
+          },
+        );
+        const result = await response.json();
+        if (result.success) {
+          setLinkedShipmentTags((result.data?.shipmentTags || []) as string[]);
+          setLinkedTagHistory((result.data?.tagHistory || []) as TagHistoryEntry[]);
+          onUpdate();
+          onBookingTagsUpdated?.();
+        } else {
+          setLinkedShipmentTags(previousTags);
+          toast.error(`Failed to update shipment tags: ${result.error || "Unknown error"}`);
+        }
+      } catch (error) {
+        console.error("Error updating linked shipment tags:", error);
+        setLinkedShipmentTags(previousTags);
+        toast.error("Unable to update shipment tags");
+      } finally {
+        setIsShipmentTagsSaving(false);
+      }
+    },
+    [currentRecord.id, currentRecord.linkedBookingId, currentUser?.name, linkedShipmentTags, onBookingTagsUpdated, onUpdate],
   );
 
   // Container helpers
@@ -1448,16 +1230,26 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
             Status
-            {isStatusSaving && (
+            {(isStatusSaving || isShipmentTagsSaving) && (
               <span style={{ fontSize: "10px", fontWeight: 400, color: "#9CA3AF", marginLeft: "8px", textTransform: "none", letterSpacing: "normal" }}>
-                Saving…
+                Saving...
               </span>
             )}
           </div>
-          <StatusTagBar
-            selected={currentRecord.remarks || []}
-            onChange={handleQuickStatusUpdate}
+          <SharedStatusTagBar
+            bookingType="trucking"
+            shipmentTags={linkedShipmentTags}
+            operationalTags={currentRecord.remarks || []}
+            onShipmentTagsChange={handleLinkedShipmentTagsChange}
+            onOperationalTagsChange={handleQuickStatusUpdate}
+            shipmentTagsReadOnly={!currentRecord.linkedBookingId}
+            disabled={false}
           />
+          {!currentRecord.linkedBookingId && (
+            <div style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", marginTop: "4px" }}>
+              Link a booking to enable shipment status tags
+            </div>
+          )}
         </div>
       </div>)}
 
@@ -1488,6 +1280,11 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
         {(embedded || activeTab === "trucking-info") && (
         <div style={{ padding: "32px 48px" }}>
           <div>
+            {showActivity && (
+              <InfoCard title="Shipment Tag History">
+                <TagHistoryTimeline history={linkedTagHistory} maxEntries={20} />
+              </InfoCard>
+            )}
 
             {/* ── Booking Details (unified summary card) ── */}
             <div style={{
@@ -2074,7 +1871,7 @@ export function TruckingRecordDetails({ record, onBack, onUpdate, currentUser, e
                       {sortedTags.length === 0 ? (
                         <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No tags selected</span>
                       ) : sortedTags.map((key) => {
-                        const tag = ALL_TRUCKING_TAGS.find((t) => t.key === key);
+                        const tag = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === key);
                         return (
                           <span
                             key={key}

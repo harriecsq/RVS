@@ -194,28 +194,28 @@ export function TruckingBookingDetails({
           overflow: "auto",
           transition: "flex 0.3s ease"
         }}>
-          {activeTab === "booking-info" && (
+          <div style={{ display: activeTab === "booking-info" ? undefined : "none", height: "100%" }}>
             <BookingInformationTab
               booking={editedBooking}
               onBookingUpdated={onUpdate}
               addActivity={addActivity}
               setEditedBooking={setEditedBooking}
             />
-          )}
-          {activeTab === "billings" && (
+          </div>
+          <div style={{ display: activeTab === "billings" ? undefined : "none", height: "100%" }}>
             <BillingsTab
               bookingId={booking.bookingId}
               bookingType="trucking"
               currentUser={currentUser}
             />
-          )}
-          {activeTab === "expenses" && (
+          </div>
+          <div style={{ display: activeTab === "expenses" ? undefined : "none", height: "100%" }}>
             <ExpensesTab
               bookingId={booking.bookingId}
               bookingType="trucking"
               currentUser={currentUser}
             />
-          )}
+          </div>
         </div>
 
         {showTimeline && (

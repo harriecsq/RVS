@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, CreditCard, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Plus, CreditCard } from "lucide-react";
 import { useLocation } from "react-router";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { CreateExpensePanel } from "./CreateExpensePanel";
 import { ViewExpenseScreen } from "./ViewExpenseScreen";
 import { formatAmount } from "../../utils/formatAmount";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { publicAnonKey } from "../../utils/supabase/info";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
 import { API_BASE_URL } from '@/utils/api-config';
+import { NeuronPageHeader } from "../NeuronPageHeader";
+import {
+  StandardButton,
+  StandardSearchInput,
+  StandardFilterDropdown,
+  StandardTable,
+} from "../design-system";
+import type { ColumnDef } from "../design-system";
 
 interface ExpensesScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -33,57 +41,6 @@ interface Expense {
   companyName?: string;
 }
 
-function TabButton({ 
-  icon, 
-  label, 
-  count, 
-  isActive, 
-  color, 
-  onClick 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
-  count: number; 
-  isActive: boolean; 
-  color: string; 
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "12px 20px",
-        border: "none",
-        borderBottom: isActive ? `2px solid ${color}` : "2px solid transparent",
-        background: "transparent",
-        color: isActive ? color : "#667085",
-        fontWeight: isActive ? 600 : 500,
-        fontSize: "14px",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-      }}
-    >
-      {icon}
-      <span>{label}</span>
-      <span
-        style={{
-          padding: "2px 8px",
-          borderRadius: "12px",
-          fontSize: "12px",
-          fontWeight: 600,
-          backgroundColor: isActive ? `${color}15` : "#F3F4F6",
-          color: isActive ? color : "#667085",
-        }}
-      >
-        {count}
-      </span>
-    </button>
-  );
-}
-
 export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const location = useLocation();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -93,7 +50,6 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "all">("all");
-  const [activeTab, setActiveTab] = useState<"all" | "draft" | "submitted" | "approved">("all");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -102,15 +58,10 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const [clientFilter, setClientFilter] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch expenses from backend
     fetchExpenses();
-    
-    // Check if we have an expense ID from navigation state
     const state = location.state as { selectedExpenseId?: string } | null;
     if (state?.selectedExpenseId) {
-      // Find the expense by ID after expenses are loaded
       fetchAndSelectExpense(state.selectedExpenseId);
-      // Clear the state to prevent it from persisting
       window.history.replaceState({}, document.title);
     }
   }, []);
@@ -118,13 +69,11 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const fetchAndSelectExpense = async (expenseId: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/expenses/${expenseId}`, {
-        method: "GET",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`,
         },
       });
-      
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
@@ -141,24 +90,14 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/expenses`, {
-        method: "GET",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`,
         },
       });
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch expenses");
-      }
-      
+      if (!response.ok) throw new Error("Failed to fetch expenses");
       const result = await response.json();
-      
-      if (result.success && result.data) {
-        setExpenses(result.data);
-      } else {
-        setExpenses([]);
-      }
+      setExpenses(result.success && result.data ? result.data : []);
     } catch (error) {
       console.error("Error fetching expenses:", error);
       setExpenses([]);
@@ -167,12 +106,6 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     }
   };
 
-  const handleCreateSuccess = () => {
-    setShowCreateScreen(false);
-    fetchExpenses();
-  };
-
-  // Show view screen if active
   if (showViewScreen && selectedExpense) {
     return (
       <ViewExpenseScreen
@@ -190,164 +123,128 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     );
   }
 
-  // Get unique values for filters
   const uniqueCategories = Array.from(new Set(expenses.map(e => e.category).filter(Boolean)));
   const uniquePaymentMethods = Array.from(new Set(expenses.map(e => e.paymentMethod).filter(Boolean)));
 
-  // Filter expenses by tab first
-  const getFilteredByTab = () => {
-    let filtered = expenses;
-
-    if (activeTab === "draft") {
-      filtered = expenses.filter(e => e.status === "Draft");
-    } else if (activeTab === "submitted") {
-      filtered = expenses.filter(e => e.status === "Submitted");
-    } else if (activeTab === "approved") {
-      filtered = expenses.filter(e => e.status === "Approved");
-    }
-
-    return filtered;
-  };
-
-  // Apply all filters
-  const filteredExpenses = getFilteredByTab().filter(expense => {
-    // Search filter
+  const filteredExpenses = expenses.filter(expense => {
     const term = searchTerm.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       (expense.expenseNumber || "").toLowerCase().includes(term) ||
       (expense.category || "").toLowerCase().includes(term) ||
       (expense.clientName || "").toLowerCase().includes(term) ||
       (expense.vendor || "").toLowerCase().includes(term) ||
       (expense.bookingNumber || "").toLowerCase().includes(term) ||
       (expense.projectNumber || "").toLowerCase().includes(term);
-    
     if (!matchesSearch) return false;
 
-    // Time period filter
     if (dateFilterStart || dateFilterEnd) {
-      const expenseDate = new Date(expense.createdAt);
-      const expenseISO = expenseDate.toISOString().split("T")[0];
+      const expenseISO = new Date(expense.createdAt).toISOString().split("T")[0];
       if (dateFilterStart && expenseISO < dateFilterStart) return false;
       if (dateFilterEnd && expenseISO > dateFilterEnd) return false;
     }
 
-    // Status filter
-    const matchesStatus = statusFilter === "all" || expense.status === statusFilter;
-    if (!matchesStatus) return false;
-
-    // Category filter
+    if (statusFilter !== "all" && expense.status !== statusFilter) return false;
     if (categoryFilter !== "all" && expense.category !== categoryFilter) return false;
-
-    // Payment method filter
     if (paymentMethodFilter !== "all" && expense.paymentMethod !== paymentMethodFilter) return false;
 
-    // Company / Client filter
     if (companyFilter) {
       const expenseCompany = expense.companyName || expense.clientName || "";
       if (expenseCompany !== companyFilter) return false;
-      if (clientFilter) {
-        const expenseClient = expense.clientName || "";
-        if (expenseClient !== clientFilter) return false;
-      }
+      if (clientFilter && (expense.clientName || "") !== clientFilter) return false;
     }
 
     return true;
   });
 
-  // Calculate counts for tabs
-  const allCount = expenses.length;
-  const draftCount = expenses.filter(e => e.status === "Draft").length;
-  const submittedCount = expenses.filter(e => e.status === "Submitted").length;
-  const approvedCount = expenses.filter(e => e.status === "Approved").length;
+  const columns: ColumnDef<Expense>[] = [
+    {
+      header: "Expense Details",
+      cell: (expense) => (
+        <div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", marginBottom: "2px" }}>
+            {expense.expenseNumber}
+          </div>
+          {(expense.bookingNumber || expense.projectNumber) && (
+            <div style={{ fontSize: "13px", color: "#667085" }}>
+              {expense.bookingNumber && `Booking: ${expense.bookingNumber}`}
+              {expense.projectNumber && `Project: ${expense.projectNumber}`}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      header: "Company / Client",
+      cell: (expense) => (
+        <>
+          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+            {expense.companyName || expense.clientName || "—"}
+          </div>
+          {expense.companyName && expense.clientName && expense.companyName !== expense.clientName && (
+            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{expense.clientName}</div>
+          )}
+        </>
+      ),
+    },
+    {
+      header: "Amount",
+      cell: (expense) => (
+        <>
+          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>₱{formatAmount(expense.amount)}</div>
+          {expense.pendingAmount === 0 && (
+            <div style={{ fontSize: "12px", color: "#2E7D32", fontWeight: 500, marginTop: "2px" }}>
+              Fully Paid
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      header: "Status",
+      cell: (expense) => <NeuronStatusPill status={expense.status} />,
+    },
+    {
+      header: "Created",
+      cell: (expense) => (
+        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+          {new Date(expense.expenseDate || expense.createdAt).toLocaleDateString()}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div style={{ minHeight: "100vh", background: "#FFFFFF" }}>
-      {/* Header */}
-      <div style={{ padding: "32px 48px 24px 48px" }}>
-        <div style={{ 
-          display: "flex", 
-          alignItems: "start", 
-          justifyContent: "space-between", 
-          marginBottom: "24px" 
-        }}>
-          <div>
-            <h1 style={{ 
-              fontSize: "32px", 
-              fontWeight: 600, 
-              color: "#0A1D4D", 
-              marginBottom: "4px",
-              letterSpacing: "-1.2px"
-            }}>
-              Expenses
-            </h1>
-            <p style={{ 
-              fontSize: "14px", 
-              color: "#667085"
-            }}>
-              Record and categorize business expenses
-            </p>
-          </div>
-          
-          {/* Action Button */}
-          <button
+      <NeuronPageHeader
+        title="Expenses"
+        subtitle="Record and categorize business expenses"
+        action={
+          <StandardButton
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            iconPosition="left"
             onClick={() => setShowCreateScreen(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              fontSize: "14px",
-              fontWeight: 600,
-              border: "none",
-              borderRadius: "8px",
-              background: "#0F766E",
-              color: "white",
-              cursor: "pointer",
-            }}
           >
-            <Plus className="w-4 h-4" />
             New Expense
-          </button>
-        </div>
+          </StandardButton>
+        }
+      />
 
-        {/* Search Bar */}
-        <div style={{ position: "relative", marginBottom: "24px" }}>
-          <Search
-            size={18}
-            style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#667085",
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search by Expense Number, Client, Vendor, Booking, or Project Number..."
+      <div style={{ padding: "0 48px 24px 48px" }}>
+        <div style={{ marginBottom: "24px" }}>
+          <StandardSearchInput
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              outline: "none",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-            }}
+            placeholder="Search by Expense Number, Client, Vendor, Booking, or Project Number..."
           />
         </div>
 
-        {/* Filter Row */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: "12px",
-          marginBottom: "24px"
+          marginBottom: "24px",
         }}>
-          {/* Time Period Filter */}
           <div style={{ gridColumn: "span 2" }}>
             <UnifiedDateRangeFilter
               startDate={dateFilterStart}
@@ -358,73 +255,38 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             />
           </div>
 
-          {/* Status Filter */}
-          <select
+          <StandardFilterDropdown
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as ExpenseStatus | "all")}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-              outline: "none",
-              cursor: "pointer",
-            }}
-          >
-            <option value="all">All Statuses</option>
-            <option value="Draft">Draft</option>
-            <option value="For Approval">For Approval</option>
-            <option value="Approved">Approved</option>
-            <option value="Paid">Paid</option>
-            <option value="Partially Paid">Partially Paid</option>
-            <option value="Rejected">Rejected</option>
-          </select>
+            onChange={(v) => setStatusFilter(v as ExpenseStatus | "all")}
+            options={[
+              { value: "all", label: "All Statuses" },
+              { value: "Draft", label: "Draft" },
+              { value: "For Approval", label: "For Approval" },
+              { value: "Approved", label: "Approved" },
+              { value: "Paid", label: "Paid" },
+              { value: "Partially Paid", label: "Partially Paid" },
+              { value: "Rejected", label: "Rejected" },
+            ]}
+          />
 
-          {/* Category Filter */}
-          <select
+          <StandardFilterDropdown
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-              outline: "none",
-              cursor: "pointer",
-            }}
-          >
-            <option value="all">All Categories</option>
-            {uniqueCategories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
+            onChange={setCategoryFilter}
+            options={[
+              { value: "all", label: "All Categories" },
+              ...uniqueCategories.map(c => ({ value: c, label: c })),
+            ]}
+          />
 
-          {/* Payment Method Filter */}
-          <select
+          <StandardFilterDropdown
             value={paymentMethodFilter}
-            onChange={(e) => setPaymentMethodFilter(e.target.value)}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-              outline: "none",
-              cursor: "pointer",
-            }}
-          >
-            <option value="all">All Payment Methods</option>
-            {uniquePaymentMethods.map(method => (
-              <option key={method} value={method}>{method}</option>
-            ))}
-          </select>
+            onChange={setPaymentMethodFilter}
+            options={[
+              { value: "all", label: "All Payment Methods" },
+              ...uniquePaymentMethods.map(m => ({ value: m, label: m })),
+            ]}
+          />
 
-          {/* Company / Client Filter */}
           <CompanyClientFilter
             items={expenses}
             getCompany={(e) => e.companyName || e.clientName || ""}
@@ -436,131 +298,21 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             placeholder="All Companies"
           />
         </div>
-
-        {/* Tabs */}
-        
       </div>
 
-      {/* Table */}
       <div style={{ padding: "0 48px 48px 48px" }}>
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-[#0A1D4D]/60">Loading expenses...</div>
-          </div>
-        ) : filteredExpenses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-[#0A1D4D]/60 mb-2">
-              {searchTerm || statusFilter !== "all" 
-                ? "No expenses match your filters" 
-                : "No expenses yet"}
-            </div>
-            <button
-              onClick={() => setShowCreateScreen(true)}
-              className="text-[#0F766E] hover:underline"
-            >
-              Record your first expense
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            border: "1px solid #E5E9F0",
-            borderRadius: "12px",
-            overflow: "hidden",
-            backgroundColor: "#FFFFFF"
-          }}>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#0A1D4D]/10">
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Expense Details
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Company / Client
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Amount
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Status
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExpenses.map((expense) => (
-                  <tr
-                    key={expense.id}
-                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
-                    onClick={() => {
-                      setSelectedExpense(expense);
-                      setShowViewScreen(true);
-                    }}
-                  >
-                    <td className="py-4 px-4">
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        
-                        <div>
-                          <div style={{ 
-                            fontSize: "14px", 
-                            fontWeight: 600, 
-                            color: "#0A1D4D",
-                            marginBottom: "2px"
-                          }}>
-                            {expense.expenseNumber}
-                          </div>
-                          {(expense.bookingNumber || expense.projectNumber) && (
-                            <div style={{ 
-                              fontSize: "13px", 
-                              color: "#667085"
-                            }}>
-                              {expense.bookingNumber && `Booking: ${expense.bookingNumber}`}
-                              {expense.projectNumber && `Project: ${expense.projectNumber}`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {expense.companyName || expense.clientName || "—"}
-                      </div>
-                      {expense.companyName && expense.clientName && expense.companyName !== expense.clientName && (
-                        <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>
-                          {expense.clientName}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#0A1D4D", textAlign: "left" }}>
-                        ₱{formatAmount(expense.amount)}
-                      </div>
-                      {expense.pendingAmount !== undefined && expense.pendingAmount > 0 ? (
-                        null
-                      ) : expense.pendingAmount === 0 ? (
-                        <div style={{ fontSize: "12px", color: "#2E7D32", fontWeight: 500, marginTop: "2px", textAlign: "right" }}>
-                          Fully Paid
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="py-4 px-4">
-                      <NeuronStatusPill status={expense.status} />
-                    </td>
-                    <td className="py-4 px-4">
-                      <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
-                        {new Date(expense.expenseDate || expense.createdAt).toLocaleDateString()}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <StandardTable
+          data={filteredExpenses}
+          columns={columns}
+          rowKey={(e) => e.id}
+          isLoading={isLoading}
+          onRowClick={(e) => { setSelectedExpense(e); setShowViewScreen(true); }}
+          emptyTitle={searchTerm || statusFilter !== "all" ? "No expenses match your filters" : "No expenses yet"}
+          emptyDescription={searchTerm || statusFilter !== "all" ? undefined : "Record your first expense to get started"}
+          emptyIcon={<CreditCard size={24} />}
+        />
       </div>
 
-      {/* Create Expense Side Panel */}
       <CreateExpensePanel
         isOpen={showCreateScreen}
         onClose={() => setShowCreateScreen(false)}

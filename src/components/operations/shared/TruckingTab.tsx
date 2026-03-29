@@ -17,9 +17,15 @@ interface TruckingTabProps {
   bookingId: string;
   bookingType: string;
   currentUser?: { name: string; email: string; department: string } | null;
+  onBookingTagsUpdated?: () => void;
 }
 
-export function TruckingTab({ bookingId, bookingType, currentUser }: TruckingTabProps) {
+export function TruckingTab({
+  bookingId,
+  bookingType,
+  currentUser,
+  onBookingTagsUpdated,
+}: TruckingTabProps) {
   const [record, setRecord] = useState<TruckingRecord | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -119,6 +125,7 @@ export function TruckingTab({ bookingId, bookingType, currentUser }: TruckingTab
         onUpdate={fetchRecord}
         currentUser={currentUser}
         embedded
+        onBookingTagsUpdated={onBookingTagsUpdated}
       />
 
       {/* Create Modal — available in case record was deleted and user wants to create again */}

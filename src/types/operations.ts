@@ -68,6 +68,16 @@ export type ExecutionStatus =
   | "On Hold"
   | "Cancelled";
 
+export interface TagHistoryEntry {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: "tag_added" | "tag_removed";
+  tag: string;
+  tagLabel: string;
+  layer: "shipment" | "operational";
+}
+
 export interface BrokerageBooking {
   id: string;
   bookingId: string;
@@ -78,6 +88,8 @@ export interface BrokerageBooking {
   contactId?: string;
   contactPersonName?: string;
   status: ExecutionStatus;
+  shipmentTags?: string[];
+  tagHistory?: TagHistoryEntry[];
 
   // Shipment Details
   consignee?: string;

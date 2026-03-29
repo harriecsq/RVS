@@ -1145,7 +1145,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
         overflowY: "auto",
         overflowX: "hidden"
       }}>
-        {(embedded || activeTab === "overview") ? (
+        <div style={{ display: (embedded || activeTab === "overview") ? undefined : "none" }}>
           <div>
             {/* Main Content */}
             <div style={{ display: "flex", flexDirection: "column", gap: NEURON_SPACING['2xl'] }}>
@@ -1794,8 +1794,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
 
 
           </div>
-        ) : (
-          <div style={{ height: "100%" }}>
+        </div>
+        <div style={{ display: (!embedded && activeTab === "collections") ? undefined : "none", height: "100%" }}>
             {/* Collections Tab Content */}
               <div style={{ padding: "32px 48px", maxWidth: "1400px", margin: "0 auto" }}>
                 {/* Summary Cards */}
@@ -1962,13 +1962,16 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
               </div>
 
           </div>
-        )}
 
-        {!embedded && activeTab === "attachments" && billing && (
-          <AttachmentsTab
-            entityType="billing"
-            entityId={billingId}
-          />
+        {!embedded && (
+          <div style={{ display: activeTab === "attachments" ? undefined : "none" }}>
+            {billing && (
+              <AttachmentsTab
+                entityType="billing"
+                entityId={billingId}
+              />
+            )}
+          </div>
         )}
       </div>
       </div>

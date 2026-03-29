@@ -705,8 +705,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
       {/* Content Area */}
       <div style={{ flex: 1, overflow: "auto" }}>
-        {activeTab === "voucher-info" && (
-        <div style={{ padding: "32px 48px" }}>
+        <div style={{ display: activeTab === "voucher-info" ? undefined : "none", padding: "32px 48px" }}>
         <div className="flex flex-col gap-6">
           
           {/* Booking Details (read-only summary card) — only for Shipping Line / Trucking */}
@@ -1027,14 +1026,15 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
         </div>
       </div>
-        )}
 
-        {activeTab === "attachments" && voucher && (
-          <AttachmentsTab
-            entityType="voucher"
-            entityId={voucherId}
-          />
-        )}
+        <div style={{ display: activeTab === "attachments" ? undefined : "none" }}>
+          {voucher && (
+            <AttachmentsTab
+              entityType="voucher"
+              entityId={voucherId}
+            />
+          )}
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}

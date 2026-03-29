@@ -1,13 +1,20 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, DollarSign, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Plus, DollarSign } from "lucide-react";
 import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { CreateCollectionPanel } from "./CreateCollectionPanel";
 import { ViewCollectionScreen } from "./ViewCollectionScreen";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
-import { toast } from "../ui/toast-utils";
+import { publicAnonKey } from "../../utils/supabase/info";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { API_BASE_URL } from '@/utils/api-config';
+import { NeuronPageHeader } from "../NeuronPageHeader";
+import {
+  StandardButton,
+  StandardSearchInput,
+  StandardFilterDropdown,
+  StandardTable,
+} from "../design-system";
+import type { ColumnDef } from "../design-system";
 
 interface CollectionsScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -31,57 +38,6 @@ interface Collection {
   status: CollectionStatus;
   createdAt: string;
   allocations?: any[];       // New field
-}
-
-function TabButton({ 
-  icon, 
-  label, 
-  count, 
-  isActive, 
-  color, 
-  onClick 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
-  count: number; 
-  isActive: boolean; 
-  color: string; 
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "12px 20px",
-        border: "none",
-        borderBottom: isActive ? `2px solid ${color}` : "2px solid transparent",
-        background: "transparent",
-        color: isActive ? color : "#667085",
-        fontWeight: isActive ? 600 : 500,
-        fontSize: "14px",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-      }}
-    >
-      {icon}
-      <span>{label}</span>
-      <span
-        style={{
-          padding: "2px 8px",
-          borderRadius: "12px",
-          fontSize: "12px",
-          fontWeight: 600,
-          backgroundColor: isActive ? `${color}15` : "#F3F4F6",
-          color: isActive ? color : "#667085",
-        }}
-      >
-        {count}
-      </span>
-    </button>
-  );
 }
 
 export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
@@ -159,12 +115,12 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   // Apply all filters
   const filteredCollections = getFilteredByTab().filter(collection => {
     // Search filter
-    const matchesSearch = 
+    const matchesSearch =
       (collection.collectionNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (collection.customerName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (collection.billingNumber && collection.billingNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (collection.projectNumber && collection.projectNumber.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     if (!matchesSearch) return false;
 
     // Time period filter
@@ -204,90 +160,140 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     }
   }
 
+  const statusOptions = [
+    { value: "all", label: "All Statuses" },
+    { value: "Draft", label: "Draft" },
+    { value: "For Approval", label: "For Approval" },
+    { value: "Approved", label: "Approved" },
+    { value: "Collected", label: "Collected" },
+    { value: "Cancelled", label: "Cancelled" },
+  ];
+
+  const paymentMethodOptions = [
+    { value: "all", label: "All Payment Methods" },
+    ...uniquePaymentMethods.map(method => ({ value: method as string, label: method as string })),
+  ];
+
+  const columns: ColumnDef<Collection>[] = [
+    {
+      header: "Collection Details",
+      cell: (collection) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div>
+            <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", marginBottom: "2px" }}>
+              {collection.collectionNumber}
+            </div>
+            {collection.customerName && (
+              <div style={{ fontSize: "13px", color: "#667085" }}>
+                {collection.customerName}
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Amount",
+      cell: (collection) => {
+        const computedAmount = collection.allocations && collection.allocations.length > 0
+          ? collection.allocations.reduce((sum: number, a: any) => sum + (a.amount || 0), 0)
+          : collection.amount;
+        return (
+          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+            {"\u20B1"}{formatAmount(computedAmount)}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Payment Method",
+      cell: (collection) => (
+        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+          {collection.paymentMethod || "\u2014"}
+        </div>
+      ),
+    },
+    {
+      header: "Linked Billing",
+      cell: (collection) => {
+        const linkedBillingNumbers: string[] = [];
+        if (collection.allocations && collection.allocations.length > 0) {
+          collection.allocations.forEach((a: any) => {
+            if (a.billingNumber) linkedBillingNumbers.push(a.billingNumber);
+          });
+        } else if (collection.billingNumber) {
+          linkedBillingNumbers.push(collection.billingNumber);
+        }
+
+        return linkedBillingNumbers.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            {linkedBillingNumbers.map((bn, i) => (
+              <span
+                key={i}
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#0F766E",
+                  display: "inline-block",
+                  width: "fit-content",
+                }}
+              >
+                {bn}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span style={{ fontSize: "14px", color: "#9CA3AF" }}>{"\u2014"}</span>
+        );
+      },
+    },
+    {
+      header: "Status",
+      cell: (collection) => <NeuronStatusPill status={collection.status} />,
+    },
+    {
+      header: "Created",
+      cell: (collection) => (
+        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+          {collection.collectionDate
+            ? new Date(collection.collectionDate).toLocaleDateString()
+            : new Date(collection.createdAt).toLocaleDateString()}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div style={{ minHeight: "100vh", background: "#FFFFFF" }}>
-      {/* Header */}
-      <div style={{ padding: "32px 48px 24px 48px" }}>
-        <div style={{ 
-          display: "flex", 
-          alignItems: "start", 
-          justifyContent: "space-between", 
-          marginBottom: "24px" 
-        }}>
-          <div>
-            <h1 style={{ 
-              fontSize: "32px", 
-              fontWeight: 600, 
-              color: "#0A1D4D", 
-              marginBottom: "4px",
-              letterSpacing: "-1.2px"
-            }}>
-              Collections
-            </h1>
-            <p style={{ 
-              fontSize: "14px", 
-              color: "#667085"
-            }}>
-              Track customer payments and receipts
-            </p>
-          </div>
-          
-          {/* Action Button */}
-          <button
+      <NeuronPageHeader
+        title="Collections"
+        subtitle="Track customer payments and receipts"
+        action={
+          <StandardButton
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            iconPosition="left"
             onClick={() => setShowCreateModal(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              fontSize: "14px",
-              fontWeight: 600,
-              border: "none",
-              borderRadius: "8px",
-              background: "#0F766E",
-              color: "white",
-              cursor: "pointer",
-            }}
           >
-            <Plus className="w-4 h-4" />
             New Collection
-          </button>
-        </div>
+          </StandardButton>
+        }
+      />
 
+      <div style={{ padding: "0 48px 24px 48px" }}>
         {/* Search Bar */}
-        <div style={{ position: "relative", marginBottom: "24px" }}>
-          <Search
-            size={18}
-            style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#667085",
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search by Collection Number, Customer, Billing, or Project Number..."
+        <div style={{ marginBottom: "24px" }}>
+          <StandardSearchInput
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 12px 10px 40px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              outline: "none",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-            }}
+            placeholder="Search by Collection Number, Customer, Billing, or Project Number..."
           />
         </div>
 
         {/* Filter Row */}
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", 
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
           gap: "12px",
           marginBottom: "24px"
         }}>
@@ -303,197 +309,33 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           </div>
 
           {/* Status Filter */}
-          <select
+          <StandardFilterDropdown
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as CollectionStatus | "all")}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-              outline: "none",
-              cursor: "pointer",
-            }}
-          >
-            <option value="all">All Statuses</option>
-            <option value="Draft">Draft</option>
-            <option value="For Approval">For Approval</option>
-            <option value="Approved">Approved</option>
-            <option value="Collected">Collected</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
+            onChange={(v) => setStatusFilter(v as CollectionStatus | "all")}
+            options={statusOptions}
+          />
 
           {/* Payment Method Filter */}
-          <select
+          <StandardFilterDropdown
             value={paymentMethodFilter}
-            onChange={(e) => setPaymentMethodFilter(e.target.value)}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              color: "#0A1D4D",
-              backgroundColor: "#FFFFFF",
-              outline: "none",
-              cursor: "pointer",
-            }}
-          >
-            <option value="all">All Payment Methods</option>
-            {uniquePaymentMethods.map(method => (
-              <option key={method} value={method}>{method}</option>
-            ))}
-          </select>
+            onChange={setPaymentMethodFilter}
+            options={paymentMethodOptions}
+          />
         </div>
-
-        {/* Tabs */}
-        
       </div>
 
       {/* Table */}
       <div style={{ padding: "0 48px 48px 48px" }}>
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-[#0A1D4D]/60">Loading collections...</div>
-          </div>
-        ) : filteredCollections.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-[#0A1D4D]/60 mb-2">
-              {searchTerm || statusFilter !== "all" 
-                ? "No collections match your filters" 
-                : "No collections yet"}
-            </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="text-[#0F766E] hover:underline"
-            >
-              Record your first collection
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            border: "1px solid #E5E9F0",
-            borderRadius: "12px",
-            overflow: "hidden",
-            backgroundColor: "#FFFFFF"
-          }}>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#0A1D4D]/10">
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Collection Details
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Amount
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Payment Method
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Linked Billing
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Status
-                  </th>
-                  <th className="text-left py-3 px-4 text-[#667085] font-semibold text-xs uppercase tracking-wide">
-                    Created
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCollections.map((collection) => {
-                  // Build linked billing IDs from allocations or legacy single billing
-                  const linkedBillingNumbers: string[] = [];
-                  if (collection.allocations && collection.allocations.length > 0) {
-                    collection.allocations.forEach((a: any) => {
-                      if (a.billingNumber) linkedBillingNumbers.push(a.billingNumber);
-                    });
-                  } else if (collection.billingNumber) {
-                    linkedBillingNumbers.push(collection.billingNumber);
-                  }
-
-                  // Compute amount from allocations (auto-updated total)
-                  const computedAmount = collection.allocations && collection.allocations.length > 0
-                    ? collection.allocations.reduce((sum: number, a: any) => sum + (a.amount || 0), 0)
-                    : collection.amount;
-
-                  return (
-                  <tr
-                    key={collection.id}
-                    className="border-b border-[#0A1D4D]/5 hover:bg-[#0F766E]/5 transition-colors cursor-pointer"
-                    onClick={() => handleViewCollection(collection.id)}
-                  >
-                    <td className="py-4 px-4">
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        
-                        <div>
-                          <div style={{ 
-                            fontSize: "14px", 
-                            fontWeight: 600, 
-                            color: "#0A1D4D",
-                            marginBottom: "2px"
-                          }}>
-                            {collection.collectionNumber}
-                          </div>
-                          {collection.customerName && (
-                            <div style={{ 
-                              fontSize: "13px", 
-                              color: "#667085"
-                            }}>
-                              {collection.customerName}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {"\u20B1"}{formatAmount(computedAmount)}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {collection.paymentMethod || "\u2014"}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      {linkedBillingNumbers.length > 0 ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                          {linkedBillingNumbers.map((bn, i) => (
-                            <span
-                              key={i}
-                              style={{
-                                fontSize: "13px",
-                                fontWeight: 500,
-                                color: "#0F766E",
-                                display: "inline-block",
-                                width: "fit-content",
-                              }}
-                            >
-                              {bn}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "14px", color: "#9CA3AF" }}>{"\u2014"}</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4">
-                      <NeuronStatusPill status={collection.status} />
-                    </td>
-                    <td className="py-4 px-4">
-                      <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
-                        {collection.collectionDate ? new Date(collection.collectionDate).toLocaleDateString() : new Date(collection.createdAt).toLocaleDateString()}
-                      </div>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <StandardTable
+          data={filteredCollections}
+          columns={columns}
+          rowKey={(c) => c.id}
+          isLoading={isLoading}
+          onRowClick={(c) => handleViewCollection(c.id)}
+          emptyTitle={searchTerm || statusFilter !== "all" ? "No collections match your filters" : "No collections yet"}
+          emptyDescription={searchTerm || statusFilter !== "all" ? undefined : "Record your first collection to get started"}
+          emptyIcon={<DollarSign size={24} />}
+        />
       </div>
 
       {/* Create Collection Side Panel */}

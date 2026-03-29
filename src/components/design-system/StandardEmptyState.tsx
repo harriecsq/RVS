@@ -1,4 +1,5 @@
 import React from 'react';
+import { StandardButton } from './StandardButton';
 
 interface StandardEmptyStateProps {
   icon?: React.ReactNode;
@@ -8,6 +9,7 @@ interface StandardEmptyStateProps {
     label: string;
     onClick: () => void;
   };
+  minHeight?: string;
   style?: React.CSSProperties;
 }
 
@@ -16,16 +18,20 @@ export function StandardEmptyState({
   title,
   description,
   action,
-  style
+  minHeight,
+  style,
 }: StandardEmptyStateProps) {
   return (
     <div
       style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: '64px 32px',
         textAlign: 'center',
-        maxWidth: '600px',
-        margin: '0 auto',
-        ...style
+        minHeight,
+        ...style,
       }}
     >
       {icon && (
@@ -34,7 +40,7 @@ export function StandardEmptyState({
             display: 'flex',
             justifyContent: 'center',
             marginBottom: '16px',
-            color: '#D1D5DB'
+            color: '#9CA3AF',
           }}
         >
           {icon}
@@ -46,7 +52,7 @@ export function StandardEmptyState({
           fontSize: '16px',
           fontWeight: 600,
           color: '#0A1D4D',
-          marginBottom: description || action ? '8px' : '0'
+          marginBottom: description || action ? '8px' : '0',
         }}
       >
         {title}
@@ -57,7 +63,7 @@ export function StandardEmptyState({
           style={{
             fontSize: '14px',
             color: '#667085',
-            marginBottom: action ? '24px' : '0'
+            marginBottom: action ? '24px' : '0',
           }}
         >
           {description}
@@ -65,28 +71,9 @@ export function StandardEmptyState({
       )}
 
       {action && (
-        <button
-          onClick={action.onClick}
-          style={{
-            padding: '10px 20px',
-            borderRadius: '8px',
-            border: 'none',
-            backgroundColor: 'var(--neuron-teal)',
-            color: '#FFFFFF',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'background-color 0.15s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#0D6560';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'var(--neuron-teal)';
-          }}
-        >
+        <StandardButton variant="primary" onClick={action.onClick}>
           {action.label}
-        </button>
+        </StandardButton>
       )}
     </div>
   );

@@ -18,6 +18,9 @@ import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
+import { StatusTagBar } from "../shared/StatusTagBar";
+import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
+import type { TagHistoryEntry } from "../../types/operations";
 import { API_BASE_URL } from '@/utils/api-config';
 
 interface BrokerageBookingDetailsProps {
@@ -136,6 +139,24 @@ const isoToMMDD = (iso: string): string => {
   return iso;
 };
 
+const LEGACY_IMPORT_STATUS_TO_TAGS: Record<string, string[]> = {
+  "For Gatepass": ["for-gatepass"],
+  "Awaiting Discharge & CRO": ["awaiting-discharge", "cro"],
+  "For Debit For Final": ["for-debit", "for-final"],
+  "For Lodgement": ["for-lodgement"],
+  "Awaiting Stowage": ["awaiting-stowage"],
+  "With Stowage / Discharged & Awaiting Signed Docs": ["with-stowage-discharged"],
+  "With ETA": ["with-eta"],
+  "Without ETA": ["without-eta"],
+  "Delivered": ["delivered"],
+  "Returned": ["returned"],
+};
+
+function mapLegacyImportStatusToTags(status?: string): string[] {
+  if (!status) return [];
+  return LEGACY_IMPORT_STATUS_TO_TAGS[status] || [];
+}
+
 export function BrokerageBookingDetails({
   booking,
   onBack,
@@ -147,6 +168,9 @@ export function BrokerageBookingDetails({
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(initialActivityLog);
   const [editedBooking, setEditedBooking] = useState<BrokerageBooking>(booking);
   const [currentBooking, setCurrentBooking] = useState<BrokerageBooking>(booking);
+  const [shipmentTags, setShipmentTags] = useState<string[]>([]);
+  const [tagHistory, setTagHistory] = useState<TagHistoryEntry[]>([]);
+  const [isTagsSaving, setIsTagsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<BrokerageBooking>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -158,7 +182,82 @@ export function BrokerageBookingDetails({
   useEffect(() => {
     setCurrentBooking(booking);
     setEditedBooking(booking);
+    setShipmentTags(
+      Array.isArray((booking as any).shipmentTags)
+        ? (booking as any).shipmentTags
+        : mapLegacyImportStatusToTags(booking.status as string),
+    );
+    setTagHistory(Array.isArray((booking as any).tagHistory) ? (booking as any).tagHistory : []);
   }, [booking]);
+
+  const fetchBookingDetails = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings/${booking.bookingId}`, {
+        headers: {
+          Authorization: `Bearer ${publicAnonKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (!result.success || !result.data) return;
+      const refreshed = result.data as BrokerageBooking;
+      setCurrentBooking(refreshed);
+      setEditedBooking(refreshed);
+      setShipmentTags(
+        Array.isArray((refreshed as any).shipmentTags)
+          ? (refreshed as any).shipmentTags
+          : mapLegacyImportStatusToTags(refreshed.status as string),
+      );
+      setTagHistory(Array.isArray((refreshed as any).tagHistory) ? (refreshed as any).tagHistory : []);
+    } catch (error) {
+      console.error("Error refreshing booking details:", error);
+    }
+  };
+
+  const handleShipmentTagsChange = async (newTags: string[]) => {
+    const previousTags = shipmentTags;
+    const previousHistory = tagHistory;
+    setShipmentTags(newTags);
+    setIsTagsSaving(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-tags`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({
+            shipmentTags: newTags,
+            user: currentUser?.name || "Unknown",
+          }),
+        },
+      );
+      const result = await response.json();
+      if (result.success && result.data) {
+        const updated = result.data as BrokerageBooking;
+        setCurrentBooking(updated);
+        setEditedBooking(updated);
+        setShipmentTags(Array.isArray((updated as any).shipmentTags) ? (updated as any).shipmentTags : []);
+        setTagHistory(Array.isArray((updated as any).tagHistory) ? (updated as any).tagHistory : []);
+        onBookingUpdated();
+      } else {
+        setShipmentTags(previousTags);
+        setTagHistory(previousHistory);
+        toast.error(`Failed to update status: ${result.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error updating shipment tags:", error);
+      setShipmentTags(previousTags);
+      setTagHistory(previousHistory);
+      toast.error("Unable to update status");
+    } finally {
+      setIsTagsSaving(false);
+    }
+  };
 
   const IMPORT_STATUS_COLORS: Record<string, string> = {
     "For Gatepass": "#FBBC04",
@@ -604,118 +703,23 @@ export function BrokerageBookingDetails({
         flexShrink: 0,
         minHeight: "64px",
       }}>
-        {/* Status Dropdown */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "160px", paddingRight: "24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
+        {/* Status Tags */}
+        <div style={{ flex: 1, minWidth: "260px", paddingRight: "24px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px", lineHeight: 1 }}>
             Status
-          </div>
-          
-          <div style={{ position: "relative" }}>
-            <div
-              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-              onBlur={() => setTimeout(() => setShowStatusDropdown(false), 200)}
-              tabIndex={0}
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: IMPORT_STATUS_TEXT_COLORS[currentBooking.status] || "#111827",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                padding: "4px 24px 4px 8px",
-                borderRadius: "6px",
-                border: "1.5px solid transparent",
-                position: "relative",
-                transition: "all 0.2s ease",
-                background: showStatusDropdown ? "#FFFFFF" : "transparent",
-                lineHeight: "1.3",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#FFFFFF";
-                e.currentTarget.style.borderColor = (() => {
-                   const color = IMPORT_STATUS_COLORS[currentBooking.status];
-                   return color ? hexToRgba(color, 0.3) : "#0F766E";
-                })();
-              }}
-              onMouseLeave={(e) => {
-                if (!showStatusDropdown) {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.borderColor = "transparent";
-                }
-              }}
-            >
-              <div style={{ 
-                whiteSpace: "nowrap", 
-                overflow: "hidden", 
-                textOverflow: "ellipsis", 
-                maxWidth: "280px"
-              }}>
-                {currentBooking.status}
-              </div>
-              
-              <div style={{
-                position: "absolute",
-                right: "6px",
-                top: "50%",
-                transform: `translateY(-50%) ${showStatusDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
-                transition: "transform 0.2s ease",
-                pointerEvents: "none",
-                color: "#0F766E"
-              }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            
-            {showStatusDropdown && (
-              <div style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                background: "white",
-                border: "1.5px solid #E5E9F0",
-                borderRadius: "8px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                zIndex: 50,
-                minWidth: "320px",
-                overflow: "hidden"
-              }}>
-                {IMPORT_STATUS_OPTIONS.map((status, index) => (
-                  <div
-                    key={status}
-                    onClick={() => handleStatusChange(status)}
-                    style={{
-                      padding: "10px 14px",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: IMPORT_STATUS_TEXT_COLORS[status] || "#111827",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      background: status === currentBooking.status ? "#F0FDF4" : "transparent",
-                      borderBottom: index < IMPORT_STATUS_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
-                      transition: "all 0.15s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      if (status !== currentBooking.status) {
-                        e.currentTarget.style.background = "#F9FAFB";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (status !== currentBooking.status) {
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
-                  >
-                    {status}
-                  </div>
-                ))}
-              </div>
+            {isTagsSaving && (
+              <span style={{ fontSize: "10px", fontWeight: 400, color: "#9CA3AF", marginLeft: "8px", textTransform: "none", letterSpacing: "normal" }}>
+                Saving...
+              </span>
             )}
           </div>
+          <StatusTagBar
+            bookingType="import"
+            shipmentTags={shipmentTags}
+            operationalTags={[]}
+            onShipmentTagsChange={handleShipmentTagsChange}
+            onOperationalTagsChange={() => {}}
+          />
         </div>
 
         {/* Separator */}
@@ -901,7 +905,7 @@ export function BrokerageBookingDetails({
           overflow: "auto",
           transition: "flex 0.3s ease"
         }}>
-          {activeTab === "booking-info" && (
+          <div style={{ display: activeTab === "booking-info" ? undefined : "none", height: "100%" }}>
             <BookingInformationTab
               booking={editedBooking}
               onBookingUpdated={onBookingUpdated}
@@ -915,36 +919,37 @@ export function BrokerageBookingDetails({
               isSaving={isSaving}
               projects={projects}
             />
-          )}
-          {activeTab === "trucking" && (
+          </div>
+          <div style={{ display: activeTab === "trucking" ? undefined : "none", height: "100%" }}>
             <TruckingTab
               bookingId={booking.bookingId}
               bookingType="import"
               currentUser={currentUser}
+              onBookingTagsUpdated={fetchBookingDetails}
             />
-          )}
-          {activeTab === "billings" && (
+          </div>
+          <div style={{ display: activeTab === "billings" ? undefined : "none", height: "100%" }}>
             <BillingsSubTabs
               bookingId={booking.bookingId}
               bookingNumber={booking.bookingNumber}
               bookingType="brokerage"
               currentUser={currentUser}
             />
-          )}
-          {activeTab === "expenses" && (
+          </div>
+          <div style={{ display: activeTab === "expenses" ? undefined : "none", height: "100%" }}>
             <ExpensesSubTabs
               bookingId={booking.bookingId}
               bookingNumber={booking.bookingNumber}
               bookingType="brokerage"
               currentUser={currentUser}
             />
-          )}
-          {activeTab === "attachments" && (
+          </div>
+          <div style={{ display: activeTab === "attachments" ? undefined : "none", height: "100%" }}>
             <BookingAttachmentsTab
               bookingType="import"
               bookingId={booking.bookingId}
             />
-          )}
+          </div>
         </div>
 
         {/* Timeline Sidebar */}
@@ -955,7 +960,7 @@ export function BrokerageBookingDetails({
             backgroundColor: "#FAFBFC",
             overflow: "auto"
           }}>
-            <ActivityTimeline activities={activityLog} />
+            <TagHistoryTimeline history={tagHistory} />
           </div>
         )}
       </div>

@@ -22,6 +22,11 @@ export { StandardFilterDropdown } from "./StandardFilterDropdown";
 // Feedback Components
 export { StandardEmptyState } from "./StandardEmptyState";
 export { StandardLoadingState } from "./StandardLoadingState";
+export { SkeletonBar, SkeletonTableRow, SkeletonTable } from "./StandardSkeleton";
+
+// Table
+export { StandardTable } from "./StandardTable";
+export type { ColumnDef, TableSummary } from "./StandardTable";
 
 // Design Tokens
 export * from "./neuron-design-tokens";

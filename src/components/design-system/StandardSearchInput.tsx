@@ -6,6 +6,7 @@ interface StandardSearchInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
   style?: React.CSSProperties;
 }
 
@@ -14,19 +15,20 @@ export function StandardSearchInput({
   onChange,
   placeholder = 'Search...',
   disabled = false,
-  style
+  className,
+  style,
 }: StandardSearchInputProps) {
   return (
-    <div style={{ position: 'relative', ...style }}>
+    <div style={{ position: 'relative', ...style }} className={className}>
       <Search
-        size={16}
+        size={18}
         style={{
           position: 'absolute',
           left: '12px',
           top: '50%',
           transform: 'translateY(-50%)',
           color: disabled ? '#9CA3AF' : '#667085',
-          pointerEvents: 'none'
+          pointerEvents: 'none',
         }}
       />
       <input
@@ -37,22 +39,21 @@ export function StandardSearchInput({
         disabled={disabled}
         style={{
           width: '100%',
+          height: '40px',
           padding: '10px 12px 10px 40px',
-          border: '1px solid var(--neuron-ui-border)',
-          borderRadius: '6px',
+          border: '1px solid #E5E9F0',
+          borderRadius: '8px',
           fontSize: '14px',
           outline: 'none',
-          color: disabled ? '#9CA3AF' : 'var(--neuron-ink-primary)',
+          color: disabled ? '#9CA3AF' : '#0A1D4D',
           backgroundColor: disabled ? '#F9FAFB' : '#FFFFFF',
-          transition: 'border-color 0.15s ease'
+          transition: 'border-color 0.15s ease',
         }}
         onFocus={(e) => {
-          if (!disabled) {
-            e.currentTarget.style.borderColor = 'var(--neuron-teal)';
-          }
+          if (!disabled) e.currentTarget.style.borderColor = '#0F766E';
         }}
         onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'var(--neuron-ui-border)';
+          e.currentTarget.style.borderColor = '#E5E9F0';
         }}
       />
     </div>

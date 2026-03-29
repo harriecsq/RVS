@@ -2533,8 +2533,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         flex: 1,
         overflow: "auto"
       }}>
-        {(embedded || activeTab === "overview") && (
-          <div style={{ padding: "32px 48px" }}>
+        <div style={{ display: (embedded || activeTab === "overview") ? undefined : "none", padding: "32px 48px" }}>
             <div>
           {/* ── Booking Details (unified summary card) ── */}
           <div style={{
@@ -3409,24 +3408,31 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
             </div>
           </div>
+
+        {!embedded && (
+          <div style={{ display: activeTab === "vouchers" ? undefined : "none" }}>
+            {expense && (
+              <VouchersTab
+                expenseId={expenseId}
+                expenseNumber={expense.expenseNumber}
+                totalAmount={grandTotal}
+                currency={displayedExpense.charges?.[0]?.currency || "PHP"}
+                vouchers={vouchers}
+                onUpdate={fetchExpenseDetails}
+              />
+            )}
+          </div>
         )}
 
-        {!embedded && activeTab === "vouchers" && expense && (
-          <VouchersTab
-            expenseId={expenseId}
-            expenseNumber={expense.expenseNumber}
-            totalAmount={grandTotal}
-            currency={displayedExpense.charges?.[0]?.currency || "PHP"}
-            vouchers={vouchers}
-            onUpdate={fetchExpenseDetails}
-          />
-        )}
-
-        {!embedded && activeTab === "attachments" && expense && (
-          <AttachmentsTab
-            entityType="expense"
-            entityId={expenseId}
-          />
+        {!embedded && (
+          <div style={{ display: activeTab === "attachments" ? undefined : "none" }}>
+            {expense && (
+              <AttachmentsTab
+                entityType="expense"
+                entityId={expenseId}
+              />
+            )}
+          </div>
         )}
       </div>
 

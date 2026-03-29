@@ -523,8 +523,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
       {/* Content Area */}
       <div style={{ flex: 1, overflow: "auto", background: "#F9FAFB" }}>
         
-        {activeTab === "overview" && (
-          <div style={{ padding: "32px 48px" }}>
+        <div style={{ display: activeTab === "overview" ? undefined : "none", padding: "32px 48px" }}>
             {/* Collection Information */}
             <div style={{
               background: "white",
@@ -872,22 +871,21 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
 
 
           </div>
-        )}
 
-        {activeTab === "billings" && (
-          <CollectionBillingsTab 
+        <div style={{ display: activeTab === "billings" ? undefined : "none" }}>
+          <CollectionBillingsTab
             collectionId={currentCollection.id}
             collectionNumber={currentCollection.collectionNumber}
             allocations={allocations}
           />
-        )}
+        </div>
 
-        {activeTab === "attachments" && (
+        <div style={{ display: activeTab === "attachments" ? undefined : "none" }}>
           <AttachmentsTab
             entityType="collection"
             entityId={currentCollection.id}
           />
-        )}
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}

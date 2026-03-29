@@ -1,34 +1,28 @@
-import React from "react";
+import React, { ButtonHTMLAttributes } from "react";
+import { Loader2 } from "lucide-react";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "outline" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
-interface StandardButtonProps {
+interface StandardButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children?: React.ReactNode;
-  label?: string; // Support label prop as alternative to children
+  label?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: React.ReactNode;
   iconPosition?: "left" | "right";
-  onClick?: () => void;
-  disabled?: boolean;
+  loading?: boolean;
   fullWidth?: boolean;
-  type?: "button" | "submit" | "reset";
-  color?: "primary" | "secondary"; // Support color prop for backwards compatibility
 }
 
 /**
- * StandardButton Component
- * 
- * Consistent button styling across the application.
- * Based on reference design from EXP-89545.
- * 
+ * StandardButton — canonical button component for all screens.
+ *
  * Design specs:
- * - Primary: Teal bg (#0F766E), white text
- * - Secondary: White bg, gray border, dark text
- * - Danger: Red bg (#EF4444), white text
- * - Height: 40px
- * - Padding: 10px 20px
+ * - Primary: #0F766E bg, white text
+ * - Secondary: white bg, gray border, dark text
+ * - Danger: #EF4444 bg, white text
+ * - Height: 40px (md), 32px (sm), 48px (lg)
  * - Radius: 8px
  * - Font: 14px, semibold
  */
@@ -39,111 +33,102 @@ export function StandardButton({
   size = "md",
   icon,
   iconPosition = "left",
-  onClick,
-  disabled = false,
+  loading = false,
   fullWidth = false,
-  type = "button",
-  color,
+  disabled,
+  ...rest
 }: StandardButtonProps) {
   const sizeStyles = {
-    sm: {
-      height: "32px",
-      padding: "6px 16px",
-      fontSize: "13px",
-    },
-    md: {
-      height: "var(--ds-button-height)",
-      padding: "10px 20px",
-      fontSize: "var(--ds-text-body)",
-    },
-    lg: {
-      height: "48px",
-      padding: "14px 24px",
-      fontSize: "15px",
-    },
+    sm: { height: "32px", padding: "6px 16px", fontSize: "13px" },
+    md: { height: "40px", padding: "10px 20px", fontSize: "14px" },
+    lg: { height: "48px", padding: "14px 24px", fontSize: "15px" },
   };
 
   const variantStyles = {
     primary: {
-      background: "var(--ds-teal-primary)",
-      color: "var(--ds-white)",
-      border: "1px solid var(--ds-teal-primary)",
-      hoverBackground: "#0D6962",
-      hoverColor: "var(--ds-white)",
+      background: "#0F766E",
+      color: "#FFFFFF",
+      border: "1px solid #0F766E",
+      hoverBackground: "#0D6B64",
+      hoverColor: "#FFFFFF",
     },
     secondary: {
-      background: "var(--ds-white)",
-      color: "var(--ds-green-dark)",
-      border: "1px solid var(--ds-border)",
-      hoverBackground: "var(--ds-gray-light)",
-      hoverColor: "var(--ds-green-dark)",
+      background: "#FFFFFF",
+      color: "#0A1D4D",
+      border: "1px solid #E5E9F0",
+      hoverBackground: "#F9FAFB",
+      hoverColor: "#0A1D4D",
     },
     ghost: {
       background: "transparent",
-      color: "var(--ds-teal-primary)",
+      color: "#0F766E",
       border: "none",
-      hoverBackground: "var(--ds-gray-light)",
-      hoverColor: "var(--ds-teal-primary)",
+      hoverBackground: "#F9FAFB",
+      hoverColor: "#0F766E",
     },
     outline: {
       background: "transparent",
-      color: "var(--ds-teal-primary)",
-      border: "1px solid var(--ds-teal-primary)",
-      hoverBackground: "var(--ds-gray-light)",
-      hoverColor: "var(--ds-teal-primary)",
+      color: "#0F766E",
+      border: "1px solid #0F766E",
+      hoverBackground: "#F9FAFB",
+      hoverColor: "#0F766E",
     },
     danger: {
       background: "#EF4444",
-      color: "var(--ds-white)",
+      color: "#FFFFFF",
       border: "1px solid #EF4444",
       hoverBackground: "#DC2626",
-      hoverColor: "var(--ds-white)",
+      hoverColor: "#FFFFFF",
     },
   };
 
+  const isDisabled = disabled || loading;
   const currentSize = sizeStyles[size];
   const currentVariant = variantStyles[variant];
 
+  const iconSlot = loading ? (
+    <Loader2 size={size === "sm" ? 14 : 16} className="animate-spin" />
+  ) : icon ?? null;
+
   return (
     <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
+      disabled={isDisabled}
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "var(--ds-space-sm)",
+        gap: "8px",
         height: currentSize.height,
         padding: currentSize.padding,
         fontSize: currentSize.fontSize,
-        fontWeight: "var(--ds-weight-semibold)",
+        fontWeight: 600,
         color: currentVariant.color,
         background: currentVariant.background,
         border: currentVariant.border,
-        borderRadius: "var(--ds-radius-input)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.5 : 1,
-        transition: "all var(--ds-transition-normal)",
+        borderRadius: "8px",
+        cursor: isDisabled ? "not-allowed" : "pointer",
+        opacity: isDisabled ? 0.5 : 1,
+        transition: "background 0.15s ease, color 0.15s ease",
         width: fullWidth ? "100%" : "auto",
         whiteSpace: "nowrap",
       }}
       onMouseEnter={(e) => {
-        if (!disabled) {
+        if (!isDisabled) {
           e.currentTarget.style.background = currentVariant.hoverBackground;
           e.currentTarget.style.color = currentVariant.hoverColor;
         }
       }}
       onMouseLeave={(e) => {
-        if (!disabled) {
+        if (!isDisabled) {
           e.currentTarget.style.background = currentVariant.background;
           e.currentTarget.style.color = currentVariant.color;
         }
       }}
+      {...rest}
     >
-      {icon && iconPosition === "left" && icon}
+      {iconSlot && iconPosition === "left" && iconSlot}
       {label || children}
-      {icon && iconPosition === "right" && icon}
+      {iconSlot && iconPosition === "right" && iconSlot}
     </button>
   );
 }

@@ -43,10 +43,9 @@ export function ExpensesSubTabs({
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [vouchersCount, setVouchersCount] = useState(0);
 
-  // Fetch expenses for this booking to know what's available
+  // Fetch expenses and vouchers count in parallel
   useEffect(() => {
-    fetchExpenses();
-    fetchVouchersCount();
+    Promise.all([fetchExpenses(), fetchVouchersCount()]);
   }, [bookingId]);
 
   const fetchExpenses = async () => {

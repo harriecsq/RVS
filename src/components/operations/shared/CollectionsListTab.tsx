@@ -43,15 +43,14 @@ export function CollectionsListTab({ billingId, billingNumber, bookingId, onUpda
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [totalBillingsAmount, setTotalBillingsAmount] = useState(0);
 
+  // Fetch collections and billing summary in parallel
   useEffect(() => {
-    fetchCollections();
-  }, [billingId]);
-
-  useEffect(() => {
+    const fetches: Promise<void>[] = [fetchCollections()];
     if (bookingId) {
-      fetchBillingsForBooking();
+      fetches.push(fetchBillingsForBooking());
     }
-  }, [bookingId]);
+    Promise.all(fetches);
+  }, [billingId, bookingId]);
 
   const fetchBillingsForBooking = async () => {
     try {

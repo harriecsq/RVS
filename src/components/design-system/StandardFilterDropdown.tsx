@@ -11,6 +11,7 @@ interface StandardFilterDropdownProps {
   options: StandardFilterDropdownOption[];
   placeholder?: string;
   disabled?: boolean;
+  minWidth?: string;
   style?: React.CSSProperties;
 }
 
@@ -20,7 +21,8 @@ export function StandardFilterDropdown({
   options,
   placeholder,
   disabled = false,
-  style
+  minWidth,
+  style,
 }: StandardFilterDropdownProps) {
   return (
     <select
@@ -28,12 +30,13 @@ export function StandardFilterDropdown({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       style={{
-        padding: '10px 40px 10px 12px',
-        border: '1px solid var(--neuron-ui-border)',
-        borderRadius: '6px',
+        height: '40px',
+        padding: '0 40px 0 12px',
+        border: '1px solid #E5E9F0',
+        borderRadius: '8px',
         fontSize: '14px',
         outline: 'none',
-        color: disabled ? '#9CA3AF' : (value ? 'var(--neuron-ink-primary)' : '#9CA3AF'),
+        color: disabled ? '#9CA3AF' : (value ? '#0A1D4D' : '#9CA3AF'),
         backgroundColor: disabled ? '#F9FAFB' : '#FFFFFF',
         cursor: disabled ? 'not-allowed' : 'pointer',
         appearance: 'none',
@@ -42,15 +45,14 @@ export function StandardFilterDropdown({
         backgroundPosition: 'right 12px center',
         backgroundSize: '16px',
         transition: 'border-color 0.15s ease',
-        ...style
+        minWidth,
+        ...style,
       }}
       onFocus={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.borderColor = 'var(--neuron-teal)';
-        }
+        if (!disabled) e.currentTarget.style.borderColor = '#0F766E';
       }}
       onBlur={(e) => {
-        e.currentTarget.style.borderColor = 'var(--neuron-ui-border)';
+        e.currentTarget.style.borderColor = '#E5E9F0';
       }}
     >
       {placeholder && <option value="">{placeholder}</option>}
