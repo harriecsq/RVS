@@ -28,7 +28,6 @@ import {
   TRUCKING_TAG_GROUPS,
   TRUCKING_VENDORS,
   EMPTY_RETURN_OPTIONS,
-  CONTAINER_SIZES,
   DISPATCHER_LIST,
   GATEPASS_LIST,
   getStatusSummary,
@@ -646,17 +645,16 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 /** Pill with hover-to-remove "×" for the summary bar */
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-/** Compute size summary from containers: "2x20GP, 1x40HC" */
-function computeSizeSummary(containers: { containerNo: string; size: string }[]): string {
-  if (!containers || containers.length === 0) return "—";
-  const counts: Record<string, number> = {};
-  for (const c of containers) {
-    const size = c.size || "Unknown";
-    counts[size] = (counts[size] || 0) + 1;
+/** Normalize legacy records that have containers[] instead of flat fields */
+function normalizeRecord(r: any): any {
+  if (!r.containerNo && Array.isArray(r.containers) && r.containers.length > 0) {
+    return {
+      ...r,
+      containerNo: r.containers[0].containerNo || "",
+      containerSize: r.containers[0].size || "",
+    };
   }
-  return Object.entries(counts)
-    .map(([size, count]) => `${count}x${size}`)
-    .join(", ");
+  return r;
 }
 
 export function TruckingRecordDetails({
@@ -669,7 +667,7 @@ export function TruckingRecordDetails({
 }: TruckingRecordDetailsProps) {
   const [activeTab, setActiveTab] = useState<"trucking-info" | "attachments">("trucking-info");
   const [showActivity, setShowActivity] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(record);
+  const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(normalizeRecord(record) as TruckingRecord);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [linkedShipmentTags, setLinkedShipmentTags] = useState<string[]>(
     ((record as any).linkedBookingShipmentTags || []) as string[],
@@ -719,54 +717,12 @@ export function TruckingRecordDetails({
         setLinkedTagHistory(Array.isArray((b as any).tagHistory) ? (b as any).tagHistory : []);
         
         if (autoFill) {
-          // Helper to extract container size from a string (e.g. "1x40HC" or "40HQ")
-          const extractSize = (s: string): string => {
-            const upper = (s || "").toUpperCase();
-            if (upper.includes("40RH") || upper.includes("REERER")) return "40RH";
-            if (upper.includes("40HC") || upper.includes("40HQ") || upper.includes("40")) return "40HC";
-            if (upper.includes("20GP") || upper.includes("20")) return "20GP";
-            return "20GP";
-          };
-
-          // Helper to parse volume string like "2x40HC" into multiple container slots
-          const parseVolumeToContainers = (vol: string): any[] => {
-            if (!vol) return [];
-            const match = vol.match(/(\d+)\s*[xX]\s*(.*)/);
-            if (match) {
-              const count = parseInt(match[1], 10);
-              const size = extractSize(match[2]);
-              return Array(count).fill(null).map(() => ({ containerNo: "", size }));
-            }
-            const size = extractSize(vol);
-            return [{ containerNo: "", size }];
-          };
-
           const blVal = b.blNumber || b.bl_number || b.awbBlNo || b.awb_bl_no || b.billOfLading || "";
           const commodityVal = b.commodityItems || b.commodity_items || b.commodity || b.commodityDescription || b.commodity_description || "";
           const shippingVal = b.shippingLine || b.shipping_line || b.carrier || "";
           const vesselVal = b.vesselVoyage || b.vessel_voyage || b.vessel || b.vesselName || b.vessel_name || "";
 
-          // Container Data & Volume
-          let containersVal: any[] | null = null;
-          const rawContainers = b.containers || b.containerNo || b.container_no || b.containerNumber || b.container_number || "";
-          const rawVolume = b.volume_containers || b.volume || b.measurement || "";
-
-          if (rawContainers) {
-            if (Array.isArray(rawContainers)) {
-              containersVal = rawContainers.map((c: any) => ({
-                containerNo: typeof c === "string" ? c : (c.containerNo || c.container_no || c.containerNumber || ""),
-                size: typeof c === "string" ? extractSize(rawVolume) : (c.size || c.containerSize || extractSize(rawVolume)),
-              }));
-            } else if (typeof rawContainers === "string" && rawContainers.trim()) {
-              const parts = rawContainers.split(",").map((s: string) => s.trim()).filter(Boolean);
-              const extractedSize = extractSize(rawVolume);
-              containersVal = parts.map((p: string) => ({ containerNo: p, size: extractedSize }));
-            }
-          }
-
-          if ((!containersVal || containersVal.length === 0) && rawVolume) {
-            containersVal = parseVolumeToContainers(rawVolume);
-          }
+          // Container is managed via ContainerSelector now — not auto-filled here
 
           setEditForm((prev: any) => ({
             ...prev,
@@ -774,7 +730,6 @@ export function TruckingRecordDetails({
             commodityItems: commodityVal || prev.commodityItems,
             shippingLine: shippingVal || prev.shippingLine,
             vesselVoyage: vesselVal || prev.vesselVoyage,
-            containers: (containersVal && containersVal.length > 0) ? containersVal : prev.containers,
           }));
           toast.success("Fields auto-filled from booking");
         }
@@ -927,13 +882,6 @@ export function TruckingRecordDetails({
     },
     [currentRecord.id, currentRecord.linkedBookingId, currentUser?.name, linkedShipmentTags, onBookingTagsUpdated, onUpdate],
   );
-
-  // Container helpers
-  const addContainer = () => set("containers", [...editForm.containers, { containerNo: "", size: "20GP" }]);
-  const removeContainer = (i: number) => set("containers", editForm.containers.filter((_: any, idx: number) => idx !== i));
-  const updateContainer = (i: number, key: string, val: string) => {
-    set("containers", editForm.containers.map((c: any, idx: number) => idx === i ? { ...c, [key]: val } : c));
-  };
 
   // Drop helpers
   const addDrop = () => set("deliveryDrops", [
@@ -1413,28 +1361,11 @@ export function TruckingRecordDetails({
                       {/* Divider */}
                       
 
-                      {/* Row 3: Containers + Size */}
-                      {r.containers?.length > 0 && (
+                      {/* Row 3: Container + Size */}
+                      {r.containerNo && (
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                          <div>
-                            <div style={SUMMARY_LABEL}>Containers ({r.containers.length})</div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "2px" }}>
-                              {r.containers.map((c: any, i: number) => (
-                                <span
-                                  key={i}
-                                  style={{
-                                    display: "inline-block",
-                                    fontSize: "12px",
-                                    fontWeight: 600,
-                                    color: "#0A1D4D",
-                                  }}
-                                >
-                                  {c.containerNo || "—"}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <SummaryField label="Size" value={computeSizeSummary(r.containers)} />
+                          <SummaryField label="Container" value={r.containerNo} />
+                          <SummaryField label="Size" value={r.containerSize || "—"} />
                         </div>
                       )}
 

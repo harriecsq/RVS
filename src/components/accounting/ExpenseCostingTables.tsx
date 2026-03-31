@@ -107,9 +107,14 @@ function generateImportStandardLabel(key: ImportStandardKey, booking: any, truck
     }
     case "TRUCKING": {
       const vendor = truckingVendor || booking?.trucker || booking?.truckingVendor || "N/A";
+      const rawVol = booking?.volume || "";
+      const volMatch = rawVol.match(/^\d+x(.+)$/i);
+      const volumeType = volMatch ? volMatch[1] : rawVol;
+      if (containerCount && containerCount > 0 && volumeType) {
+        return `${vendor} ${containerCount}x${volumeType}`;
+      }
       const addr = booking?.destination || booking?.pod || "N/A";
-      const container = booking?.containerNo || "";
-      return `${vendor} Trucking - ${addr}${container ? ` (${container})` : ""}`;
+      return `${vendor} Trucking - ${addr}`;
     }
     case "ARRASTRE_WHARFAGE":
       return "Arrastre and Wharfage";
@@ -352,6 +357,20 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   stdItem.voucherNo = vNo;
                   stdItem.sourceVoucherLineItemId = sourceId;
                   matchedKeys.add(matchedKey);
+
+                  // For trucking vouchers with linked containers, update label with vendor + container info
+                  if (matchedKey === "TRUCKING") {
+                    const linkedContainers = (voucher as any).linkedContainerNos;
+                    const voucherVendor = (voucher as any).payee || truckingVendor || "";
+                    if (Array.isArray(linkedContainers) && linkedContainers.length > 0 && voucherVendor) {
+                      const rawVol = booking?.volume || "";
+                      const volMatch = rawVol.match(/^\d+x(.+)$/i);
+                      const volumeType = volMatch ? volMatch[1] : rawVol;
+                      if (volumeType) {
+                        stdItem.particulars = `${voucherVendor} ${linkedContainers.length}x${volumeType}`;
+                      }
+                    }
+                  }
                 }
               } else if (matchedKey && matchedKeys.has(matchedKey)) {
                 // Duplicate match — add as additional item in Particulars

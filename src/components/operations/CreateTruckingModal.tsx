@@ -12,6 +12,8 @@ import { useState, useEffect, useRef } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { BookingSelector } from "../selectors/BookingSelector";
+import { ContainerSelector } from "../selectors/ContainerSelector";
+import type { ContainerInfo } from "../selectors/ContainerSelector";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -20,7 +22,6 @@ import {
   TRUCKING_TAG_GROUPS,
   TRUCKING_VENDORS,
   EMPTY_RETURN_OPTIONS,
-  CONTAINER_SIZES,
   DISPATCHER_LIST,
   GATEPASS_LIST,
   hexToRgba,
@@ -81,7 +82,8 @@ export interface TruckingRecord {
   truckingRefNo: string;
   linkedBookingId?: string;
   linkedBookingType?: string;
-  containers: ContainerEntry[];
+  containerNo: string;
+  containerSize: string;
   commodityItems: string;
   shippingLine: string;
   vesselVoyage: string;
@@ -509,7 +511,8 @@ function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string): 
     id: "", truckingRefNo: "",
     linkedBookingId: prefillBookingId || "",
     linkedBookingType: prefillBookingType || "",
-    containers: [{ containerNo: "", size: "20GP" }],
+    containerNo: "",
+    containerSize: "20'GP",
     commodityItems: "", shippingLine: "", vesselVoyage: "", blNumber: "",
     tabsBookingDate: "", tabsBookingTime: "",
     warehouseArrivalDate: "", warehouseArrivalTime: "",
@@ -546,6 +549,9 @@ export function CreateTruckingModal({
   const [autoFilledFields, setAutoFilledFields] = useState<Record<string, boolean>>({});
   const [isLoadingBooking, setIsLoadingBooking] = useState(false);
   const [linkedBookingData, setLinkedBookingData] = useState<any>(null);
+  const [existingTruckingRecords, setExistingTruckingRecords] = useState<TruckingRecord[]>([]);
+  const [alreadyLinkedContainerNos, setAlreadyLinkedContainerNos] = useState<string[]>([]);
+  const [selectedContainerNos, setSelectedContainerNos] = useState<string[]>([]);
   const hasPrefilled = useRef(false);
 
   useEffect(() => {
@@ -553,6 +559,9 @@ export function CreateTruckingModal({
       setForm(existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType));
       setAutoFilledFields({});
       setLinkedBookingData(null);
+      setExistingTruckingRecords([]);
+      setAlreadyLinkedContainerNos([]);
+      setSelectedContainerNos([]);
       hasPrefilled.current = false;
     }
   }, [isOpen, existingRecord, prefillBookingId, prefillBookingType]);
@@ -583,6 +592,27 @@ export function CreateTruckingModal({
       })();
     }
   }, [isOpen, existingRecord]);
+
+  // Fetch existing trucking records for this booking to populate ContainerSelector
+  useEffect(() => {
+    if (isOpen && form.linkedBookingId && !existingRecord) {
+      (async () => {
+        try {
+          const res = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${form.linkedBookingId}`, {
+            headers: { Authorization: `Bearer ${publicAnonKey}` },
+          });
+          const result = await res.json();
+          if (result.success && Array.isArray(result.data)) {
+            setExistingTruckingRecords(result.data);
+            const linked = result.data.map((r: any) => r.containerNo || r.containers?.[0]?.containerNo).filter(Boolean);
+            setAlreadyLinkedContainerNos(linked);
+          }
+        } catch (err) {
+          console.error("Error fetching existing trucking records:", err);
+        }
+      })();
+    }
+  }, [isOpen, form.linkedBookingId, existingRecord]);
 
   if (!isOpen) return null;
 
@@ -627,28 +657,6 @@ export function CreateTruckingModal({
     }
     const filled: Record<string, boolean> = {};
 
-    // Helper to extract container size from a string (e.g. "1x40HC" or "40HQ")
-    const extractSize = (s: string): string => {
-      const upper = (s || "").toUpperCase();
-      if (upper.includes("40RH") || upper.includes("REERER")) return "40RH";
-      if (upper.includes("40HC") || upper.includes("40HQ") || upper.includes("40")) return "40HC";
-      if (upper.includes("20GP") || upper.includes("20")) return "20GP";
-      return "20GP";
-    };
-
-    // Helper to parse volume string like "2x40HC" into multiple container slots
-    const parseVolumeToContainers = (vol: string): ContainerEntry[] => {
-      if (!vol) return [];
-      const match = vol.match(/(\d+)\s*[xX]\s*(.*)/);
-      if (match) {
-        const count = parseInt(match[1], 10);
-        const size = extractSize(match[2]);
-        return Array(count).fill(null).map(() => ({ containerNo: "", size }));
-      }
-      const size = extractSize(vol);
-      return [{ containerNo: "", size }];
-    };
-
     // BL # — fallback chain for all known field name variants
     const blVal = b.blNumber || b.bl_number || b.awbBlNo || b.awb_bl_no || b.billOfLading || "";
     if (blVal) filled.blNumber = true;
@@ -665,30 +673,7 @@ export function CreateTruckingModal({
     const vesselVal = b.vesselVoyage || b.vessel_voyage || b.vessel || b.vesselName || b.vessel_name || "";
     if (vesselVal) filled.vesselVoyage = true;
 
-    // Container Data & Volume
-    let containersVal: ContainerEntry[] | null = null;
-    const rawContainers = b.containers || b.containerNo || b.container_no || b.containerNumber || b.container_number || "";
-    const rawVolume = b.volume_containers || b.volume || b.measurement || "";
-
-    if (rawContainers) {
-      if (Array.isArray(rawContainers)) {
-        containersVal = rawContainers.map((c: any) => ({
-          containerNo: typeof c === "string" ? c : (c.containerNo || c.container_no || c.containerNumber || ""),
-          size: typeof c === "string" ? extractSize(rawVolume) : (c.size || c.containerSize || extractSize(rawVolume)),
-        }));
-      } else if (typeof rawContainers === "string" && rawContainers.trim()) {
-        const parts = rawContainers.split(",").map((s: string) => s.trim()).filter(Boolean);
-        const extractedSize = extractSize(rawVolume);
-        containersVal = parts.map((p: string) => ({ containerNo: p, size: extractedSize }));
-      }
-    }
-
-    // Fallback: If no specific container numbers, but we have volume info, create the entries
-    if ((!containersVal || containersVal.length === 0) && rawVolume) {
-      containersVal = parseVolumeToContainers(rawVolume);
-    }
-
-    if (containersVal && containersVal.length > 0) filled.containers = true;
+    // Container is selected via ContainerSelector — not auto-filled here
 
     setForm((prev) => ({
       ...prev,
@@ -696,7 +681,6 @@ export function CreateTruckingModal({
       commodityItems: commodityVal || prev.commodityItems,
       shippingLine: shippingVal || prev.shippingLine,
       vesselVoyage: vesselVal || prev.vesselVoyage,
-      containers: (containersVal && containersVal.length > 0) ? containersVal : prev.containers,
     }));
     setAutoFilledFields(filled);
 
@@ -722,14 +706,38 @@ export function CreateTruckingModal({
     await fetchAndAutoFill(booking.id);
   };
 
-  // ─── Containers ───────────────────────────────────────────────────────────
-  const addContainer = () => set("containers", [...form.containers, { containerNo: "", size: "20GP" }]);
-  const removeContainer = (i: number) => set("containers", form.containers.filter((_, idx) => idx !== i));
-  const updateContainer = (i: number, key: keyof ContainerEntry, val: string) => {
-    set("containers", form.containers.map((c, idx) => idx === i ? { ...c, [key]: val } : c));
-    if (autoFilledFields.containers) {
-      setAutoFilledFields((prev) => ({ ...prev, containers: false }));
+  // ─── Container selection & basis autofill ─────────────────────────────────
+  const handleContainerSelected = (containerNos: string[], infos: ContainerInfo[]) => {
+    setSelectedContainerNos(containerNos);
+    if (infos.length === 1) {
+      setForm((prev) => ({
+        ...prev,
+        containerNo: infos[0].containerNo,
+        containerSize: infos[0].size,
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, containerNo: "", containerSize: "" }));
     }
+  };
+
+  const handleBasisSelected = (basisRecord: TruckingRecord) => {
+    setForm((prev) => ({
+      ...prev,
+      truckingVendor: basisRecord.truckingVendor || prev.truckingVendor,
+      dispatcher: basisRecord.dispatcher || prev.dispatcher,
+      gatepass: basisRecord.gatepass || prev.gatepass,
+      truckingRate: basisRecord.truckingRate || prev.truckingRate,
+      truckingSoa: basisRecord.truckingSoa || prev.truckingSoa,
+      deliveryDrops: basisRecord.deliveryDrops?.length ? [...basisRecord.deliveryDrops] : prev.deliveryDrops,
+      deliveryAddresses: basisRecord.deliveryAddresses?.length ? [...basisRecord.deliveryAddresses] : prev.deliveryAddresses,
+      emptyReturn: basisRecord.emptyReturn || prev.emptyReturn,
+      emptyReturnLocations: basisRecord.emptyReturnLocations?.length ? [...basisRecord.emptyReturnLocations] : prev.emptyReturnLocations,
+      plateNo: basisRecord.plateNo || prev.plateNo,
+      contact: basisRecord.contact || prev.contact,
+      driverHelperName: basisRecord.driverHelperName || prev.driverHelperName,
+      truckingAddress: basisRecord.truckingAddress || prev.truckingAddress,
+    }));
+    toast.success("Details copied from existing trucking record");
   };
 
   // ─── Drops ────────────────────────────────────────────────────────────────
@@ -909,6 +917,22 @@ export function CreateTruckingModal({
                   </div>
                 )}
 
+                {/* Container Selection — shown when a booking is linked */}
+                {form.linkedBookingId && !existingRecord && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <Label>Select Container</Label>
+                    <ContainerSelector
+                      bookingId={form.linkedBookingId}
+                      mode="single"
+                      alreadyLinkedContainerNos={alreadyLinkedContainerNos}
+                      selectedContainerNos={selectedContainerNos}
+                      onSelectionChange={handleContainerSelected}
+                      existingTruckingRecords={existingTruckingRecords}
+                      onBasisSelected={handleBasisSelected}
+                    />
+                  </div>
+                )}
+
                 {/* Read-only summary fields — shown when a booking is linked */}
                 {!isLoadingBooking && linkedBookingData && form.linkedBookingId && (
                   <div
@@ -945,37 +969,21 @@ export function CreateTruckingModal({
                     {/* Divider */}
                     
 
-                    {/* Containers + Size */}
-                    {form.containers.length > 0 && (
+                    {/* Container (single) */}
+                    {form.containerNo && (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
-                            Containers ({form.containers.length})
+                            Container
                           </div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "2px" }}>
-                            {form.containers.map((c, i) => (
-                              <span
-                                key={i}
-                                style={{
-                                  display: "inline-block",
-                                  fontSize: "12px",
-                                  fontWeight: 600,
-                                  color: "#0A1D4D",
-                                }}
-                              >
-                                {c.containerNo || "—"}
-                              </span>
-                            ))}
+                          <div style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D" }}>
+                            {form.containerNo || "—"}
                           </div>
                         </div>
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Size</div>
                           <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                            {(() => {
-                              const counts: Record<string, number> = {};
-                              for (const c of form.containers) { const s = c.size || "Unknown"; counts[s] = (counts[s] || 0) + 1; }
-                              return Object.entries(counts).map(([s, n]) => `${n}x${s}`).join(", ") || "—";
-                            })()}
+                            {form.containerSize || "—"}
                           </div>
                         </div>
                       </div>

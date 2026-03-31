@@ -473,7 +473,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
         r.truckingRefNo?.toLowerCase().includes(s) ||
         r.linkedBookingId?.toLowerCase().includes(s) ||
         (r.blNumber || r.blNumber)?.toLowerCase().includes(s) ||
-        r.containers?.some((c) => c.containerNo.toLowerCase().includes(s)) ||
+        r.containerNo?.toLowerCase().includes(s) ||
         r.deliveryAddresses?.some((a) => a.address.toLowerCase().includes(s));
       if (!matchesSearch) return false;
     }
@@ -627,11 +627,12 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: "13%" }} />
-              <col style={{ width: "13%" }} />
+              <col style={{ width: "11%" }} />
               <col style={{ width: "12%" }} />
+              <col style={{ width: "7%" }} />
               <col style={{ width: "10%" }} />
-              <col style={{ width: "14%" }} />
-              <col style={{ width: "38%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "37%" }} />
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #E5E9F0", backgroundColor: "#F9FAFB" }}>
@@ -639,6 +640,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                   "Trucking Ref #",
                   "BL Number",
                   "Container #",
+                  "Size",
                   "Trucking Vendor",
                   "Created",
                   "Status",
@@ -664,10 +666,8 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
             </thead>
             <tbody>
               {filtered.map((r) => {
-                const containers = r.containers || [];
-                const containerDisplay = containers.length === 0 ? "—"
-                  : containers.length === 1 ? (containers[0].containerNo || "—")
-                  : `${containers[0].containerNo || "—"} +${containers.length - 1}`;
+                const containerDisplay = r.containerNo || (r as any).containers?.[0]?.containerNo || "—";
+                const sizeDisplay = r.containerSize || (r as any).containers?.[0]?.size || "—";
 
                 const createdDate = r.createdAt ? fmtUpdated(r.createdAt) : "—";
 
@@ -704,6 +704,9 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                     </td>
                     <td style={truncCell} title={containerDisplay !== "—" ? containerDisplay : undefined}>
                       {containerDisplay}
+                    </td>
+                    <td style={truncCell}>
+                      {sizeDisplay}
                     </td>
                     <td style={{ ...truncCell, overflow: "visible" }}>
                       <VendorPill vendor={r.truckingVendor} />

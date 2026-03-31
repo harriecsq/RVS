@@ -4,6 +4,7 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { ComboInput } from "../ui/ComboInput";
 import { BookingSelector } from "../selectors/BookingSelector";
+import { ContainerSelector } from "../selectors/ContainerSelector";
 import { PayeeSelector } from "../selectors/PayeeSelector";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -262,6 +263,8 @@ export function CreateVoucherModal({
   
   // Trucking record data derived from linked booking
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+  const [selectedTruckingContainerNos, setSelectedTruckingContainerNos] = useState<string[]>([]);
+  const [truckingRecordsForBooking, setTruckingRecordsForBooking] = useState<any[]>([]);
   
   // Dynamic Booking Fields State
   const [bookingFields, setBookingFields] = useState({
@@ -355,45 +358,61 @@ export function CreateVoucherModal({
     }
   };
 
-  // Fetch trucking record data when category is Trucking and a booking is selected
+  // Fetch all trucking records when category is Trucking and a booking is selected
   useEffect(() => {
     if (category === "Trucking" && selectedBooking) {
       const bookingId = selectedBooking.bookingId || selectedBooking.bookingNumber || selectedBooking.booking_number || selectedBooking.id;
       if (bookingId) {
-        fetchTruckingRecordForBooking(bookingId);
+        fetchTruckingRecordsForBooking(bookingId);
       } else {
-        setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+        setTruckingRecordsForBooking([]);
       }
     } else {
-      setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+      setTruckingRecordsForBooking([]);
+      setSelectedTruckingContainerNos([]);
     }
   }, [selectedBooking, category]);
 
-  const fetchTruckingRecordForBooking = async (bookingId: string) => {
+  const fetchTruckingRecordsForBooking = async (bookingId: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (!response.ok) return;
       const result = await response.json();
-      if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        const truckingRecord = result.data[0];
-        // Extract delivery addresses — join all address strings
-        const addresses = (truckingRecord.deliveryAddresses || [])
-          .map((a: any) => a.address)
-          .filter(Boolean);
-        const deliveryAddress = addresses.join("; ");
-        // Extract loading address from export trucking record
-        const loadingAddress = truckingRecord.truckingAddress || "";
-        const truckingRate = truckingRecord.truckingRate || "";
-        setTruckingRecordData({ deliveryAddress, loadingAddress, truckingRate });
+      if (result.success && Array.isArray(result.data)) {
+        setTruckingRecordsForBooking(result.data);
       } else {
-        setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+        setTruckingRecordsForBooking([]);
       }
     } catch (error) {
-      console.error("Error fetching trucking record for booking:", error);
+      console.error("Error fetching trucking records:", error);
     }
   };
+
+  // Derive trucking data from selected containers
+  useEffect(() => {
+    if (selectedTruckingContainerNos.length === 0) {
+      setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+      return;
+    }
+    const selectedRecords = truckingRecordsForBooking.filter((r: any) =>
+      selectedTruckingContainerNos.includes(r.containerNo || r.containers?.[0]?.containerNo)
+    );
+    if (selectedRecords.length === 0) {
+      setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+      return;
+    }
+    const first = selectedRecords[0];
+    const addresses = (first.deliveryAddresses || []).map((a: any) => a.address).filter(Boolean);
+    const deliveryAddress = addresses.join("; ");
+    const loadingAddress = first.truckingAddress || "";
+    const totalRate = selectedRecords.reduce((sum: number, r: any) => {
+      const rate = parseFloat(String(r.truckingRate || "0").replace(/,/g, "")) || 0;
+      return sum + rate;
+    }, 0);
+    setTruckingRecordData({ deliveryAddress, loadingAddress, truckingRate: String(totalRate) });
+  }, [selectedTruckingContainerNos, truckingRecordsForBooking]);
 
   // Auto-fill voucher entries amount when trucking rate is fetched from trucking record
   useEffect(() => {
@@ -805,6 +824,12 @@ export function CreateVoucherModal({
         volume: bookingFields.volume,
         commodity: bookingFields.commodity,
         containerNumbers: voucherContainers.filter(c => c.trim() !== ""),
+        linkedContainerNos: category === "Trucking" ? selectedTruckingContainerNos : undefined,
+        linkedTruckingRecordIds: category === "Trucking"
+          ? truckingRecordsForBooking
+              .filter((r: any) => selectedTruckingContainerNos.includes(r.containerNo || r.containers?.[0]?.containerNo))
+              .map((r: any) => r.id)
+          : undefined,
         // Store line items
         lineItems: [
             ...particulars.map(p => ({ ...p, type: 'particulars' })),
@@ -983,6 +1008,21 @@ export function CreateVoucherModal({
                           <Link2 size={14} />
                           {selectedBooking.shipmentType || "Booking"} linked — fields auto-filled
                         </div>
+
+                        {/* Container selection for trucking vouchers */}
+                        {category === "Trucking" && truckingRecordsForBooking.length > 0 && (
+                          <div style={{ marginBottom: "16px" }}>
+                            <div style={{ fontSize: "13px", fontWeight: 500, color: "#667085", marginBottom: "8px" }}>
+                              Select Containers for this Voucher
+                            </div>
+                            <ContainerSelector
+                              bookingId={selectedBooking.bookingId || selectedBooking.bookingNumber || selectedBooking.id}
+                              mode="multi"
+                              selectedContainerNos={selectedTruckingContainerNos}
+                              onSelectionChange={(nos) => setSelectedTruckingContainerNos(nos)}
+                            />
+                          </div>
+                        )}
 
                         {/* Read-only summary fields */}
                         <div style={{

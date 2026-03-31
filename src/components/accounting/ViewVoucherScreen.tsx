@@ -333,7 +333,13 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
       if (!response.ok) return;
       const result = await response.json();
       if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-        const truckingRecord = result.data[0];
+        // If voucher has linked trucking record IDs, use those; otherwise use first
+        const linkedIds = (displayVoucher as any)?.linkedTruckingRecordIds;
+        let relevantRecords = result.data;
+        if (Array.isArray(linkedIds) && linkedIds.length > 0) {
+          relevantRecords = result.data.filter((r: any) => linkedIds.includes(r.id));
+        }
+        const truckingRecord = relevantRecords[0] || result.data[0];
         // Extract delivery addresses — join all address strings
         const addresses = (truckingRecord.deliveryAddresses || [])
           .map((a: any) => a.address)

@@ -3482,6 +3482,19 @@ app.delete("/make-server-ce0d67b8/bookings/:id", async (c) => {
 
 // ==================== TRUCKING RECORDS API ====================
 
+/** Normalize legacy trucking records that use containers[] array to flat fields */
+function normalizeTruckingRecord(record: any): any {
+  if (!record) return record;
+  if (!record.containerNo && Array.isArray(record.containers) && record.containers.length > 0) {
+    return {
+      ...record,
+      containerNo: record.containers[0].containerNo || record.containers[0].container_no || "",
+      containerSize: record.containers[0].size || record.containers[0].containerSize || "",
+    };
+  }
+  return record;
+}
+
 // Create trucking record
 app.post("/make-server-ce0d67b8/trucking-records", async (c) => {
   try {
@@ -3509,6 +3522,7 @@ app.get("/make-server-ce0d67b8/trucking-records", async (c) => {
   try {
     const linkedBookingId = c.req.query("linkedBookingId");
     let records = await kv.getByPrefix("trucking-record:");
+    records = records.map(normalizeTruckingRecord);
     if (linkedBookingId) {
       records = records.filter((r: any) => r.linkedBookingId === linkedBookingId);
     }
@@ -3529,8 +3543,9 @@ app.get("/make-server-ce0d67b8/trucking-records", async (c) => {
 app.get("/make-server-ce0d67b8/trucking-records/:id", async (c) => {
   try {
     const id = c.req.param("id");
-    const record = await kv.get(`trucking-record:${id}`);
-    if (!record) return c.json({ success: false, error: "Not found" }, 404);
+    const rawRecord = await kv.get(`trucking-record:${id}`);
+    if (!rawRecord) return c.json({ success: false, error: "Not found" }, 404);
+    const record = normalizeTruckingRecord(rawRecord);
     const enriched = await enrichTruckingRecordWithLinkedTags(record);
     return c.json({ success: true, data: enriched });
   } catch (error) {
