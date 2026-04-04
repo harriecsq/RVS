@@ -78,6 +78,12 @@ export interface TagHistoryEntry {
   layer: "shipment" | "operational";
 }
 
+export interface ShipmentEvent {
+  event: string;
+  dateTime: string;
+  note: string;
+}
+
 export interface BookingNumberEntry {
   id: string;
   bookingNumber: string;
@@ -97,6 +103,7 @@ export interface BrokerageBooking {
   status: ExecutionStatus;
   shipmentTags?: string[];
   tagHistory?: TagHistoryEntry[];
+  shipmentEvents?: ShipmentEvent[];
 
   // Shipment Details
   consignee?: string;
