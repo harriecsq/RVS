@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, MoreVertical, Lock, Edit3, Clock, ChevronRight, Trash2, Plus, ChevronDown } from "lucide-react";
+import { ArrowLeft, MoreVertical, Lock, Edit3, Clock, ChevronRight, Trash2, Plus, ChevronDown, Check } from "lucide-react";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
 import { ExpensesSubTabs } from "./shared/ExpensesSubTabs";
 import { TruckingTab } from "./shared/TruckingTab";
@@ -1709,6 +1709,182 @@ function BookingNumbersViewField({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function BookingNumbersEditField({
+  bookingNumbers,
+  legacyBookingNumber,
+  containerNo,
+  setEditData,
+}: {
+  bookingNumbers?: BookingNumberEntry[];
+  legacyBookingNumber?: string;
+  containerNo?: string;
+  setEditData: (data: any) => void;
+}) {
+  // Initialize from existing data or legacy field
+  const entries: BookingNumberEntry[] = bookingNumbers && bookingNumbers.length > 0
+    ? bookingNumbers
+    : legacyBookingNumber
+      ? [{ id: crypto.randomUUID(), bookingNumber: legacyBookingNumber, containerNos: [] }]
+      : [{ id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }];
+
+  // Parse container list from the booking's containerNo field
+  const allContainers: string[] = (() => {
+    if (!containerNo) return [];
+    if (Array.isArray(containerNo)) return (containerNo as string[]).filter(Boolean);
+    return containerNo.split(",").map((s: string) => s.trim()).filter(Boolean);
+  })();
+
+  const updateEntries = (newEntries: BookingNumberEntry[]) => {
+    setEditData({ bookingNumbers: newEntries, bookingNumber: newEntries[0]?.bookingNumber || "" });
+  };
+
+  const addEntry = () => {
+    updateEntries([...entries, { id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }]);
+  };
+
+  const removeEntry = (index: number) => {
+    updateEntries(entries.filter((_, i) => i !== index));
+  };
+
+  const updateValue = (index: number, value: string) => {
+    const updated = [...entries];
+    updated[index] = { ...updated[index], bookingNumber: value };
+    updateEntries(updated);
+  };
+
+  const toggleContainer = (entryIndex: number, container: string) => {
+    const updated = entries.map((entry, i) => {
+      if (i === entryIndex) {
+        const has = entry.containerNos.includes(container);
+        return { ...entry, containerNos: has ? entry.containerNos.filter(c => c !== container) : [...entry.containerNos, container] };
+      }
+      return { ...entry, containerNos: entry.containerNos.filter(c => c !== container) };
+    });
+    updateEntries(updated);
+  };
+
+  return (
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "13px",
+        fontWeight: 500,
+        color: "var(--neuron-ink-base)",
+        marginBottom: "8px",
+      }}>
+        Booking Numbers
+      </label>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {entries.map((entry, idx) => (
+          <div key={entry.id} style={{
+            border: "1px solid var(--neuron-ui-border, #E5E9F0)",
+            borderRadius: "8px",
+            padding: "12px",
+            backgroundColor: "#FAFBFC",
+          }}>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: allContainers.length > 0 ? "10px" : 0 }}>
+              <input
+                type="text"
+                value={entry.bookingNumber}
+                onChange={(e) => updateValue(idx, e.target.value)}
+                placeholder={`Booking number #${idx + 1}`}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  fontSize: "14px",
+                  border: "1px solid var(--neuron-ui-border, #E5E9F0)",
+                  borderRadius: "6px",
+                  color: "var(--neuron-ink-primary)",
+                  backgroundColor: "white",
+                  outline: "none",
+                  minHeight: "42px",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border, #E5E9F0)"; }}
+              />
+              <button
+                type="button"
+                onClick={() => removeEntry(idx)}
+                disabled={entries.length <= 1}
+                style={{
+                  padding: "8px",
+                  color: "#EF4444",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  cursor: entries.length <= 1 ? "not-allowed" : "pointer",
+                  opacity: entries.length <= 1 ? 0.3 : 1,
+                }}
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+            {allContainers.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {allContainers.map((c) => {
+                  const isChecked = entry.containerNos.includes(c);
+                  return (
+                    <label
+                      key={c}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        border: isChecked ? "1px solid #0F766E" : "1px solid #E5E9F0",
+                        backgroundColor: isChecked ? "#F0FDFA" : "white",
+                        color: isChecked ? "#0F766E" : "#667085",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleContainer(idx, c)}
+                        style={{ display: "none" }}
+                      />
+                      {isChecked && <Check size={12} />}
+                      {c}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {allContainers.length === 0 && (
+              <div style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic" }}>
+                No containers on this booking
+              </div>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addEntry}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+            padding: "8px",
+            border: "1px dashed #0F766E",
+            borderRadius: "8px",
+            backgroundColor: "#F0FDFA",
+            color: "#0F766E",
+            fontSize: "13px",
+            fontWeight: 500,
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={14} /> Add Booking Number
+        </button>
+      </div>
     </div>
   );
 }
