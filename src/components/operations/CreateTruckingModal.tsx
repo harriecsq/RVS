@@ -7,7 +7,7 @@
  *  - Tailwind class typography + inline hex fallbacks
  *  - Custom div-based dropdowns, MM/DD/YYYY masking, time inputs
  */
-import { ArrowLeft, Plus, Trash2, ChevronDown, Check, Search, X, Link2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, Check, X, Link2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
@@ -18,14 +18,13 @@ import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { API_BASE_URL } from '@/utils/api-config';
 import {
-  ALL_TRUCKING_TAGS,
-  TRUCKING_TAG_GROUPS,
   TRUCKING_VENDORS,
   EMPTY_RETURN_OPTIONS,
   DISPATCHER_LIST,
   GATEPASS_LIST,
   hexToRgba,
 } from "../../utils/truckingTags";
+import { TRUCKING_STATUS_OPTIONS, DEFAULT_TRUCKING_STATUS } from "../../constants/truckingStatuses";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,6 +69,11 @@ interface EmptyReturnLocation {
   showEnd?: boolean;
 }
 
+interface WarehouseArrivalDrop {
+  date: string;
+  time: string;
+}
+
 interface RemarksDrop {
   startDate: string;
   startTime: string;
@@ -82,6 +86,7 @@ export interface TruckingRecord {
   truckingRefNo: string;
   linkedBookingId?: string;
   linkedBookingType?: string;
+  linkedSegmentId?: string;
   containerNo: string;
   containerSize: string;
   commodityItems: string;
@@ -92,6 +97,7 @@ export interface TruckingRecord {
   tabsBookingTime: string;
   warehouseArrivalDate: string;
   warehouseArrivalTime: string;
+  warehouseArrivals: WarehouseArrivalDrop[];
   deliveryDrops: DeliveryDrop[];
   deliveryAddresses: AddressEntry[];
   truckingRate: string;
@@ -103,6 +109,11 @@ export interface TruckingRecord {
   remarksDrops: RemarksDrop[];
   emptyReturn: string;
   emptyReturnLocations: EmptyReturnLocation[];
+  detentionStartDate: string;
+  detentionStartTime: string;
+  freeTime: string;
+  containerYard: string;
+  emptyReturnNote: string;
   otherFees: string;
   storageBeginDate: string;
   storageBeginTime: string;
@@ -110,6 +121,8 @@ export interface TruckingRecord {
   storagePaymentTime: string;
   demurrageBeginDate: string;
   demurrageBeginTime: string;
+  demurragePaymentDate: string;
+  demurragePaymentTime: string;
   containerDamage: string;
   doDate: string;
   padlockDate: string;
@@ -123,7 +136,9 @@ export interface TruckingRecord {
   waitingFee: string;
   loadingDate: string;
   truckingAddress: string;
+  truckingDate: string;
   truckingStatus: string;
+  inyardDate: string;
   preparedBy?: string;
   checkedBy?: string;
   approvedBy?: string;
@@ -139,6 +154,7 @@ interface CreateTruckingModalProps {
   existingRecord?: TruckingRecord | null;
   prefillBookingId?: string;
   prefillBookingType?: string;
+  prefillSegmentId?: string;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -352,130 +368,6 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
-/** Tag chip */
-function TagChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold"
-      style={{ backgroundColor: "#E8F5F3", color: "#0A1D4D", border: "1px solid #C1D9CC" }}
-    >
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="flex items-center opacity-50 hover:opacity-100 transition-opacity"
-        style={{ background: "none", border: "none", cursor: "pointer", color: "#0A1D4D", padding: 0 }}
-      >
-        <X size={11} />
-      </button>
-    </span>
-  );
-}
-
-/** Tag multi-select picker */
-function TagSelector({ selected, onChange }: { selected: string[]; onChange: (tags: string[]) => void }) {
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const toggle = (key: string) =>
-    onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
-
-  const filtered = ALL_TRUCKING_TAGS.filter(
-    (t) => !search || t.label.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div>
-      <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
-        {selected.length === 0 && (
-          <span className="text-sm" style={{ color: "#9CA3AF" }}>No tags selected</span>
-        )}
-        {selected.map((key) => {
-          const tag = ALL_TRUCKING_TAGS.find((t) => t.key === key);
-          return <TagChip key={key} label={tag?.label || key} onRemove={() => toggle(key)} />;
-        })}
-      </div>
-      <div ref={ref} className="relative">
-        <div
-          onClick={() => setOpen(!open)}
-          className="w-full px-4 py-2.5 rounded-lg border flex items-center gap-2 cursor-pointer"
-          style={{ borderColor: "#E5E9F0", backgroundColor: "#FFFFFF" }}
-        >
-          <Search size={14} style={{ color: "#9CA3AF" }} />
-          <span className="text-sm" style={{ color: "#9CA3AF" }}>Add tags...</span>
-        </div>
-        {open && (
-          <div
-            className="absolute left-0 right-0 mt-1 bg-white rounded-lg border overflow-auto"
-            style={{
-              top: "100%", zIndex: 9999, maxHeight: "300px",
-              borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-            }}
-          >
-            <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
-              <input
-                autoFocus
-                type="text"
-                placeholder="Search tags..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full px-3 py-1.5 rounded-md border text-sm"
-                style={{ borderColor: "#E5E9F0", color: "#0A1D4D", outline: "none" }}
-              />
-            </div>
-            {TRUCKING_TAG_GROUPS.map((group) => {
-              const groupTags = filtered.filter((t) => t.group === group.id);
-              if (!groupTags.length) return null;
-              return (
-                <div key={group.id}>
-                  <div className="px-3 py-1.5 text-xs font-bold uppercase" style={{ color: "#9CA3AF", letterSpacing: "0.07em" }}>
-                    {group.label}
-                  </div>
-                  {groupTags.map((tag) => (
-                    <div
-                      key={tag.key}
-                      onClick={(e) => { e.stopPropagation(); toggle(tag.key); }}
-                      className="px-4 py-2 cursor-pointer flex items-center gap-2.5"
-                      style={{
-                        fontSize: "14px", color: "#0A1D4D",
-                        backgroundColor: selected.includes(tag.key) ? "#F0FAF8" : "transparent",
-                      }}
-                      onMouseEnter={(e) => { if (!selected.includes(tag.key)) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = selected.includes(tag.key) ? "#F0FAF8" : "transparent"; }}
-                    >
-                      <div
-                        style={{
-                          width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                          border: `1.5px solid ${selected.includes(tag.key) ? "#0F766E" : "#D1D5DB"}`,
-                          backgroundColor: selected.includes(tag.key) ? "#0F766E" : "transparent",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}
-                      >
-                        {selected.includes(tag.key) && <Check size={10} color="white" />}
-                      </div>
-                      {tag.label}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Add link button ─────────────────────────────────────────────────────────
 function AddLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
@@ -506,16 +398,18 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
-function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string): TruckingRecord {
+function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string, prefillSegmentId?: string): TruckingRecord {
   return {
     id: "", truckingRefNo: "",
     linkedBookingId: prefillBookingId || "",
     linkedBookingType: prefillBookingType || "",
+    linkedSegmentId: prefillSegmentId || "",
     containerNo: "",
     containerSize: "20'GP",
     commodityItems: "", shippingLine: "", vesselVoyage: "", blNumber: "",
     tabsBookingDate: "", tabsBookingTime: "",
     warehouseArrivalDate: "", warehouseArrivalTime: "",
+    warehouseArrivals: [{ date: "", time: "" }],
     deliveryDrops: [{
       deaDate: "", deliveryScheduleDate: "", deliveryScheduleTime: "",
       unloadingStart: "", unloadingEnd: "", parking: "Availability depends on time of arrival.",
@@ -526,13 +420,16 @@ function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string): 
     remarks: [],
     remarksDrops: [],
     emptyReturn: "", emptyReturnLocations: [],
+    detentionStartDate: "", detentionStartTime: "", freeTime: "", containerYard: "", emptyReturnNote: "",
     otherFees: "",
     storageBeginDate: "", storageBeginTime: "",
     storagePaymentDate: "", storagePaymentTime: "",
     demurrageBeginDate: "", demurrageBeginTime: "",
+    demurragePaymentDate: "", demurragePaymentTime: "",
     containerDamage: "", doDate: "", padlockDate: "", notes: "",
     plateNo: "", contact: "", driverHelperName: "", stickers: "",
-    weighing: "", waitingFee: "", loadingDate: "", truckingAddress: "", truckingStatus: "",
+    weighing: "", waitingFee: "", loadingDate: "", truckingAddress: "", truckingStatus: DEFAULT_TRUCKING_STATUS, inyardDate: "",
+    truckingDate: new Date().toISOString().split("T")[0],
     createdAt: "", updatedAt: "",
   };
 }
@@ -540,12 +437,15 @@ function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string): 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function CreateTruckingModal({
-  isOpen, onClose, onSaved, existingRecord, prefillBookingId, prefillBookingType,
+  isOpen, onClose, onSaved, existingRecord, prefillBookingId, prefillBookingType, prefillSegmentId,
 }: CreateTruckingModalProps) {
   const [form, setForm] = useState<TruckingRecord>(
-    existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType)
+    existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType, prefillSegmentId)
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [refNumber, setRefNumber] = useState("");
+  const [nextRefNumber, setNextRefNumber] = useState<number | null>(null);
+  const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
   const [autoFilledFields, setAutoFilledFields] = useState<Record<string, boolean>>({});
   const [isLoadingBooking, setIsLoadingBooking] = useState(false);
   const [linkedBookingData, setLinkedBookingData] = useState<any>(null);
@@ -556,15 +456,29 @@ export function CreateTruckingModal({
 
   useEffect(() => {
     if (isOpen) {
-      setForm(existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType));
+      setForm(existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType, prefillSegmentId));
       setAutoFilledFields({});
+      setRefNumber(existingRecord ? (existingRecord.truckingRefNo || "").replace(/^TRK\s*\d{4}-/, "") : "");
+      setNextRefNumber(null);
       setLinkedBookingData(null);
       setExistingTruckingRecords([]);
       setAlreadyLinkedContainerNos([]);
       setSelectedContainerNos([]);
       hasPrefilled.current = false;
     }
-  }, [isOpen, existingRecord, prefillBookingId, prefillBookingType]);
+  }, [isOpen, existingRecord, prefillBookingId, prefillBookingType, prefillSegmentId]);
+
+  // Fetch next available trucking ref number
+  useEffect(() => {
+    if (isOpen && !existingRecord) {
+      fetch(`${API_BASE_URL}/next-ref/trucking`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      })
+        .then((r) => r.json())
+        .then((d) => { if (d.success) setNextRefNumber(d.nextNumber); })
+        .catch(() => {});
+    }
+  }, [isOpen, existingRecord]);
 
   // Auto-fetch booking details when opened with a prefillBookingId
   useEffect(() => {
@@ -673,6 +587,14 @@ export function CreateTruckingModal({
     const vesselVal = b.vesselVoyage || b.vessel_voyage || b.vessel || b.vesselName || b.vessel_name || "";
     if (vesselVal) filled.vesselVoyage = true;
 
+    // Loading Address from booking
+    const loadingAddrVal = b.loadingAddress || b.loading_address || "";
+    if (loadingAddrVal) filled.truckingAddress = true;
+
+    // Loading Date from booking's loadingSchedule
+    const loadingDateVal = b.loadingSchedule || b.loading_schedule || "";
+    if (loadingDateVal) filled.loadingDate = true;
+
     // Container is selected via ContainerSelector — not auto-filled here
 
     setForm((prev) => ({
@@ -681,6 +603,8 @@ export function CreateTruckingModal({
       commodityItems: commodityVal || prev.commodityItems,
       shippingLine: shippingVal || prev.shippingLine,
       vesselVoyage: vesselVal || prev.vesselVoyage,
+      truckingAddress: loadingAddrVal || prev.truckingAddress,
+      loadingDate: loadingDateVal || prev.loadingDate,
     }));
     setAutoFilledFields(filled);
 
@@ -721,30 +645,96 @@ export function CreateTruckingModal({
   };
 
   const handleBasisSelected = (basisRecord: TruckingRecord) => {
+    // Copy all operational fields — skip identity fields (id, truckingRefNo, containerNo, containerSize, linkedBookingId, linkedBookingType, createdAt, updatedAt, createdBy, remarks, notes)
     setForm((prev) => ({
       ...prev,
-      truckingVendor: basisRecord.truckingVendor || prev.truckingVendor,
-      dispatcher: basisRecord.dispatcher || prev.dispatcher,
-      gatepass: basisRecord.gatepass || prev.gatepass,
-      truckingRate: basisRecord.truckingRate || prev.truckingRate,
-      truckingSoa: basisRecord.truckingSoa || prev.truckingSoa,
+      // Booking details (already auto-filled from booking but basis may have better values)
+      commodityItems: basisRecord.commodityItems || prev.commodityItems,
+      shippingLine: basisRecord.shippingLine || prev.shippingLine,
+      vesselVoyage: basisRecord.vesselVoyage || prev.vesselVoyage,
+      blNumber: basisRecord.blNumber || prev.blNumber,
+      // Tabs booking
+      tabsBookingDate: basisRecord.tabsBookingDate || prev.tabsBookingDate,
+      tabsBookingTime: basisRecord.tabsBookingTime || prev.tabsBookingTime,
+      // Warehouse arrival
+      warehouseArrivalDate: basisRecord.warehouseArrivalDate || prev.warehouseArrivalDate,
+      warehouseArrivalTime: basisRecord.warehouseArrivalTime || prev.warehouseArrivalTime,
+      warehouseArrivals: basisRecord.warehouseArrivals?.length ? [...basisRecord.warehouseArrivals] : prev.warehouseArrivals,
+      // Delivery
       deliveryDrops: basisRecord.deliveryDrops?.length ? [...basisRecord.deliveryDrops] : prev.deliveryDrops,
       deliveryAddresses: basisRecord.deliveryAddresses?.length ? [...basisRecord.deliveryAddresses] : prev.deliveryAddresses,
+      // Vendor & rates
+      truckingVendor: basisRecord.truckingVendor || prev.truckingVendor,
+      truckingRate: basisRecord.truckingRate || prev.truckingRate,
+      dispatcher: basisRecord.dispatcher || prev.dispatcher,
+      gatepass: basisRecord.gatepass || prev.gatepass,
+      truckingSoa: basisRecord.truckingSoa || prev.truckingSoa,
+      // Empty return
       emptyReturn: basisRecord.emptyReturn || prev.emptyReturn,
       emptyReturnLocations: basisRecord.emptyReturnLocations?.length ? [...basisRecord.emptyReturnLocations] : prev.emptyReturnLocations,
+      detentionStartDate: basisRecord.detentionStartDate || prev.detentionStartDate,
+      detentionStartTime: basisRecord.detentionStartTime || prev.detentionStartTime,
+      freeTime: basisRecord.freeTime || prev.freeTime,
+      containerYard: basisRecord.containerYard || prev.containerYard,
+      emptyReturnNote: basisRecord.emptyReturnNote || prev.emptyReturnNote,
+      // Remarks drops
+      remarksDrops: basisRecord.remarksDrops?.length ? [...basisRecord.remarksDrops] : prev.remarksDrops,
+      // Storage & demurrage
+      otherFees: basisRecord.otherFees || prev.otherFees,
+      storageBeginDate: basisRecord.storageBeginDate || prev.storageBeginDate,
+      storageBeginTime: basisRecord.storageBeginTime || prev.storageBeginTime,
+      storagePaymentDate: basisRecord.storagePaymentDate || prev.storagePaymentDate,
+      storagePaymentTime: basisRecord.storagePaymentTime || prev.storagePaymentTime,
+      demurrageBeginDate: basisRecord.demurrageBeginDate || prev.demurrageBeginDate,
+      demurrageBeginTime: basisRecord.demurrageBeginTime || prev.demurrageBeginTime,
+      demurragePaymentDate: basisRecord.demurragePaymentDate || prev.demurragePaymentDate,
+      demurragePaymentTime: basisRecord.demurragePaymentTime || prev.demurragePaymentTime,
+      containerDamage: basisRecord.containerDamage || prev.containerDamage,
+      doDate: basisRecord.doDate || prev.doDate,
+      padlockDate: basisRecord.padlockDate || prev.padlockDate,
+      // Export-specific
       plateNo: basisRecord.plateNo || prev.plateNo,
       contact: basisRecord.contact || prev.contact,
       driverHelperName: basisRecord.driverHelperName || prev.driverHelperName,
+      stickers: basisRecord.stickers || prev.stickers,
+      weighing: basisRecord.weighing || prev.weighing,
+      waitingFee: basisRecord.waitingFee || prev.waitingFee,
+      loadingDate: basisRecord.loadingDate || prev.loadingDate,
       truckingAddress: basisRecord.truckingAddress || prev.truckingAddress,
+      truckingStatus: basisRecord.truckingStatus || prev.truckingStatus,
+      inyardDate: (basisRecord as any).inyardDate || prev.inyardDate,
     }));
     toast.success("Details copied from existing trucking record");
   };
 
+  // ─── Warehouse Arrivals ────────────────────────────────────────────────────
+  const warehouseArrivals = form.warehouseArrivals?.length ? form.warehouseArrivals : [{ date: form.warehouseArrivalDate || "", time: form.warehouseArrivalTime || "" }];
+  const updateWarehouseArrival = (i: number, key: keyof WarehouseArrivalDrop, val: string) =>
+    set("warehouseArrivals", warehouseArrivals.map((w, idx) => idx === i ? { ...w, [key]: val } : w));
+  const removeWarehouseArrival = (i: number) => set("warehouseArrivals", warehouseArrivals.filter((_, idx) => idx !== i));
+
+  // ─── Sync: adding a drop adds to ALL multi-drop sections simultaneously ──
+  const addSyncedDrop = () => {
+    setForm((prev) => {
+      const wa = prev.warehouseArrivals?.length ? prev.warehouseArrivals : [{ date: prev.warehouseArrivalDate || "", time: prev.warehouseArrivalTime || "" }];
+      const target = Math.max(wa.length, prev.deliveryDrops.length, prev.deliveryAddresses.length, (prev.remarksDrops || []).length) + 1;
+      const pad = <T,>(arr: T[], make: () => T): T[] => {
+        const result = [...arr];
+        while (result.length < target) result.push(make());
+        return result;
+      };
+      return {
+        ...prev,
+        warehouseArrivals: pad(wa, () => ({ date: "", time: "" })),
+        deliveryDrops: pad(prev.deliveryDrops, () => ({ deaDate: "", deliveryScheduleDate: "", deliveryScheduleTime: "", unloadingStart: "", unloadingEnd: "", parking: "Availability depends on time of arrival.", instructions: [{ text: "" }], additionalNote: "" })),
+        deliveryAddresses: pad(prev.deliveryAddresses, () => ({ address: "", postalCode: "", recipients: [{ name: "", contacts: [""] }], additionalNote: "" })),
+        remarksDrops: pad(prev.remarksDrops || [], () => ({ startDate: "", startTime: "", doneDate: "", doneTime: "" })),
+      };
+    });
+  };
+
   // ─── Drops ────────────────────────────────────────────────────────────────
-  const addDrop = () => set("deliveryDrops", [
-    ...form.deliveryDrops,
-    { deaDate: "", deliveryScheduleDate: "", deliveryScheduleTime: "", unloadingStart: "", unloadingEnd: "", parking: "Availability depends on time of arrival.", instructions: [{ text: "" }], additionalNote: "" },
-  ]);
+  const addDrop = () => addSyncedDrop();
   const removeDrop = (i: number) => set("deliveryDrops", form.deliveryDrops.filter((_, idx) => idx !== i));
   const updateDrop = <K extends keyof DeliveryDrop>(i: number, key: K, val: DeliveryDrop[K]) =>
     set("deliveryDrops", form.deliveryDrops.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
@@ -760,7 +750,7 @@ export function CreateTruckingModal({
     ));
 
   // ─── Addresses ────────────────────────────────────────────────────────────
-  const addAddress = () => set("deliveryAddresses", [...form.deliveryAddresses, { address: "", postalCode: "", recipients: [{ name: "", contacts: [""] }], additionalNote: "" }]);
+  const addAddress = () => addSyncedDrop();
   const removeAddress = (i: number) => set("deliveryAddresses", form.deliveryAddresses.filter((_, idx) => idx !== i));
   const updateAddress = <K extends keyof AddressEntry>(i: number, key: K, val: AddressEntry[K]) =>
     set("deliveryAddresses", form.deliveryAddresses.map((a, idx) => idx === i ? { ...a, [key]: val } : a));
@@ -797,7 +787,7 @@ export function CreateTruckingModal({
 
   // ─── Remarks drops ────────────────────────────────────────────────────────
   const remarksDrops = form.remarksDrops || [];
-  const addRemarksDrop = () => set("remarksDrops", [...remarksDrops, { startDate: "", startTime: "", doneDate: "", doneTime: "" }]);
+  const addRemarksDrop = () => addSyncedDrop();
   const removeRemarksDrop = (i: number) => set("remarksDrops", remarksDrops.filter((_, idx) => idx !== i));
   const updateRemarksDrop = <K extends keyof RemarksDrop>(i: number, key: K, val: string) =>
     set("remarksDrops", remarksDrops.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
@@ -807,7 +797,16 @@ export function CreateTruckingModal({
     e.preventDefault();
     setIsSaving(true);
     try {
-      const payload = { ...form, updatedAt: new Date().toISOString(), createdAt: form.createdAt || new Date().toISOString() };
+      const wa = form.warehouseArrivals?.length ? form.warehouseArrivals : [{ date: form.warehouseArrivalDate, time: form.warehouseArrivalTime }];
+      const payload = {
+        ...form,
+        truckingRefNo: `TRK ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
+        warehouseArrivals: wa,
+        warehouseArrivalDate: wa[0]?.date || form.warehouseArrivalDate,
+        warehouseArrivalTime: wa[0]?.time || form.warehouseArrivalTime,
+        updatedAt: new Date().toISOString(),
+        createdAt: form.createdAt || new Date().toISOString(),
+      };
       const url = existingRecord ? `${API_BASE_URL}/trucking-records/${existingRecord.id}` : `${API_BASE_URL}/trucking-records`;
       const method = existingRecord ? "PUT" : "POST";
 
@@ -880,6 +879,36 @@ export function CreateTruckingModal({
         {/* ── Form Body ── */}
         <div className="flex-1 overflow-auto">
           <form onSubmit={handleSubmit} className="px-12 py-8 space-y-8">
+
+            {/* ── Reference Number ── */}
+            <div>
+              <Label>Reference No.</Label>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+                <div>
+                  <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                  <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>TRK</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                  <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                  <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                </div>
+              </div>
+              <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+                {`TRK ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`}
+              </p>
+            </div>
+
+            {/* ── DATE ── */}
+            <div>
+              <Label>Date</Label>
+              <div className="w-64">
+                <NeuronDatePicker value={form.truckingDate} onChange={(v) => set("truckingDate", v)} />
+              </div>
+            </div>
 
             {/* ── BOOKING DETAILS (unified summary card) ── */}
             <div>
@@ -1065,8 +1094,8 @@ export function CreateTruckingModal({
                       <TextInput value={form.truckingAddress} onChange={(v) => set("truckingAddress", v)} placeholder="Enter address" />
                     </div>
                     <div>
-                      <Label>Status</Label>
-                      <TextInput value={form.truckingStatus} onChange={(v) => set("truckingStatus", v)} placeholder="Enter status" />
+                      <Label>Inyard Status</Label>
+                      <DateRow dateValue={form.inyardDate} onDateChange={(v) => set("inyardDate", v)} />
                     </div>
                   </div>
                 </div>
@@ -1085,10 +1114,26 @@ export function CreateTruckingModal({
             {/* ── WAREHOUSE ARRIVAL ── */}
             <div>
               <SectionHeader>Warehouse Arrival</SectionHeader>
-              <DateTimeRow
-                dateValue={form.warehouseArrivalDate} timeValue={form.warehouseArrivalTime}
-                onDateChange={(v) => set("warehouseArrivalDate", v)} onTimeChange={(v) => set("warehouseArrivalTime", v)}
-              />
+              <div className="space-y-4">
+                {warehouseArrivals.map((wa, wi) => (
+                  <div
+                    key={wi}
+                    className="rounded-xl p-5 space-y-4"
+                    style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Drop {wi + 1}</span>
+                      {warehouseArrivals.length > 1 && <RemoveBtn onClick={() => removeWarehouseArrival(wi)} />}
+                    </div>
+                    <DateTimeRow
+                      dateValue={wa.date} timeValue={wa.time}
+                      onDateChange={(v) => updateWarehouseArrival(wi, "date", v)}
+                      onTimeChange={(v) => updateWarehouseArrival(wi, "time", v)}
+                    />
+                  </div>
+                ))}
+                <AddLink onClick={addSyncedDrop}>Add Drop</AddLink>
+              </div>
             </div>
 
             {/* ── DELIVERY SCHEDULE ── */}
@@ -1108,12 +1153,12 @@ export function CreateTruckingModal({
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: "#667085", letterSpacing: "0.06em" }}>DEA Date</label>
-                        <NeuronDatePicker value={drop.deaDate} onChange={(v) => updateDrop(di, "deaDate", v)} />
-                      </div>
-                      <div>
                         <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: "#667085", letterSpacing: "0.06em" }}>Delivery Schedule Date</label>
                         <DateRow dateValue={drop.deliveryScheduleDate} onDateChange={(v) => updateDrop(di, "deliveryScheduleDate", v)} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: "#667085", letterSpacing: "0.06em" }}>DEA Date</label>
+                        <NeuronDatePicker value={drop.deaDate} onChange={(v) => updateDrop(di, "deaDate", v)} />
                       </div>
                     </div>
 
@@ -1192,15 +1237,9 @@ export function CreateTruckingModal({
                       {form.deliveryAddresses.length > 1 && <RemoveBtn onClick={() => removeAddress(ai)} />}
                     </div>
 
-                    <div className="grid grid-cols-[2fr_1fr] gap-4">
-                      <div>
-                        <Label>Street Address</Label>
-                        <TextInput value={addr.address} onChange={(v) => updateAddress(ai, "address", v)} placeholder="Full address" />
-                      </div>
-                      <div>
-                        <Label>Postal Code</Label>
-                        <TextInput value={addr.postalCode} onChange={(v) => updateAddress(ai, "postalCode", v)} placeholder="Postal code" />
-                      </div>
+                    <div>
+                      <Label>Full Address</Label>
+                      <TextInput value={addr.address} onChange={(v) => updateAddress(ai, "address", v)} placeholder="Full address" />
                     </div>
 
                     {addr.recipients.map((rec, ri) => (
@@ -1248,21 +1287,26 @@ export function CreateTruckingModal({
               </div>
             </div>
 
-            {/* ── TRUCKING RATE ── */}
+            {/* ── RATE AND VENDOR ── */}
             <div>
-              <SectionHeader>Trucking Rate</SectionHeader>
-              <div className="w-64">
-                <Label>Rate (₱)</Label>
-                <TextInput value={form.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
-              </div>
-            </div>
-
-            {/* ── TRUCKING VENDOR ── */}
-            <div>
-              <SectionHeader>Trucking Vendor</SectionHeader>
-              <div className="w-80">
-                <Label>Trucking Company</Label>
-                <VendorDropdown value={form.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
+              <SectionHeader>Rate and Vendor</SectionHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Rate (₱)</Label>
+                    <TextInput value={form.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <Label>Trucking Company</Label>
+                    <VendorDropdown value={form.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>SOA Number</Label>
+                    <TextInput value={form.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1281,26 +1325,32 @@ export function CreateTruckingModal({
               </div>
             </div>
 
-            {/* ── TRUCKING SOA ── */}
-            <div>
-              <SectionHeader>Trucking – SOA</SectionHeader>
-              <div className="w-80">
-                <Label>SOA Number</Label>
-                <input
-                  type="text"
-                  value={form.truckingSoa}
-                  onChange={(e) => set("truckingSoa", e.target.value)}
-                  placeholder="Enter SOA number"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
-                  style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", backgroundColor: "#FFFFFF" }}
-                />
-              </div>
-            </div>
-
             {/* ── Status ── */}
             <div>
               <SectionHeader>Status</SectionHeader>
-              <TagSelector selected={form.remarks} onChange={(tags) => set("remarks", tags)} />
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "13px", fontWeight: 600, color: "#344054" }}>
+                  Trucking Status
+                </label>
+                <select
+                  value={form.truckingStatus || DEFAULT_TRUCKING_STATUS}
+                  onChange={(e) => setForm((prev) => ({ ...prev, truckingStatus: e.target.value }))}
+                  style={{
+                    padding: "10px 12px",
+                    fontSize: "13px",
+                    border: "1px solid #D0D5DD",
+                    borderRadius: "8px",
+                    color: "#0A1D4D",
+                    background: "#FFFFFF",
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
+                >
+                  {TRUCKING_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
 
               {/* Remarks Drops — Start & Done date/time per drop */}
               <div className="mt-5 space-y-3">
@@ -1341,75 +1391,53 @@ export function CreateTruckingModal({
             {/* ── EMPTY RETURN ── */}
             <div>
               <SectionHeader>Empty Return</SectionHeader>
-              <div className="w-80 mb-4">
-                <Label>Destination</Label>
-                <NeuronDropdown value={form.emptyReturn} options={EMPTY_RETURN_OPTIONS} onChange={(v) => set("emptyReturn", v)} placeholder="Select destination..." />
-              </div>
-              <div className="space-y-3">
-                {form.emptyReturnLocations.map((loc, li) => (
-                  <div
-                    key={li}
-                    className="rounded-xl p-5 space-y-4"
-                    style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Location {li + 1}</span>
-                      <RemoveBtn onClick={() => removeLocation(li)} />
-                    </div>
-                    <div>
-                      <Label>Location</Label>
-                      <TextInput value={loc.location} onChange={(v) => updateLocation(li, "location", v)} placeholder="Location name" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: "#667085", letterSpacing: "0.06em" }}>Start</label>
-                      <DateTimeRow
-                        dateValue={loc.startDate} timeValue={loc.startTime}
-                        onDateChange={(v) => updateLocation(li, "startDate", v)}
-                        onTimeChange={(v) => updateLocation(li, "startTime", v)}
-                        hideLabels
-                      />
-                    </div>
-                    {loc.showEnd ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-xs font-semibold uppercase" style={{ color: "#667085", letterSpacing: "0.06em" }}>End</label>
-                          <button
-                            type="button"
-                            onClick={() => toggleLocationShowEnd(li, false)}
-                            className="p-1 hover:bg-red-50 rounded transition-colors"
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}
-                          >
-                            <X size={15} />
-                          </button>
-                        </div>
-                        <DateTimeRow
-                          dateValue={loc.endDate} timeValue={loc.endTime}
-                          onDateChange={(v) => updateLocation(li, "endDate", v)}
-                          onTimeChange={(v) => updateLocation(li, "endTime", v)}
-                          hideLabels
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => toggleLocationShowEnd(li, true)}
-                        className="flex items-center gap-1 text-sm font-semibold hover:opacity-80 transition-opacity"
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#0F766E", padding: 0 }}
-                      >
-                        <Plus size={14} />
-                        Add end time
-                      </button>
-                    )}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Location</Label>
+                    <NeuronDropdown value={form.emptyReturn} options={EMPTY_RETURN_OPTIONS} onChange={(v) => set("emptyReturn", v)} placeholder="Select location..." />
                   </div>
-                ))}
-                <AddLink onClick={addLocation}>Add Location</AddLink>
+                  <div>
+                    <Label>Free Time</Label>
+                    <TextInput value={form.freeTime} onChange={(v) => set("freeTime", v)} placeholder="Enter free time" />
+                  </div>
+                </div>
+                {(form.emptyReturn === "CY" || form.emptyReturn === "Pre-Advice CY") && (
+                  <div>
+                    <Label>Container Yard</Label>
+                    <TextInput value={form.containerYard} onChange={(v) => set("containerYard", v)} placeholder="Enter container yard" />
+                  </div>
+                )}
+                <DateTimeRow
+                  dateValue={form.detentionStartDate} timeValue={form.detentionStartTime}
+                  onDateChange={(v) => set("detentionStartDate", v)} onTimeChange={(v) => set("detentionStartTime", v)}
+                  dateLabel="Detention Start"
+                />
+                <div>
+                  <Label>Additional Note</Label>
+                  <textarea
+                    value={form.emptyReturnNote}
+                    onChange={(e) => set("emptyReturnNote", e.target.value)}
+                    rows={5}
+                    placeholder="Enter any additional notes or instructions..."
+                    className="w-full px-4 py-2.5 rounded-lg border resize-y"
+                    style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
+                  />
+                </div>
               </div>
             </div>
 
             {/* ── OTHER FEES ── */}
             <div>
               <SectionHeader>Other Fees</SectionHeader>
-              <TextInput value={form.otherFees} onChange={(v) => set("otherFees", v)} placeholder="Describe other fees" />
+              <textarea
+                value={form.otherFees}
+                onChange={(e) => set("otherFees", e.target.value)}
+                rows={5}
+                placeholder="Describe other fees..."
+                className="w-full px-4 py-2.5 rounded-lg border resize-y"
+                style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
+              />
             </div>
 
             {/* ── STORAGE & DEMURRAGE ── */}
@@ -1431,26 +1459,31 @@ export function CreateTruckingModal({
                   onDateChange={(v) => set("demurrageBeginDate", v)} onTimeChange={(v) => set("demurrageBeginTime", v)}
                   dateLabel="Demurrage Begin"
                 />
+                <DateTimeRow
+                  dateValue={form.demurragePaymentDate} timeValue={form.demurragePaymentTime}
+                  onDateChange={(v) => set("demurragePaymentDate", v)} onTimeChange={(v) => set("demurragePaymentTime", v)}
+                  dateLabel="Demurrage Payment"
+                />
               </div>
             </div>
 
-            {/* ── CONTAINER DAMAGE ── */}
+            {/* ── ADDITIONAL INFO ── */}
             <div>
-              <SectionHeader>Container Damage</SectionHeader>
-              <TextInput value={form.containerDamage} onChange={(v) => set("containerDamage", v)} placeholder="Describe any damage" />
-            </div>
-
-            {/* ── DO & PADLOCK ── */}
-            <div>
-              <SectionHeader>DO & Padlock</SectionHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>DO Date</Label>
-                  <DateRow dateValue={form.doDate} onDateChange={(v) => set("doDate", v)} />
+              <SectionHeader>Additional Info</SectionHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>DO Date</Label>
+                    <DateRow dateValue={form.doDate} onDateChange={(v) => set("doDate", v)} />
+                  </div>
+                  <div>
+                    <Label>Padlock Date</Label>
+                    <DateRow dateValue={form.padlockDate} onDateChange={(v) => set("padlockDate", v)} />
+                  </div>
                 </div>
                 <div>
-                  <Label>Padlock Date</Label>
-                  <DateRow dateValue={form.padlockDate} onDateChange={(v) => set("padlockDate", v)} />
+                  <Label>Container Damage</Label>
+                  <TextInput value={form.containerDamage} onChange={(v) => set("containerDamage", v)} placeholder="Describe any damage" />
                 </div>
               </div>
             </div>
