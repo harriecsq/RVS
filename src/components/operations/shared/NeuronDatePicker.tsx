@@ -30,30 +30,11 @@ const MONTH_NAMES = [
 ];
 const DAY_HEADERS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
-function formatDateInput(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  let f = digits.slice(0, 2);
-  if (digits.length >= 3) f += "/" + digits.slice(2, 4);
-  if (digits.length >= 5) f += "/" + digits.slice(4, 8);
-  return f;
-}
-
 function parseISOToDisplay(iso: string): string {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   if (y && m && d) return `${m}/${d}/${y}`;
   return "";
-}
-
-function parseDisplayToISO(display: string): string {
-  const digits = display.replace(/\D/g, "");
-  if (digits.length !== 8) return "";
-  const mm = digits.slice(0, 2);
-  const dd = digits.slice(2, 4);
-  const yyyy = digits.slice(4, 8);
-  const mNum = parseInt(mm, 10), dNum = parseInt(dd, 10), yNum = parseInt(yyyy, 10);
-  if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31 || yNum < 1900 || yNum > 2100) return "";
-  return `${yyyy}-${mm}-${dd}`;
 }
 
 function toISO(year: number, month: number, day: number): string {
@@ -264,15 +245,6 @@ export function NeuronDatePicker({
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  // Handle text input
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatDateInput(e.target.value);
-    setDisplay(formatted);
-    const iso = parseDisplayToISO(formatted);
-    if (iso) onChange(iso);
-    else if (!formatted) onChange("");
-  };
-
   // Handle day click
   const handleDayClick = (cell: CalendarDay) => {
     const iso = toISO(cell.year, cell.month, cell.day);
@@ -320,48 +292,41 @@ export function NeuronDatePicker({
 
   return (
     <div ref={wrapperRef} style={{ position: "relative" }}>
-      {/* Text input + calendar icon */}
-      <div ref={inputRef} style={{ position: "relative" }}>
-        <input
-          type="text"
-          value={display}
-          onChange={handleTextChange}
-          placeholder={placeholder}
-          disabled={disabled}
-          maxLength={10}
-          className="w-full px-4 py-2.5 rounded-lg border transition-colors"
-          style={{
-            borderColor: "#E5E9F0",
-            fontSize: "14px",
-            color: "#0A1D4D",
-            outline: "none",
-            backgroundColor: "#FFFFFF",
-            paddingRight: "40px",
-            ...extraStyle,
-          }}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          disabled={disabled}
-          onClick={() => setOpen(!open)}
+      {/* Clickable field — opens calendar on click anywhere */}
+      <div
+        ref={inputRef}
+        onClick={() => { if (!disabled) setOpen(!open); }}
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
+          padding: "9px 40px 9px 16px",
+          borderRadius: "8px",
+          border: "1px solid #E5E9F0",
+          fontSize: "14px",
+          color: display ? "#0A1D4D" : "#9CA3AF",
+          backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF",
+          cursor: disabled ? "default" : "pointer",
+          userSelect: "none",
+          transition: "border-color 0.15s",
+          ...extraStyle,
+        }}
+        onMouseEnter={(e) => { if (!disabled && !open) e.currentTarget.style.borderColor = "#D1D5DB"; }}
+        onMouseLeave={(e) => { if (!disabled && !open) e.currentTarget.style.borderColor = "#E5E9F0"; }}
+      >
+        <span>{display || placeholder}</span>
+        <Calendar
+          size={16}
           style={{
             position: "absolute",
             right: "10px",
             top: "50%",
             transform: "translateY(-50%)",
-            background: "none",
-            border: "none",
-            cursor: disabled ? "default" : "pointer",
-            padding: "2px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             color: "#9CA3AF",
+            pointerEvents: "none",
           }}
-        >
-          <Calendar size={16} />
-        </button>
+        />
       </div>
 
       {/* Calendar popup — portal to body to escape overflow:hidden containers */}

@@ -2,8 +2,8 @@
  * ContainerSelector — shared component for selecting containers from a booking.
  * Used in trucking creation (single-select + basis autofill) and voucher creation (multi-select).
  */
-import { useState, useEffect } from "react";
-import { Check, Copy } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Check, Copy, ChevronDown } from "lucide-react";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import type { TruckingRecord } from "../operations/CreateTruckingModal";
@@ -67,6 +67,137 @@ function parseContainersFromBooking(b: any): ContainerInfo[] {
   }
 
   return [];
+}
+
+function formatRate(rate: string | number | undefined): string {
+  if (!rate) return "No rate";
+  const num = typeof rate === "string" ? parseFloat(rate.replace(/[^0-9.]/g, "")) : rate;
+  if (isNaN(num)) return String(rate);
+  return `₱${num.toLocaleString("en-PH")}`;
+}
+
+function getTruckingRef(record: TruckingRecord): string {
+  if (record.truckingRefNo) return record.truckingRefNo;
+  return "—";
+}
+
+function BasisDropdown({
+  records,
+  onSelect,
+}: {
+  records: TruckingRecord[];
+  onSelect: (record: TruckingRecord) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<TruckingRecord | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSelect = (r: TruckingRecord) => {
+    setSelected(r);
+    setOpen(false);
+    onSelect(r);
+  };
+
+  const label = selected
+    ? `${getTruckingRef(selected)} · ${selected.containerNo || "—"} · ${selected.truckingVendor || "—"} · ${formatRate(selected.truckingRate)}`
+    : null;
+
+  return (
+    <div style={{ marginTop: "12px" }}>
+      <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "6px" }}>
+        <Copy size={13} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+        Copy details from existing trucking record:
+      </label>
+      <div ref={ref} style={{ position: "relative" }}>
+        <div
+          onClick={() => setOpen((o) => !o)}
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            fontSize: "14px",
+            border: "1px solid #E5E9F0",
+            borderRadius: "8px",
+            backgroundColor: "#FFFFFF",
+            color: label ? "#0A1D4D" : "#9CA3AF",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            boxSizing: "border-box",
+          }}
+        >
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {label || "Select a record to copy from..."}
+          </span>
+          <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0, marginLeft: "8px" }} />
+        </div>
+
+        {open && (
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: "calc(100% + 4px)",
+              zIndex: 9999,
+              backgroundColor: "#FFFFFF",
+              border: "1px solid #E5E9F0",
+              borderRadius: "8px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
+              overflow: "auto",
+              maxHeight: "240px",
+            }}
+          >
+            {records.map((r) => {
+              const isActive = selected?.id === r.id;
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => handleSelect(r)}
+                  style={{
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    backgroundColor: isActive ? "#F0FAF8" : "transparent",
+                    borderBottom: "1px solid #F3F4F6",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = isActive ? "#F0FAF8" : "transparent"; }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F766E", flexShrink: 0 }}>
+                      {getTruckingRef(r)}
+                    </span>
+                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D", flexShrink: 0 }}>
+                      {r.containerNo || "—"}
+                    </span>
+                    <span style={{ fontSize: "13px", color: "#667085", flexShrink: 0 }}>
+                      {r.truckingVendor || "No vendor"}
+                    </span>
+                    <span style={{ fontSize: "13px", color: "#374151", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                      {formatRate(r.truckingRate)}
+                    </span>
+                  </div>
+                  {isActive && <Check size={14} style={{ color: "#0F766E", flexShrink: 0 }} />}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function ContainerSelector({
@@ -192,36 +323,10 @@ export function ContainerSelector({
       </div>
 
       {onBasisSelected && existingTruckingRecords.length > 0 && (
-        <div style={{ marginTop: "12px" }}>
-          <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "6px" }}>
-            <Copy size={13} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-            Copy details from existing trucking record:
-          </label>
-          <select
-            onChange={(e) => {
-              const record = existingTruckingRecords.find((r) => r.id === e.target.value);
-              if (record) onBasisSelected(record);
-            }}
-            defaultValue=""
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              fontSize: "14px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              backgroundColor: "#FFFFFF",
-              color: "#0A1D4D",
-              cursor: "pointer",
-            }}
-          >
-            <option value="" disabled>Select a record to copy from...</option>
-            {existingTruckingRecords.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.containerNo || "Unknown"} — {r.truckingVendor || "No vendor"} — {r.truckingRate ? `Rate: ${r.truckingRate}` : "No rate"}
-              </option>
-            ))}
-          </select>
-        </div>
+        <BasisDropdown
+          records={existingTruckingRecords}
+          onSelect={onBasisSelected}
+        />
       )}
     </div>
   );

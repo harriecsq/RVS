@@ -14,6 +14,7 @@ interface StandardTabsProps {
   onChange?: (tabId: string) => void;
   onTabChange?: (tabId: string) => void; // Backward compatibility
   style?: React.CSSProperties; // Allow custom styles
+  actions?: React.ReactNode; // Right-aligned action slot (Activity, Edit, Actions buttons)
 }
 
 /**
@@ -31,7 +32,7 @@ interface StandardTabsProps {
  * - Optional: Badge support for counts
  * - Optional: Custom colors per tab
  */
-export function StandardTabs({ tabs, activeTab, onChange, onTabChange, style }: StandardTabsProps) {
+export function StandardTabs({ tabs, activeTab, onChange, onTabChange, style, actions }: StandardTabsProps) {
   // Support both onChange and onTabChange for backward compatibility
   const handleChange = onChange || onTabChange;
   
@@ -39,6 +40,7 @@ export function StandardTabs({ tabs, activeTab, onChange, onTabChange, style }: 
     <div
       style={{
         display: "flex",
+        alignItems: "center",
         gap: "var(--ds-space-sm)",
         borderBottom: "1px solid var(--ds-border)",
         padding: "0 var(--ds-space-4xl)",
@@ -102,6 +104,18 @@ export function StandardTabs({ tabs, activeTab, onChange, onTabChange, style }: 
           </button>
         );
       })}
+      {actions && (
+        <div style={{
+          marginLeft: "auto",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          flexShrink: 0,
+          padding: "6px 0",
+        }}>
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

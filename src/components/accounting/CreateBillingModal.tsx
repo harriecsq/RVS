@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Plus, Trash2, Receipt, Link2 } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { ArrowLeft, Plus, Trash2, Receipt, Link2, ChevronDown, Check } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { formatAmount } from "../../utils/formatAmount";
@@ -25,6 +25,62 @@ function computeVolumeSummary(containerNo: string | string[], volume: string): s
   }
   if (!volume) return "—";
   return `${containerCount}x${volume}`;
+}
+
+function NeuronDropdown({
+  value, options, onChange, placeholder = "Select...",
+}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+          border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
+          alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+          color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
+        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
+      </div>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
+        }}>
+          {options.map((opt) => (
+            <div
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false); }}
+              style={{
+                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
+              }}
+              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
+            >
+              {opt}
+              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface CreateBillingScreenProps {
@@ -82,7 +138,7 @@ export function CreateBillingScreen({
   const [clientName, setClientName] = useState<string>("");
   const [companyName, setCompanyName] = useState<string>("");
   const [category, setCategory] = useState<string>("");
-  const [billingDate, setBillingDate] = useState<string>("");
+  const [billingDate, setBillingDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [creationDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Billing particulars
@@ -115,6 +171,26 @@ export function CreateBillingScreen({
   const [expenseBillingAmount, setExpenseBillingAmount] = useState<number>(0);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Billing Reference fields
+  const [billingCompanyCode, setBillingCompanyCode] = useState("RVS");
+  const [billingYear, setBillingYear] = useState(String(new Date().getFullYear()));
+  const [billingRefNumber, setBillingRefNumber] = useState("");
+  const [nextBillingNumber, setNextBillingNumber] = useState<number | null>(null);
+
+  // Fetch next billing number when company/year changes
+  useEffect(() => {
+    const params = new URLSearchParams({
+      companyCode: billingCompanyCode,
+      year: billingYear,
+    });
+    fetch(`${API_BASE_URL}/next-ref/billing?${params}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setNextBillingNumber(d.nextNumber); })
+      .catch(() => {});
+  }, [billingCompanyCode, billingYear]);
 
   // Auto-filled fields tracking
   const [autoFilledFields, setAutoFilledFields] = useState<Record<string, boolean>>({});
@@ -397,6 +473,10 @@ export function CreateBillingScreen({
       // Extract client ID from booking if available
       const clientId = selectedBooking?.client_id || selectedBooking?.clientId || selectedBooking?.customer_id || selectedBooking?.customerId || "";
 
+      // Build billingNumber from compound fields — always send a formatted number
+      const numPart = billingRefNumber.trim() || (nextBillingNumber !== null ? String(nextBillingNumber) : "1");
+      const fullBillingNumber = `${billingCompanyCode} ${billingYear}-${numPart}`;
+
       const response = await fetch(`${API_BASE_URL}/billings`, {
         method: "POST",
         headers: {
@@ -404,6 +484,9 @@ export function CreateBillingScreen({
           Authorization: `Bearer ${publicAnonKey}`,
         },
         body: JSON.stringify({
+          billingNumber: fullBillingNumber,
+          billingCompanyCode,
+          billingYear: parseInt(billingYear) || new Date().getFullYear(),
           bookingId: selectedBookingId, // Primary link
           bookingIds: [selectedBookingId], // Legacy support
           clientId, // Save Client ID for filtering
@@ -486,7 +569,61 @@ export function CreateBillingScreen({
       <form onSubmit={handleSubmit}>
         <div style={{ padding: "32px 48px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-            
+
+            {/* ── BILLING REFERENCE ── */}
+            <div style={{
+              background: "white",
+              borderRadius: "12px",
+              border: "1px solid #E5E9F0",
+            }}>
+              <div style={{
+                padding: "16px 24px",
+                borderBottom: "1px solid #E5E9F0",
+                background: "#F9FAFB",
+                borderRadius: "12px 12px 0 0",
+              }}>
+                <div style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D" }}>
+                  Billing Reference
+                </div>
+              </div>
+              <div style={{ padding: "20px 24px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+                  <div>
+                    <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Company Code</Label>
+                    <NeuronDropdown
+                      value={billingCompanyCode}
+                      onChange={setBillingCompanyCode}
+                      options={["SCI", "RDS", "RVS", "SW"]}
+                      placeholder="Code"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Year</Label>
+                    <Input
+                      value={billingYear}
+                      onChange={e => setBillingYear(e.target.value.replace(/\D/g, ""))}
+                      placeholder={String(new Date().getFullYear())}
+                      style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                      className="focus-visible:ring-[#237F66]"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Number</Label>
+                    <Input
+                      value={billingRefNumber}
+                      onChange={e => setBillingRefNumber(e.target.value.replace(/\D/g, ""))}
+                      placeholder={nextBillingNumber !== null ? String(nextBillingNumber) : "…"}
+                      style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                      className="focus-visible:ring-[#237F66]"
+                    />
+                  </div>
+                </div>
+                <p style={{ fontSize: "12px", marginTop: "8px", color: "#9CA3AF" }}>
+                  {billingCompanyCode} {billingYear}-{billingRefNumber || (nextBillingNumber !== null ? nextBillingNumber : "")}
+                </p>
+              </div>
+            </div>
+
             {/* ── BOOKING DETAILS (unified summary card) ── */}
             <div style={{
               background: "white",
@@ -635,7 +772,7 @@ export function CreateBillingScreen({
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <Label className="text-[13px] font-medium text-[#667085] mb-2 block">
-                    Billing Date <span className="text-red-500">*</span>
+                    Date <span className="text-red-500">*</span>
                   </Label>
                   <SingleDateInput
                     value={billingDate}

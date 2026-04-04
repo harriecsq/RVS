@@ -1,11 +1,10 @@
 /**
  * DateTimeInput — a combined date + time picker used across the Trucking module.
- * Date: text field with MM/DD/YYYY masking (same as DateInput).
- * Time: native <input type="time"> styled to match the Neuron design system.
+ * Date: clickable field that opens NeuronDatePicker calendar popup.
+ * Time: clickable field that opens NeuronTimePicker scroll popup.
  */
-import { useState, useEffect } from "react";
-import { Calendar, Clock } from "lucide-react";
 import { NeuronTimePicker } from "./NeuronTimePicker";
+import { NeuronDatePicker } from "./NeuronDatePicker";
 
 interface DateTimeInputProps {
   dateValue: string;   // YYYY-MM-DD
@@ -24,32 +23,6 @@ function formatDateDisplay(isoDate: string): string {
   if (y && m && d) return `${m}/${d}/${y}`;
   return "";
 }
-
-function parseDisplayToISO(display: string): string | null {
-  const digits = display.replace(/\D/g, "");
-  if (digits.length !== 8) return null;
-  const mm = digits.slice(0, 2);
-  const dd = digits.slice(2, 4);
-  const yyyy = digits.slice(4, 8);
-  const mNum = parseInt(mm, 10);
-  const dNum = parseInt(dd, 10);
-  const yNum = parseInt(yyyy, 10);
-  if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31 || yNum < 1900 || yNum > 2100) return null;
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-const INPUT_STYLE: React.CSSProperties = {
-  width: "100%",
-  padding: "9px 12px",
-  border: "1px solid #E5E9F0",
-  borderRadius: "8px",
-  fontSize: "14px",
-  color: "#0A1D4D",
-  backgroundColor: "#FFFFFF",
-  outline: "none",
-  boxSizing: "border-box" as const,
-  fontFamily: "inherit",
-};
 
 const LABEL_STYLE: React.CSSProperties = {
   display: "block",
@@ -71,57 +44,12 @@ export function DateTimeInput({
   timeLabel = "Time",
   compact,
 }: DateTimeInputProps) {
-  const [displayDate, setDisplayDate] = useState(formatDateDisplay(dateValue));
-
-  useEffect(() => {
-    const formatted = formatDateDisplay(dateValue);
-    if (formatted !== displayDate) setDisplayDate(formatted);
-  }, [dateValue]);
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value;
-    if (!raw) {
-      setDisplayDate("");
-      onDateChange("");
-      return;
-    }
-    const digits = raw.replace(/\D/g, "").slice(0, 8);
-    let formatted = digits.slice(0, 2);
-    if (digits.length > 2) formatted += "/" + digits.slice(2, 4);
-    if (digits.length > 4) formatted += "/" + digits.slice(4, 8);
-    setDisplayDate(formatted);
-    const iso = parseDisplayToISO(formatted);
-    if (iso) onDateChange(iso);
-    else if (!digits) onDateChange("");
-  };
-
   return (
     <div style={{ display: "flex", gap: "12px" }}>
       {/* Date */}
       <div style={{ flex: 1 }}>
         {!compact && <label style={LABEL_STYLE}>{dateLabel}</label>}
-        <div style={{ position: "relative" }}>
-          <input
-            type="text"
-            value={displayDate}
-            onChange={handleDateChange}
-            placeholder="MM/DD/YYYY"
-            disabled={disabled}
-            style={{ ...INPUT_STYLE, paddingRight: "36px" }}
-            maxLength={10}
-          />
-          <Calendar
-            size={16}
-            style={{
-              position: "absolute",
-              right: "10px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#9CA3AF",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
+        <NeuronDatePicker value={dateValue} onChange={onDateChange} disabled={disabled} />
       </div>
       {/* Time */}
       <div style={{ flex: 1 }}>

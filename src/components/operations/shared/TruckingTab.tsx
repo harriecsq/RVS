@@ -18,6 +18,11 @@ interface TruckingTabProps {
   bookingType: string;
   currentUser?: { name: string; email: string; department: string } | null;
   onBookingTagsUpdated?: () => void;
+  segmentId?: string;
+  externalEdit?: boolean;
+  onEditStateChange?: (editing: boolean) => void;
+  onRecordSelected?: (hasSelection: boolean) => void;
+  externalSaveCounter?: number;
 }
 
 function VendorPill({ vendor }: { vendor: string }) {
@@ -47,6 +52,11 @@ export function TruckingTab({
   bookingType,
   currentUser,
   onBookingTagsUpdated,
+  segmentId,
+  externalEdit,
+  onEditStateChange,
+  onRecordSelected,
+  externalSaveCounter,
 }: TruckingTabProps) {
   const [records, setRecords] = useState<TruckingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,13 +65,14 @@ export function TruckingTab({
 
   useEffect(() => {
     fetchRecords();
-  }, [bookingId]);
+  }, [bookingId, segmentId]);
 
   const fetchRecords = async () => {
     setIsLoading(true);
     try {
+      const segParam = segmentId ? `&segmentId=${segmentId}` : "";
       const res = await fetch(
-        `${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`,
+        `${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}${segParam}`,
         { headers: { Authorization: `Bearer ${publicAnonKey}` } }
       );
       const result = await res.json();
@@ -93,11 +104,15 @@ export function TruckingTab({
           onBack={() => {
             setSelectedRecord(null);
             fetchRecords();
+            onRecordSelected?.(false);
           }}
           onUpdate={fetchRecords}
           currentUser={currentUser}
           embedded
           onBookingTagsUpdated={onBookingTagsUpdated}
+          externalEdit={externalEdit}
+          onEditStateChange={onEditStateChange}
+          externalSaveCounter={externalSaveCounter}
         />
         <CreateTruckingModal
           isOpen={showCreate}
@@ -105,6 +120,7 @@ export function TruckingTab({
           onSaved={handleSaved}
           prefillBookingId={bookingId}
           prefillBookingType={bookingType}
+          prefillSegmentId={segmentId}
         />
       </>
     );
@@ -206,7 +222,7 @@ export function TruckingTab({
                 return (
                   <tr
                     key={r.id}
-                    onClick={() => setSelectedRecord(r)}
+                    onClick={() => { setSelectedRecord(r); onRecordSelected?.(true); }}
                     style={{
                       borderBottom: "1px solid #E5E9F0",
                       cursor: "pointer",

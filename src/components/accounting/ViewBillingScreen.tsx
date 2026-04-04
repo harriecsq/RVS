@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, FileText, DollarSign, Receipt, Edit2, Save, XCircle, ChevronDown, Clock, Edit3, X, Plus, Trash2, Link2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, FileText, DollarSign, Receipt, Edit2, Save, XCircle, ChevronDown, X, Plus, Trash2, Link2, Check } from "lucide-react";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { CreateCollectionPanel } from "./CreateCollectionPanel";
 import { CollectionDetailPanel } from "./CollectionDetailPanel";
@@ -7,7 +7,8 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { StandardTabs, StandardButton } from "../design-system";
 import { NEURON_STYLES, NEURON_COLORS, NEURON_SPACING, NEURON_TYPOGRAPHY, NEURON_BORDERS, createHoverHandlers } from "../design-system/neuron-design-tokens";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
+import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { TabRowActions } from "../shared/TabRowActions";
 import { formatAmount } from "../../utils/formatAmount";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { BookingSelector } from "../selectors/BookingSelector";
@@ -22,9 +23,25 @@ interface ViewBillingScreenProps {
   onBack?: () => void;
   /** When true, hides header/back button, metadata bar, and tab navigation. Renders overview content only. */
   embedded?: boolean;
+  /** When provided, edit mode is controlled externally (from parent's tab row). */
+  externalEdit?: boolean;
+  /** Called when edit state changes internally (cancel/save). */
+  onEditStateChange?: (editing: boolean) => void;
+  /** Increment to trigger save from parent. */
+  externalSaveCounter?: number;
 }
 
 type BillingStatus = "Draft" | "For Approval" | "Approved" | "Completed" | "Partially Collected" | "Cancelled";
+
+const BILLING_STATUS_COLORS: Record<string, string> = {
+  "Draft": "#6B7280",
+  "For Approval": "#F59E0B",
+  "Approved": "#3B82F6",
+  "Completed": "#10B981",
+  "Partially Collected": "#F97316",
+  "Cancelled": "#DC2626",
+};
+const BILLING_STATUSES = ["Draft", "For Approval", "Approved", "Completed", "Partially Collected", "Cancelled"];
 
 interface BillingParticular {
   id: string;
@@ -123,13 +140,84 @@ interface Expense {
   amount: number;
 }
 
-export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewBillingScreenProps) {
+function NeuronDropdown({
+  value, options, onChange, placeholder = "Select...",
+}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div onClick={() => setOpen(!open)} style={{
+        width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+        border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
+        alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+        color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
+      }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
+        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
+      </div>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
+        }}>
+          {options.map((opt) => (
+            <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
+              style={{
+                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
+              }}
+              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
+            >
+              {opt}
+              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ViewBillingScreen({ billingId, onBack, embedded = false, externalEdit, onEditStateChange, externalSaveCounter }: ViewBillingScreenProps) {
   const [billing, setBilling] = useState<Billing | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "collections" | "attachments">("overview");
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditingInternal] = useState(false);
+
+  // Sync with external edit control
+  const setIsEditing = (editing: boolean) => {
+    setIsEditingInternal(editing);
+    onEditStateChange?.(editing);
+  };
+
+  // React to external edit requests
+  useEffect(() => {
+    if (externalEdit !== undefined) {
+      setIsEditingInternal(externalEdit);
+      onEditStateChange?.(externalEdit);
+    }
+  }, [externalEdit]);
+
+  // React to external save requests
+  useEffect(() => {
+    if (externalSaveCounter && externalSaveCounter > 0 && isEditing) {
+      handleSave();
+    }
+  }, [externalSaveCounter]);
+
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -137,7 +225,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   // Edited state for all editable fields
   const [editedParticulars, setEditedParticulars] = useState<BillingParticular[]>([]);
   const [editedMargin, setEditedMargin] = useState(0);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [editedStatus, setEditedStatus] = useState<BillingStatus>("Draft");
   const [showTimeline, setShowTimeline] = useState(false);
   
@@ -164,6 +251,11 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
   const [editedCommodity, setEditedCommodity] = useState("");
   const [editedContractNumber, setEditedContractNumber] = useState("");
   const [editedExchangeRate, setEditedExchangeRate] = useState("");
+  const [editedBillingNumber, setEditedBillingNumber] = useState("");
+  const [editBillingCompanyCode, setEditBillingCompanyCode] = useState("RVS");
+  const [editBillingYear, setEditBillingYear] = useState(String(new Date().getFullYear()));
+  const [editBillingRefNumber, setEditBillingRefNumber] = useState("");
+  const [editNextBillingNumber, setEditNextBillingNumber] = useState<number | null>(null);
   const [editedContainerNumbers, setEditedContainerNumbers] = useState<string[]>([]);
   
   // Notes field
@@ -248,6 +340,19 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
       setEditedStatus(billing.status);
       
       // Initialize General Information fields
+      setEditedBillingNumber(billing.billingNumber || "");
+      // Parse billing number into components: "RVS 2026-1" -> code="RVS", year="2026", number="1"
+      const bn = billing.billingNumber || "";
+      const spaceIdx = bn.indexOf(" ");
+      if (spaceIdx > 0) {
+        setEditBillingCompanyCode(bn.slice(0, spaceIdx));
+        const rest = bn.slice(spaceIdx + 1); // "2026-1"
+        const dashIdx = rest.indexOf("-");
+        if (dashIdx > 0) {
+          setEditBillingYear(rest.slice(0, dashIdx));
+          setEditBillingRefNumber(rest.slice(dashIdx + 1));
+        }
+      }
       setEditedClientName(billing.clientName || "");
       setEditedCompanyName(billing.companyName || "");
       setEditedVoucherNumber(billing.voucherNumber || "");
@@ -305,6 +410,17 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
       fetchCollections();
     }
   }, [billing]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const params = new URLSearchParams({ companyCode: editBillingCompanyCode, year: editBillingYear });
+    fetch(`${API_BASE_URL}/next-ref/billing?${params}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.nextNumber) setEditNextBillingNumber(d.nextNumber); })
+      .catch(() => {});
+  }, [isEditing, editBillingCompanyCode, editBillingYear]);
 
   const fetchBillingDetails = async () => {
     setIsLoading(true);
@@ -539,6 +655,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
       
       // Prepare the update payload
       const updatePayload = {
+        billingNumber: `${editBillingCompanyCode} ${editBillingYear}-${editBillingRefNumber || (editNextBillingNumber !== null ? String(editNextBillingNumber) : "")}`,
         status: editedStatus,
         clientName: editedClientName,
         companyName: editedCompanyName,
@@ -734,7 +851,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
 
   const handleStatusChange = async (newStatus: BillingStatus) => {
     setEditedStatus(newStatus);
-    setShowStatusDropdown(false);
+
     
     try {
       const response = await fetch(`${API_BASE_URL}/billings/${billingId}`, {
@@ -870,260 +987,66 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
             
             {/* Title Block */}
             <div>
-              <h1 style={{
-                fontSize: "20px",
-                fontWeight: 600,
-                color: "var(--neuron-ink-primary)",
-                marginBottom: "0"
-              }}>
-                {billing.billingNumber}
-              </h1>
+              {isEditing ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "14px", color: "#667085", fontWeight: 500 }}>Ref:</span>
+                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>
+                      {editBillingCompanyCode} {editBillingYear}-{editBillingRefNumber || (editNextBillingNumber !== null ? editNextBillingNumber : "")}
+                    </span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", width: "320px" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Company</span>
+                      <NeuronDropdown
+                        value={editBillingCompanyCode}
+                        onChange={setEditBillingCompanyCode}
+                        options={["SCI", "RDS", "RVS", "SW"]}
+                        placeholder="Code"
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                      <input
+                        value={editBillingYear}
+                        onChange={e => setEditBillingYear(e.target.value.replace(/\D/g, ""))}
+                        style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                      <input
+                        value={editBillingRefNumber}
+                        onChange={e => setEditBillingRefNumber(e.target.value.replace(/\D/g, ""))}
+                        placeholder={editNextBillingNumber !== null ? String(editNextBillingNumber) : "…"}
+                        style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <h1 style={{
+                  fontSize: "20px",
+                  fontWeight: 600,
+                  color: "var(--neuron-ink-primary)",
+                  marginBottom: "0"
+                }}>
+                  {billing.billingNumber}
+                </h1>
+              )}
             </div>
           </div>
 
           <div style={{ display: "flex", gap: NEURON_SPACING.md, alignItems: "center" }}>
-            <button
-              onClick={() => setShowTimeline(!showTimeline)}
-              style={{
-                ...NEURON_STYLES.activityButton,
-                ...(showTimeline ? NEURON_STYLES.activityButtonActive : {})
-              }}
-              {...createHoverHandlers(
-                showTimeline ? undefined : NEURON_COLORS.interactive.hover
-              )}
-            >
-              <Clock size={16} />
-              Activity
-            </button>
-
-            {!isEditing && (
-              <>
-                <StandardButton
-                  variant="secondary"
-                  icon={<Edit3 size={16} />}
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Billing
-                </StandardButton>
-
-                <ActionsDropdown
-                  onDownloadPDF={() => {
-                    toast.success("PDF download starting...");
-                    // TODO: Implement PDF generation
-                  }}
-                  onDownloadWord={() => {
-                    toast.success("Word download starting...");
-                    // TODO: Implement Word generation
-                  }}
-                  onDelete={() => setShowDeleteConfirm(true)}
-                />
-              </>
-            )}
-
-            {isEditing && (
-              <>
-                <StandardButton
-                  variant="secondary"
-                  onClick={() => {
-                    setIsEditing(false);
-                    toast.info("Edit cancelled");
-                  }}
-                >
-                  Cancel
-                </StandardButton>
-                <StandardButton
-                  variant="primary"
-                  onClick={handleSave}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Saving..." : "Save Changes"}
-                </StandardButton>
-              </>
-            )}
+            <HeaderStatusDropdown
+              currentStatus={billing.status}
+              statusOptions={BILLING_STATUSES}
+              statusColorMap={BILLING_STATUS_COLORS}
+              onStatusChange={(s) => handleStatusChange(s as any)}
+            />
           </div>
         </div>
       </div>
-
-      {/* Metadata/Summary Bar */}
-      {!embedded && (<div style={{
-        background: (() => {
-          switch (billing.status) {
-            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
-            case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
-            case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
-            case "Completed": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
-            case "Partially Collected": return "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)";
-            case "Cancelled": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
-            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
-          }
-        })(),
-        borderBottom: "1.5px solid #0F766E",
-        padding: "16px 48px",
-        display: "flex",
-        alignItems: "center",
-        gap: "32px",
-        flexShrink: 0
-      }}>
-        {/* Total Amount */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Total Amount
-          </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "#0A1D4D" }}>
-            ₱{formatAmount(billing.totalAmount)}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Status - Editable Dropdown */}
-        <div style={{ position: "relative" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Status
-          </div>
-          
-          {/* Status Dropdown Trigger */}
-          <div
-            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            onBlur={() => setTimeout(() => setShowStatusDropdown(false), 200)}
-            tabIndex={0}
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: billing.status === "Draft" ? "#6B7280" :
-                     billing.status === "For Approval" ? "#F59E0B" :
-                     billing.status === "Approved" ? "#3B82F6" :
-                     billing.status === "Completed" ? "#10B981" :
-                     billing.status === "Partially Collected" ? "#F97316" :
-                     billing.status === "Cancelled" ? "#DC2626" : "#667085",
-              cursor: "pointer",
-              padding: "4px 24px 4px 8px",
-              borderRadius: "6px",
-              border: "1.5px solid transparent",
-              position: "relative",
-              transition: "all 0.2s ease",
-              background: showStatusDropdown ? "#FFFFFF" : "transparent"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#FFFFFF";
-              e.currentTarget.style.borderColor = "#0F766E";
-            }}
-            onMouseLeave={(e) => {
-              if (!showStatusDropdown) {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = "transparent";
-              }
-            }}
-          >
-            {billing.status}
-            
-            {/* Dropdown Arrow */}
-            <div style={{
-              position: "absolute",
-              right: "6px",
-              top: "50%",
-              transform: `translateY(-50%) ${showStatusDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
-              transition: "transform 0.2s ease",
-              pointerEvents: "none",
-              color: "#0F766E"
-            }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
-
-          {/* Status Dropdown Menu */}
-          {showStatusDropdown && (
-            <div style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              background: "white",
-              border: "1.5px solid #E5E9F0",
-              borderRadius: "8px",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-              zIndex: 50,
-              minWidth: "160px",
-              overflow: "hidden"
-            }}>
-              {["Draft", "For Approval", "Approved", "Completed", "Partially Collected", "Cancelled"].map((status, index) => (
-                <div
-                  key={status}
-                  onClick={() => handleStatusChange(status as BillingStatus)}
-                  style={{
-                    padding: "10px 14px",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    borderBottom: index < 5 ? "1px solid #E5E9F0" : "none",
-                    background: billing.status === status ? "#F0FDF4" : "white",
-                    color: status === "Draft" ? "#6B7280" :
-                           status === "For Approval" ? "#F59E0B" :
-                           status === "Approved" ? "#3B82F6" :
-                           status === "Completed" ? "#10B981" :
-                           status === "Partially Collected" ? "#F97316" :
-                           status === "Cancelled" ? "#DC2626" : "#667085",
-                    transition: "background 0.15s ease"
-                  }}
-                  onMouseEnter={(e) => {
-                    if (billing.status !== status) {
-                      e.currentTarget.style.background = "#F9FAFB";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = billing.status === status ? "#F0FDF4" : "white";
-                  }}
-                >
-                  {status}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Billing Date — always read-only in topbar */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Billing Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-            {billing.billingDate ? formatDate(billing.billingDate) : "—"}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Created Date */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Created Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-            {formatDate(billing.created_at)}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Project */}
-        {billing.projectName && (
-          <div>
-            <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-              Project
-            </div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-              {billing.projectName}
-            </div>
-          </div>
-        )}
-      </div>)}
 
       {/* Tab Navigation */}
       {!embedded && (
@@ -1135,6 +1058,25 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
           ]}
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as "overview" | "collections" | "attachments")}
+          actions={
+            <TabRowActions
+              showTimeline={showTimeline}
+              onToggleTimeline={() => setShowTimeline(!showTimeline)}
+              editLabel={activeTab === "overview" ? "Edit Billing" : null}
+              onEdit={() => setIsEditing(true)}
+              isEditing={isEditing}
+              onCancel={() => {
+                setIsEditing(false);
+                toast.info("Edit cancelled");
+              }}
+              onSave={handleSave}
+              isSaving={isLoading}
+              saveLabel="Save Changes"
+              onDelete={() => setShowDeleteConfirm(true)}
+              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadWord={() => toast.success("Word download starting...")}
+            />
+          }
         />
       )}
 
@@ -1356,7 +1298,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false }: ViewB
                 <div style={{ padding: "24px" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                     <div>
-                      <div style={NEURON_STYLES.fieldLabel}>Billing Date</div>
+                      <div style={NEURON_STYLES.fieldLabel}>Date</div>
                       {isEditing ? (
                         <SingleDateInput
                           value={editedBillingDate}

@@ -13,6 +13,15 @@ interface BillingsSubTabsProps {
   projectNumber?: string;
   bookingType: "forwarding" | "brokerage" | "trucking" | "marine-insurance" | "others" | "import" | "export";
   currentUser?: { name: string; email: string; department: string } | null;
+  segmentId?: string;
+  /** When provided, edit mode is controlled externally (from parent's tab row). */
+  externalEdit?: boolean;
+  /** Called when edit state changes in the embedded billing screen. */
+  onEditStateChange?: (editing: boolean) => void;
+  /** Called when a billing record is selected/deselected. Parent uses this to show/hide Edit button. */
+  onRecordSelected?: (hasSelection: boolean) => void;
+  /** Increment to trigger save from parent. */
+  externalSaveCounter?: number;
 }
 
 interface BillingRecord {
@@ -38,6 +47,10 @@ export function BillingsSubTabs({
   projectNumber,
   bookingType,
   currentUser,
+  externalEdit,
+  onEditStateChange,
+  onRecordSelected,
+  externalSaveCounter,
 }: BillingsSubTabsProps) {
   const [activeSubTab, setActiveSubTab] = useState<"billing-details" | "collections">("billing-details");
   const [selectedBillingId, setSelectedBillingId] = useState<string | null>(null);
@@ -71,6 +84,7 @@ export function BillingsSubTabs({
         if (result.data?.length === 1) {
           setSelectedBillingId(result.data[0].id);
           setSelectedBillingNumber(result.data[0].billingNumber);
+          onRecordSelected?.(true);
         }
       }
     } catch (error) {
@@ -96,12 +110,14 @@ export function BillingsSubTabs({
     setSelectedBillingId(billingId);
     setSelectedBillingNumber(billingNumber);
     setActiveSubTab("billing-details");
+    onRecordSelected?.(true);
   };
 
   const handleBackToList = () => {
     setSelectedBillingId(null);
     setSelectedBillingNumber("");
     setActiveSubTab("billing-details");
+    onRecordSelected?.(false);
   };
 
   // Build sub-tabs - only show Collections when a billing is selected
@@ -172,6 +188,9 @@ export function BillingsSubTabs({
             <ViewBillingScreen
               billingId={selectedBillingId}
               embedded={true}
+              externalEdit={externalEdit}
+              onEditStateChange={onEditStateChange}
+              externalSaveCounter={externalSaveCounter}
             />
           </div>
         )}

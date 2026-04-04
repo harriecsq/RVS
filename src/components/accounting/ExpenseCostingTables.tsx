@@ -14,6 +14,7 @@ export interface ExpenseLineItem {
   voucherNo?: string;
   isAutoFilled?: boolean;
   sourceVoucherLineItemId?: string; // ID link to the original voucher line item
+  multiplyByContainers?: boolean; // Export only: multiply unit price by container count (default true)
 }
 
 export interface ExpenseTablesData {
@@ -58,7 +59,7 @@ export const EXPORT_STANDARD_PARTICULARS: Record<string, string[]> = {
   "CUSTOMS": ["Export Division", "ODC", "Royalty Fee", "Lodgement Fee", "Processing Fee"],
   "PORT CHARGES": ["Arrastre", "Shut Out", "Waiting Fee", "Weighing"],
   "FORM E": ["Facilitation", "Registration Fee", "Forms", "Phyto Certificate"],
-  "MISCELLANEOUS": ["LONA", "Lalamove"],
+  "MISCELLANEOUS": ["LONA", "Lalamove", "BIR", "Labor", "DG Sticker", "Vanning Certificate"],
   // TRUCKING intentionally omitted — remains manual/free-entry only
 };
 
@@ -160,7 +161,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     particulars: "",
     amount: 0,
     currency: "PHP",
-    ...((!isImport) ? { unitPrice: 0, per: "40" } : {}),
+    ...((!isImport) ? { unitPrice: 0, per: "40", multiplyByContainers: true } : {}),
   });
 
   // Export-specific: compute container count from booking
@@ -177,10 +178,10 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
 
   // Export-specific: compute volume amount
   const parsedExchangeRate = parseFloat(String(exchangeRate || "1")) || 1;
-  const computeVolumeAmount = (unitPrice: number | string, per: string | undefined, currency: string | undefined) => {
+  const computeVolumeAmount = (unitPrice: number | string, per: string | undefined, currency: string | undefined, multiplyByContainers?: boolean) => {
     const parsedPrice = parseFloat(String(unitPrice)) || 0;
     const currencyMultiplier = (currency === "USD" || currency === "RMB") ? parsedExchangeRate : 1;
-    const containerMultiplier = (per === "40" || per === "20") ? containerCount : 1;
+    const containerMultiplier = (multiplyByContainers !== false) ? containerCount : 1;
     return parsedPrice * currencyMultiplier * containerMultiplier;
   };
 
@@ -190,12 +191,13 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     newTables[table] = (newTables[table] as ExpenseLineItem[]).map(item => {
       if (item.id !== id) return item;
       const updated = { ...item, [field]: value };
-      // Recompute amount whenever unitPrice, per, or currency changes
-      if (field === 'unitPrice' || field === 'per' || field === 'currency') {
+      // Recompute amount whenever unitPrice, per, currency, or multiplyByContainers changes
+      if (field === 'unitPrice' || field === 'per' || field === 'currency' || field === 'multiplyByContainers') {
         updated.amount = computeVolumeAmount(
           field === 'unitPrice' ? value : updated.unitPrice || 0,
           field === 'per' ? value : updated.per,
-          field === 'currency' ? value : updated.currency
+          field === 'currency' ? value : updated.currency,
+          field === 'multiplyByContainers' ? value : updated.multiplyByContainers
         );
       }
       return updated;
@@ -211,11 +213,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     cats[categoryName] = (cats[categoryName] || []).map(item => {
       if (item.id !== id) return item;
       const updated = { ...item, [field]: value };
-      if (field === 'unitPrice' || field === 'per' || field === 'currency') {
+      if (field === 'unitPrice' || field === 'per' || field === 'currency' || field === 'multiplyByContainers') {
         updated.amount = computeVolumeAmount(
           field === 'unitPrice' ? value : updated.unitPrice || 0,
           field === 'per' ? value : updated.per,
-          field === 'currency' ? value : updated.currency
+          field === 'currency' ? value : updated.currency,
+          field === 'multiplyByContainers' ? value : updated.multiplyByContainers
         );
       }
       return updated;
@@ -232,7 +235,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     Object.keys(cats).forEach(catName => {
       cats[catName] = (cats[catName] || []).map(item => {
         const updated = { ...item, currency };
-        updated.amount = computeVolumeAmount(updated.unitPrice || 0, updated.per, currency);
+        updated.amount = computeVolumeAmount(updated.unitPrice || 0, updated.per, currency, updated.multiplyByContainers);
         return updated;
       });
     });
@@ -931,7 +934,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
                 {items.map((item) => {
-                  const volumeAmount = computeVolumeAmount(item.unitPrice || 0, item.per, item.currency);
+                  const volumeAmount = computeVolumeAmount(item.unitPrice || 0, item.per, item.currency, item.multiplyByContainers);
                   return (
                     <tr
                       key={item.id}
@@ -1042,8 +1045,23 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                           </select>
                         </div>
                       </td>
+                      {/* Multiply by containers checkbox */}
+                      <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={item.multiplyByContainers !== false}
+                          onChange={(e) => handleExportCategoryUpdate(categoryName, item.id, 'multiplyByContainers', e.target.checked)}
+                          title={item.multiplyByContainers !== false ? `Multiplied by ${containerCount} containers` : "Not multiplied by containers"}
+                          style={{
+                            width: "16px",
+                            height: "16px",
+                            accentColor: "#0F766E",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </td>
                       {/* Volume */}
-                      <td style={{ padding: "8px 16px", width: "15%", textAlign: "right", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, background: "#FAFBFC" }}>
+                      <td style={{ padding: "8px 16px", width: "13%", textAlign: "right", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, background: "#FAFBFC" }}>
                         ₱{formatAmount(volumeAmount)}
                       </td>
                       {/* Voucher No */}
@@ -1440,7 +1458,10 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
               )}
               {!isImport && (
-                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>{containerCount}X40'HC</th>
+                <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
+              )}
+              {!isImport && (
+                <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{containerCount}X40'HC</th>
               )}
               <th style={{ padding: "12px 16px", textAlign: isImport ? "left" : "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
               <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: isImport ? "25%" : "10%" }}>{isImport ? "Amount" : "Voucher Amt"}</th>

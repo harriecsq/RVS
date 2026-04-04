@@ -6,13 +6,15 @@ interface ActionsDropdownProps {
   onDownloadWord?: () => void;
   onDelete: () => void;
   showDownload?: boolean; // Control whether to show download options
+  compact?: boolean; // Smaller button for tab row placement
 }
 
-export function ActionsDropdown({ 
-  onDownloadPDF, 
-  onDownloadWord, 
+export function ActionsDropdown({
+  onDownloadPDF,
+  onDownloadWord,
   onDelete,
-  showDownload = true 
+  showDownload = true,
+  compact = false
 }: ActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -41,13 +43,13 @@ export function ActionsDropdown({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "10px 20px",
-          height: "40px",
+          gap: compact ? "6px" : "8px",
+          padding: compact ? "6px 16px" : "10px 20px",
+          height: compact ? "32px" : "40px",
           background: "white",
           border: "1px solid #E5E9F0",
           borderRadius: "8px",
-          fontSize: "14px",
+          fontSize: compact ? "13px" : "14px",
           fontWeight: 600,
           color: "#0A1D4D",
           cursor: "pointer",

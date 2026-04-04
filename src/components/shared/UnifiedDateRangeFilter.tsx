@@ -32,30 +32,11 @@ const MONTH_NAMES = [
 ];
 const DAY_HEADERS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
-function formatDateInput(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  let f = digits.slice(0, 2);
-  if (digits.length >= 3) f += "/" + digits.slice(2, 4);
-  if (digits.length >= 5) f += "/" + digits.slice(4, 8);
-  return f;
-}
-
 function parseISOToDisplay(iso: string): string {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   if (y && m && d) return `${m}/${d}/${y}`;
   return "";
-}
-
-function parseDisplayToISO(display: string): string {
-  const digits = display.replace(/\D/g, "");
-  if (digits.length !== 8) return "";
-  const mm = digits.slice(0, 2);
-  const dd = digits.slice(2, 4);
-  const yyyy = digits.slice(4, 8);
-  const mNum = parseInt(mm, 10), dNum = parseInt(dd, 10), yNum = parseInt(yyyy, 10);
-  if (mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31 || yNum < 1900 || yNum > 2100) return "";
-  return `${yyyy}-${mm}-${dd}`;
 }
 
 function toISO(year: number, month: number, day: number): string {
@@ -221,14 +202,6 @@ export function SingleDateInput({
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatDateInput(e.target.value);
-    setDisplay(formatted);
-    const iso = parseDisplayToISO(formatted);
-    if (iso) onChange(iso);
-    else if (!formatted) onChange("");
-  };
-
   const handleDayClick = (cell: CalendarDay) => {
     const iso = toISO(cell.year, cell.month, cell.day);
     onChange(iso);
@@ -271,40 +244,34 @@ export function SingleDateInput({
 
   return (
     <div ref={wrapperRef} style={{ position: "relative", flex: 1, minWidth: 0 }}>
-      <div ref={inputRef} style={{ position: "relative" }}>
-        <input
-          type="text"
-          value={display}
-          onChange={handleTextChange}
-          placeholder={placeholder}
-          maxLength={10}
+      <div
+        ref={inputRef}
+        onClick={() => setOpen(!open)}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: inputHeight,
+          padding: "0 36px 0 12px",
+          border: open ? "1px solid #0F766E" : "1px solid #E5E9F0",
+          borderRadius: "12px",
+          fontSize: "14px",
+          color: display ? "#0A1D4D" : "#9CA3AF",
+          backgroundColor: "#FFFFFF",
+          transition: "border-color 0.15s",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          userSelect: "none",
+        }}
+      >
+        <span>{display || placeholder}</span>
+        <Calendar
+          size={15}
           style={{
-            width: "100%",
-            height: inputHeight,
-            padding: "0 36px 0 12px",
-            border: "1px solid #E5E9F0",
-            borderRadius: "12px",
-            fontSize: "14px",
-            color: "#0A1D4D",
-            outline: "none",
-            backgroundColor: "#FFFFFF",
-            transition: "border-color 0.15s",
+            position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)",
+            color: "#9CA3AF", pointerEvents: "none",
           }}
-          onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }}
-          onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
         />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={() => setOpen(!open)}
-          style={{
-            position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)",
-            background: "none", border: "none", cursor: "pointer", padding: "2px",
-            display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF",
-          }}
-        >
-          <Calendar size={15} />
-        </button>
       </div>
 
       {/* Calendar popup — portalled to body */}

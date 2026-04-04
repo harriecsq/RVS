@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ArrowLeft, MoreVertical, Lock, Edit3, Clock, ChevronRight, Trash2, Plus, ChevronDown, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, MoreVertical, Lock, ChevronRight, Trash2, Plus, ChevronDown, Check } from "lucide-react";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
 import { ExpensesSubTabs } from "./shared/ExpensesSubTabs";
 import { TruckingTab } from "./shared/TruckingTab";
@@ -11,8 +11,8 @@ import { DateInput } from "../ui/DateInput";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { toast } from "../ui/toast-utils";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { TabRowActions } from "../shared/TabRowActions";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
@@ -74,6 +74,10 @@ export interface ExportBooking {
   lctEdArrastreTime?: string;
   lctCargo?: string;
   lctCargoTime?: string;
+
+  // Trucking
+  loadingAddress?: string;
+  loadingSchedule?: string;
 
   // Domestic Cost
   domesticFreight?: string;
@@ -278,6 +282,57 @@ export function ExportBookingDetails({
   const [isSaving, setIsSaving] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Sub-tab edit propagation state
+  const [subTabHasRecord, setSubTabHasRecord] = useState<Record<string, boolean>>({});
+  const [subTabEditing, setSubTabEditing] = useState(false);
+  const [subTabEditRequest, setSubTabEditRequest] = useState(false);
+  const [subTabSaveCounter, setSubTabSaveCounter] = useState(0);
+
+  // Get context-aware edit label based on active tab
+  const getEditLabel = (): string | null => {
+    switch (activeTab) {
+      case "booking-info": return "Edit Booking";
+      case "trucking": return subTabHasRecord["trucking"] ? "Edit Trucking" : null;
+      case "billings": return subTabHasRecord["billings"] ? "Edit Billing" : null;
+      case "expenses": return subTabHasRecord["expenses"] ? "Edit Expense" : null;
+      default: return null;
+    }
+  };
+
+  // Unified edit handler that delegates to the right component
+  const handleTabEdit = () => {
+    if (activeTab === "booking-info") {
+      const parsed = parseContainerVolume((editedBooking as any).volume || "");
+      setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
+      setIsEditing(true);
+    } else {
+      setSubTabEditRequest(true);
+    }
+  };
+
+  // Unified cancel handler
+  const handleTabCancel = () => {
+    if (activeTab === "booking-info") {
+      handleCancel();
+    } else {
+      setSubTabEditRequest(false);
+      setSubTabEditing(false);
+    }
+  };
+
+  // Unified save handler
+  const handleTabSave = () => {
+    if (activeTab === "booking-info") {
+      handleSave();
+    } else {
+      // Trigger save in the embedded sub-screen via counter
+      setSubTabSaveCounter((c: number) => c + 1);
+    }
+  };
+
+  // Track whether we're in an editing state (booking-info or sub-tab)
+  const isAnyEditing = activeTab === "booking-info" ? isEditing : subTabEditing;
 
   // Multi-leg segment state
   const [activeSegmentId, setActiveSegmentId] = useState<string>(() =>
@@ -725,51 +780,8 @@ export function ExportBookingDetails({
           </div>
         </div>
 
-        {/* Right Side: Action Buttons */}
+        {/* Right Side: Status Only */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* Activity Timeline Button */}
-          <StandardButton
-            variant={showTimeline ? "secondary" : "outline"}
-            onClick={() => setShowTimeline(!showTimeline)}
-            icon={<Clock size={16} />}
-          >
-            Activity
-          </StandardButton>
-
-          {/* Edit Booking Button - Only show on Booking Information tab when not editing */}
-          {activeTab === "booking-info" && !isEditing && (
-            <StandardButton
-              variant="primary"
-              onClick={() => {
-                const parsed = parseContainerVolume((editedBooking as any).volume || "");
-                setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
-                setIsEditing(true);
-              }}
-              icon={<Edit3 size={16} />}
-            >
-              Edit Booking
-            </StandardButton>
-          )}
-
-          {/* Save and Cancel Buttons - Show when editing */}
-          {activeTab === "booking-info" && isEditing && (
-            <>
-              <StandardButton
-                variant="outline"
-                onClick={handleCancel}
-              >
-                Cancel
-              </StandardButton>
-              <StandardButton
-                variant="primary"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </StandardButton>
-            </>
-          )}
-
           {!isEditing && (
             <HeaderStatusDropdown
               currentStatus={currentBooking.status}
@@ -778,17 +790,6 @@ export function ExportBookingDetails({
               onStatusChange={handleStatusChange}
             />
           )}
-
-          {/* Actions Dropdown */}
-          <ActionsDropdown
-            onDownloadPDF={() => {
-              toast.success("PDF download starting...");
-            }}
-            onDownloadWord={() => {
-              toast.success("Word download starting...");
-            }}
-            onDelete={() => setShowDeleteConfirm(true)}
-          />
         </div>
       </div>
 
@@ -803,11 +804,30 @@ export function ExportBookingDetails({
           activeTab={activeTab}
           onTabChange={(tabId) => {
             setActiveTab(tabId as DetailTab);
-            // Exit edit mode when switching to other tabs
+            // Exit edit mode when switching tabs
             if (isEditing && tabId !== "booking-info") {
               setIsEditing(false);
             }
+            if (subTabEditing) {
+              setSubTabEditRequest(false);
+              setSubTabEditing(false);
+            }
           }}
+          actions={
+            <TabRowActions
+              showTimeline={showTimeline}
+              onToggleTimeline={() => setShowTimeline(!showTimeline)}
+              editLabel={getEditLabel()}
+              onEdit={handleTabEdit}
+              isEditing={isAnyEditing}
+              onCancel={handleTabCancel}
+              onSave={handleTabSave}
+              isSaving={isSaving}
+              onDelete={() => setShowDeleteConfirm(true)}
+              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadWord={() => toast.success("Word download starting...")}
+            />
+          }
         />
       </div>
 
@@ -861,6 +881,10 @@ export function ExportBookingDetails({
               currentUser={currentUser}
               onBookingTagsUpdated={fetchBookingDetails}
               segmentId={activeSegmentId}
+              externalEdit={activeTab === "trucking" ? subTabEditRequest : undefined}
+              onEditStateChange={(editing) => setSubTabEditing(editing)}
+              onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, trucking: has }))}
+              externalSaveCounter={activeTab === "trucking" ? subTabSaveCounter : undefined}
             />
           </div>
           <div style={{ display: activeTab === "billings" ? undefined : "none", height: "100%" }}>
@@ -870,6 +894,10 @@ export function ExportBookingDetails({
               bookingType="export"
               currentUser={currentUser}
               segmentId={activeSegmentId}
+              externalEdit={activeTab === "billings" ? subTabEditRequest : undefined}
+              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, billings: has }))}
+              externalSaveCounter={activeTab === "billings" ? subTabSaveCounter : undefined}
             />
           </div>
           <div style={{ display: activeTab === "expenses" ? undefined : "none", height: "100%" }}>
@@ -879,6 +907,10 @@ export function ExportBookingDetails({
               bookingType="export"
               currentUser={currentUser}
               segmentId={activeSegmentId}
+              externalEdit={activeTab === "expenses" ? subTabEditRequest : undefined}
+              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, expenses: has }))}
+              externalSaveCounter={activeTab === "expenses" ? subTabSaveCounter : undefined}
             />
           </div>
           <div style={{ display: activeTab === "attachments" ? undefined : "none", height: "100%" }}>
@@ -2908,6 +2940,61 @@ function BookingInformationTab({
         <div style={twoCol}>
           {renderDateTimeEditField("lctEdArrastre", "LCT ED/Arrastre")}
           {renderDateTimeEditField("lctCargo", "LCT Cargo")}
+        </div>
+      </SectionCard>
+
+      {/* ═══════════════ TRUCKING ═══════════════ */}
+      <SectionCard title="Trucking">
+        <div style={twoCol}>
+          <EditableField
+            fieldName="loadingAddress"
+            label="Loading Address"
+            value={(mergedBooking as any).loadingAddress || ""}
+            status={mergedBooking.status as ExecutionStatus}
+            isEditing={isEditing}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
+          />
+          {(() => {
+            const schedVal = (mergedBooking as any).loadingSchedule || "";
+            if (!isEditing) {
+              const isEmpty = !schedVal;
+              return (
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                    Loading Schedule
+                  </label>
+                  <div style={{
+                    padding: "10px 14px",
+                    backgroundColor: isEmpty ? "white" : "#F9FAFB",
+                    border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+                    minHeight: "42px",
+                    display: "flex",
+                    alignItems: "center"
+                  }}>
+                    {isEmpty ? "—" : isoToMMDD(schedVal)}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                  Loading Schedule
+                </label>
+                <SingleDateInput
+                  value={mmddToISO((mergedEditData as any).loadingSchedule ?? schedVal)}
+                  onChange={(iso) => {
+                    mergedSetEditData({ loadingSchedule: isoToMMDD(iso) } as any);
+                  }}
+                  placeholder="MM/DD/YYYY"
+                />
+              </div>
+            );
+          })()}
         </div>
       </SectionCard>
 

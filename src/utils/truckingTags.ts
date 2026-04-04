@@ -55,7 +55,31 @@ export const EMPTY_RETURN_OPTIONS = [
   "Client Own Container",
 ];
 
+/** @deprecated Use CONTAINER_SIZE_OPTIONS + CONTAINER_TYPE_OPTIONS instead */
 export const CONTAINER_SIZES = ["20GP", "40HC", "40RH"];
+
+export const CONTAINER_SIZE_OPTIONS = ["20", "40"] as const;
+export const CONTAINER_TYPE_OPTIONS = ["HQ", "HC", "RF", "GP", "SD"] as const;
+
+/** Build display string from size + type, e.g. "40'HC" */
+export function formatContainerVolume(size: string, type: string): string {
+  if (!size && !type) return "";
+  return `${size}'${type}`;
+}
+
+/** Parse a volume string like "40'HC" or legacy "40HC" into { size, type } */
+export function parseContainerVolume(volume: string): { size: string; type: string } {
+  if (!volume) return { size: "", type: "" };
+  // Handle new format: "40'HC"
+  if (volume.includes("'")) {
+    const [size, type] = volume.split("'");
+    return { size, type };
+  }
+  // Handle legacy format: "40HC", "20GP", "40RH"
+  const match = volume.match(/^(\d+)(.+)$/);
+  if (match) return { size: match[1], type: match[2] };
+  return { size: "", type: volume };
+}
 
 export const SECTION_OPTIONS = [
   "1A",

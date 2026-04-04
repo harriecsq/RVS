@@ -13,6 +13,11 @@ interface ExpensesSubTabsProps {
   projectNumber?: string;
   bookingType: "forwarding" | "brokerage" | "trucking" | "marine-insurance" | "others" | "import" | "export";
   currentUser?: { name: string; email: string; department: string } | null;
+  segmentId?: string;
+  externalEdit?: boolean;
+  onEditStateChange?: (editing: boolean) => void;
+  onRecordSelected?: (hasSelection: boolean) => void;
+  externalSaveCounter?: number;
 }
 
 interface ExpenseRecord {
@@ -36,6 +41,10 @@ export function ExpensesSubTabs({
   projectNumber,
   bookingType,
   currentUser,
+  externalEdit,
+  onEditStateChange,
+  onRecordSelected,
+  externalSaveCounter,
 }: ExpensesSubTabsProps) {
   const [activeSubTab, setActiveSubTab] = useState<"expense-details" | "vouchers">("expense-details");
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
@@ -60,6 +69,7 @@ export function ExpensesSubTabs({
         if (result.data?.length === 1) {
           setSelectedExpenseId(result.data[0].id);
           setSelectedExpenseNumber(result.data[0].expenseNumber);
+          onRecordSelected?.(true);
         }
       }
     } catch (error) {
@@ -85,12 +95,14 @@ export function ExpensesSubTabs({
     setSelectedExpenseId(expenseId);
     setSelectedExpenseNumber(expenseNumber);
     setActiveSubTab("expense-details");
+    onRecordSelected?.(true);
   };
 
   const handleBackToList = () => {
     setSelectedExpenseId(null);
     setSelectedExpenseNumber("");
     setActiveSubTab("expense-details");
+    onRecordSelected?.(false);
   };
 
   // Build sub-tabs - Vouchers is always visible (shows all booking vouchers)
@@ -159,6 +171,9 @@ export function ExpensesSubTabs({
             <ViewExpenseScreen
               expenseId={selectedExpenseId}
               embedded={true}
+              externalEdit={externalEdit}
+              onEditStateChange={onEditStateChange}
+              externalSaveCounter={externalSaveCounter}
             />
           </div>
         )}

@@ -189,10 +189,22 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
       ),
     },
     {
-      header: "Destination",
-      cell: (booking) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{booking.pod || booking.destination || "—"}</div>
-      ),
+      header: "Route",
+      cell: (booking) => {
+        const segs = (booking as any).segments;
+        if (Array.isArray(segs) && segs.length > 1) {
+          const sorted = [...segs].sort((a: any, b: any) => (a.legOrder || 0) - (b.legOrder || 0));
+          const points = [sorted[0]?.origin, ...sorted.map((s: any) => s.destination || s.pod)].filter(Boolean);
+          const unique = [...new Set(points)];
+          return (
+            <div>
+              <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{unique.join(" → ") || "—"}</div>
+              <span style={{ fontSize: "11px", color: "#0F766E", fontWeight: 600 }}>{segs.length} legs</span>
+            </div>
+          );
+        }
+        return <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{booking.pod || booking.destination || "—"}</div>;
+      },
     },
     {
       header: "Date",

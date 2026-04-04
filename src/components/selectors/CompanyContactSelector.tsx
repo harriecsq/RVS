@@ -24,15 +24,21 @@ interface CompanyContactSelectorProps {
   disabled?: boolean;
   showContact?: boolean;
   showLabels?: boolean;
+  companyLabel?: string;
+  contactLabel?: string;
+  contactRequired?: boolean;
 }
 
-export function CompanyContactSelector({ 
-  companyId, 
-  contactId, 
+export function CompanyContactSelector({
+  companyId,
+  contactId,
   onSelect,
   disabled = false,
   showContact = true,
-  showLabels = true
+  showLabels = true,
+  companyLabel = "Company",
+  contactLabel = "Contact Person",
+  contactRequired = false,
 }: CompanyContactSelectorProps) {
   // Company State
   const [openCompany, setOpenCompany] = useState(false);
@@ -134,7 +140,7 @@ export function CompanyContactSelector({
       <div className="flex-1">
         {showLabels && (
           <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--neuron-ink-primary)" }}>
-            Company <span style={{ color: "#EF4444" }}>*</span>
+            {companyLabel} <span style={{ color: "#EF4444" }}>*</span>
           </label>
         )}
         <Popover open={openCompany} onOpenChange={setOpenCompany}>
@@ -157,7 +163,7 @@ export function CompanyContactSelector({
                   <span className="font-medium text-[#0A1D4D]">{selectedCompany.name || selectedCompany.company_name}</span>
                 </div>
               ) : (
-                <span className="text-[#667085]">{disabled ? "—" : "Select company..."}</span>
+                <span className="text-[#667085]">{disabled ? "—" : `Select ${companyLabel.toLowerCase()}...`}</span>
               )}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-[#667085]" />
             </Button>
@@ -208,7 +214,7 @@ export function CompanyContactSelector({
         <div className="flex-1" style={{ position: "relative" }}>
           {showLabels && (
             <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--neuron-ink-primary)" }}>
-              Contact Person <span style={{ color: "#667085", fontWeight: 400, fontSize: "12px" }}>(Optional)</span>
+              {contactLabel} {!contactRequired && <span style={{ color: "#667085", fontWeight: 400, fontSize: "12px" }}>(Optional)</span>}
             </label>
           )}
           <Popover open={openContact} onOpenChange={setOpenContact}>

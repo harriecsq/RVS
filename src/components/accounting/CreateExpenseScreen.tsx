@@ -13,8 +13,10 @@ import {
 import { Card } from "../ui/card";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { ExpenseCostingTables, ExpenseTablesData } from "./ExpenseCostingTables";
+import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
 import { ComboInput } from "../ui/ComboInput";
 import { DateInput } from "../ui/DateInput";
+import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -58,7 +60,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
     weight: "",
     vesselVoyage: "",
     origin: "",
-    date: "",
+    date: new Date().toISOString().split("T")[0],
     releasingDate: "",
     
     // EXPORT-specific fields
@@ -241,11 +243,11 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
     try {
       const expensePayload: any = {
         // Auto-generate expense number in background if needed by backend, or omit
-        expenseNumber: `EXP-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`, 
+        expenseNumber: formData.bookingId, 
         bookingId: formData.bookingId,
         bookingIds: [formData.bookingId],
         amount: 0, // Will be updated by charges
-        expenseDate: new Date().toISOString().split('T')[0], // Default to today
+        expenseDate: formData.date || new Date().toISOString().split('T')[0],
         documentTemplate: formData.documentTemplate,
         status: "Draft",
         createdAt: new Date().toISOString(),
@@ -295,6 +297,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                 currency: item.currency,
                 unitPrice: item.unitPrice,
                 per: item.per,
+                multiplyByContainers: item.multiplyByContainers !== false,
                 category: categoryName,
                 voucherNo: item.voucherNo,
                 sourceVoucherLineItemId: item.sourceVoucherLineItemId
@@ -502,6 +505,39 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
       <form onSubmit={handleSubmit}>
         <div style={{ padding: "32px 48px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+            {/* ── EXPENSE DATE ── */}
+            <div style={{
+              background: "white",
+              borderRadius: "12px",
+              border: "1px solid #E5E9F0",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                padding: "16px 24px",
+                borderBottom: "1px solid #E5E9F0",
+                background: "#F9FAFB",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}>
+                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
+                  Expense Date
+                </h3>
+              </div>
+              <div style={{ padding: "20px 24px" }}>
+                <div style={{ maxWidth: "280px" }}>
+                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                    Date
+                  </div>
+                  <SingleDateInput
+                    value={formData.date}
+                    onChange={(iso) => handleFieldChange("date", iso)}
+                    placeholder="MM/DD/YYYY"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* ── BOOKING DETAILS (unified summary card) ── */}
             <div style={{
               background: "white",
@@ -608,10 +644,16 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                             <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Weight</div>
                             <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.weight || "—"}</div>
                           </div>
-                          <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Releasing Date</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.releasingDate || "—"}</div>
-                          </div>
+                        </div>
+                        {/* Releasing Date — standalone editable field */}
+                        <div style={{ marginTop: "14px" }}>
+                          <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
+                            Releasing Date
+                          </label>
+                          <NeuronDatePicker
+                            value={formData.releasingDate || ""}
+                            onChange={(iso) => handleFieldChange("releasingDate", iso)}
+                          />
                         </div>
                       </>
                     )}

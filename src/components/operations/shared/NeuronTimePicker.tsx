@@ -56,35 +56,6 @@ function formatDisplay(val: string): string {
   return `${parsed.hour12}:${String(parsed.minute).padStart(2, "0")} ${parsed.period}`;
 }
 
-/** Try to parse user-typed display string → "HH:mm" 24h */
-function parseTyped(text: string): string | null {
-  // Accept patterns like: "2:30 PM", "02:30 pm", "2:30PM", "14:30"
-  const stripped = text.trim().toUpperCase();
-
-  // Try 24-hour first: "14:30"
-  const match24 = stripped.match(/^(\d{1,2}):(\d{2})$/);
-  if (match24) {
-    const h = parseInt(match24[1], 10);
-    const m = parseInt(match24[2], 10);
-    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
-      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    }
-  }
-
-  // Try 12-hour: "2:30 PM" or "2:30PM"
-  const match12 = stripped.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
-  if (match12) {
-    const h = parseInt(match12[1], 10);
-    const m = parseInt(match12[2], 10);
-    const p = match12[3] as "AM" | "PM";
-    if (h >= 1 && h <= 12 && m >= 0 && m <= 59) {
-      return to24(h, m, p);
-    }
-  }
-
-  return null;
-}
-
 // ─── Scroll-into-view helper ─────────────────────────────────────────────────
 
 function useScrollToSelected(
@@ -222,33 +193,6 @@ export function NeuronTimePicker({
     return () => document.removeEventListener("keydown", handler);
   }, [open]);
 
-  // Handle text input with commit-on-blur / enter
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDisplay(e.target.value);
-  };
-
-  const commitTyped = useCallback(() => {
-    if (!display.trim()) {
-      onChange("");
-      return;
-    }
-    const parsed24 = parseTyped(display);
-    if (parsed24) {
-      onChange(parsed24);
-    } else {
-      // Revert to current value display
-      setDisplay(formatDisplay(value));
-    }
-  }, [display, value, onChange]);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitTyped();
-      (e.target as HTMLInputElement).blur();
-    }
-  };
-
   // Column selection handlers — immediately commit
   const handleHourSelect = (h: number | string) => {
     const hour = typeof h === "number" ? h : parseInt(h as string, 10);
@@ -307,49 +251,41 @@ export function NeuronTimePicker({
 
   return (
     <div ref={wrapperRef} style={{ position: "relative" }}>
-      {/* Text input + clock icon */}
-      <div ref={inputRef} style={{ position: "relative" }}>
-        <input
-          type="text"
-          value={display}
-          onChange={handleTextChange}
-          onBlur={commitTyped}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="w-full px-4 py-2.5 rounded-lg border transition-colors"
-          style={{
-            borderColor: "#E5E9F0",
-            fontSize: "14px",
-            color: "#0A1D4D",
-            outline: "none",
-            backgroundColor: "#FFFFFF",
-            paddingRight: "40px",
-            ...extraStyle,
-          }}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          disabled={disabled}
-          onClick={() => setOpen(!open)}
+      {/* Clickable field — opens time picker on click anywhere */}
+      <div
+        ref={inputRef}
+        onClick={() => { if (!disabled) setOpen(!open); }}
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
+          padding: "9px 40px 9px 16px",
+          borderRadius: "8px",
+          border: "1px solid #E5E9F0",
+          fontSize: "14px",
+          color: display ? "#0A1D4D" : "#9CA3AF",
+          backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF",
+          cursor: disabled ? "default" : "pointer",
+          userSelect: "none",
+          transition: "border-color 0.15s",
+          ...extraStyle,
+        }}
+        onMouseEnter={(e) => { if (!disabled && !open) e.currentTarget.style.borderColor = "#D1D5DB"; }}
+        onMouseLeave={(e) => { if (!disabled && !open) e.currentTarget.style.borderColor = "#E5E9F0"; }}
+      >
+        <span>{display || placeholder}</span>
+        <Clock
+          size={16}
           style={{
             position: "absolute",
             right: "10px",
             top: "50%",
             transform: "translateY(-50%)",
-            background: "none",
-            border: "none",
-            cursor: disabled ? "default" : "pointer",
-            padding: "2px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             color: "#9CA3AF",
+            pointerEvents: "none",
           }}
-        >
-          <Clock size={16} />
-        </button>
+        />
       </div>
 
       {/* Time picker popup — portal to body to escape overflow:hidden containers */}

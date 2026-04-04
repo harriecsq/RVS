@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Edit3, Clock, ChevronDown, ChevronRight, Plus, X, Trash2, FileText, Receipt, Save, Pencil, Link2, Paperclip } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, X, Trash2, FileText, Receipt, Save, Pencil, Link2, Paperclip } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { VouchersTab } from "./VouchersTab";
 import { StandardTabs, StandardButton } from "../design-system";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
+import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { TabRowActions } from "../shared/TabRowActions";
 import { BookingSelector } from "../selectors/BookingSelector";
 
 import { RefundPopover } from "./RefundPopover";
@@ -13,6 +14,17 @@ import { EXPORT_STANDARD_PARTICULARS, getAvailableExportSuggestions } from "./Ex
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
+import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
+
+const EXPENSE_STATUS_COLORS: Record<string, string> = {
+  "Draft": "#6B7280",
+  "For Approval": "#F59E0B",
+  "Approved": "#3B82F6",
+  "Paid": "#10B981",
+  "Partially Paid": "#F97316",
+  "Rejected": "#EF4444",
+};
+const EXPENSE_STATUSES = ["Draft", "For Approval", "Approved", "Paid", "Partially Paid", "Rejected"];
 
 interface ViewExpenseScreenProps {
   expenseId: string;
@@ -20,6 +32,12 @@ interface ViewExpenseScreenProps {
   onDeleted?: () => void;
   /** When true, hides header/back button, metadata bar, and tab navigation. Renders overview content only. */
   embedded?: boolean;
+  /** When provided, edit mode is controlled externally (from parent's tab row). */
+  externalEdit?: boolean;
+  /** Called when edit state changes internally (cancel/save). */
+  onEditStateChange?: (editing: boolean) => void;
+  /** Increment to trigger save from parent. */
+  externalSaveCounter?: number;
 }
 
 interface LineItem {
@@ -111,13 +129,34 @@ interface Project {
   movement?: string;
 }
 
-export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = false }: ViewExpenseScreenProps) {
+export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = false, externalEdit, onEditStateChange, externalSaveCounter }: ViewExpenseScreenProps) {
   const [expense, setExpense] = useState<ExpenseData | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  
+  const [isEditing, setIsEditingInternal] = useState(false);
+
+  // Sync with external edit control
+  const setIsEditing = (editing: boolean) => {
+    setIsEditingInternal(editing);
+    onEditStateChange?.(editing);
+  };
+
+  // React to external edit requests
+  useEffect(() => {
+    if (externalEdit !== undefined) {
+      setIsEditingInternal(externalEdit);
+      onEditStateChange?.(externalEdit);
+    }
+  }, [externalEdit]);
+
+  // React to external save requests
+  useEffect(() => {
+    if (externalSaveCounter && externalSaveCounter > 0 && isEditing) {
+      handleSave();
+    }
+  }, [externalSaveCounter]);
+
   // Billing Calculator State
   const [showBillingCalculator, setShowBillingCalculator] = useState(false);
   const [billingCalcMode, setBillingCalcMode] = useState<"margin" | "percent" | "total">("margin");
@@ -141,7 +180,6 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
   const [bookingSearchTerm, setBookingSearchTerm] = useState("");
   const [showBookingDropdown, setShowBookingDropdown] = useState(false);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   
   // Unreconciled Items State
   const [unreconciledItems, setUnreconciledItems] = useState<any[]>([]);
@@ -764,6 +802,27 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           );
           
           setBookings(enrichedBookings);
+
+          // Auto-sync expense number from linked booking
+          if (expenseData && enrichedBookings.length > 0) {
+            const primaryBookingId = enrichedBookings[0].bookingId || enrichedBookings[0].id;
+            if (primaryBookingId && expenseData.expenseNumber !== primaryBookingId) {
+              // Update expense number to match linked booking
+              fetch(`${API_BASE_URL}/expenses/${expenseData.id}`, {
+                method: "PATCH",
+                headers: {
+                  Authorization: `Bearer ${publicAnonKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ expenseNumber: primaryBookingId }),
+              }).then(r => r.json()).then(result => {
+                if (result.success) {
+                  // Update local state
+                  setExpense(prev => prev ? { ...prev, expenseNumber: primaryBookingId } : prev);
+                }
+              }).catch(() => {});
+            }
+          }
         } else {
           console.log("No booking IDs to fetch");
         }
@@ -1076,7 +1135,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
       const result = await response.json();
       if (result.success && result.data) {
         toast.success(`Status updated to ${newStatus}`);
-        setShowStatusDropdown(false);
+
         // Refetch expense details
         await fetchExpenseDetails();
       } else {
@@ -1343,7 +1402,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     const updatedCharges = editedExpense.charges.map(charge => {
       const parsedPrice = parseFloat(String(charge.unitPrice)) || 0;
       const currencyMultiplier = (newCurrency === "USD" || newCurrency === "RMB") ? rate : 1;
-      const containerMultiplier = (charge.per === "40" || charge.per === "20") ? contCount : 1;
+      const containerMultiplier = (charge.multiplyByContainers !== false) ? contCount : 1;
       const newAmount = parsedPrice * currencyMultiplier * containerMultiplier;
       return {
         ...charge,
@@ -1482,10 +1541,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     const exchangeRate = parseFloat(String(editedExpense?.exchangeRate || expense?.exchangeRate || "1")) || 1;
 
     // Helper to compute volume amount for export line items
-    const computeVolumeAmount = (unitPrice: number | string, per: string | undefined, currency: string | undefined) => {
+    const computeVolumeAmount = (unitPrice: number | string, per: string | undefined, currency: string | undefined, multiplyByContainers?: boolean) => {
       const parsedPrice = parseFloat(String(unitPrice)) || 0;
       const currencyMultiplier = (currency === "USD" || currency === "RMB") ? exchangeRate : 1;
-      const containerMultiplier = (per === "40" || per === "20") ? containerCount : 1;
+      const containerMultiplier = (multiplyByContainers !== false) ? containerCount : 1;
       return parsedPrice * currencyMultiplier * containerMultiplier;
     };
 
@@ -1972,7 +2031,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                       <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, width: "35%" }}>Particulars</th>
                       <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600 }}>Unit Price</th>
-                      <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "130px" }}>{containerCount}X40'HC</th>
+                      <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "60px", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
+                      <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "120px" }}>{containerCount}X40'HC</th>
                       <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "130px" }}>Voucher No</th>
                       <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "130px" }}>Voucher Amount</th>
                       {isEditing && <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "80px" }}>Actions</th>}
@@ -1987,7 +2047,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                       </tr>
                     )}
                     {items.map((item, index) => {
-                      const volumeAmount = computeVolumeAmount(item.unitPrice || 0, item.per, item.currency);
+                      const volumeAmount = computeVolumeAmount(item.unitPrice || 0, item.per, item.currency, item.multiplyByContainers);
                       const actualIndex = editedExpense?.charges?.findIndex(c => c === item) ?? -1;
                       const voucherNo = item.voucherNo || (item as any).voucherNumber;
                       const isLinked = hasVoucherLinked(item);
@@ -2036,7 +2096,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     if (editedExpense?.charges && actualIndex !== -1) {
                                       const val = e.target.value;
                                       const updatedCharges = [...editedExpense.charges];
-                                      const newAmount = computeVolumeAmount(val, updatedCharges[actualIndex].per, updatedCharges[actualIndex].currency);
+                                      const newAmount = computeVolumeAmount(val, updatedCharges[actualIndex].per, updatedCharges[actualIndex].currency, updatedCharges[actualIndex].multiplyByContainers);
                                       updatedCharges[actualIndex] = { 
                                         ...updatedCharges[actualIndex], 
                                         unitPrice: val,
@@ -2064,7 +2124,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     if (editedExpense?.charges && actualIndex !== -1) {
                                       const updatedCharges = [...editedExpense.charges];
                                       const newCurrency = e.target.value;
-                                      const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, updatedCharges[actualIndex].per, newCurrency);
+                                      const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, updatedCharges[actualIndex].per, newCurrency, updatedCharges[actualIndex].multiplyByContainers);
                                       updatedCharges[actualIndex] = { 
                                         ...updatedCharges[actualIndex], 
                                         currency: newCurrency,
@@ -2095,7 +2155,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     if (editedExpense?.charges && actualIndex !== -1) {
                                       const updatedCharges = [...editedExpense.charges];
                                       const newPer = e.target.value;
-                                      const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, newPer, updatedCharges[actualIndex].currency);
+                                      const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, newPer, updatedCharges[actualIndex].currency, updatedCharges[actualIndex].multiplyByContainers);
                                       updatedCharges[actualIndex] = { 
                                         ...updatedCharges[actualIndex], 
                                         per: newPer,
@@ -2129,11 +2189,47 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                             </div>
                           )}
                         </td>
+                        {/* Multiply by containers checkbox */}
+                        <td style={{ padding: "8px", textAlign: "center", width: "50px" }}>
+                          {isEditing ? (
+                            <input
+                              type="checkbox"
+                              checked={item.multiplyByContainers !== false}
+                              onChange={(e) => {
+                                if (editedExpense?.charges && actualIndex !== -1) {
+                                  const updatedCharges = [...editedExpense.charges];
+                                  updatedCharges[actualIndex] = {
+                                    ...updatedCharges[actualIndex],
+                                    multiplyByContainers: e.target.checked
+                                  };
+                                  const newAmount = computeVolumeAmount(
+                                    updatedCharges[actualIndex].unitPrice || 0,
+                                    updatedCharges[actualIndex].per,
+                                    updatedCharges[actualIndex].currency,
+                                    e.target.checked
+                                  );
+                                  updatedCharges[actualIndex].amount = newAmount;
+                                  setEditedExpense({ ...editedExpense, charges: updatedCharges });
+                                }
+                              }}
+                              title={item.multiplyByContainers !== false ? `Multiplied by ${containerCount} containers` : "Not multiplied by containers"}
+                              style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "pointer" }}
+                            />
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={item.multiplyByContainers !== false}
+                              disabled
+                              title={item.multiplyByContainers !== false ? `Multiplied by ${containerCount} containers` : "Not multiplied by containers"}
+                              style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "default" }}
+                            />
+                          )}
+                        </td>
                         {/* Volume (read-only computed) */}
-                        <td style={{ 
-                          padding: "12px 16px", 
-                          fontSize: "14px", 
-                          color: "#0A1D4D", 
+                        <td style={{
+                          padding: "12px 16px",
+                          fontSize: "14px",
+                          color: "#0A1D4D",
                           textAlign: "right",
                           background: "#FAFBFC",
                           fontWeight: 500,
@@ -2286,233 +2382,15 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           </div>
 
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <button
-              onClick={() => setShowTimeline(!showTimeline)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px 20px",
-                backgroundColor: showTimeline ? "#E8F5F3" : "white",
-                border: `1.5px solid ${showTimeline ? "#0F766E" : "#E5E9F0"}`,
-                borderRadius: "8px",
-                fontSize: "14px",
-                fontWeight: 600,
-                color: showTimeline ? "#0F766E" : "#667085",
-                cursor: "pointer",
-                transition: "all 0.2s ease"
-              }}
-              onMouseEnter={(e) => {
-                if (!showTimeline) {
-                  e.currentTarget.style.backgroundColor = "#F9FAFB";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!showTimeline) {
-                  e.currentTarget.style.backgroundColor = "white";
-                }
-              }}
-            >
-              <Clock size={16} />
-              Activity
-            </button>
-
-            {!isEditing && (
-              <>
-                <StandardButton
-                  variant="secondary"
-                  icon={<Edit3 size={16} />}
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit Expense
-                </StandardButton>
-
-                <ActionsDropdown
-                  onDownloadPDF={() => {
-                    toast.success("PDF download starting...");
-                    // TODO: Implement PDF generation
-                  }}
-                  onDownloadWord={() => {
-                    toast.success("Word download starting...");
-                    // TODO: Implement Word generation
-                  }}
-                  onDelete={() => setShowDeleteConfirm(true)}
-                />
-              </>
-            )}
-
-            {isEditing && (
-              <>
-                <StandardButton
-                  variant="secondary"
-                  onClick={handleCancel}
-                >
-                  Cancel
-                </StandardButton>
-                <StandardButton
-                  variant="primary"
-                  onClick={handleSave}
-                >
-                  Save Changes
-                </StandardButton>
-              </>
-            )}
+            <HeaderStatusDropdown
+              currentStatus={expense.status}
+              statusOptions={EXPENSE_STATUSES}
+              statusColorMap={EXPENSE_STATUS_COLORS}
+              onStatusChange={handleStatusChange}
+            />
           </div>
         </div>
       </div>
-
-      {/* Metadata/Summary Bar */}
-      {!embedded && (<div style={{
-        background: (() => {
-          switch (expense.status) {
-            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
-            case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
-            case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
-            case "Paid": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
-            case "Partially Paid": return "linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%)";
-            case "Rejected": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
-            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
-          }
-        })(),
-        borderBottom: "1.5px solid #0F766E",
-        padding: "16px 48px",
-        display: "flex",
-        alignItems: "center",
-        gap: "32px",
-        flexShrink: 0
-      }}>
-        {/* Total Amount */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Total Amount
-          </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "#0A1D4D" }}>
-            ₱{formatAmount(grandTotal)}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Status - Editable Dropdown */}
-        <div style={{ position: "relative" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Status
-          </div>
-          
-          {/* Status Dropdown Trigger */}
-          <div
-            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            onBlur={() => setTimeout(() => setShowStatusDropdown(false), 200)}
-            tabIndex={0}
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: expense.status === "Draft" ? "#6B7280" :
-                     expense.status === "Approved" ? "#3B82F6" :
-                     expense.status === "Paid" ? "#10B981" :
-                     expense.status === "Partially Paid" ? "#F97316" :
-                     expense.status === "For Approval" ? "#F59E0B" : 
-                     expense.status === "Rejected" ? "#EF4444" : "#667085",
-              cursor: "pointer",
-              padding: "4px 24px 4px 8px",
-              borderRadius: "6px",
-              border: "1.5px solid transparent",
-              position: "relative",
-              transition: "all 0.2s ease",
-              background: showStatusDropdown ? "#FFFFFF" : "transparent"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#FFFFFF";
-              e.currentTarget.style.borderColor = "#0F766E";
-            }}
-            onMouseLeave={(e) => {
-              if (!showStatusDropdown) {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = "transparent";
-              }
-            }}
-          >
-            {expense.status}
-            
-            {/* Dropdown Arrow */}
-            <div style={{
-              position: "absolute",
-              right: "6px",
-              top: "50%",
-              transform: `translateY(-50%) ${showStatusDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
-              transition: "transform 0.2s ease",
-              pointerEvents: "none",
-              color: "#0F766E"
-            }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
-
-          {/* Status Dropdown Menu */}
-          {showStatusDropdown && (
-            <div style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              background: "white",
-              border: "1.5px solid #E5E9F0",
-              borderRadius: "8px",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-              zIndex: 50,
-              minWidth: "160px",
-              overflow: "hidden"
-            }}>
-              {["Draft", "For Approval", "Approved", "Paid", "Partially Paid", "Rejected"].map((status, index) => (
-                <div
-                  key={status}
-                  onClick={() => handleStatusChange(status)}
-                  style={{
-                    padding: "10px 14px",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    borderBottom: index < 5 ? "1px solid #E5E9F0" : "none",
-                    background: expense.status === status ? "#F0FDF4" : "white",
-                    color: status === "Draft" ? "#6B7280" :
-                           status === "Approved" ? "#3B82F6" :
-                           status === "Paid" ? "#10B981" :
-                           status === "Partially Paid" ? "#F97316" :
-                           status === "For Approval" ? "#F59E0B" :
-                           status === "Rejected" ? "#EF4444" : "#667085",
-                    transition: "background 0.15s ease"
-                  }}
-                  onMouseEnter={(e) => {
-                    if (expense.status !== status) {
-                      e.currentTarget.style.background = "#F9FAFB";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = expense.status === status ? "#F0FDF4" : "white";
-                  }}
-                >
-                  {status}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Date Created */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Date Created
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-            {formatDate(expense.expenseDate)}
-          </div>
-        </div>
-      </div>)}
 
       {/* Tabs */}
       {!embedded && (
@@ -2524,6 +2402,22 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           ]}
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as "overview" | "vouchers" | "attachments")}
+          actions={
+            <TabRowActions
+              showTimeline={showTimeline}
+              onToggleTimeline={() => setShowTimeline(!showTimeline)}
+              editLabel={activeTab === "overview" ? "Edit Expense" : null}
+              onEdit={() => setIsEditing(true)}
+              isEditing={isEditing}
+              onCancel={handleCancel}
+              onSave={handleSave}
+              isSaving={false}
+              saveLabel="Save Changes"
+              onDelete={() => setShowDeleteConfirm(true)}
+              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadWord={() => toast.success("Word download starting...")}
+            />
+          }
         />
       )}
 
@@ -2620,9 +2514,6 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                   </div>
                 </div>
 
-                {/* Divider */}
-                
-
                 {/* IMPORT template fields */}
                 {expense.documentTemplate === "IMPORT" && (
                   <>
@@ -2676,10 +2567,6 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.origin || "—"}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Releasing Date</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formatDate(expense.releasingDate) || "—"}</div>
                       </div>
                     </div>
                   </>
@@ -2736,6 +2623,58 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Dates ── */}
+          <div style={{
+            background: "white",
+            borderRadius: "12px",
+            border: "1px solid #E5E9F0",
+            overflow: "hidden",
+            marginBottom: "24px",
+          }}>
+            <div style={{
+              padding: "16px 24px",
+              borderBottom: "1px solid #E5E9F0",
+              background: "#F9FAFB",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
+                Dates
+              </h3>
+            </div>
+            <div style={{ padding: "20px 24px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div>
+                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Date</div>
+                  {isEditing && editedExpense ? (
+                    <NeuronDatePicker
+                      value={editedExpense.expenseDate || ""}
+                      onChange={(iso) => setEditedExpense({ ...editedExpense, expenseDate: iso })}
+                    />
+                  ) : (
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                      {formatDate(expense.expenseDate) || "—"}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Releasing Date</div>
+                  {isEditing && editedExpense ? (
+                    <NeuronDatePicker
+                      value={editedExpense.releasingDate || ""}
+                      onChange={(iso) => setEditedExpense({ ...editedExpense, releasingDate: iso })}
+                    />
+                  ) : (
+                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                      {formatDate(expense.releasingDate) || "—"}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

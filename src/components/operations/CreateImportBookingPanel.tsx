@@ -6,7 +6,7 @@ import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
 import { ComboInput } from "../ui/ComboInput";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { API_BASE_URL } from '@/utils/api-config';
 import { PanelBackdrop } from "../shared/PanelBackdrop";
 
@@ -28,7 +28,7 @@ interface CreateBrokerageBookingPanelProps {
 }
 
 // Selectivity color mapping
-const SELECTIVITY_OPTIONS = ["Green", "Orange", "Yellow", "Red"];
+const SELECTIVITY_OPTIONS = ["Orange", "Yellow", "Red"];
 const SELECTIVITY_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Green:  { bg: "#ECFDF5", text: "#065F46", dot: "#10B981" },
   Orange: { bg: "#FFF7ED", text: "#9A3412", dot: "#F97316" },
@@ -71,7 +71,10 @@ export function CreateBrokerageBookingPanel({
   prefillData,
 }: CreateBrokerageBookingPanelProps) {
   const [loading, setLoading] = useState(false);
-  
+  const [refNumber, setRefNumber] = useState("");
+  const [nextRefNumber, setNextRefNumber] = useState<number | null>(null);
+  const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
+
   // Import booking fields
   const [date, setDate] = useState("");
   const [clientId, setClientId] = useState(prefillData?.clientId || "");
@@ -85,7 +88,9 @@ export function CreateBrokerageBookingPanel({
   const [shipper, setShipper] = useState(""); 
   const [consignee, setConsignee] = useState(""); 
   const [commodity, setCommodity] = useState(prefillData?.commodity || "");
-  const [volume, setVolume] = useState(prefillData?.volume_containers || "");
+  const _prefillVolume = parseContainerVolume(prefillData?.volume_containers || "");
+  const [containerSize, setContainerSize] = useState(_prefillVolume.size);
+  const [containerType, setContainerType] = useState(_prefillVolume.type);
   const [vesselVoyage, setVesselVoyage] = useState(prefillData?.vessel_voyage || "");
   const [shippingLine, setShippingLine] = useState(prefillData?.shipping_line || "");
   const [section, setSection] = useState("");
@@ -115,6 +120,9 @@ export function CreateBrokerageBookingPanel({
   const [rcvdBillingTime, setRcvdBillingTime] = useState("");
   const [finalTaxNavValue, setFinalTaxNavValue] = useState("");
   const [arrastre, setArrastre] = useState("");
+  const [arrastreTime, setArrastreTime] = useState("");
+  const [arrastreError, setArrastreError] = useState("");
+  const [arrastreAmount, setArrastreAmount] = useState("");
   const [stowage, setStowage] = useState("");
   // Gatepass - date + time
   const [gatepassDate, setGatepassDate] = useState("");
@@ -124,14 +132,15 @@ export function CreateBrokerageBookingPanel({
   const [grossWeightValue, setGrossWeightValue] = useState("");
   const [grossWeightUnit, setGrossWeightUnit] = useState("kg");
 
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState("Draft");
   const [shippingLineStatus, setShippingLineStatus] = useState("");
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showShippingLineStatusDropdown, setShowShippingLineStatusDropdown] = useState(false);
 
   // Dropdown visibility states
   const [showShippingLineDropdown, setShowShippingLineDropdown] = useState(false);
-  const [showVolumeDropdown, setShowVolumeDropdown] = useState(false);
+  const [showContainerSizeDropdown, setShowContainerSizeDropdown] = useState(false);
+  const [showContainerTypeDropdown, setShowContainerTypeDropdown] = useState(false);
   const [showSelectivityDropdown, setShowSelectivityDropdown] = useState(false);
   const [showGrossWeightUnitDropdown, setShowGrossWeightUnitDropdown] = useState(false);
   const [showSectionDropdown, setShowSectionDropdown] = useState(false);
@@ -204,13 +213,25 @@ export function CreateBrokerageBookingPanel({
   const [demBeginsError, setDemBeginsError] = useState("");
   const [rcvdBillingError, setRcvdBillingError] = useState("");
 
+  // Fetch next available ref number when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      fetch(`${API_BASE_URL}/next-ref/import`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
+        .then(r => r.json())
+        .then(d => { if (d.success) setNextRefNumber(d.nextNumber); })
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
   // Handle prefill data
   useEffect(() => {
     if (isOpen && prefillData) {
       setClientId(prefillData.clientId || "");
       setClient(prefillData.clientName || "");
       setCommodity(prefillData.commodity || "");
-      setVolume(prefillData.volume_containers || "");
+      const _pv = parseContainerVolume(prefillData.volume_containers || "");
+      setContainerSize(_pv.size);
+      setContainerType(_pv.type);
       setVesselVoyage(prefillData.vessel_voyage || "");
       setShippingLine(prefillData.shipping_line || "");
       setOrigin(prefillData.origin || "");
@@ -382,8 +403,8 @@ export function CreateBrokerageBookingPanel({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!client.trim()) {
-      toast.error("Client is required");
+    if (!companyName.trim() && !client.trim()) {
+      toast.error("Consignee is required");
       return;
     }
 
@@ -406,9 +427,10 @@ export function CreateBrokerageBookingPanel({
       const grossWeight = grossWeightValue ? `${grossWeightValue} ${grossWeightUnit}` : "";
 
       const bookingData = {
+        bookingId: `IMP ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
         date,
-        customerName: client,
-        companyName: companyName || client, // Always store company name separately
+        customerName: client.trim() || companyName,
+        companyName: companyName || client,
         clientId,
         contactId,
         contactPersonName,
@@ -419,7 +441,7 @@ export function CreateBrokerageBookingPanel({
         shipper,
         consignee,
         commodity,
-        volume,
+        volume: formatContainerVolume(containerSize, containerType),
         vesselVoyage,
         origin,
         pod,
@@ -437,7 +459,8 @@ export function CreateBrokerageBookingPanel({
         ticket,
         rcvdBilling: combineDateTime(rcvdBilling, rcvdBillingTime),
         finalTaxNavValue,
-        arrastre,
+        arrastre: combineDateTime(arrastre, arrastreTime),
+        arrastreAmount,
         stowage,
         gatepass,
         grossWeight,
@@ -479,6 +502,8 @@ export function CreateBrokerageBookingPanel({
   const handleClose = () => {
     onClose();
     // Reset form
+    setRefNumber("");
+    setNextRefNumber(null);
     setDate("");
     setClient("");
     setCompanyName("");
@@ -517,6 +542,9 @@ export function CreateBrokerageBookingPanel({
     setRcvdBillingTime("");
     setFinalTaxNavValue("");
     setArrastre("");
+    setArrastreTime("");
+    setArrastreError("");
+    setArrastreAmount("");
     setStowage("");
     setGatepassDate("");
     setGatepassDateError("");
@@ -529,7 +557,7 @@ export function CreateBrokerageBookingPanel({
 
   if (!isOpen) return null;
 
-  const isFormValid = client.trim() !== "";
+  const isFormValid = companyName.trim() !== "" || client.trim() !== "";
 
   const inputStyle = {
     borderColor: "var(--neuron-ui-border)",
@@ -761,7 +789,31 @@ export function CreateBrokerageBookingPanel({
         {/* Form Content */}
         <div className="flex-1 overflow-auto px-12 py-8">
           <form onSubmit={handleSubmit} id="create-import-form" className="space-y-4">
-            
+
+            {/* Reference Number */}
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
+                Reference No.
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+                <div>
+                  <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                  <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>IMP</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                  <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                </div>
+                <div>
+                  <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                  <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                </div>
+              </div>
+              <p className="text-xs mt-1" style={{ color: "#667085", fontWeight: 500 }}>
+                {`IMP ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`}
+              </p>
+            </div>
+
             {/* Date */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
@@ -780,6 +832,8 @@ export function CreateBrokerageBookingPanel({
               <CompanyContactSelector
                 companyId={clientId}
                 contactId={contactId}
+                companyLabel="Consignee"
+                contactLabel="Client"
                 onSelect={({ company, contact }) => {
                   const cName = company ? (company.name || company.company_name || "") : "";
                   setCompanyName(cName);
@@ -790,7 +844,7 @@ export function CreateBrokerageBookingPanel({
                     setClientId("");
                     setConsignee("");
                   }
-                  
+
                   if (contact) {
                     setContactId(contact.id);
                     setContactPersonName(contact.name);
@@ -798,8 +852,7 @@ export function CreateBrokerageBookingPanel({
                   } else {
                     setContactId("");
                     setContactPersonName("");
-                    // No contact: customerName = company name (merged field)
-                    setClient(cName);
+                    setClient("");
                   }
                 }}
               />
@@ -835,72 +888,6 @@ export function CreateBrokerageBookingPanel({
                   e.currentTarget.style.boxShadow = "none";
                 }}
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Consignee */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: "#667085" }}>
-                  Consignee
-                </label>
-                <input
-                  type="text"
-                  value={consignee}
-                  onChange={(e) => setConsignee(e.target.value)}
-                  placeholder="Consignee name"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    fontSize: "14px",
-                    border: "1px solid #E5E9F0",
-                    borderRadius: "8px",
-                    color: "#0A1D4D",
-                    backgroundColor: "white",
-                    outline: "none",
-                    transition: "all 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#0F766E";
-                    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(15, 118, 110, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "#E5E9F0";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                />
-              </div>
-
-              {/* Client */}
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: "#667085" }}>
-                  Client
-                </label>
-                <input
-                  type="text"
-                  value={client}
-                  onChange={(e) => setClient(e.target.value)}
-                  placeholder="Client name"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    fontSize: "14px",
-                    border: "1px solid #E5E9F0",
-                    borderRadius: "8px",
-                    color: "#0A1D4D",
-                    backgroundColor: "white",
-                    outline: "none",
-                    transition: "all 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = "#0F766E";
-                    e.currentTarget.style.boxShadow = "0 0 0 2px rgba(15, 118, 110, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = "#E5E9F0";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                />
-              </div>
             </div>
 
             {/* Container Numbers - Repeatable Input List */}
@@ -987,19 +974,29 @@ export function CreateBrokerageBookingPanel({
                 />
               </div>
 
-              {/* Volume - Dropdown using CONTAINER_SIZES */}
+              {/* Volume - Container Size + Type */}
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Volume
                 </label>
-                {renderNeuronDropdown(
-                  volume,
-                  CONTAINER_SIZES,
-                  showVolumeDropdown,
-                  setShowVolumeDropdown,
-                  setVolume,
-                  "Select size"
-                )}
+                <div style={{ display: "flex", gap: "8px" }}>
+                  {renderNeuronDropdown(
+                    containerSize,
+                    [...CONTAINER_SIZE_OPTIONS],
+                    showContainerSizeDropdown,
+                    setShowContainerSizeDropdown,
+                    setContainerSize,
+                    "Size"
+                  )}
+                  {renderNeuronDropdown(
+                    containerType,
+                    [...CONTAINER_TYPE_OPTIONS],
+                    showContainerTypeDropdown,
+                    setShowContainerTypeDropdown,
+                    setContainerType,
+                    "Type"
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1068,7 +1065,7 @@ export function CreateBrokerageBookingPanel({
                       maxHeight: "300px",
                       overflowY: "auto"
                     }}>
-                      {["Manila North", "Manila South", "CDO", "Iloilo"].map((option, index) => (
+                      {["Manila North", "Manila South", "CDO", "Iloilo", "Davao"].map((option, index) => (
                         <div
                           key={option}
                           onClick={() => {
@@ -1085,7 +1082,7 @@ export function CreateBrokerageBookingPanel({
                             alignItems: "center",
                             gap: "10px",
                             background: pod === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < 3 ? "1px solid #E5E9F0" : "none",
+                            borderBottom: index < 4 ? "1px solid #E5E9F0" : "none",
                             transition: "all 0.15s ease"
                           }}
                           onMouseEnter={(e) => {
@@ -1369,6 +1366,36 @@ export function CreateBrokerageBookingPanel({
                  
               </div>
 
+              {/* Arrastre - Date + Amount + Time */}
+              <div className="col-span-2">
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
+                  Arrastre
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: "8px" }}>
+                  <div>
+                    <input
+                      type="text"
+                      value={arrastreAmount}
+                      onChange={(e) => setArrastreAmount(e.target.value)}
+                      placeholder="Amount (0.00)"
+                      className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <SingleDateInput
+                      value={mmddToISO(arrastre)}
+                      onChange={(iso) => { setArrastre(isoToMMDD(iso)); setArrastreError(""); }}
+                      placeholder="MM/DD/YYYY"
+                    />
+                    {arrastreError && <p style={{ fontSize: "12px", color: "#EF4444", marginTop: "4px" }}>{arrastreError}</p>}
+                  </div>
+                  <div>
+                    <NeuronTimePicker value={arrastreTime} onChange={setArrastreTime} />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Final Tax/NAV Value
@@ -1378,20 +1405,6 @@ export function CreateBrokerageBookingPanel({
                   value={finalTaxNavValue}
                   onChange={(e) => setFinalTaxNavValue(e.target.value)}
                   placeholder="0.00"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
-                  Arrastre
-                </label>
-                <input
-                  type="text"
-                  value={arrastre}
-                  onChange={(e) => setArrastre(e.target.value)}
-                  placeholder="Enter arrastre"
                   className="w-full px-4 py-2.5 rounded-lg border transition-colors"
                   style={inputStyle}
                 />

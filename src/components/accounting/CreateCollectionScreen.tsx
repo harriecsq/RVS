@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef, useMemo } from "react";
 import { X, Search, Plus, Minus } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -57,9 +58,13 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   const [billingSearch, setBillingSearch] = useState("");
   const [bookingSearch, setBookingSearch] = useState("");
   
+  const [refNumber, setRefNumber] = useState("");
+  const [nextRefNumber, setNextRefNumber] = useState<number | null>(null);
+  const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
+
   const [formData, setFormData] = useState({
     collectionDate: new Date().toISOString().split("T")[0],
-    collectionNumber: `COL-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100000)).padStart(5, "0")}`,
+    collectionNumber: "",
     paymentMethod: "",
     referenceNumber: "",
     notes: "",
@@ -74,6 +79,16 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   useEffect(() => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
+  }, []);
+
+  // Fetch next collection ref number
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/next-ref/collection`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setNextRefNumber(d.nextNumber); })
+      .catch(() => {});
   }, []);
 
   // Fetch billings on mount
@@ -270,6 +285,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
 
       const payload = {
         ...formData,
+        collectionNumber: `COL ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
         clientId: derivedClientId,
         clientName: derivedClientName,
         amount: totalAmount,
@@ -391,6 +407,28 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
       <div className="flex-1 overflow-y-auto p-8">
         <form id="collection-form" onSubmit={handleSubmit} className="space-y-8">
           
+          {/* 0. Collection Reference Number */}
+          <div>
+            <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Collection Number</Label>
+            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+              <div>
+                <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>COL</div>
+              </div>
+              <div>
+                <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+              </div>
+              <div>
+                <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+              </div>
+            </div>
+            <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+              {`COL ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`}
+            </p>
+          </div>
+
           {/* 1. Payment Details — flat grid like voucher header fields */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-5">
             <div>
@@ -410,7 +448,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Collection Date</Label>
+              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Date</Label>
               <SingleDateInput
                 value={formData.collectionDate}
                 onChange={(date) => setFormData({ ...formData, collectionDate: date })}

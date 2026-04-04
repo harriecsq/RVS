@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ArrowLeft, Clock, Trash2, Edit3, X, Check, FileText, Receipt, Plus, Paperclip } from "lucide-react";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
+import { ArrowLeft, Trash2, X, Check, FileText, Receipt, Plus, Paperclip } from "lucide-react";
+import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { TabRowActions } from "../shared/TabRowActions";
 import { StandardButton, StandardInput, StandardSelect, StandardTextarea, StandardTabs } from "../design-system";
 import { toast } from "sonner@2.0.3";
 import { formatAmount } from "../../utils/formatAmount";
@@ -10,6 +11,15 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
+
+const COLLECTION_STATUS_COLORS: Record<string, string> = {
+  "Draft": "#6B7280",
+  "For Approval": "#F59E0B",
+  "Approved": "#3B82F6",
+  "Collected": "#10B981",
+  "Cancelled": "#EF4444",
+};
+const COLLECTION_STATUSES = ["Draft", "For Approval", "Approved", "Collected", "Cancelled"];
 
 interface ViewCollectionScreenProps {
   collection: {
@@ -47,7 +57,6 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
   const [currentCollection, setCurrentCollection] = useState(collection);
   const [editedCollection, setEditedCollection] = useState(collection);
   const [editedAllocations, setEditedAllocations] = useState(collection.allocations || []);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "billings" | "attachments">("overview");
 
@@ -132,7 +141,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
       }
 
       setCurrentCollection({ ...currentCollection, status: newStatus });
-      setShowStatusDropdown(false);
+
       toast.success(`Status updated to ${newStatus}`);
     } catch (error) {
       console.error("Error updating status:", error);
@@ -183,7 +192,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
     }
   };
 
-  const COLLECTION_STATUSES = ["Draft", "For Approval", "Approved", "Collected", "Cancelled"] as const;
+
 
   // Helper component for read-only fields matching ProjectOverviewTab style
   const Field = ({ label, value }: { label: string; value?: string | number | null }) => (
@@ -278,233 +287,48 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
             </button>
             
             <div>
-              <h1 style={{
-                fontSize: "20px",
-                fontWeight: 600,
-                color: "var(--neuron-ink-primary)",
-                marginBottom: "0"
-              }}>
-                {currentCollection.collectionNumber}
-              </h1>
+              {isEditing ? (() => {
+                const raw = editedCollection.collectionNumber || "";
+                const m = raw.match(/^(COL)\s*(\d{4})-(\d*)$/);
+                const prefixText = "COL";
+                const yearPart = m ? m[2] : String(new Date().getFullYear());
+                const num = m ? m[3] : "";
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                      <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>COL</div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                      <input value={yearPart} onChange={e => { const y = e.target.value.replace(/\D/g, ""); setEditedCollection({ ...editedCollection, collectionNumber: `COL ${y}-${num}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                      <input value={num} onChange={e => { const n = e.target.value.replace(/\D/g, ""); setEditedCollection({ ...editedCollection, collectionNumber: `COL ${yearPart}-${n}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                    </div>
+                  </div>
+                );
+              })() : (
+                <h1 style={{
+                  fontSize: "20px",
+                  fontWeight: 600,
+                  color: "var(--neuron-ink-primary)",
+                  marginBottom: "0"
+                }}>
+                  {currentCollection.collectionNumber}
+                </h1>
+              )}
             </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {isEditing ? (
-              <>
-                <StandardButton
-                  variant="secondary"
-                  onClick={handleCancel}
-                  icon={<X size={16} />}
-                >
-                  Cancel
-                </StandardButton>
-                <StandardButton
-                  variant="primary"
-                  onClick={handleSave}
-                  icon={<Check size={16} />}
-                >
-                  Save Changes
-                </StandardButton>
-              </>
-            ) : (
-              <>
-                {/* Edit Button */}
-                <StandardButton
-                  variant="secondary"
-                  onClick={() => {
-                    setEditedCollection(currentCollection);
-                    setEditedAllocations(currentCollection.allocations || []);
-                    setIsEditing(true);
-                  }}
-                  icon={<Edit3 size={16} />}
-                >
-                  Edit
-                </StandardButton>
-
-                {/* Activity Timeline Button */}
-                <StandardButton
-                  variant={showTimeline ? "secondary" : "outline"}
-                  onClick={() => setShowTimeline(!showTimeline)}
-                  icon={<Clock size={16} />}
-                >
-                  Activity
-                </StandardButton>
-
-                {/* Actions Dropdown */}
-                <ActionsDropdown
-                  onDownloadPDF={() => {
-                    toast.success("PDF download starting...");
-                  }}
-                  onDownloadWord={() => {
-                    toast.success("Word download starting...");
-                  }}
-                  onDelete={() => setShowDeleteConfirm(true)}
-                />
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Metadata/Summary Bar */}
-      <div style={{
-        background: (() => {
-          switch (currentCollection.status) {
-            case "Draft": return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
-            case "For Approval": return "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
-            case "Approved": return "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)";
-            case "Collected": return "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)";
-            case "Cancelled": return "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)";
-            default: return "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)";
-          }
-        })(),
-        borderBottom: "1.5px solid #0F766E",
-        padding: "16px 48px",
-        display: "flex",
-        alignItems: "center",
-        gap: "32px",
-        flexShrink: 0
-      }}>
-        {/* Status Dropdown */}
-        <div style={{ position: "relative" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Status
-          </div>
-          
-          <div
-            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            onBlur={() => setTimeout(() => setShowStatusDropdown(false), 200)}
-            tabIndex={0}
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: currentCollection.status === "Draft" ? "#6B7280" :
-                     currentCollection.status === "For Approval" ? "#F59E0B" :
-                     currentCollection.status === "Approved" ? "#3B82F6" :
-                     currentCollection.status === "Collected" ? "#10B981" :
-                     currentCollection.status === "Cancelled" ? "#EF4444" : "#667085",
-              cursor: "pointer",
-              padding: "4px 24px 4px 8px",
-              borderRadius: "6px",
-              border: "1.5px solid transparent",
-              position: "relative",
-              transition: "all 0.2s ease",
-              background: showStatusDropdown ? "#FFFFFF" : "transparent"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#FFFFFF";
-              e.currentTarget.style.borderColor = "#0F766E";
-            }}
-            onMouseLeave={(e) => {
-              if (!showStatusDropdown) {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = "transparent";
-              }
-            }}
-          >
-            {currentCollection.status}
-            
-            <div style={{
-              position: "absolute",
-              right: "6px",
-              top: "50%",
-              transform: `translateY(-50%) ${showStatusDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
-              transition: "transform 0.2s ease",
-              pointerEvents: "none",
-              color: "#0F766E"
-            }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
-
-          {showStatusDropdown && (
-            <div style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              background: "white",
-              border: "1.5px solid #E5E9F0",
-              borderRadius: "8px",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-              zIndex: 50,
-              minWidth: "160px",
-              overflow: "hidden"
-            }}>
-              {COLLECTION_STATUSES.map((status, index) => (
-                <div
-                  key={status}
-                  onClick={() => handleStatusChange(status)}
-                  style={{
-                    padding: "10px 14px",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    color: status === "Draft" ? "#6B7280" :
-                           status === "For Approval" ? "#F59E0B" :
-                           status === "Approved" ? "#3B82F6" :
-                           status === "Collected" ? "#10B981" :
-                           status === "Cancelled" ? "#EF4444" : "#667085",
-                    background: status === currentCollection.status ? "#F0FDF4" : "transparent",
-                    borderBottom: index < COLLECTION_STATUSES.length - 1 ? "1px solid #E5E9F0" : "none",
-                    transition: "all 0.15s ease"
-                  }}
-                  onMouseEnter={(e) => {
-                    if (status !== currentCollection.status) {
-                      e.currentTarget.style.background = "#F9FAFB";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (status !== currentCollection.status) {
-                      e.currentTarget.style.background = "transparent";
-                    }
-                  }}
-                >
-                  {status}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Amount */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Amount
-          </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, color: "#0A1D4D" }}>
-            ₱{formatAmount(computedAmount)}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Payment Date — read-only */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Collection Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-            {currentCollection.collectionDate ? formatDate(currentCollection.collectionDate) : "—"}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", height: "40px", background: "#0F766E", opacity: 0.2 }} />
-
-        {/* Created Date — always read-only, auto-set on creation */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Created Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-            {currentCollection.createdAt ? formatDate(currentCollection.createdAt) : formatDate(new Date().toISOString())}
+            <HeaderStatusDropdown
+              currentStatus={currentCollection.status}
+              statusOptions={COLLECTION_STATUSES}
+              statusColorMap={COLLECTION_STATUS_COLORS}
+              onStatusChange={handleStatusChange}
+            />
           </div>
         </div>
       </div>
@@ -518,6 +342,26 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
         ]}
         activeTab={activeTab}
         onChange={(tabId) => setActiveTab(tabId as "overview" | "billings" | "attachments")}
+        actions={
+          <TabRowActions
+            showTimeline={showTimeline}
+            onToggleTimeline={() => setShowTimeline(!showTimeline)}
+            editLabel={activeTab === "overview" ? "Edit Collection" : null}
+            onEdit={() => {
+              setEditedCollection(currentCollection);
+              setEditedAllocations(currentCollection.allocations || []);
+              setIsEditing(true);
+            }}
+            isEditing={isEditing}
+            onCancel={handleCancel}
+            onSave={handleSave}
+            isSaving={false}
+            saveLabel="Save Changes"
+            onDelete={() => setShowDeleteConfirm(true)}
+            onDownloadPDF={() => toast.success("PDF download starting...")}
+            onDownloadWord={() => toast.success("Word download starting...")}
+          />
+        }
       />
 
       {/* Content Area */}
@@ -554,7 +398,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                       color: "var(--neuron-ink-base)",
                       marginBottom: "8px"
                     }}>
-                      Collection Date
+                      Date
                     </label>
                     <SingleDateInput
                       value={(() => {
@@ -610,7 +454,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
               ) : (
                 <>
                   <Field 
-                    label="Collection Date" 
+                    label="Date" 
                     value={formatDate(currentCollection.collectionDate)}
                   />
                   

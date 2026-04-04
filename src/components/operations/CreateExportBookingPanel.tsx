@@ -447,6 +447,10 @@ export function CreateExportBookingPanel({
   const [lctCargo, setLctCargo] = useState("");
   const [lctCargoTime, setLctCargoTime] = useState("");
 
+  // ── Trucking ──
+  const [loadingAddress, setLoadingAddress] = useState("");
+  const [loadingSchedule, setLoadingSchedule] = useState("");
+
   // ── Domestic Cost ──
   const [domesticFreight, setDomesticFreight] = useState("");
   const [hustlingStripping, setHustlingStripping] = useState("");
@@ -580,6 +584,8 @@ export function CreateExportBookingPanel({
         lctEdArrastreTime,
         lctCargo,
         lctCargoTime,
+        loadingAddress,
+        loadingSchedule,
         domesticFreight,
         hustlingStripping,
         forkliftOperator,
@@ -684,6 +690,8 @@ export function CreateExportBookingPanel({
     setLctEdArrastreTime("");
     setLctCargo("");
     setLctCargoTime("");
+    setLoadingAddress("");
+    setLoadingSchedule("");
     setDomesticFreight("");
     setHustlingStripping("");
     setForkliftOperator("");
@@ -1205,6 +1213,23 @@ export function CreateExportBookingPanel({
                   onDateChange={setLctCargo}
                   onTimeChange={setLctCargoTime}
                 />
+              </div>
+            </div>
+
+            {/* ═══════════════ TRUCKING ═══════════════ */}
+            <SectionTitle>Trucking</SectionTitle>
+            <div style={twoCol}>
+              <div>
+                <label style={labelStyle}>Loading Address</label>
+                <NeuronInput
+                  value={loadingAddress}
+                  onChange={setLoadingAddress}
+                  placeholder="Enter loading address"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Loading Schedule</label>
+                <NeuronDatePicker value={loadingSchedule} onChange={setLoadingSchedule} />
               </div>
             </div>
 

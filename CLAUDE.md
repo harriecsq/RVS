@@ -18,6 +18,24 @@ npm run build     # Build to /build directory
 
 No linting, testing, or type-checking scripts are configured.
 
+## Codebase Navigation — Use Dora
+
+**dora** (`@butttons/dora`) is installed and indexed in this project. **Always use `dora` commands instead of manual Grep/Glob/Read exploration when scanning the codebase.** Use dora's output as the primary basis for finding files, symbols, dependencies, and structure.
+
+```bash
+dora map                      # High-level codebase overview
+dora ls src/                  # List files/symbols in a directory
+dora status                   # Index status
+dora index                    # Re-index after code changes
+dora query "SELECT ..."       # Custom SQLite queries against the index
+```
+
+Key rules:
+- Before exploring the codebase, run `dora` commands first (e.g., `dora map`, `dora ls`, symbol/dependency lookups)
+- Use dora's dependency analysis to trace imports and find references instead of grepping
+- After significant code changes, run `dora index` to update the index
+- Fall back to Grep/Glob/Read only when dora cannot answer the specific question
+
 ## Architecture
 
 ### Stack
@@ -84,6 +102,5 @@ Custom "NEURON" tokens in `src/styles/globals.css`. Key values:
 ## Important Notes
 
 - `src/docs/*.md` and `AGENTS.md` were AI-generated (Codex/Figma Make) — cross-check their claims against actual source code before trusting them
-- The Hono server (`index.tsx`) is ~9,400 lines and monolithic — a primary refactor target
-- `kvRetry<T>()` is the standard KV operation wrapper (3 retries, exponential backoff)
-- Vite path aliases are configured in `vite.config.ts` — check there if imports break
+- DO NOT show code diffs and just confirm what was done to lessen outputs to save on token usage
+

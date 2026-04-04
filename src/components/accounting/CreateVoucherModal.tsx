@@ -141,6 +141,62 @@ function CategoryDropdown({
   );
 }
 
+function NeuronDropdown({
+  value, options, onChange, placeholder = "Select...",
+}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+          border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
+          alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+          color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
+        }}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
+        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
+      </div>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
+        }}>
+          {options.map((opt) => (
+            <div
+              key={opt}
+              onClick={() => { onChange(opt); setOpen(false); }}
+              style={{
+                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
+              }}
+              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
+            >
+              {opt}
+              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
   if (!containerNo && !volume) return "—";
@@ -243,13 +299,20 @@ export function CreateVoucherModal({
 
   // --- State ---
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  // Voucher Reference fields
+  const [voucherCompanyCode, setVoucherCompanyCode] = useState("RVS");
+  const [voucherTypeCode, setVoucherTypeCode] = useState("CV");
+  const [voucherYear, setVoucherYear] = useState(String(new Date().getFullYear()));
+  const [voucherRefNumber, setVoucherRefNumber] = useState("");
+  const [nextVoucherNumber, setNextVoucherNumber] = useState<number | null>(null);
+
   // Header Fields
   const [payee, setPayee] = useState("");
   const [category, setCategory] = useState<string>("");
   const [bank, setBank] = useState("");
   const [checkNo, setCheckNo] = useState("");
-  const [voucherDate, setVoucherDate] = useState("");
+  const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split("T")[0]);
   
   // Container State
   const [availableContainers, setAvailableContainers] = useState<string[]>([]);
@@ -257,12 +320,11 @@ export function CreateVoucherModal({
 
   // Booking Link
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  
-  // Linked expense numbers derived from selected booking
-  const [linkedExpenseNumbers, setLinkedExpenseNumbers] = useState<string[]>([]);
-  
   // Trucking record data derived from linked booking
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+  const [manualTruckingRate, setManualTruckingRate] = useState("");
+  const [manualDeliveryAddress, setManualDeliveryAddress] = useState("");
+  const [manualLoadingAddress, setManualLoadingAddress] = useState("");
   const [selectedTruckingContainerNos, setSelectedTruckingContainerNos] = useState<string[]>([]);
   const [truckingRecordsForBooking, setTruckingRecordsForBooking] = useState<any[]>([]);
   
@@ -313,50 +375,40 @@ export function CreateVoucherModal({
   // Reset form when opened
   useEffect(() => {
     if (isOpen) {
+      setVoucherCompanyCode("RVS");
+      setVoucherTypeCode("CV");
+      setVoucherYear(String(new Date().getFullYear()));
+      setVoucherRefNumber("");
+      setNextVoucherNumber(null);
       setPayee("");
       setCategory("");
       setBank("");
       setCheckNo("");
       setVoucherDate("");
       setSelectedBooking(null);
-      setLinkedExpenseNumbers([]);
       setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+      setManualDeliveryAddress("");
+      setManualLoadingAddress("");
       setParticulars([{ id: Date.now().toString(), description: "", amount: 0 }]);
       setDistribution([]);
     }
   }, [isOpen]);
 
-  // Fetch linked expenses when a booking is selected
+  // Fetch next voucher number when company/type/year changes
   useEffect(() => {
-    if (selectedBooking) {
-      const bookingId = selectedBooking.bookingId || selectedBooking.bookingNumber || selectedBooking.booking_number || selectedBooking.id;
-      if (bookingId) {
-        fetchLinkedExpenses(bookingId);
-      } else {
-        setLinkedExpenseNumbers([]);
-      }
-    } else {
-      setLinkedExpenseNumbers([]);
-    }
-  }, [selectedBooking]);
-
-  const fetchLinkedExpenses = async (bookingId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      if (!response.ok) return;
-      const result = await response.json();
-      if (result.success && Array.isArray(result.data)) {
-        const numbers = result.data
-          .map((e: any) => e.expenseNumber || e.id)
-          .filter(Boolean);
-        setLinkedExpenseNumbers(numbers);
-      }
-    } catch (error) {
-      console.error("Error fetching linked expenses for booking:", error);
-    }
-  };
+    if (!isOpen) return;
+    const params = new URLSearchParams({
+      companyCode: voucherCompanyCode,
+      voucherType: voucherTypeCode,
+      year: voucherYear,
+    });
+    fetch(`${API_BASE_URL}/next-ref/voucher?${params}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setNextVoucherNumber(d.nextNumber); })
+      .catch(() => {});
+  }, [isOpen, voucherCompanyCode, voucherTypeCode, voucherYear]);
 
   // Fetch all trucking records when category is Trucking and a booking is selected
   useEffect(() => {
@@ -390,10 +442,13 @@ export function CreateVoucherModal({
     }
   };
 
-  // Derive trucking data from selected containers
+  // Derive trucking data from selected containers — use rate of first record only
   useEffect(() => {
     if (selectedTruckingContainerNos.length === 0) {
       setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+      setManualTruckingRate("");
+      setManualDeliveryAddress("");
+      setManualLoadingAddress("");
       return;
     }
     const selectedRecords = truckingRecordsForBooking.filter((r: any) =>
@@ -401,37 +456,41 @@ export function CreateVoucherModal({
     );
     if (selectedRecords.length === 0) {
       setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
+      setManualTruckingRate("");
+      setManualDeliveryAddress("");
+      setManualLoadingAddress("");
       return;
     }
     const first = selectedRecords[0];
     const addresses = (first.deliveryAddresses || []).map((a: any) => a.address).filter(Boolean);
     const deliveryAddress = addresses.join("; ");
     const loadingAddress = first.truckingAddress || "";
-    const totalRate = selectedRecords.reduce((sum: number, r: any) => {
-      const rate = parseFloat(String(r.truckingRate || "0").replace(/,/g, "")) || 0;
-      return sum + rate;
-    }, 0);
-    setTruckingRecordData({ deliveryAddress, loadingAddress, truckingRate: String(totalRate) });
+    const singleRate = parseFloat(String(first.truckingRate || "0").replace(/,/g, "")) || 0;
+    setTruckingRecordData({ deliveryAddress, loadingAddress, truckingRate: String(singleRate) });
+    setManualTruckingRate(singleRate ? String(singleRate) : "");
+    setManualDeliveryAddress(deliveryAddress);
+    setManualLoadingAddress(loadingAddress);
   }, [selectedTruckingContainerNos, truckingRecordsForBooking]);
 
-  // Auto-fill voucher entries amount when trucking rate is fetched from trucking record
+  // Auto-fill voucher entries amount: rate × container count
   useEffect(() => {
-    if (category === "Trucking" && truckingRecordData.truckingRate) {
-      const rateStr = String(truckingRecordData.truckingRate).replace(/,/g, '');
-      const rateVal = parseFloat(rateStr) || 0;
-      if (rateVal > 0) {
+    if (category === "Trucking" && manualTruckingRate) {
+      const rateVal = parseFloat(manualTruckingRate.replace(/,/g, '')) || 0;
+      const containerCount = Math.max(selectedTruckingContainerNos.length, 1);
+      const totalAmount = rateVal * containerCount;
+      if (totalAmount > 0) {
         setParticulars(prev => {
           const hasTruckingRow = prev.some(item => item.description === "Trucking/Hauling");
           if (hasTruckingRow) {
             return prev.map(item =>
-              item.description === "Trucking/Hauling" ? { ...item, amount: rateVal } : item
+              item.description === "Trucking/Hauling" ? { ...item, amount: totalAmount } : item
             );
           }
           return prev;
         });
       }
     }
-  }, [truckingRecordData, category]);
+  }, [manualTruckingRate, selectedTruckingContainerNos.length, category]);
 
   // Update items when booking changes (for Shipping Line)
   useEffect(() => {
@@ -468,7 +527,13 @@ export function CreateVoucherModal({
         if (selectedBooking.rate || selectedBooking.truckingRates) newAutoFilled.rate = true;
         
         setAutoFilledFields(newAutoFilled);
-        
+
+        // Pre-fill editable address fields for Trucking vouchers
+        if (category === "Trucking") {
+          setManualDeliveryAddress(selectedBooking.deliveryAddress || selectedBooking.pod || selectedBooking.portOfDestination || "");
+          setManualLoadingAddress(selectedBooking.loadingAddress || selectedBooking.origin || "");
+        }
+
         // Parse containers from booking
         let containers: string[] = [];
         if (selectedBooking.containerNumbers) {
@@ -718,21 +783,14 @@ export function CreateVoucherModal({
         setParticulars(newParticulars);
     } else if (newCategory === "Trucking") {
       const newParticulars: VoucherLineItem[] = [];
-      
-      // Prefer trucking record rate, then fallback to booking rate
-      let rateVal = 0;
-      if (truckingRecordData.truckingRate) {
-        const rateStr = String(truckingRecordData.truckingRate).replace(/,/g, '');
-        rateVal = parseFloat(rateStr) || 0;
-      } else if (selectedBooking) {
-        const rateStr = String(selectedBooking.rate || selectedBooking.truckingRates || "0").replace(/,/g, '');
-        rateVal = parseFloat(rateStr) || 0;
-      }
+
+      const rateVal = parseFloat((manualTruckingRate || "0").replace(/,/g, '')) || 0;
+      const containerCount = Math.max(selectedTruckingContainerNos.length, 1);
 
       newParticulars.push({
           id: Date.now().toString() + Math.random(),
           description: "Trucking/Hauling",
-          amount: rateVal
+          amount: rateVal * containerCount
       });
       setParticulars(newParticulars);
     } else if (standardItems && standardItems.length > 0) {
@@ -804,8 +862,16 @@ export function CreateVoucherModal({
       const formattedDate = voucherDate;
       
       // 1. Create Voucher
+      // Build voucherNumber from compound fields if user provided a number
+      const fullVoucherNumber = voucherRefNumber.trim()
+        ? `${voucherCompanyCode} ${voucherTypeCode} ${voucherYear}-${voucherRefNumber.trim()}`
+        : undefined; // Let server auto-generate
+
       const voucherPayload = {
-        voucherNumber: `V-${Date.now().toString().slice(-6)}`, // Auto-gen
+        voucherNumber: fullVoucherNumber,
+        companyCode: voucherCompanyCode,
+        voucherType: voucherTypeCode,
+        voucherYear: parseInt(voucherYear) || new Date().getFullYear(),
         voucherDate: formattedDate,
         payee,
         category,
@@ -823,6 +889,8 @@ export function CreateVoucherModal({
         blNumber: bookingFields.blNumber,
         volume: bookingFields.volume,
         commodity: bookingFields.commodity,
+        deliveryAddress: category === "Trucking" ? manualDeliveryAddress : undefined,
+        loadingAddress: category === "Trucking" ? manualLoadingAddress : undefined,
         containerNumbers: voucherContainers.filter(c => c.trim() !== ""),
         linkedContainerNos: category === "Trucking" ? selectedTruckingContainerNos : undefined,
         linkedTruckingRecordIds: category === "Trucking"
@@ -896,7 +964,55 @@ export function CreateVoucherModal({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-8">
           <form id="voucher-form" onSubmit={handleSubmit} className="space-y-8">
-            
+
+            {/* 0. Reference Number */}
+            <div>
+              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Voucher Reference</Label>
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Company</Label>
+                  <NeuronDropdown
+                    value={voucherCompanyCode}
+                    onChange={setVoucherCompanyCode}
+                    options={["SCI", "RDS", "RVS", "SW"]}
+                    placeholder="Code"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Type</Label>
+                  <NeuronDropdown
+                    value={voucherTypeCode}
+                    onChange={setVoucherTypeCode}
+                    options={["ADV", "CV"]}
+                    placeholder="Type"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Year</Label>
+                  <Input
+                    value={voucherYear}
+                    onChange={e => setVoucherYear(e.target.value.replace(/\D/g, ""))}
+                    placeholder={String(new Date().getFullYear())}
+                    style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                    className="focus-visible:ring-[#237F66]"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Number</Label>
+                  <Input
+                    value={voucherRefNumber}
+                    onChange={e => setVoucherRefNumber(e.target.value.replace(/\D/g, ""))}
+                    placeholder={nextVoucherNumber !== null ? String(nextVoucherNumber) : "…"}
+                    style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                    className="focus-visible:ring-[#237F66]"
+                  />
+                </div>
+              </div>
+              <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+                {voucherCompanyCode} {voucherTypeCode} {voucherYear}-{voucherRefNumber || (nextVoucherNumber !== null ? nextVoucherNumber : "")}
+              </p>
+            </div>
+
             {/* 1. Primary Header Info */}
             <div className="grid grid-cols-2 gap-6">
               <div className="col-span-2 sm:col-span-1">
@@ -947,7 +1063,7 @@ export function CreateVoucherModal({
               </div>
 
               <div className="col-span-2 sm:col-span-1">
-                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Voucher Date</Label>
+                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Date</Label>
                 <SingleDateInput
                   value={voucherDate}
                   onChange={(iso) => setVoucherDate(iso)}
@@ -1035,18 +1151,7 @@ export function CreateVoucherModal({
                           gap: "14px",
                         }}>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                            {/* Row 1: Linked Expense | Shipper/Consignee */}
-                            <div>
-                              <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Linked Expense</div>
-                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{(() => {
-                                // Combine prop expenseNumber with fetched linked expenses from booking
-                                const allExpenses = [...linkedExpenseNumbers];
-                                if (expenseNumber && !allExpenses.includes(expenseNumber)) {
-                                  allExpenses.unshift(expenseNumber);
-                                }
-                                return allExpenses.length > 0 ? allExpenses.join(", ") : "—";
-                              })()}</div>
-                            </div>
+                            {/* Row 1: Shipper/Consignee */}
                             {(() => {
                               const isExportBooking = selectedBooking.shipmentType?.toLowerCase().includes("export") || selectedBooking.type?.toLowerCase().includes("export");
                               return (
@@ -1060,28 +1165,12 @@ export function CreateVoucherModal({
                                 </div>
                               );
                             })()}
-                            {/* Row 2: Vessel / Voyage | BL Number (non-Trucking) or Delivery Address (Trucking) */}
+                            {/* Row 2: Vessel / Voyage | BL Number */}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
                               <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingFields.vesselVoyage || "—"}</div>
                             </div>
-                            {category === "Trucking" ? (
-                              (() => {
-                                const isExportBooking = selectedBooking.shipmentType?.toLowerCase().includes("export") || selectedBooking.type?.toLowerCase().includes("export");
-                                return (
-                                  <div>
-                                    <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
-                                      {isExportBooking ? "Loading Address" : "Delivery Address"}
-                                    </div>
-                                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                                      {isExportBooking
-                                        ? (truckingRecordData.loadingAddress || bookingFields.loadingAddress || "—")
-                                        : (truckingRecordData.deliveryAddress || bookingFields.deliveryAddress || "—")}
-                                    </div>
-                                  </div>
-                                );
-                              })()
-                            ) : (
+                            {category !== "Trucking" && (
                               <div>
                                 <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
                                 <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingFields.blNumber || "—"}</div>
@@ -1090,6 +1179,8 @@ export function CreateVoucherModal({
                             {/* Row 3: Origin/Destination | Volume */}
                             {(() => {
                               const isExportBooking = selectedBooking.shipmentType?.toLowerCase().includes("export") || selectedBooking.type?.toLowerCase().includes("export");
+                              // Hide Destination for trucking vouchers linked to export bookings
+                              if (category === "Trucking" && isExportBooking) return null;
                               return (
                                 <div>
                                   <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
@@ -1103,29 +1194,89 @@ export function CreateVoucherModal({
                             })()}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
-                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(bookingFields.containerNo, bookingFields.volume)}</div>
+                              <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                                {category === "Trucking" && selectedTruckingContainerNos.length > 0
+                                  ? `${selectedTruckingContainerNos.length}x${bookingFields.volume || "—"}`
+                                  : computeVolumeSummary(bookingFields.containerNo, bookingFields.volume)}
+                              </div>
                             </div>
                             {/* Row 4: Container No | Commodity */}
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
                               <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                                {voucherContainers.filter(Boolean).join(", ") || bookingFields.containerNo || "—"}
+                                {category === "Trucking"
+                                  ? (selectedTruckingContainerNos.length > 0 ? selectedTruckingContainerNos.join(", ") : "—")
+                                  : (voucherContainers.filter(Boolean).join(", ") || bookingFields.containerNo || "—")}
                               </div>
                             </div>
                             <div>
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
                               <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingFields.commodity || "—"}</div>
                             </div>
-                            {/* Trucking Rate (Trucking only) */}
-                            {category === "Trucking" && (
-                              <div>
-                                <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Trucking Rate</div>
-                                <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingRecordData.truckingRate || bookingFields.rate || "—"}</div>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </>
+                    )}
+
+                    {/* Delivery Address (Import) or Loading Address (Export) — editable field outside the box */}
+                    {category === "Trucking" && (() => {
+                      const isExportBooking = selectedBooking?.shipmentType?.toLowerCase().includes("export") || selectedBooking?.type?.toLowerCase().includes("export");
+                      return (
+                        <div style={{ marginTop: "14px" }}>
+                          <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
+                            {isExportBooking ? "Loading Address" : "Delivery Address"}
+                          </label>
+                          <input
+                            type="text"
+                            value={isExportBooking ? manualLoadingAddress : manualDeliveryAddress}
+                            onChange={(e) => isExportBooking ? setManualLoadingAddress(e.target.value) : setManualDeliveryAddress(e.target.value)}
+                            placeholder={isExportBooking ? "Enter loading address..." : "Enter delivery address..."}
+                            style={{
+                              width: "100%",
+                              padding: "10px 14px",
+                              fontSize: "14px",
+                              border: "1px solid #E5E9F0",
+                              borderRadius: "8px",
+                              backgroundColor: "#FFFFFF",
+                              color: "#0A1D4D",
+                              outline: "none",
+                              boxSizing: "border-box" as const,
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Trucking Rate — editable field outside the box */}
+                    {category === "Trucking" && (
+                      <div style={{ marginTop: "14px" }}>
+                        <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
+                          Trucking Rate (per container)
+                        </label>
+                        <input
+                          type="text"
+                          value={manualTruckingRate}
+                          onChange={(e) => setManualTruckingRate(e.target.value)}
+                          placeholder="Enter rate..."
+                          style={{
+                            width: "100%",
+                            padding: "10px 14px",
+                            fontSize: "14px",
+                            border: "1px solid #E5E9F0",
+                            borderRadius: "8px",
+                            backgroundColor: "#FFFFFF",
+                            color: "#0A1D4D",
+                            outline: "none",
+                            boxSizing: "border-box" as const,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        />
+                        {selectedTruckingContainerNos.length > 1 && manualTruckingRate && (
+                          <p style={{ fontSize: "12px", color: "#667085", margin: "4px 0 0" }}>
+                            Total: ₱{((parseFloat(manualTruckingRate.replace(/,/g, '')) || 0) * selectedTruckingContainerNos.length).toLocaleString("en-PH")} ({selectedTruckingContainerNos.length} containers × ₱{(parseFloat(manualTruckingRate.replace(/,/g, '')) || 0).toLocaleString("en-PH")})
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

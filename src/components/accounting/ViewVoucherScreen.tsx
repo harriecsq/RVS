@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
-import { ArrowLeft, Clock, Trash2, Edit3, Plus, ChevronDown, Link2, FileText, Paperclip } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Trash2, Plus, ChevronDown, Link2, FileText, Paperclip, Check } from "lucide-react";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { StandardButton } from "../design-system";
 import { StandardTabs } from "../design-system/StandardTabs";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
+import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { TabRowActions } from "../shared/TabRowActions";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { Input } from "../ui/input";
@@ -35,6 +36,15 @@ interface ViewVoucherScreenProps {
 }
 
 type VoucherStatus = "Draft" | "For Approval" | "Approved" | "Paid" | "Cancelled";
+
+const VOUCHER_STATUS_COLORS: Record<string, string> = {
+  "Draft": "#6B7280",
+  "For Approval": "#F59E0B",
+  "Approved": "#3B82F6",
+  "Paid": "#10B981",
+  "Cancelled": "#DC2626",
+};
+const VOUCHER_STATUSES = ["Draft", "For Approval", "Approved", "Paid", "Cancelled"];
 
 interface LineItem {
   id: string;
@@ -114,7 +124,56 @@ const Field = ({ label, value }: { label: string; value?: string | number | null
   </div>
 );
 
-const EditableField = ({ 
+function NeuronDropdown({
+  value, options, onChange, placeholder = "Select...",
+}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div onClick={() => setOpen(!open)} style={{
+        width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+        border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
+        alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+        color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
+      }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
+        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
+      </div>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
+        }}>
+          {options.map((opt) => (
+            <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
+              style={{
+                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
+              }}
+              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
+            >
+              {opt}
+              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const EditableField = ({
   label, 
   value, 
   onChange, 
@@ -270,49 +329,25 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedVoucher, setEditedVoucher] = useState<Voucher | null>(null);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<"voucher-info" | "attachments">("voucher-info");
+  const [editVoucherCompanyCode, setEditVoucherCompanyCode] = useState("RVS");
+  const [editVoucherType, setEditVoucherType] = useState("CV");
+  const [editVoucherYear, setEditVoucherYear] = useState(String(new Date().getFullYear()));
+  const [editVoucherRefNumber, setEditVoucherRefNumber] = useState("");
+  const [editNextVoucherNumber, setEditNextVoucherNumber] = useState<number | null>(null);
 
   // Line Items State
   const [particulars, setParticulars] = useState<LineItem[]>([]);
   const [distribution, setDistribution] = useState<LineItem[]>([]);
-  const [linkedExpenseNumbers, setLinkedExpenseNumbers] = useState<string[]>([]);
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
-
+  const [manualDeliveryAddress, setManualDeliveryAddress] = useState("");
+  const [manualLoadingAddress, setManualLoadingAddress] = useState("");
 
   useEffect(() => {
     fetchVoucherDetails();
   }, [voucherId]);
-
-  // Fetch linked expenses for the booking whenever voucher loads/changes
-  useEffect(() => {
-    const bookingIdToUse = voucher?.booking?.bookingId || voucher?.bookingId;
-    if (bookingIdToUse) {
-      fetchLinkedExpenses(bookingIdToUse);
-    } else {
-      setLinkedExpenseNumbers([]);
-    }
-  }, [voucher?.bookingId, voucher?.booking?.bookingId]);
-
-  const fetchLinkedExpenses = async (bookingId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      if (!response.ok) return;
-      const result = await response.json();
-      if (result.success && Array.isArray(result.data)) {
-        const numbers = result.data
-          .map((e: any) => e.expenseNumber || e.id)
-          .filter(Boolean);
-        setLinkedExpenseNumbers(numbers);
-      }
-    } catch (error) {
-      console.error("Error fetching linked expenses for booking:", error);
-    }
-  };
 
   // Fetch trucking record data when voucher category is Trucking
   useEffect(() => {
@@ -324,6 +359,43 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
       setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
     }
   }, [voucher?.bookingId, voucher?.booking?.bookingId, voucher?.category]);
+
+  // Parse voucher number when entering edit mode
+  useEffect(() => {
+    if (!isEditing || !voucher) return;
+    const vn = voucher.voucherNumber || "";
+    const parts = vn.split(" ");
+    if (parts.length >= 3) {
+      setEditVoucherCompanyCode(parts[0]);
+      setEditVoucherType(parts[1]);
+      const rest = parts.slice(2).join(" ");
+      const dashIdx = rest.indexOf("-");
+      if (dashIdx > 0) {
+        setEditVoucherYear(rest.slice(0, dashIdx));
+        setEditVoucherRefNumber(rest.slice(dashIdx + 1));
+      }
+    } else if (parts.length === 2) {
+      setEditVoucherCompanyCode(parts[0]);
+      const rest = parts[1];
+      const dashIdx = rest.indexOf("-");
+      if (dashIdx > 0) {
+        setEditVoucherYear(rest.slice(0, dashIdx));
+        setEditVoucherRefNumber(rest.slice(dashIdx + 1));
+      }
+    }
+  }, [isEditing]);
+
+  // Fetch next voucher number when editing
+  useEffect(() => {
+    if (!isEditing) return;
+    const params = new URLSearchParams({ companyCode: editVoucherCompanyCode, voucherType: editVoucherType, year: editVoucherYear });
+    fetch(`${API_BASE_URL}/next-ref/voucher?${params}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.nextNumber) setEditNextVoucherNumber(d.nextNumber); })
+      .catch(() => {});
+  }, [isEditing, editVoucherCompanyCode, editVoucherType, editVoucherYear]);
 
   const fetchTruckingRecordForBooking = async (bookingId: string) => {
     try {
@@ -349,6 +421,9 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
         const loadingAddress = truckingRecord.truckingAddress || "";
         const truckingRate = truckingRecord.truckingRate || "";
         setTruckingRecordData({ deliveryAddress, loadingAddress, truckingRate });
+        // If no saved addresses on the voucher, fall back to trucking record data
+        if (!manualDeliveryAddress) setManualDeliveryAddress(deliveryAddress);
+        if (!manualLoadingAddress) setManualLoadingAddress(loadingAddress);
       } else {
         setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
       }
@@ -380,7 +455,11 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
         setVoucher(v);
         setEditedVoucher(v);
-        
+
+        // Initialize editable address fields from voucher data
+        setManualDeliveryAddress(v.deliveryAddress || "");
+        setManualLoadingAddress(v.loadingAddress || "");
+
         // Split line items
         if (v.lineItems) {
             setParticulars(v.lineItems.filter((i: LineItem) => !i.type || i.type === 'particulars'));
@@ -400,7 +479,6 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const handleCancel = () => {
     setIsEditing(false);
     setEditedVoucher(voucher);
-    setShowStatusDropdown(false);
     if (voucher?.lineItems) {
         setParticulars(voucher.lineItems.filter((i: LineItem) => !i.type || i.type === 'particulars'));
         setDistribution(voucher.lineItems.filter((i: LineItem) => i.type === 'distribution'));
@@ -445,10 +523,16 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           ...distribution.map(d => ({ ...d, type: 'distribution' as const }))
       ];
       
+      // Compose voucherNumber from dropdown fields
+      const composedVoucherNumber = `${editVoucherCompanyCode} ${editVoucherType} ${editVoucherYear}-${editVoucherRefNumber || (editNextVoucherNumber !== null ? String(editNextVoucherNumber) : "")}`;
+
       const payload = {
           ...editedVoucher,
+          voucherNumber: composedVoucherNumber,
           amount: calculateTotal(),
-          lineItems: combinedLineItems
+          lineItems: combinedLineItems,
+          deliveryAddress: manualDeliveryAddress,
+          loadingAddress: manualLoadingAddress,
       };
 
       const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
@@ -470,7 +554,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
         setVoucher(result.data);
         setEditedVoucher(result.data);
         setIsEditing(false);
-        setShowStatusDropdown(false);
+
       } else {
         toast.error("Failed to update voucher");
       }
@@ -498,7 +582,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
       if (result.success && result.data) {
         setVoucher(result.data);
         setEditedVoucher(result.data);
-        setShowStatusDropdown(false);
+
         toast.success(`Status updated to ${newStatus}`);
       }
     } catch (error) {
@@ -604,92 +688,68 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--neuron-ink-primary)", marginBottom: "0" }}>
-                {voucher.voucherNumber}
-              </h1>
+              {isEditing ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "14px", color: "#667085", fontWeight: 500 }}>Ref:</span>
+                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>
+                      {editVoucherCompanyCode} {editVoucherType} {editVoucherYear}-{editVoucherRefNumber || (editNextVoucherNumber !== null ? editNextVoucherNumber : "")}
+                    </span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", width: "420px" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Company</span>
+                      <NeuronDropdown
+                        value={editVoucherCompanyCode}
+                        onChange={setEditVoucherCompanyCode}
+                        options={["SCI", "RDS", "RVS", "SW"]}
+                        placeholder="Code"
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Type</span>
+                      <NeuronDropdown
+                        value={editVoucherType}
+                        onChange={setEditVoucherType}
+                        options={["ADV", "CV"]}
+                        placeholder="Type"
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                      <input
+                        value={editVoucherYear}
+                        onChange={e => setEditVoucherYear(e.target.value.replace(/\D/g, ""))}
+                        style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                      <input
+                        value={editVoucherRefNumber}
+                        onChange={e => setEditVoucherRefNumber(e.target.value.replace(/\D/g, ""))}
+                        placeholder={editNextVoucherNumber !== null ? String(editNextVoucherNumber) : "…"}
+                        style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--neuron-ink-primary)", marginBottom: "0" }}>
+                  {voucher.voucherNumber}
+                </h1>
+              )}
             </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {!isEditing && (
-              <>
-                <StandardButton variant={showTimeline ? "secondary" : "outline"} onClick={() => setShowTimeline(!showTimeline)} icon={<Clock size={16} />}>Activity</StandardButton>
-                <StandardButton variant="outline" icon={<Edit3 size={16} />} onClick={() => setIsEditing(true)}>Edit Voucher</StandardButton>
-                <ActionsDropdown onDownloadPDF={() => toast.success("PDF download starting...")} onDownloadWord={() => toast.success("Word download starting...")} onDelete={() => setShowDeleteConfirm(true)} />
-              </>
-            )}
-            {isEditing && (
-              <>
-                <StandardButton variant="secondary" onClick={handleCancel}>Cancel</StandardButton>
-                <StandardButton variant="primary" onClick={handleSave}>Save Changes</StandardButton>
-              </>
-            )}
+            <HeaderStatusDropdown
+              currentStatus={voucher.status}
+              statusOptions={VOUCHER_STATUSES}
+              statusColorMap={VOUCHER_STATUS_COLORS}
+              onStatusChange={(s) => handleStatusChange(s as any)}
+            />
           </div>
-        </div>
-      </div>
-
-      {/* Metadata Bar */}
-      <div style={{
-        background: voucher.status === "Draft" ? "linear-gradient(135deg, #F3F4F6 0%, #E5E9F0 100%)" :
-                   voucher.status === "For Approval" ? "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)" :
-                   voucher.status === "Approved" ? "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)" :
-                   voucher.status === "Paid" ? "linear-gradient(135deg, #E8F5E9 0%, #E0F2F1 100%)" :
-                   "linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)",
-        borderBottom: "1.5px solid #0F766E",
-        padding: "16px 48px",
-        display: "flex",
-        alignItems: "center",
-        gap: "32px",
-        flexShrink: 0
-      }}>
-        {/* Status Dropdown */}
-        <div style={{ position: "relative" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>Status</div>
-          <div
-            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-            className="cursor-pointer flex items-center gap-2"
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "#0A1D4D"
-            }}
-          >
-            {voucher.status}
-            <ChevronDown size={14} className="text-[#0F766E]" />
-          </div>
-          {showStatusDropdown && (
-            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[160px] overflow-hidden">
-               {(["Draft", "For Approval", "Approved", "Paid", "Cancelled"] as VoucherStatus[]).map((status) => (
-                 <div
-                   key={status}
-                   onClick={() => handleStatusChange(status)}
-                   className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm font-medium text-gray-700"
-                 >
-                   {status}
-                 </div>
-               ))}
-            </div>
-          )}
-        </div>
-        <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
-        <div>
-          <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Payee</div>
-          <div className="text-sm font-semibold text-[#0A1D4D]">{voucher.payee || "—"}</div>
-        </div>
-        <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
-        <div>
-          <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Total Amount</div>
-          <div className="text-xl font-bold text-[#0A1D4D]">₱{formatAmount(calculateTotal())}</div>
-        </div>
-        <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
-        <div>
-          <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Voucher Date</div>
-          <div className="text-sm font-semibold text-[#0A1D4D]">{formatDate(isEditing ? (editedVoucher?.voucherDate || voucher.voucherDate) : voucher.voucherDate)}</div>
-        </div>
-        <div className="w-[1px] h-10 bg-[#0F766E] opacity-20" />
-        <div>
-          <div className="text-[11px] font-semibold text-[#0F766E] uppercase tracking-wide mb-[2px]">Created Date</div>
-          <div className="text-sm font-semibold text-[#0A1D4D]">{formatDate(voucher.created_at)}</div>
         </div>
       </div>
 
@@ -706,6 +766,22 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           ]}
           activeTab={activeTab}
           onChange={(tabId) => setActiveTab(tabId as "voucher-info" | "attachments")}
+          actions={
+            <TabRowActions
+              showTimeline={showTimeline}
+              onToggleTimeline={() => setShowTimeline(!showTimeline)}
+              editLabel={activeTab === "voucher-info" ? "Edit Voucher" : null}
+              onEdit={() => setIsEditing(true)}
+              isEditing={isEditing}
+              onCancel={handleCancel}
+              onSave={handleSave}
+              isSaving={false}
+              saveLabel="Save Changes"
+              onDelete={() => setShowDeleteConfirm(true)}
+              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadWord={() => toast.success("Word download starting...")}
+            />
+          }
         />
       </div>
 
@@ -827,16 +903,6 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                         </div>
                       </div>
                     )}
-                    {!isEditing && (
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
-                          Linked Expense
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {linkedExpenseNumbers.length > 0 ? linkedExpenseNumbers.join(", ") : "—"}
-                        </div>
-                      </div>
-                    )}
                     {/* Row 2: Shipper/Consignee | Vessel / Voyage */}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
@@ -850,32 +916,24 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
                       <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.vesselVoy || "—"}</div>
                     </div>
-                    {/* Row 3: BL Number (non-Trucking) or Delivery Address (Trucking) | Origin/Destination */}
-                    {currentCategory === "Trucking" ? (
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
-                          {isExport ? "Loading Address" : "Delivery Address"}
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {isExport
-                            ? (truckingRecordData.loadingAddress || displayVoucher?.booking?.loadingAddress || displayVoucher?.booking?.origin || "—")
-                            : (truckingRecordData.deliveryAddress || displayVoucher?.booking?.deliveryAddress || displayVoucher?.booking?.pod || displayVoucher?.booking?.portOfDestination || "—")}
-                        </div>
-                      </div>
-                    ) : (
+                    {/* Row 3: BL Number (non-Trucking) | Origin/Destination */}
+                    {currentCategory !== "Trucking" && (
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.blNumber || "—"}</div>
                       </div>
                     )}
-                    <div>
-                      <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
-                        {originLabel}
+                    {/* Hide Destination for trucking vouchers linked to export bookings */}
+                    {!(currentCategory === "Trucking" && isExport) && (
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
+                          {originLabel}
+                        </div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                          {originValue || "—"}
+                        </div>
                       </div>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                        {originValue || "—"}
-                      </div>
-                    </div>
+                    )}
                     {/* Row 4: Volume | Container No */}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
@@ -892,14 +950,44 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
                       <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.commodity || "—"}</div>
                     </div>
-                    {currentCategory === "Trucking" && (
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Trucking Rate</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingRecordData.truckingRate || displayVoucher?.booking?.rate || displayVoucher?.booking?.truckingRates || "—"}</div>
-                      </div>
-                    )}
                   </div>
                 </div>
+
+                {/* Delivery Address (Import) or Loading Address (Export) & Trucking Rate — editable fields outside the box */}
+                {currentCategory === "Trucking" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px" }}>
+                    <div>
+                      <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
+                        {isExport ? "Loading Address" : "Delivery Address"}
+                      </label>
+                      <input
+                        type="text"
+                        value={isExport ? manualLoadingAddress : manualDeliveryAddress}
+                        onChange={(e) => isExport ? setManualLoadingAddress(e.target.value) : setManualDeliveryAddress(e.target.value)}
+                        placeholder={isExport ? "Enter loading address..." : "Enter delivery address..."}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          fontSize: "14px",
+                          border: "1px solid #E5E9F0",
+                          borderRadius: "8px",
+                          backgroundColor: "#FFFFFF",
+                          color: "#0A1D4D",
+                          outline: "none",
+                          boxSizing: "border-box" as const,
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
+                        Trucking Rate
+                      </label>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500, padding: "10px 14px", border: "1px solid #E5E9F0", borderRadius: "8px", backgroundColor: "#FAFBFC" }}>
+                        {truckingRecordData.truckingRate || displayVoucher?.booking?.rate || displayVoucher?.booking?.truckingRates || "—"}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -979,11 +1067,11 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                     isEditing={isEditing}
                  />
 
-                 {/* Row 3: Voucher Date */}
+                 {/* Row 3: Date */}
                  {isEditing ? (
                    <div>
                      <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
-                       Voucher Date
+                       Date
                      </label>
                      <SingleDateInput
                        value={editedVoucher?.voucherDate || ""}
@@ -992,7 +1080,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                      />
                    </div>
                  ) : (
-                   <Field label="Voucher Date" value={voucher.voucherDate ? formatDate(voucher.voucherDate) : "—"} />
+                   <Field label="Date" value={voucher.voucherDate ? formatDate(voucher.voucherDate) : "—"} />
                  )}
               </div>
             </div>
