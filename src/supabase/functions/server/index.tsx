@@ -3502,12 +3502,33 @@ app.post("/make-server-ce0d67b8/trucking-records", async (c) => {
     if (!body.id) {
       body.id = `TRK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
+
+    // Generate truckingRefNo using lowest-gap sequence — TRK {year}-{number}
     if (!body.truckingRefNo) {
-      const num = String(Date.now()).slice(-6);
-      body.truckingRefNo = `TRK-${num}`;
+      const trkYear = new Date().getFullYear();
+      const trkPrefix = `TRK ${trkYear}-`;
+      const allTrucking = await kv.getByPrefix("trucking-record:");
+      const usedNumbers = new Set(allTrucking.map((r: any) => {
+        const ref = r.truckingRefNo || "";
+        if (!ref.startsWith(trkPrefix)) return null;
+        const n = parseInt(ref.slice(trkPrefix.length), 10);
+        return isNaN(n) ? null : n;
+      }).filter((n: any) => n !== null));
+      let next = 1;
+      while (usedNumbers.has(next)) next++;
+      body.truckingRefNo = `${trkPrefix}${next}`;
     }
+
+    // Uniqueness check
+    const allTrucking2 = await kv.getByPrefix("trucking-record:");
+    const duplicate = allTrucking2.find((r: any) => r.truckingRefNo === body.truckingRefNo && r.id !== body.id);
+    if (duplicate) {
+      return c.json({ success: false, error: `Reference number ${body.truckingRefNo} is already in use by another active record.` }, 409);
+    }
+
     body.createdAt = body.createdAt || new Date().toISOString();
     body.updatedAt = new Date().toISOString();
+    body.truckingStatus = body.truckingStatus || "Awaiting Trucking";
     await kv.set(`trucking-record:${body.id}`, body);
     console.log(`Created trucking record: ${body.id}`);
     return c.json({ success: true, data: body });
@@ -3521,10 +3542,14 @@ app.post("/make-server-ce0d67b8/trucking-records", async (c) => {
 app.get("/make-server-ce0d67b8/trucking-records", async (c) => {
   try {
     const linkedBookingId = c.req.query("linkedBookingId");
+    const segmentId = c.req.query("segmentId");
     let records = await kv.getByPrefix("trucking-record:");
     records = records.map(normalizeTruckingRecord);
     if (linkedBookingId) {
       records = records.filter((r: any) => r.linkedBookingId === linkedBookingId);
+    }
+    if (segmentId) {
+      records = records.filter((r: any) => r.linkedSegmentId === segmentId);
     }
     const shouldEnrich = Boolean(linkedBookingId);
     if (shouldEnrich) {
@@ -3561,6 +3586,16 @@ app.put("/make-server-ce0d67b8/trucking-records/:id", async (c) => {
     const updates = await c.req.json();
     const existing = await kv.get(`trucking-record:${id}`);
     if (!existing) return c.json({ success: false, error: "Not found" }, 404);
+
+    // If truckingRefNo is being changed, validate uniqueness
+    if (updates.truckingRefNo && updates.truckingRefNo !== existing.truckingRefNo) {
+      const allTrucking = await kv.getByPrefix("trucking-record:");
+      const duplicate = allTrucking.find((r: any) => r.truckingRefNo === updates.truckingRefNo && r.id !== id);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${updates.truckingRefNo} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updated = { ...existing, ...updates, id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() };
     await kv.set(`trucking-record:${id}`, updated);
     console.log(`Updated trucking record: ${id}`);
@@ -3623,6 +3658,34 @@ app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-tags", async 
     console.error("Error updating linked booking shipment tags:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
+});
+
+app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-events", async (c) => {
+  const id = c.req.param("id");
+  const { shipmentEvents, user } = await c.req.json();
+
+  const record = await kv.get(`trucking-record:${id}`);
+  if (!record) return c.json({ success: false, error: "Trucking record not found" }, 404);
+  if (!record.linkedBookingId || !record.linkedBookingType) {
+    return c.json({ success: false, error: "No linked booking" }, 400);
+  }
+
+  const prefix = record.linkedBookingType === "import" ? "import_booking:" : "export_booking:";
+  const booking = await kv.get(`${prefix}${record.linkedBookingId}`);
+  if (!booking) return c.json({ success: false, error: "Linked booking not found" }, 404);
+
+  const validEvents = (shipmentEvents || []).filter(
+    (e: any) => VALID_SHIPMENT_EVENT_KEYS.has(e.event) && e.dateTime
+  );
+
+  const updatedBooking = {
+    ...booking,
+    shipmentEvents: validEvents,
+    updatedAt: new Date().toISOString(),
+  };
+  await kv.set(`${prefix}${record.linkedBookingId}`, updatedBooking);
+
+  return c.json({ success: true, data: { shipmentEvents: validEvents } });
 });
 
 // Delete trucking record
@@ -3688,7 +3751,8 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
     const limit = c.req.query("limit") ? parseInt(c.req.query("limit")!) : undefined;
     const offset = c.req.query("offset") ? parseInt(c.req.query("offset")!) : 0;
     const ids = c.req.query("ids"); // NEW: Support for fetching specific expenses by IDs
-    
+    const segmentId = c.req.query("segmentId");
+
     // Get all expenses with prefix
     const expenses = await kv.getByPrefix("expense:");
     
@@ -3719,7 +3783,12 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
         return e.bookingId === bookingId;
       });
     }
-    
+
+    // Filter by segmentId if provided
+    if (segmentId) {
+      filtered = filtered.filter((e: any) => e.segmentId === segmentId);
+    }
+
     // Filter by bookingNumber if provided
     if (bookingNumber) {
       filtered = filtered.filter((e: any) => 
@@ -4350,17 +4419,44 @@ app.get("/make-server-ce0d67b8/expenses/:expenseId/vouchers", async (c) => {
 app.post("/make-server-ce0d67b8/vouchers", async (c) => {
   try {
     const body = await c.req.json();
-    
-    // Auto-generate voucher number
-    const allVouchers = await kvRetry(() => kv.getByPrefix("voucher:"));
-    const voucherCount = allVouchers.length + 1;
-    const voucherNumber = body.voucherNumber || `VCH-${new Date().getFullYear()}-${String(voucherCount).padStart(4, '0')}`;
-    
+
+    // Voucher ref format: {companyCode} {voucherType} {year}-{number}
+    // Bucket is per companyCode + voucherType + year
+    let voucherNumber = body.voucherNumber;
+    const companyCode = body.companyCode || "RVS";
+    const voucherType = body.voucherType || "CV";
+    const voucherYear = body.voucherYear || new Date().getFullYear();
+
+    if (!voucherNumber) {
+      const allVouchers = await kvRetry(() => kv.getByPrefix("voucher:"));
+      const prefix = `${companyCode} ${voucherType} ${voucherYear}-`;
+      const usedNumbers = new Set(allVouchers.map((v: any) => {
+        const vn = v.voucherNumber || "";
+        if (!vn.startsWith(prefix)) return null;
+        const numStr = vn.slice(prefix.length);
+        const n = parseInt(numStr, 10);
+        return isNaN(n) ? null : n;
+      }).filter((n: any) => n !== null));
+      let next = 1;
+      while (usedNumbers.has(next)) next++;
+      voucherNumber = `${prefix}${next}`;
+    }
+
+    // Uniqueness check
+    const allVouchers2 = await kvRetry(() => kv.getByPrefix("voucher:"));
+    const duplicate = allVouchers2.find((v: any) => v.voucherNumber === voucherNumber);
+    if (duplicate) {
+      return c.json({ success: false, error: `Reference number ${voucherNumber} is already in use by another active record.` }, 409);
+    }
+
     const voucherId = `voucher-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const voucher = {
       id: voucherId,
       voucherNumber,
+      companyCode,
+      voucherType,
+      voucherYear,
       // Core fields from Voucher-First
       payee: body.payee || "",
       category: body.category || "",
@@ -4370,13 +4466,13 @@ app.post("/make-server-ce0d67b8/vouchers", async (c) => {
       amount: body.amount || 0,
       status: body.status || "Draft",
       currency: body.currency || "PHP",
-      
+
       // Booking Link
       bookingId: body.bookingId || null,
-      
+
       // Line Items (Particulars + Distribution)
-      lineItems: body.lineItems || [], 
-      
+      lineItems: body.lineItems || [],
+
       // Legacy fields (optional)
       expenseId: body.expenseId || null,
       shipper: body.shipper || "",
@@ -4388,15 +4484,15 @@ app.post("/make-server-ce0d67b8/vouchers", async (c) => {
       destination: body.destination || "",
       blNumber: body.blNumber || "",
       containerNumbers: body.containerNumbers || [],
-      
+
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    
+
     await kv.set(`voucher:${voucherId}`, voucher);
-    
+
     console.log(`Created voucher ${voucherNumber} (Voucher-First)`);
-    
+
     return c.json({ success: true, data: voucher });
   } catch (error) {
     console.error("Error creating voucher:", error);
@@ -4436,10 +4532,17 @@ app.post("/make-server-ce0d67b8/expenses/:expenseId/vouchers", async (c) => {
       });
     }
 
-    // Auto-generate voucher number
+    // Auto-generate voucher number using gap-finding
     const allVouchers = await kv.getByPrefix("voucher:");
-    const voucherCount = allVouchers.length + 1;
-    const voucherNumber = `VCH-${new Date().getFullYear()}-${String(voucherCount).padStart(4, '0')}`;
+    const year = new Date().getFullYear();
+    const prefix = `RVS CV ${year}-`;
+    const usedNums = new Set(allVouchers.map((v: any) => {
+      const m = (v.voucherNumber || "").match(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)$`));
+      return m ? parseInt(m[1], 10) : null;
+    }).filter((n: any) => n !== null));
+    let nextV = 1;
+    while (usedNums.has(nextV)) nextV++;
+    const voucherNumber = `${prefix}${nextV}`;
     
     const voucherId = `voucher-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
@@ -4479,18 +4582,27 @@ app.patch("/make-server-ce0d67b8/vouchers/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const updates = await c.req.json();
-    
+
     const voucher = await kv.get(`voucher:${id}`);
     if (!voucher) {
       return c.json({ success: false, error: "Voucher not found" }, 404);
     }
-    
+
+    // If voucherNumber is being changed, validate uniqueness
+    if (updates.voucherNumber && updates.voucherNumber !== voucher.voucherNumber) {
+      const allVouchers = await kvRetry(() => kv.getByPrefix("voucher:"));
+      const duplicate = allVouchers.find((v: any) => v.voucherNumber === updates.voucherNumber && v.id !== id);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${updates.voucherNumber} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updatedVoucher = {
       ...voucher,
       ...updates,
       updated_at: new Date().toISOString()
     };
-    
+
     await kv.set(`voucher:${id}`, updatedVoucher);
     
     // Auto-update Expense Status based on Vouchers
@@ -4563,8 +4675,13 @@ app.get("/make-server-ce0d67b8/bookings/:id/vouchers", async (c) => {
     
     const allVouchers = await kv.getByPrefix("voucher:");
     
+    const segmentId = c.req.query("segmentId");
+
     // 1. Direct booking-linked vouchers (standalone vouchers with bookingId)
-    const directVouchers = allVouchers.filter((v: any) => v.bookingId === id);
+    let directVouchers = allVouchers.filter((v: any) => v.bookingId === id);
+    if (segmentId) {
+      directVouchers = directVouchers.filter((v: any) => v.segmentId === segmentId);
+    }
     
     // 2. Expense-linked vouchers: find all expenses for this booking, then their vouchers
     const allExpenses = await kv.getByPrefix("expense:");
@@ -4688,45 +4805,70 @@ app.get("/make-server-ce0d67b8/billings/:id", async (c) => {
 app.post("/make-server-ce0d67b8/billings", async (c) => {
   try {
     const body = await c.req.json();
-    
-    // Auto-generate billing number
-    const allBillings = await kv.getByPrefix("billing:");
-    const billingCount = allBillings.length + 1;
-    const billingNumber = `BIL-${new Date().getFullYear()}-${String(billingCount).padStart(4, '0')}`;
-    
+
+    // Billing ref format: {companyCode} {year}-{number}
+    // Bucket is per companyCode + year
+    let billingNumber = body.billingNumber;
+    const billingCompanyCode = body.billingCompanyCode || "RVS";
+    const billingYear = body.billingYear || new Date().getFullYear();
+
+    if (!billingNumber) {
+      const allBillings = await kv.getByPrefix("billing:");
+      const prefix = `${billingCompanyCode} ${billingYear}-`;
+      const usedNumbers = new Set(allBillings.map((b: any) => {
+        const bn = b.billingNumber || "";
+        if (!bn.startsWith(prefix)) return null;
+        const numStr = bn.slice(prefix.length);
+        const n = parseInt(numStr, 10);
+        return isNaN(n) ? null : n;
+      }).filter((n: any) => n !== null));
+      let next = 1;
+      while (usedNumbers.has(next)) next++;
+      billingNumber = `${prefix}${next}`;
+    }
+
+    // Uniqueness check
+    const allBillings2 = await kv.getByPrefix("billing:");
+    const duplicate = allBillings2.find((b: any) => b.billingNumber === billingNumber);
+    if (duplicate) {
+      return c.json({ success: false, error: `Reference number ${billingNumber} is already in use by another active record.` }, 409);
+    }
+
     const billingId = `billing-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const billing = {
       id: billingId,
       billingNumber,
+      billingCompanyCode,
+      billingYear,
       // Core fields
       clientName: body.clientName,
-      companyName: body.companyName,  // NEW
+      companyName: body.companyName,
       voucherId: body.voucherId,
       voucherNumber: body.voucherNumber,
       clientId: body.clientId,
       expenseAmount: body.expenseAmount || 0,
-      totalExpenses: body.totalExpenses || 0,  // NEW
+      totalExpenses: body.totalExpenses || 0,
       particulars: body.particulars || [],
       margin: body.margin || 0,
       totalAmount: body.totalAmount || 0,
       currency: body.currency || "PHP",
       status: "Draft",
-      billingDate: new Date().toISOString(),
-      // Project & Relationships - NEW
+      billingDate: body.billingDate || new Date().toISOString(),
+      // Project & Relationships
       projectId: body.projectId,
       projectNumber: body.projectNumber,
       projectName: body.projectName,
       bookingIds: body.bookingIds || [],
       expenseIds: body.expenseIds || [],
-      // Shipment Details - NEW
+      // Shipment Details
       vessel: body.vessel,
       blNumber: body.blNumber,
       containerNumbers: body.containerNumbers || [],
       destination: body.destination,
-      origin: body.origin, // Added
-      shipper: body.shipper, // Added
-      consignee: body.consignee, // Added
+      origin: body.origin,
+      shipper: body.shipper,
+      consignee: body.consignee,
       volume: body.volume,
       commodity: body.commodity,
       contractNumber: body.contractNumber,
@@ -4735,11 +4877,11 @@ app.post("/make-server-ce0d67b8/billings", async (c) => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    
+
     await kv.set(`billing:${billingId}`, billing);
-    
+
     console.log(`Created billing ${billingNumber} for client ${body.clientName} with ${body.bookingIds?.length || 0} bookings and ${body.expenseIds?.length || 0} expenses`);
-    
+
     return c.json({ success: true, data: billing });
   } catch (error) {
     console.error("Error creating billing:", error);
@@ -4752,24 +4894,33 @@ app.patch("/make-server-ce0d67b8/billings/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const updates = await c.req.json();
-    
+
     const billing = await kv.get(`billing:${id}`);
     if (!billing) {
       return c.json({ success: false, error: "Billing not found" }, 404);
     }
-    
+
+    // If billingNumber is being changed, validate uniqueness
+    if (updates.billingNumber && updates.billingNumber !== billing.billingNumber) {
+      const allBillings = await kv.getByPrefix("billing:");
+      const duplicate = allBillings.find((b: any) => b.billingNumber === updates.billingNumber && b.id !== id);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${updates.billingNumber} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updatedBilling = {
       ...billing,
       ...updates,
       id, // Preserve ID
-      created_at: billing.created_at, // Preserve created_at
+      created_at: billing.created_at,
       updated_at: new Date().toISOString()
     };
-    
+
     await kv.set(`billing:${id}`, updatedBilling);
-    
+
     console.log(`Updated billing: ${id}`);
-    
+
     return c.json({ success: true, data: updatedBilling });
   } catch (error) {
     console.error("Error updating billing:", error);
@@ -4963,13 +5114,37 @@ app.post("/make-server-ce0d67b8/collections", async (c) => {
     }
     
     const collectionId = `collection-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
+    // Generate collectionNumber using lowest-gap sequence — COL {year}-{number}
+    let collectionNumber = body.collectionNumber;
+    if (!collectionNumber) {
+      const colYear = new Date().getFullYear();
+      const colPrefix = `COL ${colYear}-`;
+      const allCollections = await kv.getByPrefix("collection:");
+      const usedNumbers = new Set(allCollections.map((r: any) => {
+        const ref = r.collectionNumber || "";
+        if (!ref.startsWith(colPrefix)) return null;
+        const n = parseInt(ref.slice(colPrefix.length), 10);
+        return isNaN(n) ? null : n;
+      }).filter((n: any) => n !== null));
+      let next = 1;
+      while (usedNumbers.has(next)) next++;
+      collectionNumber = `${colPrefix}${next}`;
+    }
+
+    // Uniqueness check
+    const allCollections2 = await kv.getByPrefix("collection:");
+    const colDuplicate = allCollections2.find((r: any) => r.collectionNumber === collectionNumber && r.id !== collectionId);
+    if (colDuplicate) {
+      return c.json({ success: false, error: `Reference number ${collectionNumber} is already in use by another active record.` }, 409);
+    }
+
     // Use the first billing's client info for the collection header (assuming same client)
     const primaryBilling = billingUpdates[0].billing;
 
     const collection = {
       id: collectionId,
-      collectionNumber: body.collectionNumber,
+      collectionNumber,
       // Legacy fields for backward compatibility (pointing to primary/first billing)
       billingId: primaryBilling.id, 
       billingNumber: primaryBilling.billingNumber,
@@ -4987,7 +5162,7 @@ app.post("/make-server-ce0d67b8/collections", async (c) => {
       notes: body.notes || "",
       bankName: body.bankName || "",
       checkNumber: body.checkNumber || "",
-      status: "Collected",
+      status: "Draft",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -5029,12 +5204,21 @@ app.patch("/make-server-ce0d67b8/collections/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const updates = await c.req.json();
-    
+
     const collection = await kv.get(`collection:${id}`);
     if (!collection) {
       return c.json({ success: false, error: "Collection not found" }, 404);
     }
-    
+
+    // If collectionNumber is being changed, validate uniqueness
+    if (updates.collectionNumber && updates.collectionNumber !== collection.collectionNumber) {
+      const allCollections = await kv.getByPrefix("collection:");
+      const duplicate = allCollections.find((r: any) => r.collectionNumber === updates.collectionNumber && r.id !== id);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${updates.collectionNumber} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updatedCollection = {
       ...collection,
       ...updates,
@@ -5043,7 +5227,7 @@ app.patch("/make-server-ce0d67b8/collections/:id", async (c) => {
       created_at: collection.created_at, // Preserve created_at
       updated_at: new Date().toISOString()
     };
-    
+
     await kv.set(`collection:${id}`, updatedCollection);
     
     // Auto-update Billing Status based on Collections
@@ -5838,17 +6022,6 @@ const STATUS_TAG_LABELS: Record<string, string> = {
   "awaiting-discharge-cro": "Awaiting Discharge & CRO",
   "with-stowage-discharged": "With Stowage / Discharged & Awaiting Signed Docs",
   "for-debit-for-final": "For Debit For Final",
-  "awaiting-trucking": "Awaiting Trucking",
-  "checking-trucking": "Checking Trucking",
-  "looking-truck": "Looking for a Truck",
-  "requesting-rates": "Requesting Rates",
-  "booked": "Booked",
-  "schedule": "Schedule",
-  "re-schedule": "Re-Schedule",
-  "awaiting-address": "Awaiting Address",
-  "awaiting-schedule": "Awaiting Schedule",
-  "client-will-handle": "Client Will Handle",
-  "client-will-handle-trucking": "Client Will Handle the Trucking",
 };
 
 const SHIPMENT_TAG_KEYS = new Set([
@@ -5869,6 +6042,12 @@ const SHIPMENT_TAG_KEYS = new Set([
   "awaiting-discharge-cro",
   "with-stowage-discharged",
   "for-debit-for-final",
+]);
+
+const VALID_SHIPMENT_EVENT_KEYS = new Set([
+  "draft", "signed", "stowaged", "lodged", "final",
+  "for-debit", "debited", "discharged", "cro", "web",
+  "ready-gatepass", "delivered", "returned",
 ]);
 
 const LEGACY_IMPORT_STATUS_TO_TAGS: Record<string, string[]> = {
@@ -5956,16 +6135,125 @@ async function migrateImportBookingIfNeeded(booking: any, id: string): Promise<a
 
 async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<any> {
   if (!booking) return booking;
-  if (Array.isArray(booking.shipmentTags)) return booking;
+  let migrated = booking;
+  let dirty = false;
 
-  const mappedTags = LEGACY_EXPORT_STATUS_TO_TAGS[String(booking.status || "")] || [];
-  const migrated = {
-    ...booking,
-    shipmentTags: dedupeTags(mappedTags),
-    tagHistory: Array.isArray(booking.tagHistory) ? booking.tagHistory : [],
-  };
-  await kv.set(`export_booking:${id}`, migrated);
+  // Step 1: Migrate legacy status -> shipmentTags
+  if (!Array.isArray(migrated.shipmentTags)) {
+    const mappedTags = LEGACY_EXPORT_STATUS_TO_TAGS[String(migrated.status || "")] || [];
+    migrated = {
+      ...migrated,
+      shipmentTags: dedupeTags(mappedTags),
+      tagHistory: Array.isArray(migrated.tagHistory) ? migrated.tagHistory : [],
+    };
+    dirty = true;
+  }
+
+  // Step 2: Migrate to segments if missing
+  if (!Array.isArray(migrated.segments) || migrated.segments.length === 0) {
+    const containerNos = typeof migrated.containerNo === "string"
+      ? migrated.containerNo.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : Array.isArray(migrated.containerNo) ? migrated.containerNo : [];
+
+    const defaultSegment = {
+      segmentId: `${id}-seg-1`,
+      segmentLabel: "Main Voyage",
+      legOrder: 1,
+      containerNos,
+      origin: migrated.origin || "",
+      pod: migrated.pod || "",
+      destination: migrated.destination || "",
+      vesselVoyage: migrated.vesselVoyage || "",
+      shippingLine: migrated.shippingLine || "",
+      etd: migrated.etd || "",
+      etdTime: migrated.etdTime || "",
+      atd: migrated.atd || "",
+      atdTime: migrated.atdTime || "",
+      eta: migrated.eta || "",
+      etaTime: migrated.etaTime || "",
+      vesselStatus: migrated.vesselStatus || "",
+      lctEdArrastre: migrated.lctEdArrastre || "",
+      lctEdArrastreTime: migrated.lctEdArrastreTime || "",
+      lctCargo: migrated.lctCargo || "",
+      lctCargoTime: migrated.lctCargoTime || "",
+      blNumber: migrated.blNumber || "",
+      mblMawb: migrated.mblMawb || "",
+      domesticFreight: migrated.domesticFreight || "",
+      hustlingStripping: migrated.hustlingStripping || "",
+      forkliftOperator: migrated.forkliftOperator || "",
+      exportDivision: migrated.exportDivision || "",
+      lodgmentCdsFee: migrated.lodgmentCdsFee || "",
+      formE: migrated.formE || "",
+      oceanFreight: migrated.oceanFreight || "",
+      sealFee: migrated.sealFee || "",
+      docsFee: migrated.docsFee || "",
+      lssFee: migrated.lssFee || "",
+      storageCost: migrated.storageCost || "",
+      arrastre: migrated.arrastre || "",
+      shutOut: migrated.shutOut || "",
+      royaltyFee: migrated.royaltyFee || "",
+      lona: migrated.lona || "",
+      lalamove: migrated.lalamove || "",
+      bir: migrated.bir || "",
+      labor: migrated.labor || "",
+      otherCharges: migrated.otherCharges || "",
+      createdAt: migrated.createdAt || new Date().toISOString(),
+      updatedAt: migrated.updatedAt || new Date().toISOString(),
+    };
+    migrated = { ...migrated, segments: [defaultSegment] };
+    dirty = true;
+  }
+
+  if (dirty) {
+    await kv.set(`export_booking:${id}`, migrated);
+  }
   return migrated;
+}
+
+/** Sync top-level fields from segments[0] for backward compatibility */
+function syncTopLevelFromSegment0(booking: any): any {
+  const seg = booking.segments?.[0];
+  if (!seg) return booking;
+  return {
+    ...booking,
+    origin: seg.origin,
+    pod: seg.pod,
+    destination: seg.destination,
+    vesselVoyage: seg.vesselVoyage,
+    shippingLine: seg.shippingLine,
+    etd: seg.etd,
+    etdTime: seg.etdTime,
+    atd: seg.atd,
+    atdTime: seg.atdTime,
+    eta: seg.eta,
+    etaTime: seg.etaTime,
+    vesselStatus: seg.vesselStatus,
+    lctEdArrastre: seg.lctEdArrastre,
+    lctEdArrastreTime: seg.lctEdArrastreTime,
+    lctCargo: seg.lctCargo,
+    lctCargoTime: seg.lctCargoTime,
+    blNumber: seg.blNumber,
+    mblMawb: seg.mblMawb,
+    domesticFreight: seg.domesticFreight,
+    hustlingStripping: seg.hustlingStripping,
+    forkliftOperator: seg.forkliftOperator,
+    exportDivision: seg.exportDivision,
+    lodgmentCdsFee: seg.lodgmentCdsFee,
+    formE: seg.formE,
+    oceanFreight: seg.oceanFreight,
+    sealFee: seg.sealFee,
+    docsFee: seg.docsFee,
+    lssFee: seg.lssFee,
+    storageCost: seg.storageCost,
+    arrastre: seg.arrastre,
+    shutOut: seg.shutOut,
+    royaltyFee: seg.royaltyFee,
+    lona: seg.lona,
+    lalamove: seg.lalamove,
+    bir: seg.bir,
+    labor: seg.labor,
+    otherCharges: seg.otherCharges,
+  };
 }
 
 function getLinkedBookingPrefix(linkedBookingType?: string): "import_booking:" | "export_booking:" | null {
@@ -6040,12 +6328,14 @@ async function enrichTruckingRecordWithLinkedTags(record: any): Promise<any> {
       ...migratedRecord,
       linkedBookingShipmentTags: [],
       linkedBookingTagHistory: [],
+      linkedBookingShipmentEvents: [],
     };
   }
   return {
     ...migratedRecord,
     linkedBookingShipmentTags: linkedBooking.shipmentTags || [],
     linkedBookingTagHistory: linkedBooking.tagHistory || [],
+    linkedBookingShipmentEvents: linkedBooking.shipmentEvents || [],
   };
 }
 
@@ -6094,28 +6384,44 @@ app.get("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
 app.post("/make-server-ce0d67b8/export-bookings", async (c) => {
   try {
     const bookingData = await c.req.json();
-    
-    // Generate booking ID if not provided - EXP-YYYY-NNN
-    const counter = await kv.get("export_booking_counter") || 0;
-    const newCounter = counter + 1;
-    await kv.set("export_booking_counter", newCounter);
-    
-    const year = new Date().getFullYear();
-    const bookingId = bookingData.bookingId || `EXP-${year}-${String(newCounter).padStart(3, '0')}`;
-    
+
+    // Generate booking ID using lowest-gap sequence — EXP {year}-{number}
+    let bookingId = bookingData.bookingId;
+    if (!bookingId) {
+      const expYear = new Date().getFullYear();
+      const expPrefix = `EXP ${expYear}-`;
+      const allExports = await kv.getByPrefix("export_booking:");
+      const usedNumbers = new Set(allExports.map((b: any) => {
+        const ref = b.bookingId || "";
+        if (!ref.startsWith(expPrefix)) return null;
+        const n = parseInt(ref.slice(expPrefix.length), 10);
+        return isNaN(n) ? null : n;
+      }).filter((n: any) => n !== null));
+      let next = 1;
+      while (usedNumbers.has(next)) next++;
+      bookingId = `${expPrefix}${next}`;
+    }
+
+    // Uniqueness check
+    const allExports2 = await kv.getByPrefix("export_booking:");
+    const duplicate = allExports2.find((b: any) => b.bookingId === bookingId);
+    if (duplicate) {
+      return c.json({ success: false, error: `Reference number ${bookingId} is already in use by another active record.` }, 409);
+    }
+
     const timestamp = new Date().toISOString();
-    
+
     const newBooking = {
       ...bookingData,
       bookingId,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    
+
     await kv.set(`export_booking:${bookingId}`, newBooking);
-    
+
     console.log(`Created export booking ${bookingId}`);
-    
+
     return c.json({ success: true, data: newBooking });
   } catch (error) {
     console.error("Error creating export booking:", error);
@@ -6128,25 +6434,38 @@ app.put("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const updates = await c.req.json();
-    
+
     const existing = await kv.get(`export_booking:${id}`);
-    
+
     if (!existing) {
       return c.json({ success: false, error: "Booking not found" }, 404);
     }
-    
+
+    // If bookingId is being changed, validate uniqueness
+    const newBookingId = updates.bookingId || id;
+    if (newBookingId !== id) {
+      const allExports = await kv.getByPrefix("export_booking:");
+      const duplicate = allExports.find((b: any) => b.bookingId === newBookingId);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${newBookingId} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updated = {
       ...existing,
       ...updates,
-      bookingId: id, // Preserve ID
-      createdAt: existing.createdAt, // Preserve creation date
+      bookingId: newBookingId,
+      createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    
-    await kv.set(`export_booking:${id}`, updated);
-    
-    console.log(`Updated export booking ${id}`);
-    
+
+    if (newBookingId !== id) {
+      await kv.delete(`export_booking:${id}`);
+    }
+    await kv.set(`export_booking:${newBookingId}`, updated);
+
+    console.log(`Updated export booking ${id}${newBookingId !== id ? ` -> ${newBookingId}` : ""}`);
+
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating export booking:", error);
@@ -6180,6 +6499,126 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/shipment-tags", async (c) => 
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating export booking shipment tags:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ==================== EXPORT BOOKING SEGMENTS ====================
+
+// Add a new segment to an export booking
+app.post("/make-server-ce0d67b8/export-bookings/:id/segments", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+
+    const existingRaw = await kv.get(`export_booking:${id}`);
+    if (!existingRaw) return c.json({ success: false, error: "Booking not found" }, 404);
+    const existing = await migrateExportBookingIfNeeded(existingRaw, id);
+
+    const segments = Array.isArray(existing.segments) ? existing.segments : [];
+    const maxOrder = segments.reduce((max: number, s: any) => Math.max(max, s.legOrder || 0), 0);
+
+    const newSegment = {
+      segmentId: body.segmentId || crypto.randomUUID(),
+      segmentLabel: body.segmentLabel || `Leg ${maxOrder + 1}`,
+      legOrder: maxOrder + 1,
+      containerNos: Array.isArray(body.containerNos) ? body.containerNos : [],
+      origin: body.origin || "",
+      pod: body.pod || "",
+      destination: body.destination || "",
+      vesselVoyage: body.vesselVoyage || "",
+      shippingLine: body.shippingLine || "",
+      etd: body.etd || "", etdTime: body.etdTime || "",
+      atd: body.atd || "", atdTime: body.atdTime || "",
+      eta: body.eta || "", etaTime: body.etaTime || "",
+      vesselStatus: body.vesselStatus || "",
+      lctEdArrastre: body.lctEdArrastre || "", lctEdArrastreTime: body.lctEdArrastreTime || "",
+      lctCargo: body.lctCargo || "", lctCargoTime: body.lctCargoTime || "",
+      blNumber: body.blNumber || "", mblMawb: body.mblMawb || "",
+      domesticFreight: body.domesticFreight || "", hustlingStripping: body.hustlingStripping || "",
+      forkliftOperator: body.forkliftOperator || "",
+      exportDivision: body.exportDivision || "", lodgmentCdsFee: body.lodgmentCdsFee || "",
+      formE: body.formE || "",
+      oceanFreight: body.oceanFreight || "", sealFee: body.sealFee || "",
+      docsFee: body.docsFee || "", lssFee: body.lssFee || "", storageCost: body.storageCost || "",
+      arrastre: body.arrastre || "", shutOut: body.shutOut || "",
+      royaltyFee: body.royaltyFee || "", lona: body.lona || "",
+      lalamove: body.lalamove || "", bir: body.bir || "",
+      labor: body.labor || "", otherCharges: body.otherCharges || "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updated = {
+      ...existing,
+      segments: [...segments, newSegment],
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`export_booking:${id}`, syncTopLevelFromSegment0(updated));
+
+    console.log(`Added segment ${newSegment.segmentId} to export booking ${id}`);
+    return c.json({ success: true, data: newSegment });
+  } catch (error) {
+    console.error("Error adding segment:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Update a segment within an export booking
+app.put("/make-server-ce0d67b8/export-bookings/:id/segments/:segmentId", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const segmentId = c.req.param("segmentId");
+    const updates = await c.req.json();
+
+    const existingRaw = await kv.get(`export_booking:${id}`);
+    if (!existingRaw) return c.json({ success: false, error: "Booking not found" }, 404);
+    const existing = await migrateExportBookingIfNeeded(existingRaw, id);
+
+    const segments = Array.isArray(existing.segments) ? existing.segments : [];
+    const segIdx = segments.findIndex((s: any) => s.segmentId === segmentId);
+    if (segIdx === -1) return c.json({ success: false, error: "Segment not found" }, 404);
+
+    segments[segIdx] = { ...segments[segIdx], ...updates, segmentId, updatedAt: new Date().toISOString() };
+
+    const updated = { ...existing, segments, updatedAt: new Date().toISOString() };
+    await kv.set(`export_booking:${id}`, syncTopLevelFromSegment0(updated));
+
+    console.log(`Updated segment ${segmentId} in export booking ${id}`);
+    return c.json({ success: true, data: segments[segIdx] });
+  } catch (error) {
+    console.error("Error updating segment:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Delete a segment from an export booking (minimum 1 must remain)
+app.delete("/make-server-ce0d67b8/export-bookings/:id/segments/:segmentId", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const segmentId = c.req.param("segmentId");
+
+    const existingRaw = await kv.get(`export_booking:${id}`);
+    if (!existingRaw) return c.json({ success: false, error: "Booking not found" }, 404);
+    const existing = await migrateExportBookingIfNeeded(existingRaw, id);
+
+    const segments = Array.isArray(existing.segments) ? existing.segments : [];
+    if (segments.length <= 1) return c.json({ success: false, error: "Cannot delete the last segment" }, 400);
+
+    const filtered = segments.filter((s: any) => s.segmentId !== segmentId);
+    if (filtered.length === segments.length) return c.json({ success: false, error: "Segment not found" }, 404);
+
+    // Re-number legOrder
+    filtered.sort((a: any, b: any) => (a.legOrder || 0) - (b.legOrder || 0));
+    filtered.forEach((s: any, i: number) => { s.legOrder = i + 1; });
+
+    const updated = { ...existing, segments: filtered, updatedAt: new Date().toISOString() };
+    await kv.set(`export_booking:${id}`, syncTopLevelFromSegment0(updated));
+
+    console.log(`Deleted segment ${segmentId} from export booking ${id}`);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting segment:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
@@ -6246,6 +6685,60 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
   }
 });
 
+// ==================== NEXT REFERENCE NUMBER ====================
+
+// Returns the next available (lowest gap) number for a given ref type
+app.get("/make-server-ce0d67b8/next-ref/:type", async (c) => {
+  try {
+    const type = c.req.param("type");
+    // Optional query params for voucher/billing buckets
+    const companyCode = c.req.query("companyCode") || "RVS";
+    const voucherType = c.req.query("voucherType") || "CV";
+    const year = c.req.query("year") || String(new Date().getFullYear());
+
+    let nextNumber = 1;
+
+    if (type === "import") {
+      const prefix = `IMP ${year}-`;
+      const all = await kv.getByPrefix("import_booking:");
+      const used = new Set(all.map((b: any) => { const ref = b.bookingId || ""; if (!ref.startsWith(prefix)) return null; const n = parseInt(ref.slice(prefix.length), 10); return isNaN(n) ? null : n; }).filter((n: any) => n !== null));
+      while (used.has(nextNumber)) nextNumber++;
+    } else if (type === "export") {
+      const prefix = `EXP ${year}-`;
+      const all = await kv.getByPrefix("export_booking:");
+      const used = new Set(all.map((b: any) => { const ref = b.bookingId || ""; if (!ref.startsWith(prefix)) return null; const n = parseInt(ref.slice(prefix.length), 10); return isNaN(n) ? null : n; }).filter((n: any) => n !== null));
+      while (used.has(nextNumber)) nextNumber++;
+    } else if (type === "trucking") {
+      const prefix = `TRK ${year}-`;
+      const all = await kv.getByPrefix("trucking-record:");
+      const used = new Set(all.map((r: any) => { const ref = r.truckingRefNo || ""; if (!ref.startsWith(prefix)) return null; const n = parseInt(ref.slice(prefix.length), 10); return isNaN(n) ? null : n; }).filter((n: any) => n !== null));
+      while (used.has(nextNumber)) nextNumber++;
+    } else if (type === "collection") {
+      const prefix = `COL ${year}-`;
+      const all = await kv.getByPrefix("collection:");
+      const used = new Set(all.map((r: any) => { const ref = r.collectionNumber || ""; if (!ref.startsWith(prefix)) return null; const n = parseInt(ref.slice(prefix.length), 10); return isNaN(n) ? null : n; }).filter((n: any) => n !== null));
+      while (used.has(nextNumber)) nextNumber++;
+    } else if (type === "voucher") {
+      const all = await kvRetry(() => kv.getByPrefix("voucher:"));
+      const prefix = `${companyCode} ${voucherType} ${year}-`;
+      const used = new Set(all.map((v: any) => { const vn = v.voucherNumber || ""; if (!vn.startsWith(prefix)) return null; const n = parseInt(vn.slice(prefix.length), 10); return isNaN(n) ? null : n; }).filter((n: any) => n !== null));
+      while (used.has(nextNumber)) nextNumber++;
+    } else if (type === "billing") {
+      const all = await kv.getByPrefix("billing:");
+      const prefix = `${companyCode} ${year}-`;
+      const used = new Set(all.map((b: any) => { const bn = b.billingNumber || ""; if (!bn.startsWith(prefix)) return null; const n = parseInt(bn.slice(prefix.length), 10); return isNaN(n) ? null : n; }).filter((n: any) => n !== null));
+      while (used.has(nextNumber)) nextNumber++;
+    } else {
+      return c.json({ success: false, error: "Unknown type" }, 400);
+    }
+
+    return c.json({ success: true, nextNumber });
+  } catch (error) {
+    console.error("Error getting next ref:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
 // ==================== IMPORT BOOKINGS ====================
 
 // Get all import bookings
@@ -6291,28 +6784,44 @@ app.get("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
 app.post("/make-server-ce0d67b8/import-bookings", async (c) => {
   try {
     const bookingData = await c.req.json();
-    
-    // Generate booking ID if not provided - IMP-YYYY-NNN
-    const counter = await kv.get("import_booking_counter") || 0;
-    const newCounter = counter + 1;
-    await kv.set("import_booking_counter", newCounter);
-    
-    const year = new Date().getFullYear();
-    const bookingId = bookingData.bookingId || `IMP-${year}-${String(newCounter).padStart(3, '0')}`;
-    
+
+    // Generate booking ID using lowest-gap sequence — IMP {year}-{number}
+    let bookingId = bookingData.bookingId;
+    if (!bookingId) {
+      const impYear = new Date().getFullYear();
+      const impPrefix = `IMP ${impYear}-`;
+      const allImports = await kv.getByPrefix("import_booking:");
+      const usedNumbers = new Set(allImports.map((b: any) => {
+        const ref = b.bookingId || "";
+        if (!ref.startsWith(impPrefix)) return null;
+        const n = parseInt(ref.slice(impPrefix.length), 10);
+        return isNaN(n) ? null : n;
+      }).filter((n: any) => n !== null));
+      let next = 1;
+      while (usedNumbers.has(next)) next++;
+      bookingId = `${impPrefix}${next}`;
+    }
+
+    // Uniqueness check
+    const allImports2 = await kv.getByPrefix("import_booking:");
+    const duplicate = allImports2.find((b: any) => b.bookingId === bookingId);
+    if (duplicate) {
+      return c.json({ success: false, error: `Reference number ${bookingId} is already in use by another active record.` }, 409);
+    }
+
     const timestamp = new Date().toISOString();
-    
+
     const newBooking = {
       ...bookingData,
       bookingId,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    
+
     await kv.set(`import_booking:${bookingId}`, newBooking);
-    
+
     console.log(`Created import booking ${bookingId}`);
-    
+
     return c.json({ success: true, data: newBooking });
   } catch (error) {
     console.error("Error creating import booking:", error);
@@ -6325,25 +6834,39 @@ app.put("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const updates = await c.req.json();
-    
+
     const existing = await kv.get(`import_booking:${id}`);
-    
+
     if (!existing) {
       return c.json({ success: false, error: "Booking not found" }, 404);
     }
-    
+
+    // If bookingId is being changed, validate uniqueness
+    const newBookingId = updates.bookingId || id;
+    if (newBookingId !== id) {
+      const allImports = await kv.getByPrefix("import_booking:");
+      const duplicate = allImports.find((b: any) => b.bookingId === newBookingId);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${newBookingId} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updated = {
       ...existing,
       ...updates,
-      bookingId: id, // Preserve ID
-      createdAt: existing.createdAt, // Preserve creation date
+      bookingId: newBookingId,
+      createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    
-    await kv.set(`import_booking:${id}`, updated);
-    
-    console.log(`Updated import booking ${id}`);
-    
+
+    // If ID changed, delete old key and write new one
+    if (newBookingId !== id) {
+      await kv.delete(`import_booking:${id}`);
+    }
+    await kv.set(`import_booking:${newBookingId}`, updated);
+
+    console.log(`Updated import booking ${id}${newBookingId !== id ? ` -> ${newBookingId}` : ""}`);
+
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating import booking:", error);
@@ -6379,6 +6902,26 @@ app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-tags", async (c) => 
     console.error("Error updating import booking shipment tags:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
+});
+
+app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-events", async (c) => {
+  const id = c.req.param("id");
+  const { shipmentEvents, user } = await c.req.json();
+
+  const existing = await kv.get(`import_booking:${id}`);
+  if (!existing) return c.json({ success: false, error: "Not found" }, 404);
+
+  const validEvents = (shipmentEvents || []).filter(
+    (e: any) => VALID_SHIPMENT_EVENT_KEYS.has(e.event) && e.dateTime
+  );
+
+  const updated = {
+    ...existing,
+    shipmentEvents: validEvents,
+    updatedAt: new Date().toISOString(),
+  };
+  await kv.set(`import_booking:${id}`, updated);
+  return c.json({ success: true, data: updated });
 });
 
 // Delete import booking
@@ -7218,44 +7761,27 @@ app.get("/make-server-ce0d67b8/billings", async (c) => {
   }
 });
 
-// Create billing
-app.post("/make-server-ce0d67b8/billings", async (c) => {
-  try {
-    const billingData = await c.req.json();
-    
-    const billingId = `BILL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const timestamp = new Date().toISOString();
-    
-    const newBilling = {
-      ...billingData,
-      billingId,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-    
-    await kv.set(`billing:${billingId}`, newBilling);
-    
-    console.log(`Created billing ${billingId}${billingData.projectId ? ` for project ${billingData.projectId}` : ''}${billingData.bookingIds ? ` with ${billingData.bookingIds.length} bookings` : billingData.bookingId ? ` for booking ${billingData.bookingId}` : ''}`);
-    
-    return c.json({ success: true, data: newBilling });
-  } catch (error) {
-    console.error("Error creating billing:", error);
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
-
 // Update billing
 app.put("/make-server-ce0d67b8/billings/:id", async (c) => {
   try {
     const id = c.req.param("id");
     const updates = await c.req.json();
-    
+
     const existing = await kv.get(`billing:${id}`);
-    
+
     if (!existing) {
       return c.json({ success: false, error: "Billing not found" }, 404);
     }
-    
+
+    // If billingNumber is being changed, validate uniqueness
+    if (updates.billingNumber && updates.billingNumber !== existing.billingNumber) {
+      const allBillings = await kv.getByPrefix("billing:");
+      const duplicate = allBillings.find((b: any) => b.billingNumber === updates.billingNumber && b.id !== id);
+      if (duplicate) {
+        return c.json({ success: false, error: `Reference number ${updates.billingNumber} is already in use by another active record.` }, 409);
+      }
+    }
+
     const updated = {
       ...existing,
       ...updates,
@@ -7263,11 +7789,11 @@ app.put("/make-server-ce0d67b8/billings/:id", async (c) => {
       createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    
+
     await kv.set(`billing:${id}`, updated);
-    
+
     console.log(`Updated billing ${id}`);
-    
+
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating billing:", error);
