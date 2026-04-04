@@ -35,17 +35,6 @@ export const ALL_STATUS_TAGS: StatusTag[] = [
   { key: "awaiting-discharge-cro", label: "Awaiting Discharge & CRO", group: "operations", layer: "shipment", appliesTo: ["import"] },
   { key: "with-stowage-discharged", label: "With Stowage / Discharged & Awaiting Signed Docs", group: "documentation", layer: "shipment", appliesTo: ["import"] },
   { key: "for-debit-for-final", label: "For Debit For Final", group: "financial", layer: "shipment", appliesTo: ["import"] },
-  { key: "awaiting-trucking", label: "Awaiting Trucking", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "checking-trucking", label: "Checking Trucking", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "looking-truck", label: "Looking for a Truck", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "requesting-rates", label: "Requesting Rates", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "booked", label: "Booked", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "schedule", label: "Schedule", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "re-schedule", label: "Re-Schedule", group: "operations", layer: "operational", appliesTo: ["trucking"] },
-  { key: "awaiting-address", label: "Awaiting Address", group: "documentation", layer: "operational", appliesTo: ["trucking"] },
-  { key: "awaiting-schedule", label: "Awaiting Schedule", group: "documentation", layer: "operational", appliesTo: ["trucking"] },
-  { key: "client-will-handle", label: "Client Will Handle", group: "client", layer: "operational", appliesTo: ["trucking"] },
-  { key: "client-will-handle-trucking", label: "Client Will Handle the Trucking", group: "client", layer: "operational", appliesTo: ["trucking"] },
 ];
 
 const GROUP_ORDER: Record<TagGroup, number> = {
