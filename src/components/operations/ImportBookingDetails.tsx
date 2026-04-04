@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, MoreVertical, Lock, Edit3, Clock, ChevronRight, Trash2, Plus, ChevronDown } from "lucide-react";
+import { ArrowLeft, MoreVertical, Lock, ChevronRight, Trash2, Plus, ChevronDown } from "lucide-react";
 import type { BrokerageBooking, ExecutionStatus } from "../../types/operations";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
 import { ExpensesSubTabs } from "./shared/ExpensesSubTabs";
 import { TruckingTab } from "./shared/TruckingTab";
-import { ProjectSelector } from "../selectors/ProjectSelector";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
 import { DocsTimelineStepper, DocsTimelineStep } from "./shared/DocsTimelineStepper";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
@@ -14,8 +13,11 @@ import { DateInput } from "../ui/DateInput";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { toast } from "../ui/toast-utils";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { TabRowActions } from "../shared/TabRowActions";
+import { SubTabRow } from "./shared/SubTabRow";
+import { ShipmentMilestonesTab } from "./shared/ShipmentMilestonesTab";
+import type { ShipmentEvent } from "../../types/operations";
+import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { StatusTagBar } from "../shared/StatusTagBar";
@@ -139,23 +141,6 @@ const isoToMMDD = (iso: string): string => {
   return iso;
 };
 
-const LEGACY_IMPORT_STATUS_TO_TAGS: Record<string, string[]> = {
-  "For Gatepass": ["for-gatepass"],
-  "Awaiting Discharge & CRO": ["awaiting-discharge", "cro"],
-  "For Debit For Final": ["for-debit", "for-final"],
-  "For Lodgement": ["for-lodgement"],
-  "Awaiting Stowage": ["awaiting-stowage"],
-  "With Stowage / Discharged & Awaiting Signed Docs": ["with-stowage-discharged"],
-  "With ETA": ["with-eta"],
-  "Without ETA": ["without-eta"],
-  "Delivered": ["delivered"],
-  "Returned": ["returned"],
-};
-
-function mapLegacyImportStatusToTags(status?: string): string[] {
-  if (!status) return [];
-  return LEGACY_IMPORT_STATUS_TO_TAGS[status] || [];
-}
 
 export function BrokerageBookingDetails({
   booking,
@@ -164,6 +149,7 @@ export function BrokerageBookingDetails({
   currentUser
 }: BrokerageBookingDetailsProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>("booking-info");
+  const [activeBookingSubTab, setActiveBookingSubTab] = useState<"booking-details" | "shipment-milestones">("booking-details");
   const [showTimeline, setShowTimeline] = useState(false);
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(initialActivityLog);
   const [editedBooking, setEditedBooking] = useState<BrokerageBooking>(booking);
@@ -174,19 +160,58 @@ export function BrokerageBookingDetails({
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<BrokerageBooking>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-  const [showShippingLineDropdown, setShowShippingLineDropdown] = useState(false);
+
+  // Sub-tab edit propagation state
+  const [subTabHasRecord, setSubTabHasRecord] = useState<Record<string, boolean>>({});
+  const [subTabEditing, setSubTabEditing] = useState(false);
+  const [subTabEditRequest, setSubTabEditRequest] = useState(false);
+  const [subTabSaveCounter, setSubTabSaveCounter] = useState(0);
+
+  const getEditLabel = (): string | null => {
+    switch (activeTab) {
+      case "booking-info": return "Edit Booking";
+      case "trucking": return subTabHasRecord["trucking"] ? "Edit Trucking" : null;
+      case "billings": return subTabHasRecord["billings"] ? "Edit Billing" : null;
+      case "expenses": return subTabHasRecord["expenses"] ? "Edit Expense" : null;
+      default: return null;
+    }
+  };
+
+  const handleTabEdit = () => {
+    if (activeTab === "booking-info") {
+      const parsed = parseContainerVolume((editedBooking as any).volume || "");
+      setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
+      setIsEditing(true);
+    } else {
+      setSubTabEditRequest(true);
+    }
+  };
+
+  const handleTabCancel = () => {
+    if (activeTab === "booking-info") {
+      handleCancel();
+    } else {
+      setSubTabEditRequest(false);
+      setSubTabEditing(false);
+    }
+  };
+
+  const handleTabSave = () => {
+    if (activeTab === "booking-info") {
+      handleSave();
+    } else {
+      setSubTabSaveCounter((c: number) => c + 1);
+    }
+  };
+
+  const isAnyEditing = activeTab === "booking-info" ? isEditing : subTabEditing;
 
   useEffect(() => {
     setCurrentBooking(booking);
     setEditedBooking(booking);
-    setShipmentTags(
-      Array.isArray((booking as any).shipmentTags)
-        ? (booking as any).shipmentTags
-        : mapLegacyImportStatusToTags(booking.status as string),
-    );
+    setShipmentTags((booking as any).shipmentTags || []);
     setTagHistory(Array.isArray((booking as any).tagHistory) ? (booking as any).tagHistory : []);
   }, [booking]);
 
@@ -204,11 +229,7 @@ export function BrokerageBookingDetails({
       const refreshed = result.data as BrokerageBooking;
       setCurrentBooking(refreshed);
       setEditedBooking(refreshed);
-      setShipmentTags(
-        Array.isArray((refreshed as any).shipmentTags)
-          ? (refreshed as any).shipmentTags
-          : mapLegacyImportStatusToTags(refreshed.status as string),
-      );
+      setShipmentTags((refreshed as any).shipmentTags || []);
       setTagHistory(Array.isArray((refreshed as any).tagHistory) ? (refreshed as any).tagHistory : []);
     } catch (error) {
       console.error("Error refreshing booking details:", error);
@@ -259,140 +280,8 @@ export function BrokerageBookingDetails({
     }
   };
 
-  const IMPORT_STATUS_COLORS: Record<string, string> = {
-    "For Gatepass": "#FBBC04",
-    "Awaiting Discharge & CRO": "#4285F4",
-    "For Debit For Final": "#FF6D01",
-    "For Lodgement": "#FFFF00",
-    "Awaiting Stowage": "#00FF00",
-    "With Stowage / Discharged & Awaiting Signed Docs": "#9900FF",
-    "With ETA": "#00FFFF",
-    "Without ETA": "#EA4335",
-    "Delivered": "#10B981",
-    "Returned": "#64748B"
-  };
 
-  const IMPORT_STATUS_TEXT_COLORS: Record<string, string> = {
-    "For Gatepass": "#B45309",
-    "Awaiting Discharge & CRO": "#4285F4",
-    "For Debit For Final": "#FF6D01",
-    "For Lodgement": "#854D0E",
-    "Awaiting Stowage": "#15803D",
-    "With Stowage / Discharged & Awaiting Signed Docs": "#9900FF",
-    "With ETA": "#0E7490",
-    "Without ETA": "#EA4335",
-    "Delivered": "#10B981",
-    "Returned": "#64748B"
-  };
 
-  const IMPORT_STATUS_OPTIONS = [
-    "For Gatepass",
-    "Awaiting Discharge & CRO",
-    "For Debit For Final",
-    "For Lodgement",
-    "Awaiting Stowage",
-    "With Stowage / Discharged & Awaiting Signed Docs",
-    "With ETA",
-    "Without ETA",
-    "Delivered",
-    "Returned"
-  ];
-
-  const hexToRgba = (hex: string, alpha: number) => {
-    if (!hex || !hex.startsWith('#')) return hex;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
-
-  const isBright = (hex: string) => {
-    return ["#FFFF00", "#00FFFF", "#00FF00", "#FBBC04"].includes(hex.toUpperCase());
-  };
-
-  const handleStatusChange = async (newStatus: string) => {
-    setShowStatusDropdown(false);
-    if (currentBooking.status === newStatus) return;
-
-    try {
-      const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
-      const method = isLegacy ? "PATCH" : "PUT";
-
-      const response = await fetch(endpoint, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) throw new Error("Failed to update status");
-
-      const result = await response.json();
-      if (result.success) {
-        const updated = { ...currentBooking, status: newStatus };
-        setCurrentBooking(updated);
-        setEditedBooking(updated);
-        toast.success(`Status updated to ${newStatus}`);
-        onBookingUpdated();
-      } else {
-        throw new Error(result.error || "Failed to update status");
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update status");
-    }
-  };
-
-  const SHIPPING_LINE_STATUS_OPTIONS = ["No Billing Yet", "With Billing", "Done Payment"];
-
-  const SHIPPING_LINE_STATUS_COLORS: Record<string, string> = {
-    "No Billing Yet": "#9CA3AF",
-    "With Billing": "#F59E0B",
-    "Done Payment": "#10B981",
-  };
-
-  const handleShippingLineStatusChange = async (newStatus: string) => {
-    setShowShippingLineDropdown(false);
-    if ((currentBooking as any).shippingLineStatus === newStatus) return;
-
-    try {
-      const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
-      const method = isLegacy ? "PATCH" : "PUT";
-
-      const response = await fetch(endpoint, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`
-        },
-        body: JSON.stringify({ shippingLineStatus: newStatus })
-      });
-
-      if (!response.ok) throw new Error("Failed to update shipping line status");
-
-      const result = await response.json();
-      if (result.success) {
-        const updated = { ...currentBooking, shippingLineStatus: newStatus };
-        setCurrentBooking(updated);
-        setEditedBooking(updated);
-        toast.success(`Shipping line status updated to ${newStatus}`);
-        onBookingUpdated();
-      } else {
-        throw new Error(result.error || "Failed to update shipping line status");
-      }
-    } catch (error) {
-      console.error("Error updating shipping line status:", error);
-      toast.error("Failed to update shipping line status");
-    }
-  };
 
   const handleTimelineUpdate = async (newTimeline: DocsTimelineStep[]) => {
     // Optimistic update
@@ -471,16 +360,18 @@ export function BrokerageBookingDetails({
   const handleSave = async () => {
     setIsSaving(true);
     console.log('[BrokerageBookingDetails] Saving booking with editData:', editData);
-    
+
     try {
-      // 1. Prepare payload
-      // Merge editData with original booking to ensure we have a complete object if needed, 
-      // or just send updates if the backend supports PATCH-like behavior on PUT.
-      // Based on server code, it likely updates existing with provided fields.
-      // Let's send the specific updates.
+      // Merge container size/type virtual fields back into volume
+      const { __containerSize, __containerType, ...cleanEditData } = editData as any;
+      if (__containerSize !== undefined || __containerType !== undefined) {
+        const size = __containerSize ?? parseContainerVolume((editedBooking as any).volume || "").size;
+        const type = __containerType ?? parseContainerVolume((editedBooking as any).volume || "").type;
+        (cleanEditData as any).volume = formatContainerVolume(size, type);
+      }
+
       const payload = {
-        ...editData,
-        // Ensure critical fields are preserved if needed, but usually updates are enough
+        ...cleanEditData,
         updatedAt: new Date().toISOString()
       };
 
@@ -576,8 +467,38 @@ export function BrokerageBookingDetails({
     }
   };
 
+  const handleSaveShipmentEvents = async (events: ShipmentEvent[]) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-events`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({
+            shipmentEvents: events,
+            user: currentUser?.name || "Unknown",
+          }),
+        },
+      );
+      const result = await response.json();
+      if (result.success) {
+        setCurrentBooking(result.data);
+        toast.success("Shipment milestones saved");
+        onBookingUpdated();
+      } else {
+        toast.error(`Failed to save: ${result.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      console.error("Error saving shipment events:", err);
+      toast.error("Unable to save shipment milestones");
+    }
+  };
+
   return (
-    <div style={{ 
+    <div style={{
       backgroundColor: "#F9FAFB",
       display: "flex",
       flexDirection: "column",
@@ -613,7 +534,7 @@ export function BrokerageBookingDetails({
           </button>
           
           <div>
-            <h1 style={{ 
+            <h1 style={{
               fontSize: "20px",
               fontWeight: 600,
               color: "#0A1D4D",
@@ -621,257 +542,38 @@ export function BrokerageBookingDetails({
             }}>
               {booking.customerName}
             </h1>
-            <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>
-              {booking.bookingId}
-              {(booking as any).companyName && booking.customerName !== (booking as any).companyName && (
-                <span> · {(booking as any).companyName}</span>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Right Side: Action Buttons */}
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {/* Activity Timeline Button */}
-          <StandardButton
-            variant={showTimeline ? "secondary" : "outline"}
-            onClick={() => setShowTimeline(!showTimeline)}
-            icon={<Clock size={16} />}
-          >
-            Activity
-          </StandardButton>
-
-          {/* Edit Booking Button - Only show on Booking Information tab when not editing */}
-          {activeTab === "booking-info" && !isEditing && (
-            <StandardButton
-              variant="primary"
-              onClick={() => setIsEditing(true)}
-              icon={<Edit3 size={16} />}
-            >
-              Edit Booking
-            </StandardButton>
-          )}
-
-          {/* Save and Cancel Buttons - Show when editing */}
-          {activeTab === "booking-info" && isEditing && (
-            <>
-              <StandardButton
-                variant="outline"
-                onClick={handleCancel}
-              >
-                Cancel
-              </StandardButton>
-              <StandardButton
-                variant="primary"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </StandardButton>
-            </>
-          )}
-
-          {/* Actions Dropdown */}
-          <ActionsDropdown
-            onDownloadPDF={() => {
-              toast.success("PDF download starting...");
-              // TODO: Implement PDF generation
-            }}
-            onDownloadWord={() => {
-              toast.success("Word download starting...");
-              // TODO: Implement Word generation
-            }}
-            onDelete={() => setShowDeleteConfirm(true)}
-          />
-        </div>
-      </div>
-
-      {/* Metadata/Summary Bar */}
-      <div style={{
-        backgroundColor: (() => {
-           const color = IMPORT_STATUS_COLORS[currentBooking.status];
-           if (!color) return "#F3F4F6"; 
-           const opacity = isBright(color) ? 0.08 : 0.12;
-           return hexToRgba(color, opacity);
-        })(),
-        transition: "background-color 0.2s ease",
-        borderBottom: "1.5px solid #0F766E",
-        padding: "14px 48px",
-        display: "flex",
-        alignItems: "stretch",
-        gap: "0",
-        flexShrink: 0,
-        minHeight: "64px",
-      }}>
-        {/* Status Tags */}
-        <div style={{ flex: 1, minWidth: "260px", paddingRight: "24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px", lineHeight: 1 }}>
-            Status
-            {isTagsSaving && (
-              <span style={{ fontSize: "10px", fontWeight: 400, color: "#9CA3AF", marginLeft: "8px", textTransform: "none", letterSpacing: "normal" }}>
-                Saving...
-              </span>
-            )}
-          </div>
-          <StatusTagBar
-            bookingType="import"
-            shipmentTags={shipmentTags}
-            operationalTags={[]}
-            onShipmentTagsChange={handleShipmentTagsChange}
-            onOperationalTagsChange={() => {}}
-          />
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Shipping Line Status Dropdown */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "150px", padding: "0 24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
-            Shipping Line Status
-          </div>
-          
-          <div style={{ position: "relative" }}>
-            <div
-              onClick={() => setShowShippingLineDropdown(!showShippingLineDropdown)}
-              onBlur={() => setTimeout(() => setShowShippingLineDropdown(false), 200)}
-              tabIndex={0}
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: SHIPPING_LINE_STATUS_COLORS[(currentBooking as any).shippingLineStatus] || "#9CA3AF",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                padding: "4px 24px 4px 8px",
-                borderRadius: "6px",
-                border: "1.5px solid transparent",
-                position: "relative",
-                transition: "all 0.2s ease",
-                background: showShippingLineDropdown ? "#FFFFFF" : "transparent",
-                lineHeight: "1.3",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#FFFFFF";
-                e.currentTarget.style.borderColor = "#E5E9F0";
-              }}
-              onMouseLeave={(e) => {
-                if (!showShippingLineDropdown) {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.borderColor = "transparent";
-                }
-              }}
-            >
-              <div style={{ 
-                whiteSpace: "nowrap", 
-                overflow: "hidden", 
-                textOverflow: "ellipsis", 
-                maxWidth: "180px"
-              }}>
-                {(currentBooking as any).shippingLineStatus || "Not Set"}
-              </div>
-              
-              <div style={{
-                position: "absolute",
-                right: "6px",
-                top: "50%",
-                transform: `translateY(-50%) ${showShippingLineDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
-                transition: "transform 0.2s ease",
-                pointerEvents: "none",
-                color: "#0F766E"
-              }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            
-            {showShippingLineDropdown && (
-              <div style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                background: "white",
-                border: "1.5px solid #E5E9F0",
-                borderRadius: "8px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                zIndex: 50,
-                minWidth: "200px",
-                overflow: "hidden"
-              }}>
-                {SHIPPING_LINE_STATUS_OPTIONS.map((slStatus, index) => (
-                  <div
-                    key={slStatus}
-                    onClick={() => handleShippingLineStatusChange(slStatus)}
-                    style={{
-                      padding: "10px 14px",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: SHIPPING_LINE_STATUS_COLORS[slStatus] || "#111827",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      background: slStatus === (currentBooking as any).shippingLineStatus ? "#F0FDF4" : "transparent",
-                      borderBottom: index < SHIPPING_LINE_STATUS_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
-                      transition: "all 0.15s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      if (slStatus !== (currentBooking as any).shippingLineStatus) {
-                        e.currentTarget.style.background = "#F9FAFB";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (slStatus !== (currentBooking as any).shippingLineStatus) {
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
-                  >
-                    {slStatus}
+            {isEditing ? (() => {
+              const raw = (editData.bookingId !== undefined ? String(editData.bookingId) : booking.bookingId) || "";
+              const m = raw.match(/^(IMP)\s*(\d{4})-(\d*)$/);
+              const yearPart = m ? m[2] : String(new Date().getFullYear());
+              const num = m ? m[3] : "";
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                    <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>IMP</div>
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                    <input value={yearPart} onChange={e => { const y = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `IMP ${y}-${num}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                    <input value={num} onChange={e => { const n = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `IMP ${yearPart}-${n}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                  </div>
+                </div>
+              );
+            })() : (
+              <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>
+                {booking.bookingId}
+                {(booking as any).companyName && booking.customerName !== (booking as any).companyName && (
+                  <span> · {(booking as any).companyName}</span>
+                )}
+              </p>
             )}
           </div>
         </div>
 
-        {/* Separator */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Route */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "160px", padding: "0 24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
-            Route
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", lineHeight: "1.3" }}>
-            {(currentBooking as any).origin || "Origin"} → {currentBooking.pod || currentBooking.destination || "Destination"}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Created Date */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "100px", padding: "0 24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
-            Created Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", lineHeight: "1.3" }}>
-            {new Date(currentBooking.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-
-        {/* Separator before timeline */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Docs Timeline Stepper — fills remaining space */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: "24px", minWidth: 0 }}>
-          <DocsTimelineStepper 
-             timeline={(currentBooking as any).docsTimeline || []} 
-             onUpdate={handleTimelineUpdate} 
-          />
-        </div>
       </div>
 
       {/* Tabs */}
@@ -885,11 +587,29 @@ export function BrokerageBookingDetails({
           activeTab={activeTab}
           onTabChange={(tabId) => {
             setActiveTab(tabId as DetailTab);
-            // Exit edit mode when switching to other tabs
             if (isEditing && tabId !== "booking-info") {
               setIsEditing(false);
             }
+            if (subTabEditing) {
+              setSubTabEditRequest(false);
+              setSubTabEditing(false);
+            }
           }}
+          actions={
+            <TabRowActions
+              showTimeline={showTimeline}
+              onToggleTimeline={() => setShowTimeline(!showTimeline)}
+              editLabel={getEditLabel()}
+              onEdit={handleTabEdit}
+              isEditing={isAnyEditing}
+              onCancel={handleTabCancel}
+              onSave={handleTabSave}
+              isSaving={isSaving}
+              onDelete={() => setShowDeleteConfirm(true)}
+              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadWord={() => toast.success("Word download starting...")}
+            />
+          }
         />
       </div>
 
@@ -906,19 +626,39 @@ export function BrokerageBookingDetails({
           transition: "flex 0.3s ease"
         }}>
           <div style={{ display: activeTab === "booking-info" ? undefined : "none", height: "100%" }}>
-            <BookingInformationTab
-              booking={editedBooking}
-              onBookingUpdated={onBookingUpdated}
-              addActivity={addActivity}
-              setEditedBooking={setEditedBooking}
-              isEditing={isEditing}
-              editData={editData}
-              setEditData={setEditData}
-              handleSave={handleSave}
-              handleCancel={handleCancel}
-              isSaving={isSaving}
-              projects={projects}
-            />
+            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+              <SubTabRow
+                tabs={[
+                  { id: "booking-details", label: "Booking Details" },
+                  { id: "shipment-milestones", label: "Shipment Milestones" },
+                ]}
+                activeTab={activeBookingSubTab}
+                onTabChange={(id) => setActiveBookingSubTab(id as "booking-details" | "shipment-milestones")}
+              />
+              <div style={{ flex: 1, overflow: "auto" }}>
+                {activeBookingSubTab === "booking-details" && (
+                  <BookingInformationTab
+                    booking={editedBooking}
+                    onBookingUpdated={onBookingUpdated}
+                    addActivity={addActivity}
+                    setEditedBooking={setEditedBooking}
+                    isEditing={isEditing}
+                    editData={editData}
+                    setEditData={setEditData}
+                    handleSave={handleSave}
+                    handleCancel={handleCancel}
+                    isSaving={isSaving}
+                    projects={projects}
+                  />
+                )}
+                {activeBookingSubTab === "shipment-milestones" && (
+                  <ShipmentMilestonesTab
+                    shipmentEvents={(currentBooking as any).shipmentEvents || []}
+                    onSave={handleSaveShipmentEvents}
+                  />
+                )}
+              </div>
+            </div>
           </div>
           <div style={{ display: activeTab === "trucking" ? undefined : "none", height: "100%" }}>
             <TruckingTab
@@ -926,6 +666,10 @@ export function BrokerageBookingDetails({
               bookingType="import"
               currentUser={currentUser}
               onBookingTagsUpdated={fetchBookingDetails}
+              externalEdit={activeTab === "trucking" ? subTabEditRequest : undefined}
+              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, trucking: has }))}
+              externalSaveCounter={activeTab === "trucking" ? subTabSaveCounter : undefined}
             />
           </div>
           <div style={{ display: activeTab === "billings" ? undefined : "none", height: "100%" }}>
@@ -934,6 +678,10 @@ export function BrokerageBookingDetails({
               bookingNumber={booking.bookingNumber}
               bookingType="brokerage"
               currentUser={currentUser}
+              externalEdit={activeTab === "billings" ? subTabEditRequest : undefined}
+              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, billings: has }))}
+              externalSaveCounter={activeTab === "billings" ? subTabSaveCounter : undefined}
             />
           </div>
           <div style={{ display: activeTab === "expenses" ? undefined : "none", height: "100%" }}>
@@ -942,6 +690,10 @@ export function BrokerageBookingDetails({
               bookingNumber={booking.bookingNumber}
               bookingType="brokerage"
               currentUser={currentUser}
+              externalEdit={activeTab === "expenses" ? subTabEditRequest : undefined}
+              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, expenses: has }))}
+              externalSaveCounter={activeTab === "expenses" ? subTabSaveCounter : undefined}
             />
           </div>
           <div style={{ display: activeTab === "attachments" ? undefined : "none", height: "100%" }}>
@@ -1589,7 +1341,7 @@ function ContainerListField({
 }
 
 // Selectivity color mapping
-const SELECTIVITY_OPTIONS = ["Green", "Orange", "Yellow", "Red"];
+const SELECTIVITY_OPTIONS = ["Orange", "Yellow", "Red"];
 const SELECTIVITY_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   Green:  { bg: "#ECFDF5", text: "#065F46", dot: "#10B981" },
   Orange: { bg: "#FFF7ED", text: "#9A3412", dot: "#F97316" },
@@ -1599,14 +1351,13 @@ const SELECTIVITY_COLORS: Record<string, { bg: string; text: string; dot: string
 
 const GROSS_WEIGHT_UNITS = ["kg", "lbs", "tons"];
 
-/** Compute volume summary from containers: "2x40HC, 1x20GP" */
+/** Compute volume summary from containers: "2x40'HC" */
 function computeVolumeSummary(containerNo: string, volume: string): string {
   if (!containerNo && !volume) return "—";
-  // Parse container count
   let containerCount = 1;
   if (containerNo) {
-    const containers = Array.isArray(containerNo) 
-      ? containerNo 
+    const containers = Array.isArray(containerNo)
+      ? containerNo
       : containerNo.split(',').map((s: string) => s.trim()).filter(Boolean);
     containerCount = Math.max(containers.length, 1);
   }
@@ -1638,7 +1389,7 @@ function BookingInformationTab({
   handleSave: () => void;
   handleCancel: () => void;
   isSaving: boolean;
-  projects: Project[];
+  projects: any[];
 }) {
   // Split Gatepass into Date and Time
   const [gatepassDate, setGatepassDate] = useState("");
@@ -1647,7 +1398,8 @@ function BookingInformationTab({
 
   // Dropdown visibility states
   const [showShippingLineDD, setShowShippingLineDD] = useState(false);
-  const [showVolumeDD, setShowVolumeDD] = useState(false);
+  const [showContainerSizeDD, setShowContainerSizeDD] = useState(false);
+  const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
   const [showSelectivityDD, setShowSelectivityDD] = useState(false);
   const [showGrossWeightUnitDD, setShowGrossWeightUnitDD] = useState(false);
   const [showSectionDD, setShowSectionDD] = useState(false);
@@ -2367,19 +2119,20 @@ function BookingInformationTab({
                 disabled={!isEditing}
                 showContact={true}
                 showLabels={true}
+                companyLabel="Consignee"
+                contactLabel="Client"
                 onSelect={({ company, contact }) => {
                   const updates = { ...editData };
                   const cName = company ? (company.name || company.company_name || "") : "";
                   updates.companyName = cName;
-                  
+                  updates.consignee = cName;
+
                   if (company) {
                     updates.clientId = company.id;
-                    updates.consignee = cName;
                   } else {
                     updates.clientId = "";
-                    updates.consignee = "";
                   }
-                  
+
                   if (contact) {
                     updates.contactId = contact.id;
                     updates.contactPersonName = contact.name;
@@ -2387,7 +2140,6 @@ function BookingInformationTab({
                   } else {
                     updates.contactId = "";
                     updates.contactPersonName = "";
-                    // No contact: customerName = company name (merged)
                     updates.customerName = cName;
                   }
                   setEditData(updates);
@@ -2415,50 +2167,6 @@ function BookingInformationTab({
 
         <div style={{ padding: "24px" }}>
         <div style={{ display: "grid", gap: "20px" }}>
-          {/* Row 0: Consignee, Client — conditionally collapse when merged and identical */}
-          {(() => {
-            const isMerged = !(booking as any).companyName || booking.customerName === (booking as any).companyName;
-            const consigneeMatchesClient = isMerged && ((booking as any).consignee || "") === booking.customerName;
-            return (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                {!consigneeMatchesClient && (
-                  <EditableField
-                    fieldName="consignee"
-                    label="Consignee"
-                    value={(booking as any).consignee || ""}
-                    status={booking.status as ExecutionStatus}
-                    placeholder="Enter consignee..."
-                    isEditing={isEditing}
-                    editData={editData}
-                    setEditData={setEditData}
-                  />
-                )}
-                <EditableField
-                  fieldName="customerName"
-                  label={isMerged ? "Client / Company" : "Contact Person"}
-                  value={(booking as any).customerName || ""}
-                  status={booking.status as ExecutionStatus}
-                  placeholder="Client name"
-                  isEditing={isEditing}
-                  editData={editData}
-                  setEditData={setEditData}
-                />
-                {!isMerged && (
-                  <EditableField
-                    fieldName="companyName"
-                    label="Company"
-                    value={(booking as any).companyName || ""}
-                    status={booking.status as ExecutionStatus}
-                    placeholder=""
-                    isEditing={false}
-                    editData={editData}
-                    setEditData={setEditData}
-                  />
-                )}
-              </div>
-            );
-          })()}
-
           {/* Row 1: Container No., BL Number */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
             <ContainerListField
@@ -2494,9 +2202,22 @@ function BookingInformationTab({
               editData={editData}
               setEditData={setEditData}
             />
-            {/* Volume: View mode = computed summary, Edit mode = dropdown */}
+            {/* Volume: View mode = computed summary, Edit mode = size+type dropdowns */}
             {isEditing ? (
-              renderEditDropdown("volume", "Volume", CONTAINER_SIZES, showVolumeDD, setShowVolumeDD)
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ flex: 1 }}>
+                  {renderEditDropdown(
+                    "__containerSize" as any, "Size", [...CONTAINER_SIZE_OPTIONS],
+                    showContainerSizeDD, setShowContainerSizeDD
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  {renderEditDropdown(
+                    "__containerType" as any, "Type", [...CONTAINER_TYPE_OPTIONS],
+                    showContainerTypeDD, setShowContainerTypeDD
+                  )}
+                </div>
+              </div>
             ) : (
               renderVolumeView()
             )}
@@ -2550,7 +2271,9 @@ function BookingInformationTab({
               label="POD (Port of Discharge)"
               value={(booking as any).pod || ""}
               status={booking.status as ExecutionStatus}
-              placeholder="Enter POD..."
+              placeholder="Select POD..."
+              type="select"
+              options={["Manila North", "Manila South", "CDO", "Iloilo", "Davao"]}
               isEditing={isEditing}
               editData={editData}
               setEditData={setEditData}
@@ -2630,6 +2353,101 @@ function BookingInformationTab({
           {/* Group 2: Charges / Values */}
           <div style={{ marginBottom: "4px", marginTop: "12px" }}>
             
+            {/* Arrastre - Date + Amount + Time */}
+            <div style={{ marginBottom: "20px" }}>
+              {(() => {
+                const currentVal = getFieldVal("arrastre");
+                const { date: dVal, time: tVal } = splitDateTime(currentVal);
+                const amountVal = (editData as any).arrastreAmount !== undefined
+                  ? String((editData as any).arrastreAmount || "")
+                  : (booking as any).arrastreAmount || "";
+                const isEmpty = !currentVal || currentVal.trim() === "";
+                const isAmountEmpty = !amountVal || amountVal.trim() === "";
+
+                const isDateEmpty = !dVal || dVal.trim() === "";
+                const isTimeEmpty = !tVal || tVal.trim() === "";
+
+                if (!isEditing) {
+                  const viewFieldStyle = (empty: boolean) => ({
+                    padding: "10px 14px",
+                    backgroundColor: empty ? "white" : "#F9FAFB",
+                    border: empty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    color: empty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+                    minHeight: "42px",
+                    display: "flex",
+                    alignItems: "center"
+                  } as React.CSSProperties);
+
+                  return (
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                        Arrastre
+                      </label>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: "8px" }}>
+                        <div style={viewFieldStyle(isAmountEmpty)}>
+                          {isAmountEmpty ? "Amount —" : amountVal}
+                        </div>
+                        <div style={viewFieldStyle(isDateEmpty)}>
+                          {isDateEmpty ? "Date —" : dVal}
+                        </div>
+                        <div style={viewFieldStyle(isTimeEmpty)}>
+                          {isTimeEmpty ? "Time —" : tVal}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                      Arrastre
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: "8px" }}>
+                      <div>
+                        <input
+                          type="text"
+                          value={amountVal}
+                          onChange={(e) => setEditData({ ...editData, arrastreAmount: e.target.value } as any)}
+                          placeholder="Amount (0.00)"
+                          style={{
+                            width: "100%",
+                            padding: "10px 14px",
+                            borderRadius: "6px",
+                            border: "1px solid #E5E9F0",
+                            fontSize: "14px",
+                            color: "var(--neuron-ink-primary)",
+                            outline: "none"
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <SingleDateInput
+                          value={mmddToISO(dVal)}
+                          onChange={(iso: string) => {
+                            const formatted = isoToMMDD(iso);
+                            const newCombined = combineDateTime(formatted, tVal);
+                            setEditData({ ...editData, arrastre: newCombined } as any);
+                          }}
+                          placeholder="MM/DD/YYYY"
+                        />
+                      </div>
+                      <div>
+                        <NeuronTimePicker
+                          value={tVal}
+                          onChange={(v: string) => {
+                            const newCombined = combineDateTime(dVal, v);
+                            setEditData({ ...editData, arrastre: newCombined } as any);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <EditableField
                 fieldName="finalTaxNavValue"
@@ -2642,18 +2460,6 @@ function BookingInformationTab({
                 editData={editData}
                 setEditData={setEditData}
               />
-              <EditableField
-                fieldName="arrastre"
-                label="Arrastre"
-                value={(booking as any).arrastre || ""}
-                status={booking.status as ExecutionStatus}
-                placeholder="Enter Arrastre..."
-                isEditing={isEditing}
-                editData={editData}
-                setEditData={setEditData}
-              />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <EditableField
                 fieldName="stowage"
                 label="Stowage"
