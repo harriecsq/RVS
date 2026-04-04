@@ -9,17 +9,17 @@
  * - Field labels: 13px/#667085/500, values in bordered boxes
  */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ArrowLeft, Edit3, Clock, Truck, Save, X, ChevronDown, Check, Search, Plus, Trash2, Link2 } from "lucide-react";
+import { ArrowLeft, Truck, Save, X, ChevronDown, Check, Search, Plus, Trash2, Link2 } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import type { TruckingRecord } from "./CreateTruckingModal";
 import { StandardButton } from "../design-system";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { BookingSelector } from "../selectors/BookingSelector";
-import { ActionsDropdown } from "../shared/ActionsDropdown";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
-import { StatusTagBar as SharedStatusTagBar } from "../shared/StatusTagBar";
+import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { TabRowActions } from "../shared/TabRowActions";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
@@ -33,9 +33,12 @@ import {
   getStatusSummary,
   hexToRgba,
 } from "../../utils/truckingTags";
-import { getOperationalTags } from "../../utils/statusTags";
+import { getOperationalTags, getTagByKey } from "../../utils/statusTags";
 import { formatDateTime } from "./shared/DateTimeInput";
 import { API_BASE_URL } from '@/utils/api-config';
+import { TRUCKING_STATUS_OPTIONS, DEFAULT_TRUCKING_STATUS, TRUCKING_STATUS_COLORS } from "../../constants/truckingStatuses";
+import { ShipmentMilestonesTab } from "./shared/ShipmentMilestonesTab";
+import type { ShipmentEvent } from "../../types/operations";
 
 const OPERATIONAL_TRUCKING_TAGS = getOperationalTags("trucking");
 
@@ -59,6 +62,12 @@ interface TruckingRecordDetailsProps {
   /** When true, hides the back arrow button. Used when rendered inline inside a booking tab. */
   embedded?: boolean;
   onBookingTagsUpdated?: () => void;
+  /** When provided, edit mode is controlled externally (from parent's tab row). */
+  externalEdit?: boolean;
+  /** Called when edit state changes internally (cancel/save). */
+  onEditStateChange?: (editing: boolean) => void;
+  /** Increment to trigger save from parent. */
+  externalSaveCounter?: number;
 }
 
 // ─── Display helpers (matching ViewExpenseScreen) ────────────────────────────
@@ -664,13 +673,19 @@ export function TruckingRecordDetails({
   currentUser,
   embedded = false,
   onBookingTagsUpdated,
+  externalEdit,
+  onEditStateChange,
+  externalSaveCounter,
 }: TruckingRecordDetailsProps) {
-  const [activeTab, setActiveTab] = useState<"trucking-info" | "attachments">("trucking-info");
+  const [activeTab, setActiveTab] = useState<"trucking-info" | "shipment-milestones" | "attachments">("trucking-info");
   const [showActivity, setShowActivity] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(normalizeRecord(record) as TruckingRecord);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [linkedShipmentTags, setLinkedShipmentTags] = useState<string[]>(
     ((record as any).linkedBookingShipmentTags || []) as string[],
+  );
+  const [linkedShipmentEvents, setLinkedShipmentEvents] = useState<ShipmentEvent[]>(
+    ((record as any).linkedBookingShipmentEvents || []) as ShipmentEvent[],
   );
   const [linkedTagHistory, setLinkedTagHistory] = useState<TagHistoryEntry[]>(
     ((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[],
@@ -678,7 +693,31 @@ export function TruckingRecordDetails({
   const [isShipmentTagsSaving, setIsShipmentTagsSaving] = useState(false);
 
   // ── Inline edit state ──
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditingInternal] = useState(false);
+
+  const setIsEditing = (editing: boolean) => {
+    setIsEditingInternal(editing);
+    onEditStateChange?.(editing);
+  };
+
+  // React to external edit requests
+  useEffect(() => {
+    if (externalEdit !== undefined) {
+      setIsEditingInternal(externalEdit);
+      onEditStateChange?.(externalEdit);
+      if (externalEdit) {
+        setEditForm({ ...currentRecord });
+      }
+    }
+  }, [externalEdit]);
+
+  // React to external save requests
+  useEffect(() => {
+    if (externalSaveCounter && externalSaveCounter > 0 && isEditing) {
+      handleSave();
+    }
+  }, [externalSaveCounter]);
+
   const [editForm, setEditForm] = useState<TruckingRecord>({ ...record });
   const [isSaving, setIsSaving] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -696,6 +735,7 @@ export function TruckingRecordDetails({
     setCurrentRecord(record);
     setEditForm({ ...record });
     setLinkedShipmentTags(((record as any).linkedBookingShipmentTags || []) as string[]);
+    setLinkedShipmentEvents(((record as any).linkedBookingShipmentEvents || []) as ShipmentEvent[]);
     setLinkedTagHistory(((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[]);
   }, [record]);
 
@@ -714,6 +754,7 @@ export function TruckingRecordDetails({
         const b = result.data;
         setLinkedBookingData(b);
         setLinkedShipmentTags(Array.isArray((b as any).shipmentTags) ? (b as any).shipmentTags : []);
+        setLinkedShipmentEvents((b.shipmentEvents || []) as ShipmentEvent[]);
         setLinkedTagHistory(Array.isArray((b as any).tagHistory) ? (b as any).tagHistory : []);
         
         if (autoFill) {
@@ -721,6 +762,8 @@ export function TruckingRecordDetails({
           const commodityVal = b.commodityItems || b.commodity_items || b.commodity || b.commodityDescription || b.commodity_description || "";
           const shippingVal = b.shippingLine || b.shipping_line || b.carrier || "";
           const vesselVal = b.vesselVoyage || b.vessel_voyage || b.vessel || b.vesselName || b.vessel_name || "";
+          const loadingAddrVal = b.loadingAddress || b.loading_address || "";
+          const loadingDateVal = b.loadingSchedule || b.loading_schedule || "";
 
           // Container is managed via ContainerSelector now — not auto-filled here
 
@@ -730,6 +773,8 @@ export function TruckingRecordDetails({
             commodityItems: commodityVal || prev.commodityItems,
             shippingLine: shippingVal || prev.shippingLine,
             vesselVoyage: vesselVal || prev.vesselVoyage,
+            truckingAddress: loadingAddrVal || prev.truckingAddress,
+            loadingDate: loadingDateVal || prev.loadingDate,
           }));
           toast.success("Fields auto-filled from booking");
         }
@@ -754,13 +799,6 @@ export function TruckingRecordDetails({
   // Track changes
   const hasChanges = isEditing && JSON.stringify(editForm) !== JSON.stringify(currentRecord);
 
-  // Sorted tags for display
-  const groupOrder: Record<string, number> = { operations: 0, documentation: 1, financial: 2, client: 3 };
-  const sortedTags = [...(r.remarks || [])].sort((a, b) => {
-    const ta = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === a);
-    const tb = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === b);
-    return (groupOrder[ta?.group || ""] ?? 99) - (groupOrder[tb?.group || ""] ?? 99);
-  });
 
   function formatISOToDisplay(isoDate: string): string {
     if (!isoDate) return "—";
@@ -793,21 +831,17 @@ export function TruckingRecordDetails({
     setEditForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  // ── Quick status-tag update (persists immediately, no edit mode required) ──
-  const [isStatusSaving, setIsStatusSaving] = useState(false);
-  const handleQuickStatusUpdate = useCallback(
-    async (newTags: string[]) => {
-      // Optimistic update
+  // ── Trucking status update (independent dropdown, persists immediately) ──
+  const handleTruckingStatusChange = useCallback(
+    async (newStatus: string) => {
       const prevRecord = { ...currentRecord };
-      setCurrentRecord((prev) => ({ ...prev, remarks: newTags }));
-      // Also update editForm if currently in edit mode
+      setCurrentRecord((prev) => ({ ...prev, truckingStatus: newStatus }));
       if (isEditing) {
-        setEditForm((prev) => ({ ...prev, remarks: newTags }));
+        setEditForm((prev) => ({ ...prev, truckingStatus: newStatus }));
       }
 
-      setIsStatusSaving(true);
       try {
-        const payload = { ...currentRecord, remarks: newTags, updatedAt: new Date().toISOString() };
+        const payload = { ...currentRecord, truckingStatus: newStatus, updatedAt: new Date().toISOString() };
         const res = await fetch(`${API_BASE_URL}/trucking-records/${currentRecord.id}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
@@ -817,20 +851,17 @@ export function TruckingRecordDetails({
         if (result.success) {
           setCurrentRecord(result.data);
           if (isEditing) {
-            setEditForm((prev) => ({ ...prev, remarks: result.data.remarks }));
+            setEditForm((prev) => ({ ...prev, truckingStatus: result.data.truckingStatus }));
           }
           onUpdate();
         } else {
-          // Revert on failure
           setCurrentRecord(prevRecord);
           toast.error(`Failed to update status: ${result.error || "Unknown error"}`);
         }
       } catch (err) {
-        console.error("Error updating status tags:", err);
+        console.error("Error updating trucking status:", err);
         setCurrentRecord(prevRecord);
         toast.error("Unable to update status");
-      } finally {
-        setIsStatusSaving(false);
       }
     },
     [currentRecord, isEditing, onUpdate],
@@ -883,11 +914,72 @@ export function TruckingRecordDetails({
     [currentRecord.id, currentRecord.linkedBookingId, currentUser?.name, linkedShipmentTags, onBookingTagsUpdated, onUpdate],
   );
 
+  const handleSaveLinkedShipmentEvents = useCallback(
+    async (events: ShipmentEvent[]) => {
+      if (!currentRecord.linkedBookingId) {
+        toast.error("No linked booking to update");
+        return;
+      }
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/trucking-records/${currentRecord.id}/update-booking-events`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${publicAnonKey}`,
+            },
+            body: JSON.stringify({
+              shipmentEvents: events,
+              user: currentUser?.name || "Unknown",
+            }),
+          },
+        );
+        const result = await response.json();
+        if (result.success) {
+          setLinkedShipmentEvents(result.data.shipmentEvents || []);
+          toast.success("Shipment milestones saved");
+          onUpdate();
+        } else {
+          toast.error(`Failed to save: ${result.error || "Unknown error"}`);
+        }
+      } catch (err) {
+        console.error("Error saving shipment events:", err);
+        toast.error("Unable to save shipment milestones");
+      }
+    },
+    [currentRecord.id, currentRecord.linkedBookingId, currentUser?.name, onUpdate],
+  );
+
+  // Warehouse arrival helpers
+  const warehouseArrivals = editForm.warehouseArrivals?.length ? editForm.warehouseArrivals : [{ date: editForm.warehouseArrivalDate || "", time: editForm.warehouseArrivalTime || "" }];
+  const updateWarehouseArrival = (i: number, key: string, val: string) =>
+    set("warehouseArrivals" as any, warehouseArrivals.map((w: any, idx: number) => idx === i ? { ...w, [key]: val } : w) as any);
+  const removeWarehouseArrival = (i: number) =>
+    set("warehouseArrivals" as any, warehouseArrivals.filter((_: any, idx: number) => idx !== i) as any);
+
+  // Sync: adding a drop adds to ALL multi-drop sections simultaneously
+  const addSyncedDrop = () => {
+    setEditForm((prev: any) => {
+      const wa = prev.warehouseArrivals?.length ? prev.warehouseArrivals : [{ date: prev.warehouseArrivalDate || "", time: prev.warehouseArrivalTime || "" }];
+      const target = Math.max(wa.length, prev.deliveryDrops.length, prev.deliveryAddresses.length, (prev.remarksDrops || []).length) + 1;
+      const pad = <T,>(arr: T[], make: () => T): T[] => {
+        const result = [...arr];
+        while (result.length < target) result.push(make());
+        return result;
+      };
+      return {
+        ...prev,
+        warehouseArrivals: pad(wa, () => ({ date: "", time: "" })),
+        deliveryDrops: pad(prev.deliveryDrops, () => ({ deaDate: "", deliveryScheduleDate: "", deliveryScheduleTime: "", unloadingStart: "", unloadingEnd: "", parking: "Availability depends on time of arrival.", instructions: [{ text: "" }], additionalNote: "" })),
+        deliveryAddresses: pad(prev.deliveryAddresses, () => ({ address: "", postalCode: "", recipients: [{ name: "", contacts: [""] }], additionalNote: "" })),
+        remarksDrops: pad(prev.remarksDrops || [], () => ({ startDate: "", startTime: "", doneDate: "", doneTime: "" })),
+      };
+    });
+  };
+
   // Drop helpers
-  const addDrop = () => set("deliveryDrops", [
-    ...editForm.deliveryDrops,
-    { deaDate: "", deliveryScheduleDate: "", deliveryScheduleTime: "", unloadingStart: "", unloadingEnd: "", parking: "Availability depends on time of arrival.", instructions: [{ text: "" }], additionalNote: "" },
-  ]);
+  const addDrop = () => addSyncedDrop();
   const removeDrop = (i: number) => set("deliveryDrops", editForm.deliveryDrops.filter((_: any, idx: number) => idx !== i));
   const updateDrop = (i: number, key: string, val: any) =>
     set("deliveryDrops", editForm.deliveryDrops.map((d: any, idx: number) => idx === i ? { ...d, [key]: val } : d));
@@ -903,7 +995,7 @@ export function TruckingRecordDetails({
     ));
 
   // Address helpers
-  const addAddress = () => set("deliveryAddresses", [...editForm.deliveryAddresses, { address: "", postalCode: "", recipients: [{ name: "", contacts: [""] }], additionalNote: "" }]);
+  const addAddress = () => addSyncedDrop();
   const removeAddress = (i: number) => set("deliveryAddresses", editForm.deliveryAddresses.filter((_: any, idx: number) => idx !== i));
   const updateAddress = (i: number, key: string, val: any) =>
     set("deliveryAddresses", editForm.deliveryAddresses.map((a: any, idx: number) => idx === i ? { ...a, [key]: val } : a));
@@ -938,13 +1030,6 @@ export function TruckingRecordDetails({
       idx === i ? { ...l, showEnd: show, ...(show ? {} : { endDate: "", endTime: "" }) } : l
     ));
 
-  // Remarks drops helpers
-  const remarksDrops = editForm.remarksDrops || [];
-  const addRemarksDrop = () => set("remarksDrops", [...remarksDrops, { startDate: "", startTime: "", doneDate: "", doneTime: "" }]);
-  const removeRemarksDrop = (i: number) => set("remarksDrops", remarksDrops.filter((_: any, idx: number) => idx !== i));
-  const updateRemarksDrop = (i: number, key: string, val: string) =>
-    set("remarksDrops", remarksDrops.map((d: any, idx: number) => idx === i ? { ...d, [key]: val } : d));
-
   // ── Delete ──
   const handleDelete = async () => {
     try {
@@ -970,7 +1055,14 @@ export function TruckingRecordDetails({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const payload = { ...editForm, updatedAt: new Date().toISOString() };
+      const wa = editForm.warehouseArrivals?.length ? editForm.warehouseArrivals : [{ date: editForm.warehouseArrivalDate || "", time: editForm.warehouseArrivalTime || "" }];
+      const payload = {
+        ...editForm,
+        warehouseArrivals: wa,
+        warehouseArrivalDate: wa[0]?.date || editForm.warehouseArrivalDate,
+        warehouseArrivalTime: wa[0]?.time || editForm.warehouseArrivalTime,
+        updatedAt: new Date().toISOString(),
+      };
       const res = await fetch(`${API_BASE_URL}/trucking-records/${currentRecord.id}`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
@@ -991,13 +1083,6 @@ export function TruckingRecordDetails({
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Determine gradient for summary bar based on vendor color
-  const vendorInfo = TRUCKING_VENDORS.find((v) => v.name === currentRecord.truckingVendor);
-  const vendorHex = vendorInfo?.hex || "#667085";
-  const getSummaryBarGradient = () => {
-    return `linear-gradient(135deg, ${hexToRgba(vendorHex, 0.08)} 0%, ${hexToRgba(vendorHex, 0.16)} 100%)`;
   };
 
   return (
@@ -1042,15 +1127,42 @@ export function TruckingRecordDetails({
 
             {/* Title */}
             <div>
-              <h1 style={{
-                fontSize: "20px",
-                fontWeight: 600,
-                color: "#0A1D4D",
-                marginBottom: "0",
-                margin: 0,
-              }}>
-                {isEditing ? "Editing: " : ""}{currentRecord.truckingRefNo || currentRecord.id}
-              </h1>
+              {isEditing ? (() => {
+                const raw = editForm.truckingRefNo || "";
+                const m = raw.match(/^(TRK)\s*(\d{4})-(\d*)$/);
+                const prefixText = "TRK";
+                const yearPart = m ? m[2] : String(new Date().getFullYear());
+                const num = m ? m[3] : "";
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                    <span style={{ fontSize: "14px", color: "#667085", fontWeight: 500, marginRight: "8px" }}>Ref:</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+                      <div>
+                        <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                        <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>TRK</div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                        <input value={yearPart} onChange={e => { const y = e.target.value.replace(/\D/g, ""); setEditForm({ ...editForm, truckingRefNo: `TRK ${y}-${num}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                        <input value={num} onChange={e => { const n = e.target.value.replace(/\D/g, ""); setEditForm({ ...editForm, truckingRefNo: `TRK ${yearPart}-${n}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <h1 style={{
+                  fontSize: "20px",
+                  fontWeight: 600,
+                  color: "#0A1D4D",
+                  marginBottom: "0",
+                  margin: 0,
+                }}>
+                  {currentRecord.truckingRefNo || currentRecord.id}
+                </h1>
+              )}
               {isEditing && (
                 <p style={{ fontSize: "13px", color: "#667085", margin: "2px 0 0" }}>
                   Make changes below, then save
@@ -1059,147 +1171,67 @@ export function TruckingRecordDetails({
             </div>
           </div>
 
-          {/* Right: buttons */}
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            {isEditing ? (
-              <>
-                <StandardButton
-                  variant="secondary"
-                  onClick={cancelEdit}
-                >
-                  Cancel
-                </StandardButton>
+          {/* Right: two status boxes */}
+          <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+            {/* Shipment Status — synced with linked booking */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
+                Shipment Status
+                {currentRecord.linkedBookingId && (
+                  <span style={{ fontSize: "10px", fontWeight: 400, textTransform: "none", color: "#9CA3AF", marginLeft: "6px" }}>
+                    Synced
+                  </span>
+                )}
+              </span>
+              {currentRecord.linkedBookingId ? (
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {linkedShipmentTags.length > 0 ? (
+                    linkedShipmentTags.map((tagKey) => {
+                      const tag = getTagByKey(tagKey);
+                      return (
+                        <span
+                          key={tagKey}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "2px 10px",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            background: "#E8F5F3",
+                            color: "#0A1D4D",
+                            border: "1px solid #C1D9CC",
+                          }}
+                        >
+                          {tag?.label || tagKey}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>No status tags</span>
+                  )}
+                </div>
+              ) : (
+                <span style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic" }}>No linked booking</span>
+              )}
+            </div>
 
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "10px 20px",
-                    backgroundColor: isSaving ? "#A0C4BE" : "#0F766E",
-                    color: "#FFFFFF",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: isSaving ? "not-allowed" : "pointer",
-                    opacity: isSaving ? 0.7 : 1,
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <Save size={16} />
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowActivity(!showActivity)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "10px 20px",
-                    backgroundColor: showActivity ? "#E8F5F3" : "white",
-                    border: `1.5px solid ${showActivity ? "#0F766E" : "#E5E9F0"}`,
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: showActivity ? "#0F766E" : "#667085",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!showActivity) e.currentTarget.style.backgroundColor = "#F9FAFB";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!showActivity) e.currentTarget.style.backgroundColor = "white";
-                  }}
-                >
-                  <Clock size={16} />
-                  Activity
-                </button>
-
-                <StandardButton
-                  variant="secondary"
-                  icon={<Edit3 size={16} />}
-                  onClick={enterEditMode}
-                >
-                  Edit Trucking
-                </StandardButton>
-              </>
-            )}
-
-            <ActionsDropdown
-              onDownloadPDF={() => toast.info("PDF download — coming soon")}
-              onDownloadWord={() => toast.info("Word download — coming soon")}
-              onDelete={() => setShowDeleteConfirm(true)}
-            />
+            {/* Trucking Status — independent dropdown */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
+                Trucking Status
+              </span>
+              <HeaderStatusDropdown
+                currentStatus={currentRecord.truckingStatus || DEFAULT_TRUCKING_STATUS}
+                statusOptions={[...TRUCKING_STATUS_OPTIONS]}
+                statusColorMap={TRUCKING_STATUS_COLORS}
+                onStatusChange={handleTruckingStatusChange}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Summary / Metadata Bar (hidden in embedded mode) ── */}
-      {!embedded && (<div style={{
-        background: getSummaryBarGradient(),
-        border: "none",
-        borderBottom: `1.5px solid ${vendorHex}`,
-        padding: "16px 48px",
-        display: "flex",
-        alignItems: "center",
-        gap: "32px",
-        flexShrink: 0,
-      }}>
-        {/* Vendor — displayed first */}
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Vendor
-          </div>
-          <VendorPill vendor={currentRecord.truckingVendor} />
-        </div>
-
-        <div style={{ width: "1px", height: "40px", background: vendorHex, opacity: 0.2, flexShrink: 0 }} />
-
-        {/* Created Date */}
-        <div style={{ flexShrink: 0 }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>
-            Created Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-            {currentRecord.createdAt ? new Date(currentRecord.createdAt).toLocaleDateString() : new Date().toLocaleDateString()}
-          </div>
-        </div>
-
-        <div style={{ width: "1px", height: "40px", background: vendorHex, opacity: 0.2, flexShrink: 0 }} />
-
-        {/* Status — interactive tag picker */}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
-            Status
-            {(isStatusSaving || isShipmentTagsSaving) && (
-              <span style={{ fontSize: "10px", fontWeight: 400, color: "#9CA3AF", marginLeft: "8px", textTransform: "none", letterSpacing: "normal" }}>
-                Saving...
-              </span>
-            )}
-          </div>
-          <SharedStatusTagBar
-            bookingType="trucking"
-            shipmentTags={linkedShipmentTags}
-            operationalTags={currentRecord.remarks || []}
-            onShipmentTagsChange={handleLinkedShipmentTagsChange}
-            onOperationalTagsChange={handleQuickStatusUpdate}
-            shipmentTagsReadOnly={!currentRecord.linkedBookingId}
-            disabled={false}
-          />
-          {!currentRecord.linkedBookingId && (
-            <div style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic", marginTop: "4px" }}>
-              Link a booking to enable shipment status tags
-            </div>
-          )}
-        </div>
-      </div>)}
 
       {/* ── Tabs ── */}
       {!embedded && (
@@ -1211,10 +1243,27 @@ export function TruckingRecordDetails({
           <StandardTabs
             tabs={[
               { id: "trucking-info", label: "Trucking Information" },
+              { id: "shipment-milestones", label: "Shipment Milestones" },
               { id: "attachments", label: "Attachments" }
             ]}
             activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId as "trucking-info" | "attachments")}
+            onTabChange={(tabId) => setActiveTab(tabId as "trucking-info" | "shipment-milestones" | "attachments")}
+            actions={
+              <TabRowActions
+                showTimeline={showActivity}
+                onToggleTimeline={() => setShowActivity(!showActivity)}
+                editLabel={activeTab === "trucking-info" ? "Edit Trucking" : null}
+                onEdit={enterEditMode}
+                isEditing={isEditing}
+                onCancel={cancelEdit}
+                onSave={handleSave}
+                isSaving={isSaving}
+                saveLabel="Save Changes"
+                onDelete={() => setShowDeleteConfirm(true)}
+                onDownloadPDF={() => toast.info("PDF download — coming soon")}
+                onDownloadWord={() => toast.info("Word download — coming soon")}
+              />
+            }
           />
         </div>
       )}
@@ -1389,6 +1438,10 @@ export function TruckingRecordDetails({
                   {isEditing ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                       <div>
+                        <EditLabel>Date</EditLabel>
+                        <NeuronDatePicker value={editForm.truckingDate || ""} onChange={(v: string) => set("truckingDate", v)} />
+                      </div>
+                      <div>
                         <EditLabel>Trucking</EditLabel>
                         <EditVendorDropdown value={editForm.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
                       </div>
@@ -1433,12 +1486,13 @@ export function TruckingRecordDetails({
                         <EditTextInput value={(editForm as any).truckingAddress || ""} onChange={(v) => set("truckingAddress" as any, v)} placeholder="Enter loading address" />
                       </div>
                       <div>
-                        <EditLabel>Status</EditLabel>
-                        <EditTextInput value={(editForm as any).truckingStatus || ""} onChange={(v) => set("truckingStatus" as any, v)} placeholder="Enter status" />
+                        <EditLabel>Inyard Status</EditLabel>
+                        <NeuronDatePicker value={(editForm as any).inyardDate || ""} onChange={(v: string) => set("inyardDate" as any, v)} />
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      <ReadField label="Date" value={formatISOToDisplay(r.truckingDate || "")} />
                       <div>
                         <div style={LABEL_STYLE}>Trucking</div>
                         <div style={{
@@ -1459,12 +1513,24 @@ export function TruckingRecordDetails({
                       <ReadField label="SOA Number" value={r.truckingSoa} />
                       <ReadField label="Loading Date" value={formatISOToDisplay((r as any).loadingDate || "")} />
                       <ReadField label="Loading Address" value={(r as any).truckingAddress} />
-                      <ReadField label="Status" value={(r as any).truckingStatus} />
+                      <ReadField label="Inyard Status" value={(r as any).inyardDate ? `Done Inyard - ${formatISOToDisplay((r as any).inyardDate)}` : "—"} />
                     </div>
                   )}
                 </InfoCard>
               ) : (
               <>
+              {/* ── Date field ── */}
+              <InfoCard title="Trucking Information">
+                {isEditing ? (
+                  <div>
+                    <EditLabel>Date</EditLabel>
+                    <NeuronDatePicker value={editForm.truckingDate || ""} onChange={(v: string) => set("truckingDate", v)} />
+                  </div>
+                ) : (
+                  <ReadField label="Date" value={formatISOToDisplay(r.truckingDate || "")} />
+                )}
+              </InfoCard>
+
               {/* ── Delivery Details Card (merged) ── */}
               <InfoCard title="Delivery Details">
                 {/* ── Tabs Booking ── */}
@@ -1489,17 +1555,48 @@ export function TruckingRecordDetails({
                 {/* ── Warehouse Arrival ── */}
                 <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Warehouse Arrival</div>
                 {isEditing ? (
-                  <EditDateTimeRow
-                    dateValue={editForm.warehouseArrivalDate}
-                    timeValue={editForm.warehouseArrivalTime}
-                    onDateChange={(v) => set("warehouseArrivalDate", v)}
-                    onTimeChange={(v) => set("warehouseArrivalTime", v)}
-                    dateLabel="Date"
-                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {warehouseArrivals.map((wa: any, wi: number) => (
+                      <div
+                        key={wi}
+                        style={{ border: "1px solid #E5E9F0", borderRadius: "12px", padding: "20px", backgroundColor: "#FAFAFA" }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                          <span style={{ fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>Drop {wi + 1}</span>
+                          {warehouseArrivals.length > 1 && (
+                            <button onClick={() => removeWarehouseArrival(wi)} style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", fontSize: "12px", fontWeight: 600 }}>Remove</button>
+                          )}
+                        </div>
+                        <EditDateTimeRow
+                          dateValue={wa.date}
+                          timeValue={wa.time}
+                          onDateChange={(v: string) => updateWarehouseArrival(wi, "date", v)}
+                          onTimeChange={(v: string) => updateWarehouseArrival(wi, "time", v)}
+                          dateLabel="Date"
+                        />
+                      </div>
+                    ))}
+                    <button
+                      onClick={addSyncedDrop}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#0F766E", fontSize: "13px", fontWeight: 600, textAlign: "left", padding: "4px 0" }}
+                    >
+                      + Add Drop
+                    </button>
+                  </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-                    <ReadField label="Date" value={formatISOToDisplay(r.warehouseArrivalDate)} />
-                    <ReadField label="Time" value={formatTimeAmPm(r.warehouseArrivalTime)} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {(() => {
+                      const arrivals = r.warehouseArrivals?.length ? r.warehouseArrivals : [{ date: r.warehouseArrivalDate, time: r.warehouseArrivalTime }];
+                      return arrivals.map((wa: any, wi: number) => (
+                        <div key={wi}>
+                          {arrivals.length > 1 && <div style={{ fontSize: "12px", fontWeight: 700, color: "#0A1D4D", marginBottom: "6px" }}>Drop {wi + 1}</div>}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                            <ReadField label="Date" value={formatISOToDisplay(wa.date)} />
+                            <ReadField label="Time" value={formatTimeAmPm(wa.time)} />
+                          </div>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 )}
 
@@ -1526,12 +1623,12 @@ export function TruckingRecordDetails({
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
                           <div>
-                            <EditLabel>DEA Date</EditLabel>
-                            <NeuronDatePicker value={drop.deaDate} onChange={(v: string) => updateDrop(di, "deaDate", v)} />
-                          </div>
-                          <div>
                             <EditLabel>Delivery Schedule Date</EditLabel>
                             <NeuronDatePicker value={drop.deliveryScheduleDate} onChange={(v: string) => updateDrop(di, "deliveryScheduleDate", v)} />
+                          </div>
+                          <div>
+                            <EditLabel>DEA Date</EditLabel>
+                            <NeuronDatePicker value={drop.deaDate} onChange={(v: string) => updateDrop(di, "deaDate", v)} />
                           </div>
                         </div>
 
@@ -1596,8 +1693,8 @@ export function TruckingRecordDetails({
                       >
                         <p style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em", margin: "0 0 16px" }}>Drop {i + 1}</p>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "16px" }}>
-                          <ReadField label="DEA Date" value={formatDateTime(drop.deaDate, "")} />
                           <ReadField label="Delivery Schedule Date" value={formatDateTime(drop.deliveryScheduleDate, "")} />
+                          <ReadField label="DEA Date" value={formatDateTime(drop.deaDate, "")} />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "16px" }}>
                           <ReadField
@@ -1612,11 +1709,9 @@ export function TruckingRecordDetails({
                           />
                           <ReadField label="Parking" value={drop.parking} />
                         </div>
-                        {drop.additionalNote && (
-                          <div style={{ marginTop: "16px" }}>
-                            <ReadField label="Additional Note" value={drop.additionalNote} />
-                          </div>
-                        )}
+                        <div style={{ marginTop: "16px" }}>
+                          <ReadField label="Additional Note" value={drop.additionalNote} />
+                        </div>
                       </div>
                     )) : (
                       <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No delivery drops</span>
@@ -1645,15 +1740,9 @@ export function TruckingRecordDetails({
                           {editForm.deliveryAddresses.length > 1 && <RemoveBtn onClick={() => removeAddress(ai)} />}
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                          <div>
-                            <EditLabel>Street Address</EditLabel>
-                            <EditTextInput value={addr.address} onChange={(v) => updateAddress(ai, "address", v)} placeholder="Full address" />
-                          </div>
-                          <div>
-                            <EditLabel>Postal Code</EditLabel>
-                            <EditTextInput value={addr.postalCode} onChange={(v) => updateAddress(ai, "postalCode", v)} placeholder="Postal code" />
-                          </div>
+                        <div style={{ marginBottom: "16px" }}>
+                          <EditLabel>Full Address</EditLabel>
+                          <EditTextInput value={addr.address} onChange={(v) => updateAddress(ai, "address", v)} placeholder="Full address" />
                         </div>
 
                         {addr.recipients?.map((rec: any, ri: number) => (
@@ -1711,9 +1800,8 @@ export function TruckingRecordDetails({
                         }}
                       >
                         <p style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em", margin: "0 0 16px" }}>Address {ai + 1}</p>
-                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px", marginBottom: "16px" }}>
-                          <ReadField label="Street Address" value={addr.address} />
-                          <ReadField label="Postal Code" value={addr.postalCode} />
+                        <div style={{ marginBottom: "16px" }}>
+                          <ReadField label="Full Address" value={addr.address} />
                         </div>
                         {addr.recipients?.map((rec: any, ri: number) => (
                           <div key={ri} style={{
@@ -1736,11 +1824,9 @@ export function TruckingRecordDetails({
                             ))}
                           </div>
                         ))}
-                        {addr.additionalNote && (
-                          <div style={{ marginTop: "16px" }}>
-                            <ReadField label="Additional Note" value={addr.additionalNote} />
-                          </div>
-                        )}
+                        <div style={{ marginTop: "16px" }}>
+                          <ReadField label="Additional Note" value={addr.additionalNote} />
+                        </div>
                       </div>
                     )) : (
                       <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No delivery addresses</span>
@@ -1751,121 +1837,54 @@ export function TruckingRecordDetails({
 
               {/* ── Operations & Details Card (merged) ── */}
               <InfoCard title="Operations & Details">
-                {/* ── Status ── */}
-                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Status</div>
+                {/* ── Rate and Vendor ── */}
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Rate and Vendor</div>
                 {isEditing ? (
-                  <>
-                    <EditTagSelector selected={editForm.remarks || []} onChange={(tags) => set("remarks", tags)} />
-
-                    {/* Remarks Drops */}
-                    <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                      {remarksDrops.map((rd: any, ri: number) => (
-                        <div
-                          key={ri}
-                          style={{
-                            border: "1px solid #E5E9F0",
-                            borderRadius: "8px",
-                            padding: "20px",
-                            backgroundColor: "#FFFFFF",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                            <span style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em" }}>Drop {ri + 1}</span>
-                            <RemoveBtn onClick={() => removeRemarksDrop(ri)} />
-                          </div>
-                          <div style={{ marginBottom: "12px" }}>
-                            <EditLabel>Start</EditLabel>
-                            <EditDateTimeRow
-                              dateValue={rd.startDate}
-                              timeValue={rd.startTime}
-                              onDateChange={(v) => updateRemarksDrop(ri, "startDate", v)}
-                              onTimeChange={(v) => updateRemarksDrop(ri, "startTime", v)}
-                            />
-                          </div>
-                          <div>
-                            <EditLabel>Completion</EditLabel>
-                            <EditDateTimeRow
-                              dateValue={rd.doneDate}
-                              timeValue={rd.doneTime}
-                              onDateChange={(v) => updateRemarksDrop(ri, "doneDate", v)}
-                              onTimeChange={(v) => updateRemarksDrop(ri, "doneTime", v)}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      <AddLink onClick={addRemarksDrop}>Add Drop</AddLink>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                      {sortedTags.length === 0 ? (
-                        <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No tags selected</span>
-                      ) : sortedTags.map((key) => {
-                        const tag = OPERATIONAL_TRUCKING_TAGS.find((t) => t.key === key);
-                        return (
-                          <span
-                            key={key}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              padding: "4px 12px",
-                              borderRadius: "8px",
-                              fontSize: "13px",
-                              fontWeight: 600,
-                              backgroundColor: "#E8F5F3",
-                              color: "#0A1D4D",
-                              border: "1px solid #C1D9CC",
-                            }}
-                          >
-                            {tag?.label || key}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {/* Read-only Drops */}
-                    {(r.remarksDrops || []).length > 0 && (
-                      <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                        {(r.remarksDrops as any[] || []).map((rd: any, ri: number) => (
-                          <div
-                            key={ri}
-                            style={{
-                              border: "1px solid #E5E9F0",
-                              borderRadius: "8px",
-                              padding: "20px",
-                              backgroundColor: "#FFFFFF",
-                            }}
-                          >
-                            <p style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em", margin: "0 0 16px" }}>Drop {ri + 1}</p>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                              <ReadField label="Start" value={formatDateTime(rd.startDate, rd.startTime)} />
-                              <ReadField label="Completion" value={formatDateTime(rd.doneDate, rd.doneTime)} />
-                            </div>
-                          </div>
-                        ))}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      <div>
+                        <EditLabel>Rate (₱)</EditLabel>
+                        <EditTextInput value={editForm.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
                       </div>
-                    )}
-                  </>
+                      <div>
+                        <EditLabel>Trucking Company</EditLabel>
+                        <EditVendorDropdown value={editForm.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      <div>
+                        <EditLabel>SOA Number</EditLabel>
+                        <EditTextInput value={editForm.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      <ReadField label="Rate (₱)" value={r.truckingRate} />
+                      <div>
+                        <div style={LABEL_STYLE}>Trucking Company</div>
+                        <div style={{
+                          ...VALUE_BOX,
+                          background: (() => {
+                            const vi = TRUCKING_VENDORS.find((v) => v.name === r.truckingVendor);
+                            return vi ? hexToRgba(vi.hex, 0.10) : "#F9FAFB";
+                          })(),
+                        }}>{r.truckingVendor || "—"}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      <ReadField label="SOA Number" value={r.truckingSoa} />
+                    </div>
+                  </div>
                 )}
 
                 <div style={{ borderTop: "1px solid #E5E9F0", margin: "24px 0" }} />
 
-                {/* ── Rate, Vendor & People ── */}
-                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Rate, Vendor & People</div>
+                {/* ── People ── */}
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>People</div>
                 {isEditing ? (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-                    <div>
-                      <EditLabel>Trucking Rate (₱)</EditLabel>
-                      <EditTextInput value={editForm.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
-                    </div>
-                    <div>
-                      <EditLabel>Trucking Vendor</EditLabel>
-                      <EditVendorDropdown value={editForm.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
-                    </div>
-                    <div>
-                      <EditLabel>Trucking – SOA Number</EditLabel>
-                      <EditTextInput value={editForm.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
-                    </div>
                     <div>
                       <EditLabel>Dispatcher</EditLabel>
                       <EditNeuronDropdown value={editForm.dispatcher} options={DISPATCHER_LIST} onChange={(v) => set("dispatcher", v)} placeholder="Select dispatcher..." />
@@ -1877,18 +1896,6 @@ export function TruckingRecordDetails({
                   </div>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-                    <ReadField label="Trucking Rate (₱)" value={r.truckingRate} />
-                    <div>
-                      <div style={LABEL_STYLE}>Trucking Vendor</div>
-                      <div style={{
-                        ...VALUE_BOX,
-                        background: (() => {
-                          const vi = TRUCKING_VENDORS.find((v) => v.name === r.truckingVendor);
-                          return vi ? hexToRgba(vi.hex, 0.10) : "#F9FAFB";
-                        })(),
-                      }}>{r.truckingVendor || "—"}</div>
-                    </div>
-                    <ReadField label="Trucking – SOA" value={r.truckingSoa} />
                     <ReadField label="Dispatcher" value={r.dispatcher} />
                     <ReadField label="Gatepass" value={r.gatepass} />
                   </div>
@@ -1921,12 +1928,20 @@ export function TruckingRecordDetails({
                       onTimeChange={(v) => set("demurrageBeginTime", v)}
                       dateLabel="Demurrage Begin"
                     />
+                    <EditDateTimeRow
+                      dateValue={editForm.demurragePaymentDate}
+                      timeValue={editForm.demurragePaymentTime}
+                      onDateChange={(v) => set("demurragePaymentDate", v)}
+                      onTimeChange={(v) => set("demurragePaymentTime", v)}
+                      dateLabel="Demurrage Payment"
+                    />
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "24px" }}>
                     <ReadField label="Storage Begin" value={formatDateTime(r.storageBeginDate, r.storageBeginTime)} />
                     <ReadField label="Storage Payment" value={formatDateTime(r.storagePaymentDate, r.storagePaymentTime)} />
                     <ReadField label="Demurrage Begin" value={formatDateTime(r.demurrageBeginDate, r.demurrageBeginTime)} />
+                    <ReadField label="Demurrage Payment" value={formatDateTime(r.demurragePaymentDate, r.demurragePaymentTime)} />
                   </div>
                 )}
 
@@ -1935,114 +1950,86 @@ export function TruckingRecordDetails({
                 {/* ── Empty Return ── */}
                 <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Empty Return</div>
                 {isEditing ? (
-                  <>
-                    <div style={{ marginBottom: "20px", maxWidth: "320px" }}>
-                      <EditLabel>Destination</EditLabel>
-                      <EditNeuronDropdown value={editForm.emptyReturn} options={EMPTY_RETURN_OPTIONS} onChange={(v) => set("emptyReturn", v)} placeholder="Select destination..." />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      {editForm.emptyReturnLocations?.map((loc: any, li: number) => (
-                        <div
-                          key={li}
-                          style={{
-                            border: "1px solid #E5E9F0",
-                            borderRadius: "8px",
-                            padding: "20px",
-                            backgroundColor: "#FFFFFF",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                            <span style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em" }}>Location {li + 1}</span>
-                            <RemoveBtn onClick={() => removeLocation(li)} />
-                          </div>
-                          <div style={{ marginBottom: "12px" }}>
-                            <EditLabel>Location</EditLabel>
-                            <EditTextInput value={loc.location} onChange={(v) => updateLocation(li, "location", v)} placeholder="Location name" />
-                          </div>
-                          <div style={{ marginBottom: "12px" }}>
-                            <EditLabel>Start</EditLabel>
-                            <EditDateTimeRow
-                              dateValue={loc.startDate}
-                              timeValue={loc.startTime}
-                              onDateChange={(v) => updateLocation(li, "startDate", v)}
-                              onTimeChange={(v) => updateLocation(li, "startTime", v)}
-                            />
-                          </div>
-                          {loc.showEnd ? (
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                                <EditLabel>End</EditLabel>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleLocationShowEnd(li, false)}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: "4px", display: "flex" }}
-                                >
-                                  <X size={15} />
-                                </button>
-                              </div>
-                              <EditDateTimeRow
-                                dateValue={loc.endDate}
-                                timeValue={loc.endTime}
-                                onDateChange={(v) => updateLocation(li, "endDate", v)}
-                                onTimeChange={(v) => updateLocation(li, "endTime", v)}
-                              />
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => toggleLocationShowEnd(li, true)}
-                              style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "14px", fontWeight: 600, background: "none", border: "none", cursor: "pointer", color: "#0F766E", padding: 0 }}
-                            >
-                              <Plus size={14} />
-                              Add end time
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <AddLink onClick={addLocation}>Add Location</AddLink>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ marginBottom: r.emptyReturnLocations?.length ? "20px" : "0" }}>
-                      <ReadField label="Empty Return Destination" value={r.emptyReturn} />
-                    </div>
-                    {r.emptyReturnLocations?.map((loc: any, li: number) => (
-                      <div
-                        key={li}
-                        style={{
-                          border: "1px solid #E5E9F0",
-                          borderRadius: "8px",
-                          padding: "20px",
-                          marginBottom: li < r.emptyReturnLocations.length - 1 ? "16px" : "0",
-                          backgroundColor: "#FFFFFF",
-                        }}
-                      >
-                        <p style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em", margin: "0 0 16px" }}>Location {li + 1}</p>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
-                          <ReadField label="Location" value={loc.location} />
-                          <ReadField label="Start" value={formatDateTime(loc.startDate, loc.startTime)} />
-                          <ReadField label="End" value={formatDateTime(loc.endDate, loc.endTime)} />
-                        </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div>
+                        <EditLabel>Location</EditLabel>
+                        <EditNeuronDropdown value={editForm.emptyReturn} options={EMPTY_RETURN_OPTIONS} onChange={(v) => set("emptyReturn", v)} placeholder="Select location..." />
                       </div>
-                    ))}
-                  </>
+                      <div>
+                        <EditLabel>Free Time</EditLabel>
+                        <EditTextInput value={editForm.freeTime || ""} onChange={(v) => set("freeTime", v)} placeholder="Enter free time" />
+                      </div>
+                    </div>
+                    {(editForm.emptyReturn === "CY" || editForm.emptyReturn === "Pre-Advice CY") && (
+                      <div>
+                        <EditLabel>Container Yard</EditLabel>
+                        <EditTextInput value={editForm.containerYard || ""} onChange={(v) => set("containerYard", v)} placeholder="Enter container yard" />
+                      </div>
+                    )}
+                    <EditDateTimeRow
+                      dateValue={editForm.detentionStartDate}
+                      timeValue={editForm.detentionStartTime}
+                      onDateChange={(v) => set("detentionStartDate", v)}
+                      onTimeChange={(v) => set("detentionStartTime", v)}
+                      dateLabel="Detention Start"
+                    />
+                    <div>
+                      <EditLabel>Additional Note</EditLabel>
+                      <textarea
+                        value={editForm.emptyReturnNote || ""}
+                        onChange={(e) => set("emptyReturnNote", e.target.value as any)}
+                        rows={5}
+                        placeholder="Enter any additional notes or instructions..."
+                        style={{ width: "100%", padding: "10px 16px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px", resize: "vertical" as const }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {(r.emptyReturn === "CY" || r.emptyReturn === "Pre-Advice CY") ? (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px" }}>
+                        <ReadField label="Location" value={r.emptyReturn} />
+                        <ReadField label="Container Yard" value={r.containerYard} />
+                        <ReadField label="Free Time" value={r.freeTime} />
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <ReadField label="Location" value={r.emptyReturn} />
+                        <ReadField label="Free Time" value={r.freeTime} />
+                      </div>
+                    )}
+                    <ReadField label="Detention Start" value={formatDateTime(r.detentionStartDate, r.detentionStartTime)} />
+                    <ReadField label="Additional Note" value={r.emptyReturnNote} />
+                  </div>
                 )}
                 <div style={{ borderTop: "1px solid #E5E9F0", margin: "24px 0" }} />
 
-                {/* ── Other Details ── */}
-                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Other Details</div>
+                {/* ── Other Fees ── */}
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Other Fees</div>
                 {isEditing ? (
-                  <>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginBottom: "24px" }}>
-                      <div>
-                        <EditLabel>Other Fees</EditLabel>
-                        <EditTextInput value={editForm.otherFees} onChange={(v) => set("otherFees", v)} placeholder="Describe other fees" />
-                      </div>
-                      <div>
-                        <EditLabel>Container Damage</EditLabel>
-                        <EditTextInput value={editForm.containerDamage} onChange={(v) => set("containerDamage", v)} placeholder="Describe any damage" />
-                      </div>
+                  <div style={{ marginBottom: "24px" }}>
+                    <textarea
+                      value={editForm.otherFees || ""}
+                      onChange={(e) => set("otherFees", e.target.value as any)}
+                      rows={5}
+                      placeholder="Describe other fees..."
+                      style={{ width: "100%", padding: "10px 16px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px", resize: "vertical" as const }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: "24px" }}>
+                    <ReadField label="" value={r.otherFees} />
+                  </div>
+                )}
+
+                <div style={{ borderTop: "1px solid #E5E9F0", margin: "24px 0" }} />
+
+                {/* ── Additional Info ── */}
+                <div style={{ fontSize: "13px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: "12px" }}>Additional Info</div>
+                {isEditing ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                       <div>
                         <EditLabel>DO Date</EditLabel>
                         <NeuronDatePicker value={editForm.doDate} onChange={(v: string) => set("doDate", v)} />
@@ -2052,16 +2039,19 @@ export function TruckingRecordDetails({
                         <NeuronDatePicker value={editForm.padlockDate} onChange={(v: string) => set("padlockDate", v)} />
                       </div>
                     </div>
-                  </>
+                    <div>
+                      <EditLabel>Container Damage</EditLabel>
+                      <EditTextInput value={editForm.containerDamage} onChange={(v) => set("containerDamage", v)} placeholder="Describe any damage" />
+                    </div>
+                  </div>
                 ) : (
-                  <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-                      <ReadField label="Other Fees" value={r.otherFees} />
-                      <ReadField label="Container Damage" value={r.containerDamage} />
                       <ReadField label="DO Date" value={formatISOToDisplay(r.doDate)} />
                       <ReadField label="Padlock Date" value={formatISOToDisplay(r.padlockDate)} />
                     </div>
-                  </>
+                    <ReadField label="Container Damage" value={r.containerDamage} />
+                  </div>
                 )}
               </InfoCard>
               </>
@@ -2077,6 +2067,14 @@ export function TruckingRecordDetails({
           />
 
         </div>
+        )}
+
+        {!embedded && activeTab === "shipment-milestones" && (
+          <ShipmentMilestonesTab
+            shipmentEvents={linkedShipmentEvents}
+            onSave={handleSaveLinkedShipmentEvents}
+            disabled={!currentRecord.linkedBookingId}
+          />
         )}
 
         {!embedded && activeTab === "attachments" && (
