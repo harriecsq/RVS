@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, MoreVertical, Lock, Edit3, Clock, ChevronRight, Trash2, Plus, ChevronDown } from "lucide-react";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
 import { ExpensesSubTabs } from "./shared/ExpensesSubTabs";
 import { TruckingTab } from "./shared/TruckingTab";
-import { ProjectSelector } from "../selectors/ProjectSelector";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
-import { DocsTimelineStepper, DocsTimelineStep } from "./shared/DocsTimelineStepper";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { StandardButton } from "../design-system/StandardButton";
 import { StandardTabs } from "../design-system/StandardTabs";
@@ -14,13 +12,14 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { toast } from "../ui/toast-utils";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { ActionsDropdown } from "../shared/ActionsDropdown";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { BookingInfoSubTabs } from "./shared/BookingInfoSubTabs";
-import { StatusTagBar } from "../shared/StatusTagBar";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
-import type { TagHistoryEntry } from "../../types/operations";
+import type { TagHistoryEntry, BookingSegment, BookingNumberEntry } from "../../types/operations";
+import type { ExportDocuments } from "../../types/export-documents";
 import { API_BASE_URL } from '@/utils/api-config';
 
 export type ExecutionStatus = 
@@ -37,6 +36,7 @@ export interface ExportBooking {
   id: string;
   bookingId: string;
   bookingNumber?: string;
+  bookingNumbers?: BookingNumberEntry[];
   date?: string;
   customerName: string;
   companyName?: string;
@@ -136,6 +136,12 @@ export interface ExportBooking {
   accountHandler?: string;
   createdAt: string;
   updatedAt: string;
+
+  // Multi-leg segments
+  segments?: BookingSegment[];
+
+  // Export document generators
+  exportDocuments?: ExportDocuments;
 }
 
 interface ExportBookingDetailsProps {
@@ -270,10 +276,16 @@ export function ExportBookingDetails({
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ExportBooking>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-  const [showShippingLineDropdown, setShowShippingLineDropdown] = useState(false);
+
+  // Multi-leg segment state
+  const [activeSegmentId, setActiveSegmentId] = useState<string>(() =>
+    booking.segments?.[0]?.segmentId || ""
+  );
+  const [segmentEditData, setSegmentEditData] = useState<Record<string, any>>({});
+  const [showAddSegmentModal, setShowAddSegmentModal] = useState(false);
+  const [newSegmentLabel, setNewSegmentLabel] = useState("");
 
   useEffect(() => {
     setCurrentBooking(booking);
@@ -284,11 +296,15 @@ export function ExportBookingDetails({
         : mapLegacyExportStatusToTags(booking.status as string),
     );
     setTagHistory(Array.isArray(booking.tagHistory) ? booking.tagHistory : []);
+    // Initialize segment selection
+    if (booking.segments?.length && !activeSegmentId) {
+      setActiveSegmentId(booking.segments[0].segmentId);
+    }
   }, [booking]);
 
   const fetchBookingDetails = async () => {
     try {
-      const bookingId = currentBooking.id || currentBooking.bookingId;
+      const bookingId = encodeURIComponent(currentBooking.id || currentBooking.bookingId);
       const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
         headers: {
           Authorization: `Bearer ${publicAnonKey}`,
@@ -319,7 +335,7 @@ export function ExportBookingDetails({
     setIsTagsSaving(true);
 
     try {
-      const bookingId = currentBooking.id || currentBooking.bookingId;
+      const bookingId = encodeURIComponent(currentBooking.id || currentBooking.bookingId);
       const response = await fetch(
         `${API_BASE_URL}/export-bookings/${bookingId}/shipment-tags`,
         {
@@ -357,16 +373,6 @@ export function ExportBookingDetails({
     }
   };
 
-  const EXPORT_STATUS_COLORS: Record<string, string> = {
-    "Draft": "#9CA3AF",
-    "For Approval": "#FBBC04",
-    "Approved": "#4285F4",
-    "In Transit": "#F25C05",
-    "Delivered": "#10B981",
-    "Completed": "#10B981",
-    "On Hold": "#F59E0B",
-    "Cancelled": "#EA4335",
-  };
 
   const EXPORT_STATUS_TEXT_COLORS: Record<string, string> = {
     "Draft": "#6B7280",
@@ -390,20 +396,8 @@ export function ExportBookingDetails({
     "Cancelled"
   ];
 
-  const hexToRgba = (hex: string, alpha: number) => {
-    if (!hex || !hex.startsWith('#')) return hex;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
-
-  const isBright = (hex: string) => {
-    return ["#FFFF00", "#00FFFF", "#00FF00", "#FBBC04"].includes(hex.toUpperCase());
-  };
 
   const handleStatusChange = async (newStatus: string) => {
-    setShowStatusDropdown(false);
     if (currentBooking.status === newStatus) return;
 
     try {
@@ -440,79 +434,7 @@ export function ExportBookingDetails({
     }
   };
 
-  const SHIPPING_LINE_STATUS_OPTIONS = ["No Billing Yet", "With Billing", "Done Payment"];
 
-  const SHIPPING_LINE_STATUS_COLORS: Record<string, string> = {
-    "No Billing Yet": "#9CA3AF",
-    "With Billing": "#F59E0B",
-    "Done Payment": "#10B981",
-  };
-
-  const handleShippingLineStatusChange = async (newStatus: string) => {
-    setShowShippingLineDropdown(false);
-    if ((currentBooking as any).shippingLineStatus === newStatus) return;
-
-    try {
-      const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
-      const method = isLegacy ? "PATCH" : "PUT";
-
-      const response = await fetch(endpoint, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`
-        },
-        body: JSON.stringify({ shippingLineStatus: newStatus })
-      });
-
-      if (!response.ok) throw new Error("Failed to update shipping line status");
-
-      const result = await response.json();
-      if (result.success) {
-        const updated = { ...currentBooking, shippingLineStatus: newStatus };
-        setCurrentBooking(updated as ExportBooking);
-        setEditedBooking(updated as ExportBooking);
-        toast.success(`Shipping line status updated to ${newStatus}`);
-        onBookingUpdated();
-      } else {
-        throw new Error(result.error || "Failed to update shipping line status");
-      }
-    } catch (error) {
-      console.error("Error updating shipping line status:", error);
-      toast.error("Failed to update shipping line status");
-    }
-  };
-
-  const handleTimelineUpdate = async (newTimeline: DocsTimelineStep[]) => {
-    // Optimistic update
-    const updatedBooking = { ...currentBooking, docsTimeline: newTimeline };
-    setCurrentBooking(updatedBooking as any);
-    
-    try {
-      const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
-      const method = isLegacy ? "PATCH" : "PUT";
-
-      await fetch(endpoint, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`
-        },
-        body: JSON.stringify({ docsTimeline: newTimeline })
-      });
-      
-      onBookingUpdated();
-    } catch (error) {
-      console.error("Error updating timeline:", error);
-      toast.error("Failed to update timeline");
-    }
-  };
 
   const tabs = [
     { id: "booking-info", label: "Booking Information" },
@@ -565,16 +487,43 @@ export function ExportBookingDetails({
     console.log('[ExportBookingDetails] Saving booking with editData:', editData);
     
     try {
+      // Merge container size/type virtual fields back into volume
+      const { __containerSize, __containerType, ...cleanEditData } = editData as any;
+      if (__containerSize !== undefined || __containerType !== undefined) {
+        const size = __containerSize ?? parseContainerVolume((editedBooking as any).volume || "").size;
+        const type = __containerType ?? parseContainerVolume((editedBooking as any).volume || "").type;
+        (cleanEditData as any).volume = formatContainerVolume(size, type);
+      }
+
+      // Merge segment-level edits into local segments before saving
+      let finalSegments = currentBooking.segments || [];
+      if (Object.keys(segmentEditData).length > 0 && activeSegment) {
+        Object.keys(segmentEditData).forEach(key => {
+          const oldValue = String((activeSegment as any)?.[key] ?? (editedBooking as any)[key] ?? "");
+          const newValue = String(segmentEditData[key] ?? "");
+          if (oldValue !== newValue) {
+            addActivity(key, oldValue, newValue);
+          }
+        });
+        finalSegments = finalSegments.map(seg =>
+          seg.segmentId === activeSegment.segmentId
+            ? { ...seg, ...segmentEditData, updatedAt: new Date().toISOString() }
+            : seg
+        );
+      }
+
       const payload = {
-        ...editData,
+        ...cleanEditData,
+        segments: finalSegments,
         updatedAt: new Date().toISOString()
       };
 
       const isLegacy = !(booking as any).booking_type;
-      
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${booking.bookingId}` 
-        : `${API_BASE_URL}/export-bookings/${booking.id || booking.bookingId}`;
+      const encodedId = encodeURIComponent(booking.id || booking.bookingId);
+
+      const endpoint = isLegacy
+        ? `${API_BASE_URL}/bookings/${encodedId}`
+        : `${API_BASE_URL}/export-bookings/${encodedId}`;
       
       const method = isLegacy ? "PATCH" : "PUT";
 
@@ -595,9 +544,7 @@ export function ExportBookingDetails({
         throw new Error(result.error || "Failed to save booking");
       }
 
-      const updatedBooking = { ...editedBooking, ...editData, updatedAt: payload.updatedAt };
-      
-      // Track changes for activity log
+      // Track changes for activity log (booking-level)
       Object.keys(editData).forEach(key => {
         const oldValue = String((editedBooking as any)[key] || "");
         const newValue = String((editData as any)[key] || "");
@@ -606,12 +553,13 @@ export function ExportBookingDetails({
         }
       });
 
-      setEditedBooking(updatedBooking as ExportBooking);
-      setCurrentBooking(updatedBooking as ExportBooking);
       setIsEditing(false);
       setEditData({});
+      setSegmentEditData({});
       toast.success("Booking saved successfully");
-      
+
+      // Re-fetch from server to get authoritative state including segment syncs
+      await fetchBookingDetails();
       onBookingUpdated();
 
     } catch (error) {
@@ -625,11 +573,51 @@ export function ExportBookingDetails({
   const handleCancel = () => {
     setIsEditing(false);
     setEditData({});
+    setSegmentEditData({});
+    setCurrentBooking(editedBooking);
   };
+
+  // ─── Segment Handlers ────────────────────────────────────────────────
+  const activeSegment = currentBooking.segments?.find(s => s.segmentId === activeSegmentId)
+    || currentBooking.segments?.[0];
+
+  const handleAddSegment = () => {
+    if (!newSegmentLabel.trim()) return;
+    const existingSegments = currentBooking.segments || [];
+    const newSegment: BookingSegment = {
+      segmentId: crypto.randomUUID(),
+      segmentLabel: newSegmentLabel.trim(),
+      legOrder: existingSegments.length + 1,
+      containerNos: [],
+    };
+    setCurrentBooking(prev => ({ ...prev, segments: [...(prev.segments || []), newSegment] }));
+    setActiveSegmentId(newSegment.segmentId);
+    setNewSegmentLabel("");
+    setShowAddSegmentModal(false);
+    toast.success("Segment added — save booking to persist");
+  };
+
+  const handleDeleteSegment = (segmentId: string) => {
+    const segments = currentBooking.segments || [];
+    if (segments.length <= 1) {
+      toast.error("Cannot delete the last segment");
+      return;
+    }
+    if (!confirm("Delete this segment? Save the booking to persist this change.")) return;
+    const updatedSegments = segments
+      .filter(s => s.segmentId !== segmentId)
+      .map((s, i) => ({ ...s, legOrder: i + 1 }));
+    setCurrentBooking(prev => ({ ...prev, segments: updatedSegments }));
+    if (activeSegmentId === segmentId) {
+      setActiveSegmentId(updatedSegments[0]?.segmentId || "");
+    }
+    toast.success("Segment removed — save booking to persist");
+  };
+
 
   const handleDeleteBooking = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/export-bookings/${booking.id || booking.bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/export-bookings/${encodeURIComponent(booking.id || booking.bookingId)}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -694,7 +682,7 @@ export function ExportBookingDetails({
           </button>
           
           <div>
-            <h1 style={{ 
+            <h1 style={{
               fontSize: "20px",
               fontWeight: 600,
               color: "#0A1D4D",
@@ -702,12 +690,38 @@ export function ExportBookingDetails({
             }}>
               {booking.customerName}
             </h1>
-            <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>
-              {booking.bookingId}
-              {(booking as any).companyName && booking.customerName !== (booking as any).companyName && (
-                <span> &middot; {(booking as any).companyName}</span>
-              )}
-            </p>
+            {isEditing ? (() => {
+              const raw = (editData.bookingId !== undefined ? String(editData.bookingId) : booking.bookingId) || "";
+              const m = raw.match(/^(EXP)\s*(\d{4})-(\d*)$/);
+              const yearPart = m ? m[2] : String(new Date().getFullYear());
+              const num = m ? m[3] : "";
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <label style={{ fontSize: "12px", color: "#667085", fontWeight: 500, marginRight: "4px" }}>Ref:</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                      <div style={{ height: "28px", padding: "0 8px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "13px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB", fontWeight: 600 }}>EXP</div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                      <input value={yearPart} onChange={e => { const y = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `EXP ${y}-${num}` }); }} style={{ width: "80px", height: "28px", padding: "0 8px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "13px", outline: "none", background: "#FFFFFF" }} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                      <input value={num} onChange={e => { const n = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `EXP ${yearPart}-${n}` }); }} style={{ width: "80px", height: "28px", padding: "0 8px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "13px", outline: "none", background: "#FFFFFF" }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : (
+              <p style={{ fontSize: "13px", color: "#667085", margin: 0 }}>
+                {booking.bookingId}
+                {(booking as any).companyName && booking.customerName !== (booking as any).companyName && (
+                  <span> &middot; {(booking as any).companyName}</span>
+                )}
+              </p>
+            )}
           </div>
         </div>
 
@@ -726,7 +740,11 @@ export function ExportBookingDetails({
           {activeTab === "booking-info" && !isEditing && (
             <StandardButton
               variant="primary"
-              onClick={() => setIsEditing(true)}
+              onClick={() => {
+                const parsed = parseContainerVolume((editedBooking as any).volume || "");
+                setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
+                setIsEditing(true);
+              }}
               icon={<Edit3 size={16} />}
             >
               Edit Booking
@@ -752,6 +770,15 @@ export function ExportBookingDetails({
             </>
           )}
 
+          {!isEditing && (
+            <HeaderStatusDropdown
+              currentStatus={currentBooking.status}
+              statusOptions={EXPORT_STATUS_OPTIONS}
+              statusColorMap={EXPORT_STATUS_TEXT_COLORS}
+              onStatusChange={handleStatusChange}
+            />
+          )}
+
           {/* Actions Dropdown */}
           <ActionsDropdown
             onDownloadPDF={() => {
@@ -761,194 +788,6 @@ export function ExportBookingDetails({
               toast.success("Word download starting...");
             }}
             onDelete={() => setShowDeleteConfirm(true)}
-          />
-        </div>
-      </div>
-
-      {/* Metadata/Summary Bar */}
-      <div style={{
-        backgroundColor: (() => {
-           const color = EXPORT_STATUS_COLORS[currentBooking.status];
-           if (!color) return "#F3F4F6"; 
-           const opacity = isBright(color) ? 0.08 : 0.12;
-           return hexToRgba(color, opacity);
-        })(),
-        transition: "background-color 0.2s ease",
-        borderBottom: "1.5px solid #0F766E",
-        padding: "14px 48px",
-        display: "flex",
-        alignItems: "stretch",
-        gap: "0",
-        flexShrink: 0,
-        minHeight: "64px",
-      }}>
-        {/* Status Tags */}
-        <div style={{ flex: 1, minWidth: "260px", paddingRight: "24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px", lineHeight: 1 }}>
-            Status
-            {isTagsSaving && (
-              <span style={{ fontSize: "10px", fontWeight: 400, color: "#9CA3AF", marginLeft: "8px", textTransform: "none", letterSpacing: "normal" }}>
-                Saving...
-              </span>
-            )}
-          </div>
-          <StatusTagBar
-            bookingType="export"
-            shipmentTags={shipmentTags}
-            operationalTags={[]}
-            onShipmentTagsChange={handleShipmentTagsChange}
-            onOperationalTagsChange={() => {}}
-          />
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Shipping Line Status Dropdown */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "150px", padding: "0 24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
-            Shipping Line Status
-          </div>
-          
-          <div style={{ position: "relative" }}>
-            <div
-              onClick={() => setShowShippingLineDropdown(!showShippingLineDropdown)}
-              onBlur={() => setTimeout(() => setShowShippingLineDropdown(false), 200)}
-              tabIndex={0}
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: SHIPPING_LINE_STATUS_COLORS[(currentBooking as any).shippingLineStatus] || "#9CA3AF",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                padding: "4px 24px 4px 8px",
-                borderRadius: "6px",
-                border: "1.5px solid transparent",
-                position: "relative",
-                transition: "all 0.2s ease",
-                background: showShippingLineDropdown ? "#FFFFFF" : "transparent",
-                lineHeight: "1.3",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#FFFFFF";
-                e.currentTarget.style.borderColor = "#E5E9F0";
-              }}
-              onMouseLeave={(e) => {
-                if (!showShippingLineDropdown) {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.borderColor = "transparent";
-                }
-              }}
-            >
-              <div style={{ 
-                whiteSpace: "nowrap", 
-                overflow: "hidden", 
-                textOverflow: "ellipsis", 
-                maxWidth: "180px"
-              }}>
-                {(currentBooking as any).shippingLineStatus || "Not Set"}
-              </div>
-              
-              <div style={{
-                position: "absolute",
-                right: "6px",
-                top: "50%",
-                transform: `translateY(-50%) ${showShippingLineDropdown ? "rotate(180deg)" : "rotate(0deg)"}`,
-                transition: "transform 0.2s ease",
-                pointerEvents: "none",
-                color: "#0F766E"
-              }}>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3.5 5.25L7 8.75L10.5 5.25" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            
-            {showShippingLineDropdown && (
-              <div style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                background: "white",
-                border: "1.5px solid #E5E9F0",
-                borderRadius: "8px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                zIndex: 50,
-                minWidth: "200px",
-                overflow: "hidden"
-              }}>
-                {SHIPPING_LINE_STATUS_OPTIONS.map((slStatus, index) => (
-                  <div
-                    key={slStatus}
-                    onClick={() => handleShippingLineStatusChange(slStatus)}
-                    style={{
-                      padding: "10px 14px",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: SHIPPING_LINE_STATUS_COLORS[slStatus] || "#111827",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      background: slStatus === (currentBooking as any).shippingLineStatus ? "#F0FDF4" : "transparent",
-                      borderBottom: index < SHIPPING_LINE_STATUS_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
-                      transition: "all 0.15s ease"
-                    }}
-                    onMouseEnter={(e) => {
-                      if (slStatus !== (currentBooking as any).shippingLineStatus) {
-                        e.currentTarget.style.background = "#F9FAFB";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (slStatus !== (currentBooking as any).shippingLineStatus) {
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
-                  >
-                    {slStatus}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Route */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "160px", padding: "0 24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
-            Route
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", lineHeight: "1.3" }}>
-            {(currentBooking as any).origin || "Origin"} &rarr; {currentBooking.pod || currentBooking.destination || "Destination"}
-          </div>
-        </div>
-
-        {/* Separator */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Created Date */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: "100px", padding: "0 24px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "#0F766E", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px", lineHeight: 1 }}>
-            Created Date
-          </div>
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", lineHeight: "1.3" }}>
-            {new Date(currentBooking.createdAt).toLocaleDateString()}
-          </div>
-        </div>
-
-        {/* Separator before timeline */}
-        <div style={{ width: "1px", alignSelf: "stretch", background: "#0F766E", opacity: 0.15, margin: "2px 0" }} />
-
-        {/* Docs Timeline Stepper */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: "24px", minWidth: 0 }}>
-          <DocsTimelineStepper 
-             timeline={(currentBooking as any).docsTimeline || []} 
-             onUpdate={handleTimelineUpdate} 
           />
         </div>
       </div>
@@ -988,6 +827,14 @@ export function ExportBookingDetails({
             <BookingInfoSubTabs
               bookingId={booking.bookingId}
               currentUser={currentUser}
+              segments={currentBooking.segments}
+              activeSegmentId={activeSegmentId}
+              onSegmentChange={setActiveSegmentId}
+              onAddSegment={() => setShowAddSegmentModal(true)}
+              onDeleteSegment={handleDeleteSegment}
+              isEditing={isEditing}
+              booking={currentBooking}
+              onDocumentUpdated={fetchBookingDetails}
             >
               <BookingInformationTab
                 booking={editedBooking}
@@ -1001,6 +848,9 @@ export function ExportBookingDetails({
                 handleCancel={handleCancel}
                 isSaving={isSaving}
                 projects={projects}
+                activeSegment={activeSegment}
+                segmentEditData={segmentEditData}
+                setSegmentEditData={setSegmentEditData}
               />
             </BookingInfoSubTabs>
           </div>
@@ -1010,6 +860,7 @@ export function ExportBookingDetails({
               bookingType="export"
               currentUser={currentUser}
               onBookingTagsUpdated={fetchBookingDetails}
+              segmentId={activeSegmentId}
             />
           </div>
           <div style={{ display: activeTab === "billings" ? undefined : "none", height: "100%" }}>
@@ -1018,6 +869,7 @@ export function ExportBookingDetails({
               bookingNumber={booking.bookingNumber || booking.bookingId}
               bookingType="export"
               currentUser={currentUser}
+              segmentId={activeSegmentId}
             />
           </div>
           <div style={{ display: activeTab === "expenses" ? undefined : "none", height: "100%" }}>
@@ -1026,6 +878,7 @@ export function ExportBookingDetails({
               bookingNumber={booking.bookingNumber || booking.bookingId}
               bookingType="export"
               currentUser={currentUser}
+              segmentId={activeSegmentId}
             />
           </div>
           <div style={{ display: activeTab === "attachments" ? undefined : "none", height: "100%" }}>
@@ -1109,6 +962,60 @@ export function ExportBookingDetails({
                 onClick={handleDeleteBooking}
               >
                 Delete Booking
+              </StandardButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Segment Modal */}
+      {showAddSegmentModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowAddSegmentModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "32px",
+              maxWidth: "420px",
+              width: "90%",
+              border: "1px solid #E5E9F0",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", marginBottom: "16px" }}>
+              Add Booking Leg
+            </h3>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#374151", marginBottom: "6px" }}>
+              Segment Label
+            </label>
+            <input
+              type="text"
+              value={newSegmentLabel}
+              onChange={(e) => setNewSegmentLabel(e.target.value)}
+              placeholder="e.g. Pre-Carriage, Main Voyage"
+              style={{
+                width: "100%", padding: "10px 14px", fontSize: "14px",
+                border: "1px solid #D1D5DB", borderRadius: "8px",
+                outline: "none", marginBottom: "20px", boxSizing: "border-box",
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddSegment(); }}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <StandardButton variant="outline" onClick={() => { setShowAddSegmentModal(false); setNewSegmentLabel(""); }}>
+                Cancel
+              </StandardButton>
+              <StandardButton onClick={handleAddSegment} disabled={!newSegmentLabel.trim()}>
+                Add Leg
               </StandardButton>
             </div>
           </div>
@@ -1345,7 +1252,7 @@ function EditableField({
 
   const handleChange = (newValue: string) => {
     if (setEditData) {
-      setEditData({ ...editData, [fieldName]: newValue });
+      setEditData({ [fieldName]: newValue } as any);
     }
   };
 
@@ -1507,12 +1414,14 @@ function ContainerListField({
   fieldName,
   label,
   value,
+  sealFieldName = "sealNo",
+  sealValue = "",
   status,
   isEditing,
   editData,
   setEditData
 }: any) {
-  const parseContainers = (val: any): string[] => {
+  const parseList = (val: any): string[] => {
       if (Array.isArray(val)) return val;
       if (typeof val === 'string') {
           const parsed = val.split(',').map((s: string) => s.trim());
@@ -1521,68 +1430,112 @@ function ContainerListField({
       return [];
   };
 
-  const rawValue = isEditing && editData[fieldName] !== undefined 
-      ? editData[fieldName] 
+  const rawValue = isEditing && editData[fieldName] !== undefined
+      ? editData[fieldName]
       : value;
-  
-  const containers = parseContainers(rawValue);
+  const rawSealValue = isEditing && editData[sealFieldName] !== undefined
+      ? editData[sealFieldName]
+      : sealValue;
+
+  const containers = parseList(rawValue);
+  const seals = parseList(rawSealValue);
+
   if (containers.length === 0 && isEditing) {
-      if (editData[fieldName] === undefined) {
-          containers.push("");
-      } else if (editData[fieldName] === "") {
+      if (editData[fieldName] === undefined || editData[fieldName] === "") {
           containers.push("");
       }
   }
+  // Ensure seals array matches containers length
+  while (seals.length < containers.length) seals.push("");
 
   const handleChange = (index: number, val: string) => {
       const newContainers = [...containers];
       newContainers[index] = val;
-      setEditData({ ...editData, [fieldName]: newContainers.join(', ') });
+      setEditData({ [fieldName]: newContainers.join(', ') } as any);
+  };
+
+  const handleSealChange = (index: number, val: string) => {
+      const newSeals = [...seals];
+      newSeals[index] = val;
+      setEditData({ [sealFieldName]: newSeals.join(', ') } as any);
   };
 
   const addRow = () => {
       const newContainers = [...containers, ""];
-      setEditData({ ...editData, [fieldName]: newContainers.join(', ') });
+      const newSeals = [...seals, ""];
+      setEditData({ [fieldName]: newContainers.join(', '), [sealFieldName]: newSeals.join(', ') } as any);
   };
 
   const removeRow = (index: number) => {
       const newContainers = containers.filter((_: any, i: number) => i !== index);
-      setEditData({ ...editData, [fieldName]: newContainers.join(', ') });
+      const newSeals = seals.filter((_: any, i: number) => i !== index);
+      setEditData({ [fieldName]: newContainers.join(', '), [sealFieldName]: newSeals.join(', ') } as any);
   };
 
   if (!isEditing) {
       return (
           <div>
-            <label style={{
-              display: "block",
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "var(--neuron-ink-base)",
-              marginBottom: "8px"
-            }}>
-              {label}
-            </label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+              <label style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "var(--neuron-ink-base)",
+              }}>
+                {label}
+              </label>
+              <label style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "var(--neuron-ink-base)",
+              }}>
+                Seal No.
+              </label>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {containers.length > 0 ? containers.map((c: string, i: number) => (
-                    <div key={i} style={{
-                      padding: "10px 14px",
-                      backgroundColor: "#FAFBFC",
-                      border: "1px solid #E5E9F0",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      color: "var(--neuron-ink-primary)"
-                    }}>
-                      {c}
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      <div style={{
+                        padding: "10px 14px",
+                        backgroundColor: "#FAFBFC",
+                        border: "1px solid #E5E9F0",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        color: "var(--neuron-ink-primary)"
+                      }}>
+                        {c || "\u2014"}
+                      </div>
+                      <div style={{
+                        padding: "10px 14px",
+                        backgroundColor: "#FAFBFC",
+                        border: "1px solid #E5E9F0",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        color: "var(--neuron-ink-primary)"
+                      }}>
+                        {seals[i] || "\u2014"}
+                      </div>
                     </div>
                 )) : (
-                    <div style={{
-                      padding: "10px 14px",
-                      backgroundColor: "#FAFBFC",
-                      border: "2px dashed #E5E9F0",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      color: "#9CA3AF"
-                    }}>{"\u2014"}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      <div style={{
+                        padding: "10px 14px",
+                        backgroundColor: "#FAFBFC",
+                        border: "2px dashed #E5E9F0",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        color: "#9CA3AF"
+                      }}>{"\u2014"}</div>
+                      <div style={{
+                        padding: "10px 14px",
+                        backgroundColor: "#FAFBFC",
+                        border: "2px dashed #E5E9F0",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        color: "#9CA3AF"
+                      }}>{"\u2014"}</div>
+                    </div>
                 )}
             </div>
           </div>
@@ -1591,25 +1544,49 @@ function ContainerListField({
 
   return (
     <div>
-      <label style={{
-        display: "block",
-        fontSize: "13px",
-        fontWeight: 500,
-        color: "var(--neuron-ink-base)",
-        marginBottom: "8px"
-      }}>
-        {label}
-      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px", marginBottom: "8px" }}>
+        <label style={{
+          display: "block",
+          fontSize: "13px",
+          fontWeight: 500,
+          color: "var(--neuron-ink-base)",
+        }}>
+          {label}
+        </label>
+        <label style={{
+          display: "block",
+          fontSize: "13px",
+          fontWeight: 500,
+          color: "var(--neuron-ink-base)",
+        }}>
+          Seal No.
+        </label>
+        <div style={{ width: "34px" }} />
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {containers.map((c: string, i: number) => (
-              <div key={i} style={{ display: 'flex', gap: '8px' }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px' }}>
                   <input
                     type="text"
                     value={c}
                     onChange={(e) => handleChange(i, e.target.value)}
                     placeholder={`Container #${i + 1}`}
                     style={{
-                      flex: 1,
+                      padding: "10px 14px",
+                      backgroundColor: "white",
+                      border: "1px solid #0F766E",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      color: "var(--neuron-ink-primary)",
+                      outline: "none"
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={seals[i] || ""}
+                    onChange={(e) => handleSealChange(i, e.target.value)}
+                    placeholder={`Seal #${i + 1}`}
+                    style={{
                       padding: "10px 14px",
                       backgroundColor: "white",
                       border: "1px solid #0F766E",
@@ -1672,7 +1649,7 @@ const SELECTIVITY_COLORS: Record<string, { bg: string; text: string; dot: string
 
 const GROSS_WEIGHT_UNITS = ["kg", "lbs", "tons"];
 
-/** Compute volume summary from containers: "2x40HC, 1x20GP" */
+/** Compute volume summary from containers: "2x40'HC" */
 function computeVolumeSummary(containerNo: string, volume: string): string {
   if (!containerNo && !volume) return "\u2014";
   let containerCount = 1;
@@ -1687,6 +1664,62 @@ function computeVolumeSummary(containerNo: string, volume: string): string {
 }
 
 // Booking Information Tab Component
+// Fields that live on the segment, not the booking
+const SEGMENT_FIELDS = new Set([
+  "origin", "pod", "destination",
+  "vesselVoyage", "shippingLine",
+  "etd", "etdTime", "atd", "atdTime", "eta", "etaTime", "vesselStatus",
+  "lctEdArrastre", "lctEdArrastreTime", "lctCargo", "lctCargoTime",
+  "blNumber", "mblMawb",
+  "domesticFreight", "hustlingStripping", "forkliftOperator",
+  "exportDivision", "lodgmentCdsFee", "formE",
+  "oceanFreight", "sealFee", "docsFee", "lssFee", "storageCost",
+  "arrastre", "shutOut",
+  "royaltyFee", "lona", "lalamove", "bir", "labor", "otherCharges",
+]);
+
+/* ── Section card wrapper (top-level to preserve React identity across renders) ── */
+function SectionCard({ title, children, lastUpdated }: { title: string; children: React.ReactNode; lastUpdated?: string }) {
+  return (
+    <div style={{
+      background: "white",
+      borderRadius: "12px",
+      border: "1px solid #E5E9F0",
+      overflow: "hidden",
+      marginBottom: "24px"
+    }}>
+      <div style={{
+        padding: "16px 24px",
+        borderBottom: "1px solid #E5E9F0",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <h3 style={{
+          fontSize: "13px",
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase" as const,
+          color: "#0F766E",
+          margin: 0
+        }}>
+          {title}
+        </h3>
+        {lastUpdated && (
+          <span style={{ fontSize: "12px", color: "#667085" }}>
+            {lastUpdated}
+          </span>
+        )}
+      </div>
+      <div style={{ padding: "24px" }}>
+        <div style={{ display: "grid", gap: "20px" }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BookingInformationTab({
   booking,
   onBookingUpdated,
@@ -1698,7 +1731,10 @@ function BookingInformationTab({
   handleSave,
   handleCancel,
   isSaving,
-  projects
+  projects,
+  activeSegment,
+  segmentEditData,
+  setSegmentEditData,
 }: {
   booking: ExportBooking;
   onBookingUpdated: () => void;
@@ -1710,8 +1746,61 @@ function BookingInformationTab({
   handleSave: () => void;
   handleCancel: () => void;
   isSaving: boolean;
-  projects: Project[];
+  projects: any[];
+  activeSegment?: BookingSegment;
+  segmentEditData: Record<string, any>;
+  setSegmentEditData: (data: Record<string, any>) => void;
 }) {
+  // Capture original parent setters to avoid name conflicts with merged wrappers
+  const parentSetEditData = setEditData;
+  const parentSetSegmentEditData = setSegmentEditData;
+
+  // Merge active segment fields into booking so existing field rendering works unchanged
+  const mergedBooking: ExportBooking = activeSegment
+    ? { ...booking, ...activeSegment } as ExportBooking
+    : booking;
+
+  // Merge editData: combine booking-level edits + segment-level edits
+  const mergedEditData: Partial<ExportBooking> = { ...editData, ...segmentEditData } as any;
+
+  // Intercept setEditData to route segment fields to segmentEditData
+  const mergedSetEditData = (data: Partial<ExportBooking>) => {
+    const bookingUpdates: Partial<ExportBooking> = { ...editData };
+    const segUpdates: Record<string, any> = { ...segmentEditData };
+    let hasBookingChange = false;
+    let hasSegChange = false;
+    for (const [key, val] of Object.entries(data)) {
+      if (SEGMENT_FIELDS.has(key)) {
+        segUpdates[key] = val;
+        hasSegChange = true;
+      } else {
+        (bookingUpdates as any)[key] = val;
+        hasBookingChange = true;
+      }
+    }
+    if (hasBookingChange) parentSetEditData(bookingUpdates);
+    if (hasSegChange) parentSetSegmentEditData(segUpdates);
+  };
+
+  // Helper: get field value — reads from segment for segment-level fields
+  const getFieldValue = (field: string): any => {
+    if (SEGMENT_FIELDS.has(field)) {
+      if (isEditing && field in segmentEditData) return segmentEditData[field];
+      return (activeSegment as any)?.[field] ?? (mergedBooking as any)[field] ?? "";
+    }
+    if (isEditing && field in mergedEditData) return (mergedEditData as any)[field];
+    return (mergedBooking as any)[field] ?? "";
+  };
+
+  // Helper: set field value — routes to segment or booking edit data
+  const setFieldValue = (field: string, value: any) => {
+    if (SEGMENT_FIELDS.has(field)) {
+      parentSetSegmentEditData({ ...segmentEditData, [field]: value });
+    } else {
+      parentSetEditData({ ...editData, [field]: value });
+    }
+  };
+
   // Split Gatepass into Date and Time
   const [gatepassDate, setGatepassDate] = useState("");
   const [gatepassDateError, setGatepassDateError] = useState("");
@@ -1719,7 +1808,8 @@ function BookingInformationTab({
 
   // Dropdown visibility states
   const [showShippingLineDD, setShowShippingLineDD] = useState(false);
-  const [showVolumeDD, setShowVolumeDD] = useState(false);
+  const [showContainerSizeDD, setShowContainerSizeDD] = useState(false);
+  const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
   const [showSelectivityDD, setShowSelectivityDD] = useState(false);
   const [showVesselStatusDD, setShowVesselStatusDD] = useState(false);
   const [showGrossWeightUnitDD, setShowGrossWeightUnitDD] = useState(false);
@@ -1735,8 +1825,8 @@ function BookingInformationTab({
   };
 
   const getFieldVal = (fieldName: string) => {
-    if (isEditing && (editData as any)[fieldName] !== undefined) return (editData as any)[fieldName] || "";
-    return (booking as any)[fieldName] || "";
+    if (isEditing && (mergedEditData as any)[fieldName] !== undefined) return (mergedEditData as any)[fieldName] || "";
+    return (mergedBooking as any)[fieldName] || "";
   };
 
   // Auto-calc helpers
@@ -1761,10 +1851,10 @@ function BookingInformationTab({
 
   // Parse gatepass
   useEffect(() => {
-    const currentVal = isEditing 
-      ? (editData as any).gatepass 
-      : (booking as any).gatepass;
-    
+    const currentVal = isEditing
+      ? (mergedEditData as any).gatepass
+      : (mergedBooking as any).gatepass;
+
     if (currentVal) {
       const parts = currentVal.split(' ');
       setGatepassDate(parts[0] || "");
@@ -1773,7 +1863,7 @@ function BookingInformationTab({
       setGatepassDate("");
       setGatepassTime("");
     }
-  }, [isEditing, booking, (editData as any).gatepass]);
+  }, [isEditing, mergedBooking, (mergedEditData as any).gatepass]);
 
   // Reset overrides when entering edit mode
   useEffect(() => {
@@ -1791,12 +1881,12 @@ function BookingInformationTab({
     } else {
       setGatepassDateError("");
     }
-    setEditData({ ...editData, gatepass: combineDateTime(formatted, gatepassTime) } as any);
+    mergedSetEditData({ gatepass: combineDateTime(formatted, gatepassTime) } as any);
   };
 
   const handleGatepassTimeChange = (val: string) => {
     setGatepassTime(val);
-    setEditData({ ...editData, gatepass: combineDateTime(gatepassDate, val) } as any);
+    mergedSetEditData({ gatepass: combineDateTime(gatepassDate, val) } as any);
   };
 
   // Reusable date+time edit field
@@ -1838,14 +1928,14 @@ function BookingInformationTab({
         <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
           {label}
         </label>
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "6px" }}>
           <div>
             <SingleDateInput
               value={mmddToISO(dVal)}
               onChange={(iso) => {
                 const formatted = isoToMMDD(iso);
                 const newCombined = combineDateTime(formatted, tVal);
-                setEditData({ ...editData, [fieldName]: newCombined } as any);
+                mergedSetEditData({ [fieldName]: newCombined } as any);
                 if (onDateChangeExtra && formatted) {
                   onDateChangeExtra(formatted);
                 }
@@ -1853,13 +1943,14 @@ function BookingInformationTab({
               placeholder="MM/DD/YYYY"
             />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <NeuronTimePicker
               value={tVal}
               onChange={(v) => {
                 const newCombined = combineDateTime(dVal, v);
-                setEditData({ ...editData, [fieldName]: newCombined } as any);
+                mergedSetEditData({ [fieldName]: newCombined } as any);
               }}
+              style={{ padding: "9px 28px 9px 8px", fontSize: "13px" }}
             />
           </div>
         </div>
@@ -1871,11 +1962,11 @@ function BookingInformationTab({
   const handleDischargedChange = (formatted: string) => {
     const currentDischarged = getFieldVal("discharged");
     const { time: dTime } = splitDateTime(currentDischarged);
-    
+
     if (!storageManualOverride) {
       const storageDateVal = addDaysToDate(formatted, 5);
       if (storageDateVal) {
-        setEditData({ ...editData, 
+        mergedSetEditData({
           discharged: combineDateTime(formatted, dTime),
           storageBegins: combineDateTime(storageDateVal, dTime),
         } as any);
@@ -1884,12 +1975,12 @@ function BookingInformationTab({
     if (!demManualOverride) {
       const demDateVal = addDaysToDate(formatted, 14);
       if (demDateVal) {
-        const prevUpdates = { ...editData, discharged: combineDateTime(formatted, dTime) } as any;
+        const updates: any = { discharged: combineDateTime(formatted, dTime) };
         if (!storageManualOverride) {
-          prevUpdates.storageBegins = combineDateTime(addDaysToDate(formatted, 5), dTime);
+          updates.storageBegins = combineDateTime(addDaysToDate(formatted, 5), dTime);
         }
-        prevUpdates.demBegins = combineDateTime(demDateVal, dTime);
-        setEditData(prevUpdates);
+        updates.demBegins = combineDateTime(demDateVal, dTime);
+        mergedSetEditData(updates);
       }
     }
   };
@@ -2036,7 +2127,7 @@ function BookingInformationTab({
                 <div
                   key={option}
                   onClick={() => {
-                    setEditData({ ...editData, [fieldName]: option } as any);
+                    mergedSetEditData({ [fieldName]: option } as any);
                     setIsOpenState(false);
                     if (setSearchValue) setSearchValue("");
                   }}
@@ -2185,7 +2276,7 @@ function BookingInformationTab({
                   <div
                     key={option}
                     onClick={() => {
-                      setEditData({ ...editData, section: option } as any);
+                      mergedSetEditData({ section: option } as any);
                       setShowSectionDD(false);
                       setSectionSearch("");
                     }}
@@ -2299,7 +2390,7 @@ function BookingInformationTab({
             value={parsed.value}
             onChange={(e) => {
               const numVal = e.target.value.replace(/[^0-9.]/g, '');
-              setEditData({ ...editData, grossWeight: numVal ? `${numVal} ${parsed.unit}` : "" } as any);
+              mergedSetEditData({ grossWeight: numVal ? `${numVal} ${parsed.unit}` : "" } as any);
             }}
             placeholder="0.00"
             style={{
@@ -2354,7 +2445,7 @@ function BookingInformationTab({
                   <div
                     key={unit}
                     onClick={() => {
-                      setEditData({ ...editData, grossWeight: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
+                      mergedSetEditData({ grossWeight: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
                       setShowGrossWeightUnitDD(false);
                     }}
                     style={{
@@ -2380,46 +2471,6 @@ function BookingInformationTab({
     );
   };
 
-  /* ── Section card wrapper ── */
-  const SectionCard = ({ title, children, lastUpdated }: { title: string; children: React.ReactNode; lastUpdated?: string }) => (
-    <div style={{
-      background: "white",
-      borderRadius: "12px",
-      border: "1px solid #E5E9F0",
-      overflow: "hidden",
-      marginBottom: "24px"
-    }}>
-      <div style={{
-        padding: "16px 24px",
-        borderBottom: "1px solid #E5E9F0",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center"
-      }}>
-        <h3 style={{
-          fontSize: "13px",
-          fontWeight: 600,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase" as const,
-          color: "#0F766E",
-          margin: 0
-        }}>
-          {title}
-        </h3>
-        {lastUpdated && (
-          <span style={{ fontSize: "12px", color: "#667085" }}>
-            {lastUpdated}
-          </span>
-        )}
-      </div>
-      <div style={{ padding: "24px" }}>
-        <div style={{ display: "grid", gap: "20px" }}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-
   const twoCol = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" } as React.CSSProperties;
   const threeCol = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" } as React.CSSProperties;
 
@@ -2431,36 +2482,37 @@ function BookingInformationTab({
     }}>
       
       {/* ═══════════════ SHIPMENT DETAILS ═══════════════ */}
-      <SectionCard title="Shipment Details" lastUpdated={`Last updated by System, ${new Date(booking.updatedAt).toLocaleString()}`}>
+      <SectionCard title="Shipment Details" lastUpdated={`Last updated by System, ${new Date(mergedBooking.updatedAt).toLocaleString()}`}>
         {/* Row 1: Date + Company/Contact */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}>
           <EditableField
             fieldName="date"
             label="Date"
-            value={booking.date || ""}
+            value={mergedBooking.date || ""}
             type="date"
-            status={booking.status}
+            status={mergedBooking.status}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <div>
             <CompanyContactSelector
-              companyId={((isEditing && (editData as any).clientId !== undefined) ? (editData as any).clientId : (booking as any).clientId) || ""}
-              contactId={((isEditing && (editData as any).contactId !== undefined) ? (editData as any).contactId : (booking as any).contactId) || ""}
+              companyId={((isEditing && (mergedEditData as any).clientId !== undefined) ? (mergedEditData as any).clientId : (mergedBooking as any).clientId) || ""}
+              contactId={((isEditing && (mergedEditData as any).contactId !== undefined) ? (mergedEditData as any).contactId : (mergedBooking as any).contactId) || ""}
               disabled={!isEditing}
               showContact={true}
               showLabels={true}
+              companyLabel="Shipper"
+              contactLabel="Client"
               onSelect={({ company, contact }) => {
-                const updates = { ...editData };
+                const updates: any = {};
                 const cName = company ? (company.name || company.company_name || "") : "";
                 updates.companyName = cName;
+                updates.shipper = cName;
                 if (company) {
                   updates.clientId = company.id;
-                  updates.shipper = cName;
                 } else {
                   updates.clientId = "";
-                  updates.shipper = "";
                 }
                 if (contact) {
                   updates.contactId = contact.id;
@@ -2471,58 +2523,64 @@ function BookingInformationTab({
                   updates.contactPersonName = "";
                   updates.customerName = cName;
                 }
-                setEditData(updates as any);
+                mergedSetEditData(updates as any);
               }}
             />
           </div>
         </div>
 
-        {/* Row 2: Container No. + BL Number + Volume */}
-        <div style={threeCol}>
+        {/* Row 2: Container No. + Seal No. | Volume */}
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "20px" }}>
           <ContainerListField
             fieldName="containerNo"
             label="Container No."
-            value={(booking as any).containerNo || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).containerNo || ""}
+            sealFieldName="sealNo"
+            sealValue={(mergedBooking as any).sealNo || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
-          />
-          <EditableField
-            fieldName="blNumber"
-            label="BL Number"
-            value={(booking as any).blNumber || ""}
-            status={booking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           {isEditing ? (
-            renderEditDropdown("volume", "Volume", CONTAINER_SIZES, showVolumeDD, setShowVolumeDD)
+            <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ flex: 1 }}>
+                {renderEditDropdown(
+                  "__containerSize" as any, "Size", [...CONTAINER_SIZE_OPTIONS],
+                  showContainerSizeDD, setShowContainerSizeDD
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                {renderEditDropdown(
+                  "__containerType" as any, "Type", [...CONTAINER_TYPE_OPTIONS],
+                  showContainerTypeDD, setShowContainerTypeDD
+                )}
+              </div>
+            </div>
           ) : (
             renderVolumeView()
           )}
         </div>
 
-        {/* Row 3: Commodity + Seal No. */}
+        {/* Row 3: Commodity | BL Number */}
         <div style={twoCol}>
           <EditableField
             fieldName="commodity"
             label="Commodity"
-            value={(booking as any).commodity || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).commodity || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
-            fieldName="sealNo"
-            label="Seal No."
-            value={(booking as any).sealNo || ""}
-            status={booking.status as ExecutionStatus}
+            fieldName="blNumber"
+            label="BL Number"
+            value={(mergedBooking as any).blNumber || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
 
@@ -2532,11 +2590,11 @@ function BookingInformationTab({
           <EditableField
             fieldName="bookingNumber"
             label="Booking Number"
-            value={(booking as any).bookingNumber || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).bookingNumber || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
 
@@ -2545,20 +2603,22 @@ function BookingInformationTab({
           <EditableField
             fieldName="origin"
             label="POL (Port of Loading)"
-            value={(booking as any).origin || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).origin || ""}
+            type="select"
+            options={["Manila North", "Manila South", "CDO", "Iloilo", "Davao"]}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="pod"
             label="POD (Port of Destination)"
-            value={(booking as any).pod || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).pod || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
       </SectionCard>
@@ -2570,11 +2630,11 @@ function BookingInformationTab({
           <EditableField
             fieldName="vesselVoyage"
             label="Vessel/VOY"
-            value={(booking as any).vesselVoyage || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).vesselVoyage || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           {renderEditDropdown("vesselStatus", "Vessel Status", ["VESSEL IS OPEN", "VESSEL IS NOT OPEN"], showVesselStatusDD, setShowVesselStatusDD)}
         </div>
@@ -2599,29 +2659,29 @@ function BookingInformationTab({
           <EditableField
             fieldName="domesticFreight"
             label="Domestic Freight"
-            value={(booking as any).domesticFreight || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).domesticFreight || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="hustlingStripping"
             label="Hustling/Stripping"
-            value={(booking as any).hustlingStripping || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).hustlingStripping || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="forkliftOperator"
             label="Forklift Operator"
-            value={(booking as any).forkliftOperator || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).forkliftOperator || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
       </SectionCard>
@@ -2632,29 +2692,29 @@ function BookingInformationTab({
           <EditableField
             fieldName="exportDivision"
             label="Export Division"
-            value={(booking as any).exportDivision || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).exportDivision || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="lodgmentCdsFee"
             label="Lodgment/CDS Fee"
-            value={(booking as any).lodgmentCdsFee || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).lodgmentCdsFee || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="formE"
             label="Form E"
-            value={(booking as any).formE || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).formE || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
       </SectionCard>
@@ -2666,20 +2726,20 @@ function BookingInformationTab({
           <EditableField
             fieldName="oceanFreight"
             label="Ocean Freight"
-            value={(booking as any).oceanFreight || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).oceanFreight || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="sealFee"
             label="Seal Fee"
-            value={(booking as any).sealFee || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).sealFee || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
         {/* Row 2: Docs Fee + LSS Fee + Storage */}
@@ -2687,29 +2747,29 @@ function BookingInformationTab({
           <EditableField
             fieldName="docsFee"
             label="Docs Fee"
-            value={(booking as any).docsFee || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).docsFee || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="lssFee"
             label="LSS Fee"
-            value={(booking as any).lssFee || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).lssFee || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="storageCost"
             label="Storage"
-            value={(booking as any).storageCost || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).storageCost || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
       </SectionCard>
@@ -2720,20 +2780,20 @@ function BookingInformationTab({
           <EditableField
             fieldName="arrastre"
             label="Arrastre"
-            value={(booking as any).arrastre || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).arrastre || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="shutOut"
             label="Shut Out"
-            value={(booking as any).shutOut || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).shutOut || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
       </SectionCard>
@@ -2745,29 +2805,29 @@ function BookingInformationTab({
           <EditableField
             fieldName="royaltyFee"
             label="Royalty Fee"
-            value={(booking as any).royaltyFee || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).royaltyFee || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="lona"
             label="Lona"
-            value={(booking as any).lona || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).lona || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="lalamove"
             label="Lalamove"
-            value={(booking as any).lalamove || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).lalamove || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
         {/* Row 2: BIR + Labor + Other Charges */}
@@ -2775,29 +2835,29 @@ function BookingInformationTab({
           <EditableField
             fieldName="bir"
             label="BIR"
-            value={(booking as any).bir || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).bir || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="labor"
             label="Labor"
-            value={(booking as any).labor || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).labor || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
           <EditableField
             fieldName="otherCharges"
             label="Other Charges"
-            value={(booking as any).otherCharges || ""}
-            status={booking.status as ExecutionStatus}
+            value={(mergedBooking as any).otherCharges || ""}
+            status={mergedBooking.status as ExecutionStatus}
             isEditing={isEditing}
-            editData={editData}
-            setEditData={setEditData}
+            editData={mergedEditData}
+            setEditData={mergedSetEditData}
           />
         </div>
       </SectionCard>
@@ -2805,7 +2865,7 @@ function BookingInformationTab({
       {/* Notes Section */}
       <NotesSection
         value={getFieldVal("notes")}
-        onChange={(val) => setEditData({ ...editData, notes: val } as any)}
+        onChange={(val) => mergedSetEditData({ notes: val } as any)}
         disabled={!isEditing}
       />
 

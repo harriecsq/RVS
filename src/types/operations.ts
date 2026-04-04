@@ -78,9 +78,16 @@ export interface TagHistoryEntry {
   layer: "shipment" | "operational";
 }
 
+export interface BookingNumberEntry {
+  id: string;
+  bookingNumber: string;
+  containerNos: string[];
+}
+
 export interface BrokerageBooking {
   id: string;
   bookingId: string;
+  bookingNumbers?: BookingNumberEntry[];
   date?: string;
   customerName: string;
   companyName?: string;
@@ -295,4 +302,70 @@ export interface ExpenseChargeCategory {
     remarks?: string;
   }[];
   subtotal: number;
+}
+
+// ─── Multi-Leg Segment Support ──────────────────────────────────────────────
+
+export interface BookingSegment {
+  segmentId: string;
+  segmentLabel: string;
+  legOrder: number;
+  containerNos: string[];
+  sealNos?: string[];
+
+  // Route
+  origin?: string;
+  pod?: string;
+  destination?: string;
+
+  // Vessel / VOY
+  vesselVoyage?: string;
+  shippingLine?: string;
+  etd?: string;
+  etdTime?: string;
+  atd?: string;
+  atdTime?: string;
+  eta?: string;
+  etaTime?: string;
+  vesselStatus?: string;
+  lctEdArrastre?: string;
+  lctEdArrastreTime?: string;
+  lctCargo?: string;
+  lctCargoTime?: string;
+
+  // BL
+  blNumber?: string;
+  mblMawb?: string;
+
+  // Domestic Cost
+  domesticFreight?: string;
+  hustlingStripping?: string;
+  forkliftOperator?: string;
+
+  // Customs Processing
+  exportDivision?: string;
+  lodgmentCdsFee?: string;
+  formE?: string;
+
+  // Shipping Line Cost
+  oceanFreight?: string;
+  sealFee?: string;
+  docsFee?: string;
+  lssFee?: string;
+  storageCost?: string;
+
+  // Port Charges
+  arrastre?: string;
+  shutOut?: string;
+
+  // Miscellaneous Cost
+  royaltyFee?: string;
+  lona?: string;
+  lalamove?: string;
+  bir?: string;
+  labor?: string;
+  otherCharges?: string;
+
+  createdAt?: string;
+  updatedAt?: string;
 }
