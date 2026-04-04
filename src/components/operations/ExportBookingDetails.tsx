@@ -1638,6 +1638,81 @@ function ContainerListField({
   );
 }
 
+function BookingNumbersViewField({
+  bookingNumbers,
+  legacyBookingNumber,
+}: {
+  bookingNumbers?: BookingNumberEntry[];
+  legacyBookingNumber?: string;
+}) {
+  const entries = bookingNumbers && bookingNumbers.length > 0
+    ? bookingNumbers
+    : legacyBookingNumber
+      ? [{ id: "legacy", bookingNumber: legacyBookingNumber, containerNos: [] as string[] }]
+      : [];
+
+  return (
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "13px",
+        fontWeight: 500,
+        color: "var(--neuron-ink-base)",
+        marginBottom: "8px",
+      }}>
+        Booking Numbers
+      </label>
+      {entries.length === 0 ? (
+        <div style={{
+          padding: "10px 14px",
+          backgroundColor: "white",
+          border: "2px dashed #E5E9F0",
+          borderRadius: "6px",
+          fontSize: "14px",
+          color: "#9CA3AF",
+        }}>
+          —
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {entries.map((entry) => (
+            <div key={entry.id} style={{
+              padding: "10px 14px",
+              backgroundColor: "#FAFBFC",
+              border: "1px solid #E5E9F0",
+              borderRadius: "6px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}>
+              <span style={{ fontSize: "14px", fontWeight: 500, color: "var(--neuron-ink-primary)" }}>
+                {entry.bookingNumber}
+              </span>
+              {entry.containerNos.length > 0 && (
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {entry.containerNos.map((c) => (
+                    <span key={c} style={{
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                      backgroundColor: "#E8F2EE",
+                      color: "#237F66",
+                    }}>
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Selectivity color mapping
 const SELECTIVITY_OPTIONS = ["Green", "Orange", "Yellow", "Red"];
 const SELECTIVITY_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -2584,19 +2659,26 @@ function BookingInformationTab({
           />
         </div>
 
-        {/* Row 4: Shipping Line + Booking Number */}
+        {/* Row 4: Shipping Line */}
         <div style={twoCol}>
           {renderEditDropdown("shippingLine", "Shipping Line", SHIPPING_LINE_OPTIONS, showShippingLineDD, setShowShippingLineDD, undefined, true, shippingLineSearch, setShippingLineSearch)}
-          <EditableField
-            fieldName="bookingNumber"
-            label="Booking Number"
-            value={(mergedBooking as any).bookingNumber || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
+          <div />
+        </div>
+
+        {/* Row 4b: Booking Numbers */}
+        {isEditing ? (
+          <BookingNumbersEditField
+            bookingNumbers={(mergedEditData as any).bookingNumbers ?? (mergedBooking as any).bookingNumbers}
+            legacyBookingNumber={(mergedBooking as any).bookingNumber}
+            containerNo={(mergedEditData as any).containerNo ?? (mergedBooking as any).containerNo}
             setEditData={mergedSetEditData}
           />
-        </div>
+        ) : (
+          <BookingNumbersViewField
+            bookingNumbers={(mergedBooking as any).bookingNumbers}
+            legacyBookingNumber={(mergedBooking as any).bookingNumber}
+          />
+        )}
 
         {/* Row 5: POL + POD */}
         <div style={twoCol}>
