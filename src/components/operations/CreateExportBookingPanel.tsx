@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZES } from "../../utils/truckingTags";
+import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume } from "../../utils/truckingTags";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -404,6 +404,9 @@ export function CreateExportBookingPanel({
   prefillData,
 }: CreateExportBookingPanelProps) {
   const [loading, setLoading] = useState(false);
+  const [refNumber, setRefNumber] = useState("");
+  const [nextRefNumber, setNextRefNumber] = useState<number | null>(null);
+  const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
 
   // ── Shipment Details ──
   const [date, setDate] = useState("");
@@ -412,13 +415,19 @@ export function CreateExportBookingPanel({
   const [client, setClient] = useState(prefillData?.clientName || "");
   const [companyName, setCompanyName] = useState("");
   const [contactPersonName, setContactPersonName] = useState("");
+  const [consignee, setConsignee] = useState("");
+  const [shipper, setShipper] = useState("");
   const [containerNumbers, setContainerNumbers] = useState<string[]>([""]);
   const [blNumber, setBlNumber] = useState("");
-  const [volume, setVolume] = useState(prefillData?.volume_containers || "");
+  const _prefillVolume = parseContainerVolume(prefillData?.volume_containers || "");
+  const [containerSize, setContainerSize] = useState(_prefillVolume.size);
+  const [containerType, setContainerType] = useState(_prefillVolume.type);
   const [commodity, setCommodity] = useState(prefillData?.commodity || "");
-  const [sealNo, setSealNo] = useState("");
+  const [sealNumbers, setSealNumbers] = useState<string[]>([""]);
   const [shippingLine, setShippingLine] = useState(prefillData?.shipping_line || "");
-  const [bookingNumber, setBookingNumber] = useState("");
+  const [bookingNumbers, setBookingNumbers] = useState<{ id: string; bookingNumber: string; containerNos: string[] }[]>([
+    { id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }
+  ]);
   const [origin, setOrigin] = useState(prefillData?.origin || "");
   const [showPolDropdown, setShowPolDropdown] = useState(false);
   const polRef = useRef<HTMLDivElement>(null);
@@ -467,6 +476,16 @@ export function CreateExportBookingPanel({
   const [labor, setLabor] = useState("");
   const [otherCharges, setOtherCharges] = useState("");
 
+  // Fetch next available ref number when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      fetch(`${API_BASE_URL}/next-ref/export`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
+        .then(r => r.json())
+        .then(d => { if (d.success) setNextRefNumber(d.nextNumber); })
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
   // Handle prefill data
   useEffect(() => {
     if (isOpen && prefillData) {
@@ -475,20 +494,54 @@ export function CreateExportBookingPanel({
   }, [isOpen, prefillData]);
 
   // Container number helpers
-  const addContainerRow = () => setContainerNumbers([...containerNumbers, ""]);
-  const removeContainerRow = (index: number) =>
+  const addContainerRow = () => {
+    setContainerNumbers([...containerNumbers, ""]);
+    setSealNumbers([...sealNumbers, ""]);
+  };
+  const removeContainerRow = (index: number) => {
     setContainerNumbers(containerNumbers.filter((_, i) => i !== index));
+    setSealNumbers(sealNumbers.filter((_, i) => i !== index));
+  };
   const updateContainerRow = (index: number, value: string) => {
     const updated = [...containerNumbers];
     updated[index] = value;
     setContainerNumbers(updated);
   };
+  const updateSealRow = (index: number, value: string) => {
+    const updated = [...sealNumbers];
+    updated[index] = value;
+    setSealNumbers(updated);
+  };
+
+  // Booking number helpers
+  const addBookingNumberEntry = () => {
+    setBookingNumbers([...bookingNumbers, { id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }]);
+  };
+  const removeBookingNumberEntry = (index: number) => {
+    setBookingNumbers(bookingNumbers.filter((_, i) => i !== index));
+  };
+  const updateBookingNumberValue = (index: number, value: string) => {
+    const updated = [...bookingNumbers];
+    updated[index] = { ...updated[index], bookingNumber: value };
+    setBookingNumbers(updated);
+  };
+  const toggleContainerAssignment = (entryIndex: number, containerNo: string) => {
+    const updated = bookingNumbers.map((entry, i) => {
+      if (i === entryIndex) {
+        const has = entry.containerNos.includes(containerNo);
+        return { ...entry, containerNos: has ? entry.containerNos.filter(c => c !== containerNo) : [...entry.containerNos, containerNo] };
+      }
+      // Remove from other entries (exclusive assignment)
+      return { ...entry, containerNos: entry.containerNos.filter(c => c !== containerNo) };
+    });
+    setBookingNumbers(updated);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!client.trim()) {
-      toast.error("Client is required");
+    if (!companyName.trim() && !client.trim()) {
+      toast.error("Shipper is required");
       return;
     }
 
@@ -496,19 +549,23 @@ export function CreateExportBookingPanel({
 
     try {
       const bookingData = {
+        bookingId: `EXP ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
         date,
-        customerName: client,
+        customerName: client.trim() || companyName,
         companyName: companyName || client,
         clientId,
         contactId,
         contactPersonName,
+        shipper: companyName,
+        consignee,
         containerNo: containerNumbers.filter((c) => c.trim()).join(", "),
         blNumber,
-        volume,
+        volume: formatContainerVolume(containerSize, containerType),
         commodity,
-        sealNo,
+        sealNo: sealNumbers.filter((s) => s.trim()).join(", "),
         shippingLine,
-        bookingNumber,
+        bookingNumber: bookingNumbers[0]?.bookingNumber || "",
+        bookingNumbers: bookingNumbers.filter(e => e.bookingNumber.trim()),
         origin,
         pod,
         vesselVoyage,
@@ -547,6 +604,25 @@ export function CreateExportBookingPanel({
         shipmentType: "Export",
         booking_type: "Export",
         mode: "Sea",
+        segments: [{
+          segmentId: crypto.randomUUID(),
+          segmentLabel: "Main Voyage",
+          legOrder: 1,
+          containerNos: containerNumbers.filter((c) => c.trim()),
+          sealNos: sealNumbers.filter((s) => s.trim()),
+          origin, pod, destination: pod,
+          vesselVoyage, shippingLine,
+          etd, etdTime, atd, atdTime, eta, etaTime, vesselStatus,
+          lctEdArrastre, lctEdArrastreTime, lctCargo, lctCargoTime,
+          blNumber, mblMawb: "",
+          domesticFreight, hustlingStripping, forkliftOperator,
+          exportDivision, lodgmentCdsFee, formE,
+          oceanFreight, sealFee, docsFee, lssFee, storageCost,
+          arrastre, shutOut,
+          royaltyFee, lona, lalamove, bir, labor, otherCharges,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }],
       };
 
       const response = await fetch(`${API_BASE_URL}/export-bookings`, {
@@ -577,19 +653,23 @@ export function CreateExportBookingPanel({
 
   const handleClose = () => {
     onClose();
+    setRefNumber("");
+    setNextRefNumber(null);
     setDate("");
     setClient("");
     setCompanyName("");
     setClientId("");
     setContactId("");
     setContactPersonName("");
+    setConsignee("");
+    setShipper("");
     setContainerNumbers([""]);
+    setSealNumbers([""]);
     setBlNumber("");
     setVolume("");
     setCommodity("");
-    setSealNo("");
     setShippingLine("");
-    setBookingNumber("");
+    setBookingNumbers([{ id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }]);
     setOrigin("");
     setPod("");
     setVesselVoyage("");
@@ -627,7 +707,7 @@ export function CreateExportBookingPanel({
 
   if (!isOpen) return null;
 
-  const isFormValid = client.trim() !== "";
+  const isFormValid = companyName.trim() !== "" || client.trim() !== "";
 
   /* ── 2-col helper ── */
   const twoCol: React.CSSProperties = {
@@ -681,6 +761,30 @@ export function CreateExportBookingPanel({
             {/* ═══════════════ SHIPMENT DETAILS ═══════════════ */}
             <SectionTitle first>Shipment Details</SectionTitle>
 
+            {/* Reference Number */}
+            <div>
+              <label style={labelStyle}>Reference No.</label>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end", width: "100%" }}>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
+                    <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>EXP</div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                    <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                    <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: "12px", marginTop: "4px", color: "#667085", fontWeight: 500 }}>
+                {`EXP ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`}
+              </p>
+            </div>
+
             {/* Row 1: Date + Company/Contact */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "16px" }}>
               <div>
@@ -691,13 +795,17 @@ export function CreateExportBookingPanel({
                 <CompanyContactSelector
                   companyId={clientId}
                   contactId={contactId}
+                  companyLabel="Shipper"
+                  contactLabel="Client"
                   onSelect={({ company, contact }) => {
                     const cName = company ? (company.name || company.company_name || "") : "";
                     setCompanyName(cName);
                     if (company) {
                       setClientId(company.id);
+                      setShipper(cName);
                     } else {
                       setClientId("");
+                      setShipper("");
                     }
                     if (contact) {
                       setContactId(contact.id);
@@ -706,21 +814,25 @@ export function CreateExportBookingPanel({
                     } else {
                       setContactId("");
                       setContactPersonName("");
-                      setClient(cName);
+                      setClient("");
                     }
                   }}
                 />
               </div>
             </div>
 
-            {/* Row 2: Container No. + BL Number + Volume */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
-              {/* Container Number — repeatable */}
+            {/* Row 2: Containers (No. + Seal) + Volume */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
+              {/* Container Number + Seal Number — repeatable paired rows */}
               <div>
-                <label style={labelStyle}>Container No.</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px", marginBottom: "8px" }}>
+                  <label style={labelStyle}>Container No.</label>
+                  <label style={labelStyle}>Seal No.</label>
+                  <div style={{ width: "34px" }} />
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {containerNumbers.map((c, i) => (
-                    <div key={i} style={{ display: "flex", gap: "8px" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px" }}>
                       <input
                         type="text"
                         value={c}
@@ -728,7 +840,22 @@ export function CreateExportBookingPanel({
                         placeholder={`Container #${i + 1}`}
                         style={{
                           ...neuronInputStyle,
-                          flex: 1,
+                          width: "auto",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "#0F766E";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = "#E5E9F0";
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={sealNumbers[i] || ""}
+                        onChange={(e) => updateSealRow(i, e.target.value)}
+                        placeholder={`Seal #${i + 1}`}
+                        style={{
+                          ...neuronInputStyle,
                           width: "auto",
                         }}
                         onFocus={(e) => {
@@ -778,49 +905,146 @@ export function CreateExportBookingPanel({
                 </div>
               </div>
 
-              {/* BL Number */}
-              <div>
-                <label style={labelStyle}>BL Number</label>
-                <NeuronInput value={blNumber} onChange={setBlNumber} placeholder="Enter BL number" />
-              </div>
-
-              {/* Volume — dropdown */}
+              {/* Volume — Container Size + Type */}
               <div>
                 <label style={labelStyle}>Volume</label>
-                <NeuronDropdown
-                  value={volume}
-                  options={CONTAINER_SIZES}
-                  onChange={setVolume}
-                  placeholder="Select size"
-                />
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <NeuronDropdown
+                    value={containerSize}
+                    options={[...CONTAINER_SIZE_OPTIONS]}
+                    onChange={setContainerSize}
+                    placeholder="Size"
+                  />
+                  <NeuronDropdown
+                    value={containerType}
+                    options={[...CONTAINER_TYPE_OPTIONS]}
+                    onChange={setContainerType}
+                    placeholder="Type"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Commodity | Seal No. */}
+            {/* Commodity | BL Number */}
             <div style={twoCol}>
               <div>
                 <label style={labelStyle}>Commodity</label>
                 <NeuronInput value={commodity} onChange={setCommodity} placeholder="Enter commodity" />
               </div>
               <div>
-                <label style={labelStyle}>Seal No.</label>
-                <NeuronInput value={sealNo} onChange={setSealNo} placeholder="Enter seal number" />
+                <label style={labelStyle}>BL Number</label>
+                <NeuronInput value={blNumber} onChange={setBlNumber} placeholder="Enter BL number" />
               </div>
             </div>
 
-            {/* Shipping Line | Booking Number */}
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Shipping Line</label>
-                <ShippingLineDropdown value={shippingLine} onChange={setShippingLine} />
-              </div>
-              <div>
-                <label style={labelStyle}>Booking Number</label>
-                <NeuronInput
-                  value={bookingNumber}
-                  onChange={setBookingNumber}
-                  placeholder="Enter booking number"
-                />
+            {/* Shipping Line */}
+            <div>
+              <label style={labelStyle}>Shipping Line</label>
+              <ShippingLineDropdown value={shippingLine} onChange={setShippingLine} />
+            </div>
+
+            {/* Booking Numbers */}
+            <div>
+              <label style={labelStyle}>Booking Numbers</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {bookingNumbers.map((entry, idx) => {
+                  const filledContainers = containerNumbers.filter(c => c.trim());
+                  return (
+                    <div key={entry.id} style={{
+                      border: "1px solid #E5E9F0",
+                      borderRadius: "8px",
+                      padding: "12px",
+                      backgroundColor: "#FAFBFC",
+                    }}>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: filledContainers.length > 0 ? "10px" : 0 }}>
+                        <input
+                          type="text"
+                          value={entry.bookingNumber}
+                          onChange={(e) => updateBookingNumberValue(idx, e.target.value)}
+                          placeholder={`Booking number #${idx + 1}`}
+                          style={{ ...neuronInputStyle, flex: 1, backgroundColor: "white" }}
+                          onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                          onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeBookingNumberEntry(idx)}
+                          disabled={bookingNumbers.length <= 1}
+                          style={{
+                            padding: "8px",
+                            color: "#EF4444",
+                            backgroundColor: "transparent",
+                            border: "none",
+                            cursor: bookingNumbers.length <= 1 ? "not-allowed" : "pointer",
+                            opacity: bookingNumbers.length <= 1 ? 0.3 : 1,
+                          }}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      {filledContainers.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                          {filledContainers.map((c) => {
+                            const isChecked = entry.containerNos.includes(c);
+                            return (
+                              <label
+                                key={c}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  padding: "4px 10px",
+                                  borderRadius: "6px",
+                                  fontSize: "13px",
+                                  fontWeight: 500,
+                                  cursor: "pointer",
+                                  border: isChecked ? "1px solid #0F766E" : "1px solid #E5E9F0",
+                                  backgroundColor: isChecked ? "#F0FDFA" : "white",
+                                  color: isChecked ? "#0F766E" : "#667085",
+                                  transition: "all 0.15s ease",
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleContainerAssignment(idx, c)}
+                                  style={{ display: "none" }}
+                                />
+                                {isChecked && <Check size={12} />}
+                                {c}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {filledContainers.length === 0 && (
+                        <div style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic" }}>
+                          No containers added yet
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={addBookingNumberEntry}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    padding: "8px",
+                    border: "1px dashed #0F766E",
+                    borderRadius: "8px",
+                    backgroundColor: "#F0FDFA",
+                    color: "#0F766E",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Plus size={14} /> Add Booking Number
+                </button>
               </div>
             </div>
 
@@ -861,7 +1085,7 @@ export function CreateExportBookingPanel({
                       maxHeight: "300px",
                       overflowY: "auto"
                     }}>
-                      {["Manila North", "Manila South", "CDO", "Iloilo"].map((option, index) => (
+                      {["Manila North", "Manila South", "CDO", "Iloilo", "Davao"].map((option, index) => (
                         <div
                           key={option}
                           onClick={() => {
@@ -878,7 +1102,7 @@ export function CreateExportBookingPanel({
                             alignItems: "center",
                             gap: "10px",
                             background: origin === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < 3 ? "1px solid #E5E9F0" : "none",
+                            borderBottom: index < 4 ? "1px solid #E5E9F0" : "none",
                             transition: "all 0.15s ease"
                           }}
                           onMouseEnter={(e) => {
