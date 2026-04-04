@@ -21,6 +21,7 @@ import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, 
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { StatusTagBar } from "../shared/StatusTagBar";
+import { getTagByKey } from "../../utils/statusTags";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import type { TagHistoryEntry } from "../../types/operations";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -574,6 +575,39 @@ export function BrokerageBookingDetails({
           </div>
         </div>
 
+        {/* Shipment Status Tags */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
+          <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
+            Shipment Status
+          </span>
+          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+            {shipmentTags.length > 0 ? (
+              shipmentTags.map((tagKey) => {
+                const tag = getTagByKey(tagKey);
+                return (
+                  <span
+                    key={tagKey}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "2px 10px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      background: "#E8F5F3",
+                      color: "#0A1D4D",
+                      border: "1px solid #C1D9CC",
+                    }}
+                  >
+                    {tag?.label || tagKey}
+                  </span>
+                );
+              })
+            ) : (
+              <span style={{ fontSize: "12px", color: "#9CA3AF" }}>No status tags</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
