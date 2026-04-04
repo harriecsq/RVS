@@ -3,18 +3,17 @@
  * Identical layout pattern to ImportBookings / ExportBookings.
  */
 import { useState, useEffect, useRef } from "react";
-import { Plus, Search, Truck, ChevronDown, Check } from "lucide-react";
+import { Plus, Search, Truck, ChevronDown } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { CreateTruckingModal } from "./CreateTruckingModal";
 import { TruckingRecordDetails } from "./TruckingRecordDetails";
 import type { TruckingRecord } from "./CreateTruckingModal";
 import {
-  ALL_TRUCKING_TAGS,
-  TRUCKING_TAG_GROUPS,
   TRUCKING_VENDORS,
   hexToRgba,
 } from "../../utils/truckingTags";
+import { TRUCKING_STATUS_OPTIONS, TRUCKING_STATUS_COLORS } from "../../constants/truckingStatuses";
 
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -110,224 +109,6 @@ function FilterDropdown({
   );
 }
 
-// ---- Status Tag Filter (multi-select) ----
-function StatusTagFilter({
-  selectedTags,
-  onChange,
-  matchMode,
-  onMatchModeChange,
-}: {
-  selectedTags: string[];
-  onChange: (tags: string[]) => void;
-  matchMode: "any" | "all";
-  onMatchModeChange: (m: "any" | "all") => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const toggle = (key: string) => {
-    onChange(
-      selectedTags.includes(key)
-        ? selectedTags.filter((k) => k !== key)
-        : [...selectedTags, key],
-    );
-  };
-
-  const filtered = ALL_TRUCKING_TAGS.filter(
-    (t) => !search || t.label.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const hasSelection = selectedTags.length > 0;
-  const label = hasSelection
-    ? `Status: ${selectedTags.length} selected`
-    : "All Statuses";
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button
-        onClick={() => { setOpen(!open); if (!open) setSearch(""); }}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "6px",
-          width: "100%",
-          padding: "10px 12px",
-          fontSize: "14px",
-          fontWeight: 400,
-          border: "1px solid #E5E9F0",
-          borderRadius: "8px",
-          background: "#FFFFFF",
-          color: hasSelection ? "#0F766E" : "#0A1D4D",
-          cursor: "pointer",
-          whiteSpace: "nowrap" as const,
-          boxSizing: "border-box" as const,
-        }}
-      >
-        {label}
-        <ChevronDown size={14} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-      </button>
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            marginTop: "4px",
-            backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E9F0",
-            borderRadius: "8px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
-            zIndex: 1000,
-            minWidth: "320px",
-            maxHeight: "380px",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {/* Match mode toggle */}
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid #E5E9F0", display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "12px", color: "#667085", fontWeight: 500, marginRight: "4px" }}>Match:</span>
-            {(["all", "any"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={(e) => { e.stopPropagation(); onMatchModeChange(mode); }}
-                style={{
-                  padding: "3px 10px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  backgroundColor: matchMode === mode ? "#0F766E" : "#F3F4F6",
-                  color: matchMode === mode ? "#FFFFFF" : "#667085",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                {mode === "any" ? "ANY" : "ALL"}
-              </button>
-            ))}
-            {hasSelection && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onChange([]); }}
-                style={{
-                  marginLeft: "auto",
-                  padding: "3px 8px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  backgroundColor: "transparent",
-                  color: "#EF4444",
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* Search */}
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search tags..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "100%",
-                padding: "6px 12px",
-                borderRadius: "6px",
-                border: "1px solid #E5E9F0",
-                fontSize: "14px",
-                color: "#0A1D4D",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-
-          {/* Grouped tag list */}
-          <div style={{ overflowY: "auto", flex: 1 }}>
-            {TRUCKING_TAG_GROUPS.map((group) => {
-              const groupTags = filtered.filter((t) => t.group === group.id);
-              if (!groupTags.length) return null;
-              return (
-                <div key={group.id}>
-                  <div
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      color: "#9CA3AF",
-                      letterSpacing: "0.07em",
-                    }}
-                  >
-                    {group.label}
-                  </div>
-                  {groupTags.map((tag) => {
-                    const isSelected = selectedTags.includes(tag.key);
-                    return (
-                      <div
-                        key={tag.key}
-                        onClick={(e) => { e.stopPropagation(); toggle(tag.key); }}
-                        style={{
-                          padding: "8px 16px",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          color: "#0A1D4D",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          backgroundColor: isSelected ? "#F0FAF8" : "transparent",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB";
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLDivElement).style.backgroundColor = isSelected ? "#F0FAF8" : "transparent";
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 4,
-                            flexShrink: 0,
-                            border: `1.5px solid ${isSelected ? "#0F766E" : "#D1D5DB"}`,
-                            backgroundColor: isSelected ? "#0F766E" : "transparent",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {isSelected && <Check size={10} color="white" />}
-                        </div>
-                        {tag.label}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---- Vendor Pill ----
 function VendorPill({ vendor }: { vendor: string }) {
@@ -352,55 +133,6 @@ function VendorPill({ vendor }: { vendor: string }) {
   );
 }
 
-// ---- Status Pill ----
-function StatusPill({ tags }: { tags: string[] }) {
-  if (!tags || tags.length === 0) {
-    return <span style={{ fontSize: "13px", color: "#667085" }}>—</span>;
-  }
-
-  // Sort by group order (operations → documentation → financial → client)
-  const groupOrder: Record<string, number> = {
-    operations: 0,
-    documentation: 1,
-    financial: 2,
-    client: 3,
-  };
-
-  const resolved = tags
-    .map((key) => {
-      const tag = ALL_TRUCKING_TAGS.find((t) => t.key === key);
-      return {
-        key,
-        label: tag ? tag.label : key.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-        group: tag ? groupOrder[tag.group] ?? 99 : 99,
-      };
-    })
-    .sort((a, b) => a.group - b.group);
-
-  return (
-    <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: "4px", alignItems: "center" }}>
-      {resolved.map((t) => (
-        <span
-          key={t.key}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            padding: "2px 8px",
-            borderRadius: "8px",
-            fontSize: "11px",
-            fontWeight: 700,
-            backgroundColor: "#E8F5F3",
-            color: "#0A1D4D",
-            border: "1px solid #C1D9CC",
-            whiteSpace: "nowrap" as const,
-          }}
-        >
-          {t.label}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 // ---- Date formatting ----
 function fmtDate(isoDate: string): string {
@@ -436,8 +168,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
   const [search, setSearch] = useState("");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
-  const [statusTags, setStatusTags] = useState<string[]>([]);
-  const [statusMatchMode, setStatusMatchMode] = useState<"any" | "all">("all");
+  const [selectedTruckingStatus, setSelectedTruckingStatus] = useState<string>("");
   const [vendorFilter, setVendorFilter] = useState("all");
 
   useEffect(() => { fetchRecords(); }, []);
@@ -487,13 +218,8 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
       if (dateFilterEnd && updatedISO > dateFilterEnd) return false;
     }
 
-    if (statusTags.length > 0) {
-      const tags = r.remarks || [];
-      if (statusMatchMode === "any") {
-        if (!tags.some((t) => statusTags.includes(t))) return false;
-      } else if (statusMatchMode === "all") {
-        if (!statusTags.every((t) => tags.includes(t))) return false;
-      }
+    if (selectedTruckingStatus) {
+      if ((r.truckingStatus || "Awaiting Trucking") !== selectedTruckingStatus) return false;
     }
 
     return true;
@@ -596,12 +322,25 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
               compact
             />
           </div>
-          <StatusTagFilter
-            selectedTags={statusTags}
-            onChange={setStatusTags}
-            matchMode={statusMatchMode}
-            onMatchModeChange={setStatusMatchMode}
-          />
+          <select
+            value={selectedTruckingStatus}
+            onChange={(e) => setSelectedTruckingStatus(e.target.value)}
+            style={{
+              padding: "8px 12px",
+              fontSize: "13px",
+              border: "1px solid #E5E9F0",
+              borderRadius: "8px",
+              color: "#0A1D4D",
+              background: "#FFFFFF",
+              cursor: "pointer",
+              outline: "none",
+            }}
+          >
+            <option value="">All Statuses</option>
+            {TRUCKING_STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
           <FilterDropdown value={vendorFilter} options={vendorOptions} onChange={setVendorFilter} placeholder="All Vendors" />
         </div>
       </div>
@@ -669,7 +408,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                 const containerDisplay = r.containerNo || (r as any).containers?.[0]?.containerNo || "—";
                 const sizeDisplay = r.containerSize || (r as any).containers?.[0]?.size || "—";
 
-                const createdDate = r.createdAt ? fmtUpdated(r.createdAt) : "—";
+                const createdDate = (r as any).truckingDate ? fmtUpdated((r as any).truckingDate) : r.createdAt ? fmtUpdated(r.createdAt) : "—";
 
                 const truncCell: React.CSSProperties = {
                   padding: "16px 16px",
@@ -713,7 +452,21 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                     </td>
                     <td style={truncCell}>{createdDate}</td>
                     <td style={{ padding: "12px 16px", verticalAlign: "middle" }}>
-                      <StatusPill tags={r.remarks || []} />
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "2px 10px",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          background: "#E8F5F3",
+                          color: TRUCKING_STATUS_COLORS[r.truckingStatus || "Awaiting Trucking"] || "#6B7A76",
+                          border: "1px solid #C1D9CC",
+                        }}
+                      >
+                        {r.truckingStatus || "Awaiting Trucking"}
+                      </span>
                     </td>
                   </tr>
                 );
