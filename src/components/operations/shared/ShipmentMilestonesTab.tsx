@@ -1,27 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { SHIPMENT_EVENT_KEYS, SHIPMENT_EVENT_LABELS } from "../../../constants/shipmentEvents";
 import type { ShipmentEvent } from "../../../types/operations";
 import { DateTimeInput } from "./DateTimeInput";
 
+export interface ShipmentMilestonesTabHandle {
+  save: () => Promise<void>;
+  cancel: () => void;
+}
+
 interface ShipmentMilestonesTabProps {
   shipmentEvents: ShipmentEvent[];
   onSave: (events: ShipmentEvent[]) => Promise<void>;
-  disabled?: boolean;
+  isEditing?: boolean;
 }
 
-export function ShipmentMilestonesTab({
-  shipmentEvents,
-  onSave,
-  disabled = false,
-}: ShipmentMilestonesTabProps) {
+export const ShipmentMilestonesTab = forwardRef<
+  ShipmentMilestonesTabHandle,
+  ShipmentMilestonesTabProps
+>(function ShipmentMilestonesTab(
+  { shipmentEvents, onSave, isEditing = false },
+  ref,
+) {
   const [eventData, setEventData] = useState<
     Record<string, { date: string; time: string; note: string }>
   >({});
-  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
+  const buildMap = (events: ShipmentEvent[]) => {
     const map: Record<string, { date: string; time: string; note: string }> = {};
-    for (const ev of shipmentEvents) {
+    for (const ev of events) {
       const dt = ev.dateTime ? new Date(ev.dateTime) : null;
       map[ev.event] = {
         date: dt ? dt.toISOString().slice(0, 10) : "",
@@ -29,7 +35,11 @@ export function ShipmentMilestonesTab({
         note: ev.note || "",
       };
     }
-    setEventData(map);
+    return map;
+  };
+
+  useEffect(() => {
+    setEventData(buildMap(shipmentEvents));
   }, [shipmentEvents]);
 
   const updateField = (
@@ -48,9 +58,8 @@ export function ShipmentMilestonesTab({
     }));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
+  useImperativeHandle(ref, () => ({
+    save: async () => {
       const events: ShipmentEvent[] = [];
       for (const key of SHIPMENT_EVENT_KEYS) {
         const data = eventData[key];
@@ -61,50 +70,33 @@ export function ShipmentMilestonesTab({
         }
       }
       await onSave(events);
-    } finally {
-      setIsSaving(false);
-    }
+    },
+    cancel: () => {
+      setEventData(buildMap(shipmentEvents));
+    },
+  }), [eventData, onSave, shipmentEvents]);
+
+  const HEADER_STYLE: React.CSSProperties = {
+    fontSize: "11px",
+    fontWeight: 600,
+    textTransform: "uppercase",
+    color: "#667085",
+    letterSpacing: "0.06em",
   };
 
   return (
     <div style={{ padding: "24px 48px" }}>
-      <div
+      <h3
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "#0A1D4D",
+          margin: 0,
           marginBottom: "20px",
         }}
       >
-        <h3
-          style={{
-            fontSize: "15px",
-            fontWeight: 600,
-            color: "#0A1D4D",
-            margin: 0,
-          }}
-        >
-          Shipment Milestones
-        </h3>
-        {!disabled && (
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              padding: "8px 20px",
-              fontSize: "13px",
-              fontWeight: 600,
-              border: "none",
-              borderRadius: "8px",
-              background: isSaving ? "#9CA3AF" : "#0F766E",
-              color: "#FFFFFF",
-              cursor: isSaving ? "not-allowed" : "pointer",
-            }}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
-        )}
-      </div>
+        Shipment Milestones
+      </h3>
 
       <div
         style={{
@@ -116,15 +108,9 @@ export function ShipmentMilestonesTab({
           marginBottom: "4px",
         }}
       >
-        <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
-          Event
-        </span>
-        <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
-          Date & Time
-        </span>
-        <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
-          Note
-        </span>
+        <span style={HEADER_STYLE}>Event</span>
+        <span style={HEADER_STYLE}>Date & Time</span>
+        <span style={HEADER_STYLE}>Note</span>
       </div>
 
       {SHIPMENT_EVENT_KEYS.map((key) => {
@@ -150,7 +136,7 @@ export function ShipmentMilestonesTab({
               timeValue={data.time}
               onDateChange={(val) => updateField(key, "date", val)}
               onTimeChange={(val) => updateField(key, "time", val)}
-              disabled={disabled}
+              disabled={!isEditing}
               compact
             />
 
@@ -158,7 +144,7 @@ export function ShipmentMilestonesTab({
               type="text"
               value={data.note}
               onChange={(e) => updateField(key, "note", e.target.value)}
-              disabled={disabled}
+              disabled={!isEditing}
               placeholder="Add note..."
               style={{
                 padding: "8px 12px",
@@ -167,7 +153,7 @@ export function ShipmentMilestonesTab({
                 borderRadius: "8px",
                 outline: "none",
                 color: "#0A1D4D",
-                background: disabled ? "#F9FAFB" : "#FFFFFF",
+                background: !isEditing ? "#F9FAFB" : "#FFFFFF",
               }}
             />
           </div>
@@ -175,4 +161,4 @@ export function ShipmentMilestonesTab({
       })}
     </div>
   );
-}
+});

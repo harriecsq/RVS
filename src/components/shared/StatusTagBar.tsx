@@ -113,10 +113,26 @@ export function StatusTagBar({
   const reposition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const dropdownMaxHeight = 360;
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom - 6;
+    const spaceAbove = rect.top - 6;
+
+    // If not enough space below, flip above the trigger
+    const top =
+      spaceBelow < dropdownMaxHeight && spaceAbove > spaceBelow
+        ? rect.top - Math.min(dropdownMaxHeight, spaceAbove) - 6
+        : rect.bottom + 6;
+
+    const width = Math.max(rect.width, 340);
+    const viewportWidth = window.innerWidth;
+    // Clamp left so dropdown doesn't overflow the right edge
+    const left = Math.min(rect.left, viewportWidth - width - 12);
+
     setPos({
-      top: rect.bottom + 6,
-      left: rect.left,
-      width: Math.max(rect.width, 340),
+      top,
+      left: Math.max(12, left),
+      width,
     });
   }, []);
 
@@ -159,9 +175,9 @@ export function StatusTagBar({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              padding: "4px 12px",
+              padding: "8px 16px",
               borderRadius: "10px",
-              fontSize: "13px",
+              fontSize: "14px",
               fontWeight: 600,
               backgroundColor: "#E8F5F3",
               color: "#12332B",
@@ -206,12 +222,12 @@ export function StatusTagBar({
               display: "inline-flex",
               alignItems: "center",
               gap: "4px",
-              padding: "4px 10px",
+              padding: "8px 16px",
               borderRadius: "10px",
               border: "1px dashed #C1D9CC",
               background: "rgba(255,255,255,0.7)",
               color: "#0F766E",
-              fontSize: "12px",
+              fontSize: "14px",
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -232,7 +248,7 @@ export function StatusTagBar({
               top: pos.top,
               left: pos.left,
               width: pos.width,
-              maxHeight: 360,
+              maxHeight: Math.min(360, window.innerHeight - 20),
               background: "white",
               borderRadius: "8px",
               border: "1px solid #E5E9F0",

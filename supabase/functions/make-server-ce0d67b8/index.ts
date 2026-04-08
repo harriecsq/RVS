@@ -3659,6 +3659,54 @@ app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-tags", async 
   }
 });
 
+// Update shipment events on linked booking via trucking record
+app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-events", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const shipmentEvents = Array.isArray(body.shipmentEvents) ? body.shipmentEvents : [];
+    const user = String(body.user || "Unknown");
+
+    const record = await kv.get(`trucking-record:${id}`);
+    if (!record) {
+      return c.json({ success: false, error: "Trucking record not found" }, 404);
+    }
+
+    if (!record.linkedBookingId) {
+      return c.json({ success: false, error: "No linked booking" }, 400);
+    }
+
+    const prefix = getLinkedBookingPrefix(record.linkedBookingType);
+    if (!prefix) {
+      return c.json({ success: false, error: "Linked booking type is unsupported" }, 400);
+    }
+
+    const linkedBooking = await kv.get(`${prefix}${record.linkedBookingId}`);
+    if (!linkedBooking) {
+      return c.json({ success: false, error: "Linked booking not found" }, 404);
+    }
+
+    const migratedBooking =
+      prefix === "import_booking:"
+        ? await migrateImportBookingIfNeeded(linkedBooking, record.linkedBookingId)
+        : await migrateExportBookingIfNeeded(linkedBooking, record.linkedBookingId);
+
+    const updatedBooking = {
+      ...migratedBooking,
+      shipmentEvents,
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`${prefix}${record.linkedBookingId}`, updatedBooking);
+
+    console.log(`Updated shipment events for linked booking ${record.linkedBookingId} via trucking ${id} by ${user}`);
+
+    return c.json({ success: true, data: updatedBooking });
+  } catch (error) {
+    console.error("Error updating linked booking shipment events:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
 // Delete trucking record
 app.delete("/make-server-ce0d67b8/trucking-records/:id", async (c) => {
   try {
@@ -6967,6 +7015,36 @@ app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-tags", async (c) => 
     return c.json({ success: true, data: updated });
   } catch (error) {
     console.error("Error updating import booking shipment tags:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Update shipment events on an import booking
+app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-events", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const shipmentEvents = Array.isArray(body.shipmentEvents) ? body.shipmentEvents : [];
+    const user = String(body.user || "Unknown");
+
+    const existingRaw = await kv.get(`import_booking:${id}`);
+    if (!existingRaw) {
+      return c.json({ success: false, error: "Booking not found" }, 404);
+    }
+    const existing = await migrateImportBookingIfNeeded(existingRaw, id);
+
+    const updated = {
+      ...existing,
+      shipmentEvents,
+      updatedAt: new Date().toISOString(),
+    };
+    await kv.set(`import_booking:${id}`, updated);
+
+    console.log(`Updated shipment events for import booking ${id} by ${user}`);
+
+    return c.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating shipment events:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });

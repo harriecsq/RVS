@@ -18,8 +18,9 @@ export const TAG_GROUPS: { id: TagGroup; label: string }[] = [
 ];
 
 export const ALL_STATUS_TAGS: StatusTag[] = [
+  { key: "draft", label: "Draft", group: "operations", layer: "shipment", appliesTo: ["import", "export", "trucking"] },
   { key: "awaiting-discharge", label: "Awaiting Discharge", group: "operations", layer: "shipment", appliesTo: ["import", "trucking"] },
-  { key: "ready-gatepass", label: "Ready Gatepass / For Delivery", group: "operations", layer: "shipment", appliesTo: ["import", "trucking"] },
+  { key: "ready-gatepass", label: "For Delivery", group: "operations", layer: "shipment", appliesTo: ["import", "trucking"] },
   { key: "for-gatepass", label: "For Gatepass", group: "operations", layer: "shipment", appliesTo: ["import", "trucking"] },
   { key: "delivered", label: "Delivered", group: "operations", layer: "shipment", appliesTo: ["import", "export", "trucking"] },
   { key: "awaiting-stowage", label: "Awaiting Stowage", group: "documentation", layer: "shipment", appliesTo: ["import", "export", "trucking"] },

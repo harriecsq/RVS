@@ -21,6 +21,7 @@ import { NotesSection } from "../shared/NotesSection";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
 import { TabRowActions } from "../shared/TabRowActions";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
+import { StatusTagBar } from "../shared/StatusTagBar";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import type { TagHistoryEntry } from "../../types/operations";
@@ -677,7 +678,7 @@ export function TruckingRecordDetails({
   onEditStateChange,
   externalSaveCounter,
 }: TruckingRecordDetailsProps) {
-  const [activeTab, setActiveTab] = useState<"trucking-info" | "shipment-milestones" | "attachments">("trucking-info");
+  const [activeTab, setActiveTab] = useState<"trucking-info" | "attachments">("trucking-info");
   const [showActivity, setShowActivity] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(normalizeRecord(record) as TruckingRecord);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1172,49 +1173,24 @@ export function TruckingRecordDetails({
           </div>
 
           {/* Right: two status boxes */}
-          <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-            {/* Shipment Status — synced with linked booking */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
-                Shipment Status
-                {currentRecord.linkedBookingId && (
-                  <span style={{ fontSize: "10px", fontWeight: 400, textTransform: "none", color: "#9CA3AF", marginLeft: "6px" }}>
-                    Synced
-                  </span>
-                )}
-              </span>
-              {currentRecord.linkedBookingId ? (
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                  {linkedShipmentTags.length > 0 ? (
-                    linkedShipmentTags.map((tagKey) => {
-                      const tag = getTagByKey(tagKey);
-                      return (
-                        <span
-                          key={tagKey}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            padding: "2px 10px",
-                            borderRadius: "8px",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            background: "#E8F5F3",
-                            color: "#0A1D4D",
-                            border: "1px solid #C1D9CC",
-                          }}
-                        >
-                          {tag?.label || tagKey}
-                        </span>
-                      );
-                    })
-                  ) : (
-                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>No status tags</span>
-                  )}
-                </div>
-              ) : (
+          <div style={{ display: "flex", gap: "16px", alignItems: "flex-end" }}>
+            {/* Shipment Status — synced with linked booking, editable */}
+            {currentRecord.linkedBookingId ? (
+              <StatusTagBar
+                bookingType="trucking"
+                shipmentTags={linkedShipmentTags}
+                operationalTags={[]}
+                onShipmentTagsChange={handleLinkedShipmentTagsChange}
+                onOperationalTagsChange={() => {}}
+              />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
+                  Shipment Status
+                </span>
                 <span style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic" }}>No linked booking</span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Trucking Status — independent dropdown */}
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -1243,11 +1219,10 @@ export function TruckingRecordDetails({
           <StandardTabs
             tabs={[
               { id: "trucking-info", label: "Trucking Information" },
-              { id: "shipment-milestones", label: "Shipment Milestones" },
               { id: "attachments", label: "Attachments" }
             ]}
             activeTab={activeTab}
-            onTabChange={(tabId) => setActiveTab(tabId as "trucking-info" | "shipment-milestones" | "attachments")}
+            onTabChange={(tabId) => setActiveTab(tabId as "trucking-info" | "attachments")}
             actions={
               <TabRowActions
                 showTimeline={showActivity}
@@ -2067,14 +2042,6 @@ export function TruckingRecordDetails({
           />
 
         </div>
-        )}
-
-        {!embedded && activeTab === "shipment-milestones" && (
-          <ShipmentMilestonesTab
-            shipmentEvents={linkedShipmentEvents}
-            onSave={handleSaveLinkedShipmentEvents}
-            disabled={!currentRecord.linkedBookingId}
-          />
         )}
 
         {!embedded && activeTab === "attachments" && (

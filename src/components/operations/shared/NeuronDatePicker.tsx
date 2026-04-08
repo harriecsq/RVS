@@ -30,10 +30,19 @@ const MONTH_NAMES = [
 ];
 const DAY_HEADERS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
+const SHORT_MONTHS = [
+  "Jan","Feb","Mar","Apr","May","Jun",
+  "Jul","Aug","Sep","Oct","Nov","Dec",
+];
+
 function parseISOToDisplay(iso: string): string {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
-  if (y && m && d) return `${m}/${d}/${y}`;
+  if (y && m && d) {
+    const monthIdx = parseInt(m, 10) - 1;
+    const day = parseInt(d, 10);
+    return `${SHORT_MONTHS[monthIdx]} ${day}, ${y}`;
+  }
   return "";
 }
 
@@ -183,7 +192,7 @@ function InlineDropdown({
 export function NeuronDatePicker({
   value,
   onChange,
-  placeholder = "MM/DD/YYYY",
+  placeholder = "Select date",
   style: extraStyle,
   disabled,
 }: NeuronDatePickerProps) {

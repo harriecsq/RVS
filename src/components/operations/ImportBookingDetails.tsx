@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, MoreVertical, Lock, ChevronRight, Trash2, Plus, ChevronDown } from "lucide-react";
 import type { BrokerageBooking, ExecutionStatus } from "../../types/operations";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
@@ -16,6 +16,7 @@ import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { TabRowActions } from "../shared/TabRowActions";
 import { SubTabRow } from "./shared/SubTabRow";
 import { ShipmentMilestonesTab } from "./shared/ShipmentMilestonesTab";
+import type { ShipmentMilestonesTabHandle } from "./shared/ShipmentMilestonesTab";
 import type { ShipmentEvent } from "../../types/operations";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
@@ -164,6 +165,10 @@ export function BrokerageBookingDetails({
   const [projects, setProjects] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Milestones edit state
+  const milestonesRef = useRef<ShipmentMilestonesTabHandle>(null);
+  const [milestonesEditing, setMilestonesEditing] = useState(false);
+
   // Sub-tab edit propagation state
   const [subTabHasRecord, setSubTabHasRecord] = useState<Record<string, boolean>>({});
   const [subTabEditing, setSubTabEditing] = useState(false);
@@ -172,7 +177,10 @@ export function BrokerageBookingDetails({
 
   const getEditLabel = (): string | null => {
     switch (activeTab) {
-      case "booking-info": return "Edit Booking";
+      case "booking-info":
+        return activeBookingSubTab === "shipment-milestones"
+          ? "Edit Milestones"
+          : "Edit Booking";
       case "trucking": return subTabHasRecord["trucking"] ? "Edit Trucking" : null;
       case "billings": return subTabHasRecord["billings"] ? "Edit Billing" : null;
       case "expenses": return subTabHasRecord["expenses"] ? "Edit Expense" : null;
@@ -182,9 +190,13 @@ export function BrokerageBookingDetails({
 
   const handleTabEdit = () => {
     if (activeTab === "booking-info") {
-      const parsed = parseContainerVolume((editedBooking as any).volume || "");
-      setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
-      setIsEditing(true);
+      if (activeBookingSubTab === "shipment-milestones") {
+        setMilestonesEditing(true);
+      } else {
+        const parsed = parseContainerVolume((editedBooking as any).volume || "");
+        setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
+        setIsEditing(true);
+      }
     } else {
       setSubTabEditRequest(true);
     }
@@ -192,22 +204,43 @@ export function BrokerageBookingDetails({
 
   const handleTabCancel = () => {
     if (activeTab === "booking-info") {
-      handleCancel();
+      if (milestonesEditing) {
+        milestonesRef.current?.cancel();
+        setMilestonesEditing(false);
+      } else {
+        handleCancel();
+      }
     } else {
       setSubTabEditRequest(false);
       setSubTabEditing(false);
     }
   };
 
-  const handleTabSave = () => {
+  const handleTabSave = async () => {
     if (activeTab === "booking-info") {
-      handleSave();
+      if (milestonesEditing) {
+        if (!milestonesRef.current) {
+          toast.error("Unable to save — milestones component not ready");
+          return;
+        }
+        setIsSaving(true);
+        try {
+          await milestonesRef.current.save();
+          setMilestonesEditing(false);
+        } catch {
+          // Stay in edit mode — toast already shown by handleSaveShipmentEvents
+        } finally {
+          setIsSaving(false);
+        }
+      } else {
+        handleSave();
+      }
     } else {
       setSubTabSaveCounter((c: number) => c + 1);
     }
   };
 
-  const isAnyEditing = activeTab === "booking-info" ? isEditing : subTabEditing;
+  const isAnyEditing = activeTab === "booking-info" ? (isEditing || milestonesEditing) : subTabEditing;
 
   useEffect(() => {
     setCurrentBooking(booking);
@@ -491,10 +524,12 @@ export function BrokerageBookingDetails({
         onBookingUpdated();
       } else {
         toast.error(`Failed to save: ${result.error || "Unknown error"}`);
+        throw new Error(result.error || "Save failed");
       }
     } catch (err) {
       console.error("Error saving shipment events:", err);
       toast.error("Unable to save shipment milestones");
+      throw err;
     }
   };
 
@@ -575,39 +610,14 @@ export function BrokerageBookingDetails({
           </div>
         </div>
 
-        {/* Shipment Status Tags */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
-          <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
-            Shipment Status
-          </span>
-          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-            {shipmentTags.length > 0 ? (
-              shipmentTags.map((tagKey) => {
-                const tag = getTagByKey(tagKey);
-                return (
-                  <span
-                    key={tagKey}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "2px 10px",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      background: "#E8F5F3",
-                      color: "#0A1D4D",
-                      border: "1px solid #C1D9CC",
-                    }}
-                  >
-                    {tag?.label || tagKey}
-                  </span>
-                );
-              })
-            ) : (
-              <span style={{ fontSize: "12px", color: "#9CA3AF" }}>No status tags</span>
-            )}
-          </div>
-        </div>
+        {/* Shipment Status Tags — editable, aligned with trucking's tag set */}
+        <StatusTagBar
+          bookingType="trucking"
+          shipmentTags={shipmentTags}
+          operationalTags={[]}
+          onShipmentTagsChange={handleShipmentTagsChange}
+          onOperationalTagsChange={() => {}}
+        />
       </div>
 
       {/* Tabs */}
@@ -623,6 +633,10 @@ export function BrokerageBookingDetails({
             setActiveTab(tabId as DetailTab);
             if (isEditing && tabId !== "booking-info") {
               setIsEditing(false);
+            }
+            if (milestonesEditing) {
+              milestonesRef.current?.cancel();
+              setMilestonesEditing(false);
             }
             if (subTabEditing) {
               setSubTabEditRequest(false);
@@ -667,7 +681,16 @@ export function BrokerageBookingDetails({
                   { id: "shipment-milestones", label: "Shipment Milestones" },
                 ]}
                 activeTab={activeBookingSubTab}
-                onTabChange={(id) => setActiveBookingSubTab(id as "booking-details" | "shipment-milestones")}
+                onTabChange={(id) => {
+                  if (milestonesEditing) {
+                    milestonesRef.current?.cancel();
+                    setMilestonesEditing(false);
+                  }
+                  if (isEditing) {
+                    handleCancel();
+                  }
+                  setActiveBookingSubTab(id as "booking-details" | "shipment-milestones");
+                }}
               />
               <div style={{ flex: 1, overflow: "auto" }}>
                 {activeBookingSubTab === "booking-details" && (
@@ -687,8 +710,10 @@ export function BrokerageBookingDetails({
                 )}
                 {activeBookingSubTab === "shipment-milestones" && (
                   <ShipmentMilestonesTab
+                    ref={milestonesRef}
                     shipmentEvents={(currentBooking as any).shipmentEvents || []}
                     onSave={handleSaveShipmentEvents}
+                    isEditing={milestonesEditing}
                   />
                 )}
               </div>
@@ -1432,6 +1457,7 @@ function BookingInformationTab({
 
   // Dropdown visibility states
   const [showShippingLineDD, setShowShippingLineDD] = useState(false);
+  const [showShippingLineStatusDD, setShowShippingLineStatusDD] = useState(false);
   const [showContainerSizeDD, setShowContainerSizeDD] = useState(false);
   const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
   const [showSelectivityDD, setShowSelectivityDD] = useState(false);
@@ -2257,8 +2283,8 @@ function BookingInformationTab({
             )}
           </div>
 
-          {/* Row 3: Vessel & Voyage, Shipping Line */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+          {/* Row 3: Vessel & Voyage, Shipping Line, Shipping Line Status */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
             <EditableField
               fieldName="vesselVoyage"
               label="Vessel & Voyage"
@@ -2271,6 +2297,8 @@ function BookingInformationTab({
             />
             {/* Shipping Line - Dropdown */}
             {renderEditDropdown("shippingLine", "Shipping Line", SHIPPING_LINE_OPTIONS, showShippingLineDD, setShowShippingLineDD, undefined, true, shippingLineSearch, setShippingLineSearch)}
+            {/* Shipping Line Status - Dropdown */}
+            {renderEditDropdown("shippingLineStatus", "Shipping Line Status", ["No Billing Yet", "With Billing", "Done Payment"], showShippingLineStatusDD, setShowShippingLineStatusDD)}
           </div>
 
           {/* Row 4: Section, OT (Received Docs removed) */}
@@ -2505,51 +2533,6 @@ function BookingInformationTab({
                 editData={editData}
                 setEditData={setEditData}
               />
-              {isEditing ? (
-                <div>
-                  <label style={{
-                    display: "block",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    color: "var(--neuron-ink-base)",
-                    marginBottom: "8px"
-                  }}>
-                    Gatepass
-                  </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "8px" }}>
-                    <div style={{ position: "relative" }}>
-                      <SingleDateInput
-                        value={mmddToISO(gatepassDate)}
-                        onChange={(iso) => {
-                          const formatted = isoToMMDD(iso);
-                          setGatepassDate(formatted);
-                          if (formatted && validateDate(formatted)) {
-                            setGatepassDateError("");
-                          }
-                          setEditData({ ...editData, gatepass: combineDateTime(formatted, gatepassTime) } as any);
-                        }}
-                        placeholder="MM/DD/YYYY"
-                      />
-                      {gatepassDateError && <p className="text-red-500 text-xs mt-1" style={{ fontSize: "12px", color: "#EF4444", marginTop: "4px" }}>{gatepassDateError}</p>}
-                    </div>
-                    <div>
-                      <NeuronTimePicker value={gatepassTime} onChange={(v) => handleGatepassTimeChange(v)} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <EditableField
-                  fieldName="gatepass"
-                  label="Gatepass"
-                  value={(booking as any).gatepass || ""}
-                  status={booking.status as ExecutionStatus}
-                  placeholder="MM/DD/YYYY HH:mm"
-                  type="text"
-                  isEditing={isEditing}
-                  editData={editData}
-                  setEditData={setEditData}
-                />
-              )}
             </div>
             {/* Gross Weight + Entry Number */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
