@@ -24,7 +24,13 @@ import {
   GATEPASS_LIST,
   hexToRgba,
 } from "../../utils/truckingTags";
-import { TRUCKING_STATUS_OPTIONS, DEFAULT_TRUCKING_STATUS } from "../../constants/truckingStatuses";
+import {
+  TRUCKING_STATUS_OPTIONS,
+  DEFAULT_TRUCKING_STATUS,
+  getTruckingStatusOptions,
+  getDefaultTruckingStatus,
+} from "../../constants/truckingStatuses";
+import { StandardSelect } from "../design-system/StandardSelect";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -567,7 +573,16 @@ export function CreateTruckingModal({
     // Also update linkedBookingType from the fetched data if available
     const detectedType = b.shipmentType || b.booking_type || b.mode || b.type || "";
     if (detectedType) {
-      setForm((prev) => ({ ...prev, linkedBookingType: detectedType || prev.linkedBookingType }));
+      setForm((prev) => {
+        const nextType = detectedType || prev.linkedBookingType;
+        const nextOptions = getTruckingStatusOptions(nextType);
+        const statusValid = prev.truckingStatus && (nextOptions as readonly string[]).includes(prev.truckingStatus);
+        return {
+          ...prev,
+          linkedBookingType: nextType,
+          truckingStatus: statusValid ? prev.truckingStatus : getDefaultTruckingStatus(nextType),
+        };
+      });
     }
     const filled: Record<string, boolean> = {};
 
@@ -615,17 +630,28 @@ export function CreateTruckingModal({
 
   const handleBookingSelect = async (booking: any) => {
     if (!booking) {
-      setForm((prev) => ({ ...prev, linkedBookingId: "", linkedBookingType: "" }));
+      setForm((prev) => ({
+        ...prev,
+        linkedBookingId: "",
+        linkedBookingType: "",
+        truckingStatus: getDefaultTruckingStatus(""),
+      }));
       setAutoFilledFields({});
       setLinkedBookingData(null);
       return;
     }
 
-    setForm((prev) => ({
-      ...prev,
-      linkedBookingId: booking.id || "",
-      linkedBookingType: booking.shipmentType || booking.booking_type || booking.mode || "",
-    }));
+    const nextType = booking.shipmentType || booking.booking_type || booking.mode || "";
+    setForm((prev) => {
+      const nextOptions = getTruckingStatusOptions(nextType);
+      const statusValid = prev.truckingStatus && (nextOptions as readonly string[]).includes(prev.truckingStatus);
+      return {
+        ...prev,
+        linkedBookingId: booking.id || "",
+        linkedBookingType: nextType,
+        truckingStatus: statusValid ? prev.truckingStatus : getDefaultTruckingStatus(nextType),
+      };
+    });
 
     await fetchAndAutoFill(booking.id);
   };
@@ -1332,24 +1358,11 @@ export function CreateTruckingModal({
                 <label style={{ fontSize: "13px", fontWeight: 600, color: "#344054" }}>
                   Trucking Status
                 </label>
-                <select
-                  value={form.truckingStatus || DEFAULT_TRUCKING_STATUS}
-                  onChange={(e) => setForm((prev) => ({ ...prev, truckingStatus: e.target.value }))}
-                  style={{
-                    padding: "10px 12px",
-                    fontSize: "13px",
-                    border: "1px solid #D0D5DD",
-                    borderRadius: "8px",
-                    color: "#0A1D4D",
-                    background: "#FFFFFF",
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  {TRUCKING_STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
+                <StandardSelect
+                  value={form.truckingStatus || getDefaultTruckingStatus(form.linkedBookingType)}
+                  onChange={(value) => setForm((prev) => ({ ...prev, truckingStatus: value }))}
+                  options={getTruckingStatusOptions(form.linkedBookingType).map((status) => ({ value: status, label: status }))}
+                />
               </div>
 
               {/* Remarks Drops — Start & Done date/time per drop */}
