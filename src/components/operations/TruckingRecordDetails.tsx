@@ -37,7 +37,15 @@ import {
 import { getOperationalTags, getTagByKey } from "../../utils/statusTags";
 import { formatDateTime } from "./shared/DateTimeInput";
 import { API_BASE_URL } from '@/utils/api-config';
-import { TRUCKING_STATUS_OPTIONS, DEFAULT_TRUCKING_STATUS, TRUCKING_STATUS_COLORS } from "../../constants/truckingStatuses";
+import {
+  TRUCKING_STATUS_OPTIONS,
+  DEFAULT_TRUCKING_STATUS,
+  TRUCKING_STATUS_COLORS,
+  DROP_CYCLE_STATUSES,
+  getTruckingStatusOptions,
+  getTruckingStatusColors,
+  getDefaultTruckingStatus,
+} from "../../constants/truckingStatuses";
 import { ShipmentMilestonesTab } from "./shared/ShipmentMilestonesTab";
 import type { ShipmentEvent } from "../../types/operations";
 
@@ -832,17 +840,43 @@ export function TruckingRecordDetails({
     setEditForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  // ── Drop-cycle helpers ──
+  const totalDrops = currentRecord.deliveryDrops?.length || 1;
+  const currentDrop: number = currentRecord.currentDrop || 1;
+
+  const isDropStatus = (s: string) => (DROP_CYCLE_STATUSES as readonly string[]).includes(s);
+
+  /** Build display label for drop-cycle statuses, e.g. "In Transit - Drop 1 of 3" */
+  const truckingDisplayLabel = isDropStatus(currentRecord.truckingStatus || "")
+    ? `${currentRecord.truckingStatus} - Drop ${currentDrop} of ${totalDrops}`
+    : undefined;
+
   // ── Trucking status update (independent dropdown, persists immediately) ──
   const handleTruckingStatusChange = useCallback(
     async (newStatus: string) => {
       const prevRecord = { ...currentRecord };
-      setCurrentRecord((prev) => ({ ...prev, truckingStatus: newStatus }));
+
+      // Compute the next currentDrop value
+      let nextDrop = currentRecord.currentDrop || 1;
+      const prevStatus = currentRecord.truckingStatus || "";
+
+      if (newStatus === "In Transit") {
+        // If previous status was "Unloading End", advance to next drop
+        if (prevStatus === "Unloading End") {
+          nextDrop = Math.min((currentRecord.currentDrop || 1) + 1, totalDrops);
+        } else if (!isDropStatus(prevStatus)) {
+          // Entering drop cycle for the first time — start at drop 1
+          nextDrop = 1;
+        }
+      }
+
+      setCurrentRecord((prev) => ({ ...prev, truckingStatus: newStatus, currentDrop: nextDrop }));
       if (isEditing) {
-        setEditForm((prev) => ({ ...prev, truckingStatus: newStatus }));
+        setEditForm((prev) => ({ ...prev, truckingStatus: newStatus, currentDrop: nextDrop }));
       }
 
       try {
-        const payload = { ...currentRecord, truckingStatus: newStatus, updatedAt: new Date().toISOString() };
+        const payload = { ...currentRecord, truckingStatus: newStatus, currentDrop: nextDrop, updatedAt: new Date().toISOString() };
         const res = await fetch(`${API_BASE_URL}/trucking-records/${currentRecord.id}`, {
           method: "PUT",
           headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
@@ -852,7 +886,7 @@ export function TruckingRecordDetails({
         if (result.success) {
           setCurrentRecord(result.data);
           if (isEditing) {
-            setEditForm((prev) => ({ ...prev, truckingStatus: result.data.truckingStatus }));
+            setEditForm((prev) => ({ ...prev, truckingStatus: result.data.truckingStatus, currentDrop: result.data.currentDrop }));
           }
           onUpdate();
         } else {
@@ -865,7 +899,7 @@ export function TruckingRecordDetails({
         toast.error("Unable to update status");
       }
     },
-    [currentRecord, isEditing, onUpdate],
+    [currentRecord, isEditing, onUpdate, totalDrops],
   );
 
   const handleLinkedShipmentTagsChange = useCallback(
@@ -1198,9 +1232,10 @@ export function TruckingRecordDetails({
                 Trucking Status
               </span>
               <HeaderStatusDropdown
-                currentStatus={currentRecord.truckingStatus || DEFAULT_TRUCKING_STATUS}
-                statusOptions={[...TRUCKING_STATUS_OPTIONS]}
-                statusColorMap={TRUCKING_STATUS_COLORS}
+                currentStatus={currentRecord.truckingStatus || getDefaultTruckingStatus(currentRecord.linkedBookingType)}
+                displayLabel={truckingDisplayLabel}
+                statusOptions={[...getTruckingStatusOptions(currentRecord.linkedBookingType)]}
+                statusColorMap={getTruckingStatusColors(currentRecord.linkedBookingType)}
                 onStatusChange={handleTruckingStatusChange}
               />
             </div>
