@@ -43,8 +43,17 @@ const LEGACY_EXPORT_STATUS_TO_TAGS: Record<string, string[][]> = {
 };
 
 const EXPORT_STATUS_FILTER_OPTIONS = [
-  "Draft", "For Approval", "Approved", "In Transit",
-  "Delivered", "Completed", "On Hold", "Cancelled",
+  "For Lodgement and Portal",
+  "Awaiting for Final",
+  "Final - For Arrastre Payment",
+  "Arrastre Paid",
+  "Sent Draft Documents for Approval",
+  "Approved Documents",
+  "Sent FSI and DG Declaration",
+  "Draft BL Okay to Finalize",
+  "Awaiting Billing and Signed BL",
+  "Request for Telex",
+  "Form E Ongoing Process",
 ];
 
 function getBookingShipmentTags(booking: ExportBooking): string[] {
