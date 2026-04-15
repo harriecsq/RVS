@@ -13,7 +13,13 @@ import {
   TRUCKING_VENDORS,
   hexToRgba,
 } from "../../utils/truckingTags";
-import { TRUCKING_STATUS_OPTIONS, TRUCKING_STATUS_COLORS } from "../../constants/truckingStatuses";
+import {
+  TRUCKING_STATUS_OPTIONS,
+  TRUCKING_STATUS_COLORS,
+  DROP_CYCLE_STATUSES,
+  EXPORT_TRUCKING_STATUS_OPTIONS,
+  getTruckingStatusColors,
+} from "../../constants/truckingStatuses";
 
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -337,7 +343,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
             }}
           >
             <option value="">All Statuses</option>
-            {TRUCKING_STATUS_OPTIONS.map((status) => (
+            {[...TRUCKING_STATUS_OPTIONS, ...EXPORT_TRUCKING_STATUS_OPTIONS].map((status) => (
               <option key={status} value={status}>{status}</option>
             ))}
           </select>
@@ -461,11 +467,13 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
                           fontSize: "12px",
                           fontWeight: 600,
                           background: "#E8F5F3",
-                          color: TRUCKING_STATUS_COLORS[r.truckingStatus || "Awaiting Trucking"] || "#6B7A76",
+                          color: getTruckingStatusColors(r.linkedBookingType)[r.truckingStatus || "Awaiting Trucking"] || "#6B7A76",
                           border: "1px solid #C1D9CC",
                         }}
                       >
-                        {r.truckingStatus || "Awaiting Trucking"}
+                        {(DROP_CYCLE_STATUSES as readonly string[]).includes(r.truckingStatus || "")
+                          ? `${r.truckingStatus} - Drop ${r.currentDrop || 1} of ${r.deliveryDrops?.length || 1}`
+                          : r.truckingStatus || "Awaiting Trucking"}
                       </span>
                     </td>
                   </tr>
