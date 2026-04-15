@@ -17,6 +17,7 @@ import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, 
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { BookingInfoSubTabs } from "./shared/BookingInfoSubTabs";
+import { PodDropdown } from "../shared/PodDropdown";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import type { TagHistoryEntry, BookingSegment, BookingNumberEntry } from "../../types/operations";
 import type { ExportDocuments } from "../../types/export-documents";
@@ -430,25 +431,31 @@ export function ExportBookingDetails({
 
 
   const EXPORT_STATUS_TEXT_COLORS: Record<string, string> = {
-    "Draft": "#6B7280",
-    "For Approval": "#B45309",
-    "Approved": "#4285F4",
-    "In Transit": "#F25C05",
-    "Delivered": "#10B981",
-    "Completed": "#10B981",
-    "On Hold": "#B45309",
-    "Cancelled": "#EA4335",
+    "For Lodgement and Portal": "#6B7A76",
+    "Awaiting for Final": "#FBBC04",
+    "Final - For Arrastre Payment": "#B45309",
+    "Arrastre Paid": "#10B981",
+    "Sent Draft Documents for Approval": "#4285F4",
+    "Approved Documents": "#0F766E",
+    "Sent FSI and DG Declaration": "#9900FF",
+    "Draft BL Okay to Finalize": "#0E7490",
+    "Awaiting Billing and Signed BL": "#D97706",
+    "Request for Telex": "#2563EB",
+    "Form E Ongoing Process": "#16A34A",
   };
 
   const EXPORT_STATUS_OPTIONS = [
-    "Draft",
-    "For Approval",
-    "Approved",
-    "In Transit",
-    "Delivered",
-    "Completed",
-    "On Hold",
-    "Cancelled"
+    "For Lodgement and Portal",
+    "Awaiting for Final",
+    "Final - For Arrastre Payment",
+    "Arrastre Paid",
+    "Sent Draft Documents for Approval",
+    "Approved Documents",
+    "Sent FSI and DG Declaration",
+    "Draft BL Okay to Finalize",
+    "Awaiting Billing and Signed BL",
+    "Request for Telex",
+    "Form E Ongoing Process",
   ];
 
 
@@ -1442,6 +1449,120 @@ function EditableField({
   );
 }
 
+function PodEditableField({
+  label,
+  value,
+  required = false,
+  placeholder = "\u2014",
+  status,
+  isEditing = false,
+  editData = {},
+  setEditData,
+}: {
+  label: string;
+  value: string;
+  required?: boolean;
+  placeholder?: string;
+  status: ExecutionStatus | string;
+  isEditing?: boolean;
+  editData?: Partial<ExportBooking>;
+  setEditData?: (data: Partial<ExportBooking>) => void;
+}) {
+  const lockStatus = isFieldLocked("pod", status as ExecutionStatus);
+  const rawValue =
+    (editData as any).pod !== undefined ? String((editData as any).pod || "") : value;
+  const isEmpty = !rawValue || rawValue.trim() === "";
+
+  const handleChange = (newValue: string) => {
+    if (setEditData) setEditData({ pod: newValue } as any);
+  };
+
+  if (lockStatus.locked) {
+    return (
+      <div>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "13px",
+            fontWeight: 500,
+            color: "var(--neuron-ink-base)",
+            marginBottom: "8px",
+          }}
+        >
+          {label}
+          {required && <span style={{ color: "#EF4444" }}>*</span>}
+          <Lock size={12} color="#9CA3AF" title={lockStatus.reason} style={{ cursor: "help" }} />
+        </label>
+        <div
+          style={{
+            padding: "10px 14px",
+            backgroundColor: "#F9FAFB",
+            border: "1px solid #E5E9F0",
+            borderRadius: "6px",
+            fontSize: "14px",
+            color: "#6B7280",
+            cursor: "not-allowed",
+          }}
+        >
+          {rawValue || "\u2014"}
+        </div>
+      </div>
+    );
+  }
+
+  if (!isEditing) {
+    return (
+      <div>
+        <label
+          style={{
+            display: "block",
+            fontSize: "13px",
+            fontWeight: 500,
+            color: "var(--neuron-ink-base)",
+            marginBottom: "8px",
+          }}
+        >
+          {label} {required && <span style={{ color: "#EF4444" }}>*</span>}
+        </label>
+        <div
+          style={{
+            padding: "10px 14px",
+            backgroundColor: isEmpty ? "white" : "#F9FAFB",
+            border: isEmpty && required ? "2px dashed #FCD34D" : isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+            borderRadius: "6px",
+            fontSize: "14px",
+            color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+            minHeight: "42px",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          {isEmpty ? <span style={{ color: "#9CA3AF" }}>{placeholder}</span> : rawValue}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label
+        style={{
+          display: "block",
+          fontSize: "13px",
+          fontWeight: 500,
+          color: "var(--neuron-ink-base)",
+          marginBottom: "8px",
+        }}
+      >
+        {label} {required && <span style={{ color: "#EF4444" }}>*</span>}
+      </label>
+      <PodDropdown value={rawValue} onChange={handleChange} placeholder="Select POD" />
+    </div>
+  );
+}
+
 function ContainerListField({
   fieldName,
   label,
@@ -1943,6 +2064,7 @@ function computeVolumeSummary(containerNo: string, volume: string): string {
     containerCount = Math.max(containers.length, 1);
   }
   if (!volume) return "\u2014";
+  if (volume.trim() === "LCL") return "LCL";
   return `${containerCount}x${volume}`;
 }
 
@@ -2827,12 +2949,14 @@ function BookingInformationTab({
           />
           {isEditing ? (
             <div style={{ display: "flex", gap: "8px" }}>
-              <div style={{ flex: 1 }}>
-                {renderEditDropdown(
-                  "__containerSize" as any, "Size", [...CONTAINER_SIZE_OPTIONS],
-                  showContainerSizeDD, setShowContainerSizeDD
-                )}
-              </div>
+              {(mergedEditData as any).__containerType !== "LCL" && (
+                <div style={{ flex: 1 }}>
+                  {renderEditDropdown(
+                    "__containerSize" as any, "Size", [...CONTAINER_SIZE_OPTIONS],
+                    showContainerSizeDD, setShowContainerSizeDD
+                  )}
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 {renderEditDropdown(
                   "__containerType" as any, "Type", [...CONTAINER_TYPE_OPTIONS],
@@ -2901,8 +3025,7 @@ function BookingInformationTab({
             editData={mergedEditData}
             setEditData={mergedSetEditData}
           />
-          <EditableField
-            fieldName="pod"
+          <PodEditableField
             label="POD (Port of Destination)"
             value={(mergedBooking as any).pod || ""}
             status={mergedBooking.status as ExecutionStatus}
