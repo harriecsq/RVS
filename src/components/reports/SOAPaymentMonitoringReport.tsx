@@ -6,7 +6,7 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
-import { StandardSelect } from '../design-system';
+import { StandardSelect, StandardInput } from '../design-system';
 
 // --- Data Interfaces ---
 
@@ -242,6 +242,11 @@ export function SOAPaymentMonitoringReport() {
         const isImport = serviceType.toLowerCase().includes("import");
         const port = isImport ? (booking?.pod || "—") : (booking?.origin || "—");
 
+        // DEBUG: temporary logging to diagnose port filter
+        if (booking) {
+          console.log(`[SOA] billing=${billing.billingNumber} type=${serviceType} pod=${booking.pod} origin=${booking.origin} => port=${port}`);
+        }
+
         const soaNumber = billing.billingNumber || billing.soaNumber || "—";
         const soaAmount = Number(billing.totalAmount) || 0;
 
@@ -457,34 +462,12 @@ export function SOAPaymentMonitoringReport() {
           </div>
 
           {/* Search bar */}
-          <div style={{ position: "relative", marginBottom: "16px" }}>
-            <Search
-              size={18}
-              style={{
-                position: "absolute",
-                left: "12px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--neuron-ink-muted)"
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Search SOA number, client, commodity, container..."
+          <div style={{ marginBottom: "16px" }}>
+            <StandardInput
               value={filters.searchQuery}
-              onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
-              style={{
-                width: "100%",
-                height: "40px",
-                paddingLeft: "38px",
-                paddingRight: "12px",
-                fontSize: "14px",
-                color: "var(--neuron-ink-primary)",
-                backgroundColor: "var(--neuron-bg-page)",
-                border: "1px solid var(--neuron-ui-border)",
-                borderRadius: "8px",
-                outline: "none"
-              }}
+              onChange={(value) => setFilters({ ...filters, searchQuery: value })}
+              placeholder="Search SOA number, client, commodity, container..."
+              icon={<Search size={18} />}
             />
           </div>
 
@@ -521,16 +504,12 @@ export function SOAPaymentMonitoringReport() {
             />
 
             {/* Client */}
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Client</label>
-              <input
-                type="text"
-                placeholder="Filter by client..."
-                value={filters.client}
-                onChange={(e) => setFilters({ ...filters, client: e.target.value })}
-                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none" }}
-              />
-            </div>
+            <StandardInput
+              label="Client"
+              value={filters.client}
+              onChange={(value) => setFilters({ ...filters, client: value })}
+              placeholder="Filter by client..."
+            />
           </div>
         </div>
 
