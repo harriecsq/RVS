@@ -21,6 +21,7 @@ import { ExpenseSummaryReport } from "./components/reports/ExpenseSummaryReport"
 import { InDepthProfitLossReport } from "./components/reports/InDepthProfitLossReport";
 import { ProfitLossPeriodReport } from "./components/reports/ProfitLossPeriodReport";
 import { VatReturnsReport } from "./components/reports/VatReturnsReport";
+import { SOAPaymentMonitoringReport } from "./components/reports/SOAPaymentMonitoringReport";
 import { ActivityLogPage } from "./components/ActivityLogPage";
 import { EmployeeProfile } from "./components/EmployeeProfile";
 import { CreateBooking } from "./components/CreateBooking";
@@ -29,7 +30,6 @@ import { ImportBookings } from "./components/operations/ImportBookings";
 import { projectId, publicAnonKey } from './utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
 import { ExportBookings } from "./components/operations/ExportBookings";
-import { Bookings } from "./components/Bookings";
 import { TruckingModule } from "./components/operations/TruckingModule";
 
 // App entry point
@@ -227,12 +227,11 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
   const getCurrentPage = (): Page => {
     const path = location.pathname;
     if (path === "/" || path === "/dashboard") return "dashboard";
-    if (path.startsWith("/operations/requests")) return "ops-requests";
-    if (path.startsWith("/operations/clients")) return "ops-clients";
-    if (path.startsWith("/operations/export")) return "ops-export";
-    if (path.startsWith("/operations/import")) return "ops-import";
-    if (path.startsWith("/operations/trucking")) return "ops-trucking";
-    if (path.startsWith("/operations")) return "operations";
+    if (path.startsWith("/export/trucking")) return "export-trucking";
+    if (path.startsWith("/export")) return "export-bookings";
+    if (path.startsWith("/import/trucking")) return "import-trucking";
+    if (path.startsWith("/import")) return "import-bookings";
+    if (path.startsWith("/clients")) return "clients";
     if (path.startsWith("/reports")) return "reports";
     if (path.startsWith("/accounting/vouchers")) return "acct-vouchers";
     if (path.startsWith("/accounting/billings")) return "acct-billings";
@@ -250,13 +249,12 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
   const handleNavigate = (page: Page) => {
     const routeMap: Record<Page, string> = {
       "dashboard": "/dashboard",
-      "operations": "/operations",
+      "export-bookings": "/export/bookings",
+      "export-trucking": "/export/trucking",
+      "import-bookings": "/import/bookings",
+      "import-trucking": "/import/trucking",
+      "clients": "/clients",
       "reports": "/reports",
-      "ops-requests": "/operations/requests",
-      "ops-clients": "/operations/clients",
-      "ops-export": "/operations/export",
-      "ops-import": "/operations/import",
-      "ops-trucking": "/operations/trucking",
       "acct-vouchers": "/accounting/vouchers",
       "acct-billings": "/accounting/billings",
       "acct-collections": "/accounting/collections",
@@ -340,41 +338,56 @@ function VatReturnsReportPage() {
   );
 }
 
-// Operations Routes
-function OperationsPage() {
-  const { user } = useUser();
-  
+function SOAPaymentMonitoringReportPage() {
   return (
-    <RouteWrapper page="operations">
-      <Bookings />
+    <RouteWrapper page="reports">
+      <SOAPaymentMonitoringReport />
     </RouteWrapper>
   );
 }
 
-function OperationsClientsPage() {
-  const { user } = useUser();
-  
-  return (
-    <RouteWrapper page="ops-clients">
-      <ClientsModule 
-        currentUser={user || undefined}
-      />
-    </RouteWrapper>
-  );
-}
-
+// Export Routes
 function ExportBookingsPage() {
   return (
-    <RouteWrapper page="ops-export">
+    <RouteWrapper page="export-bookings">
       <ExportBookings />
     </RouteWrapper>
   );
 }
 
+function ExportTruckingPage() {
+  const { user } = useUser();
+  return (
+    <RouteWrapper page="export-trucking">
+      <TruckingModule currentUser={user} bookingType="export" />
+    </RouteWrapper>
+  );
+}
+
+// Import Routes
 function ImportBookingsPage() {
   return (
-    <RouteWrapper page="ops-import">
+    <RouteWrapper page="import-bookings">
       <ImportBookings />
+    </RouteWrapper>
+  );
+}
+
+function ImportTruckingPage() {
+  const { user } = useUser();
+  return (
+    <RouteWrapper page="import-trucking">
+      <TruckingModule currentUser={user} bookingType="import" />
+    </RouteWrapper>
+  );
+}
+
+// Clients Route
+function ClientsPage() {
+  const { user } = useUser();
+  return (
+    <RouteWrapper page="clients">
+      <ClientsModule currentUser={user || undefined} />
     </RouteWrapper>
   );
 }
@@ -382,9 +395,9 @@ function ImportBookingsPage() {
 function CreateBookingPage() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const handleBookingBack = () => {
-    navigate('/operations');
+    navigate('/import/bookings');
   };
   
   const handleBookingSubmit = async (bookingData: any) => {
@@ -416,7 +429,7 @@ function CreateBookingPage() {
         toast.success("Booking created successfully!", {
           description: `Booking Ref: ${result.data.id}`
         });
-        navigate('/operations');
+        navigate('/import/bookings');
       } else {
         throw new Error(result.error || "Unknown error occurred");
       }
@@ -431,7 +444,7 @@ function CreateBookingPage() {
   };
   
   return (
-    <RouteWrapper page="operations">
+    <RouteWrapper page="import-bookings">
       <CreateBooking onBack={handleBookingBack} onSubmit={handleBookingSubmit} />
     </RouteWrapper>
   );
@@ -446,13 +459,13 @@ function BookingDetailPage() {
   
   if (!booking) {
     return (
-      <RouteWrapper page="operations">
+      <RouteWrapper page="import-bookings">
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB' }}>
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ color: '#0A1D4D', marginBottom: '8px' }}>Booking Not Found</h2>
             <p style={{ color: '#667085' }}>Booking ID: {bookingId}</p>
-            <button 
-              onClick={() => navigate('/operations')}
+            <button
+              onClick={() => navigate('/import/bookings')}
               style={{
                 marginTop: '16px',
                 padding: '8px 16px',
@@ -463,26 +476,17 @@ function BookingDetailPage() {
                 cursor: 'pointer'
               }}
             >
-              Back to Operations
+              Back to Bookings
             </button>
           </div>
         </div>
       </RouteWrapper>
     );
   }
-  
-  return (
-    <RouteWrapper page="operations">
-      <BookingFullView booking={booking} onBack={() => navigate('/operations')} />
-    </RouteWrapper>
-  );
-}
 
-function TruckingModulePage() {
-  const { user } = useUser();
   return (
-    <RouteWrapper page="ops-trucking">
-      <TruckingModule currentUser={user} />
+    <RouteWrapper page="import-bookings">
+      <BookingFullView booking={booking} onBack={() => navigate('/import/bookings')} />
     </RouteWrapper>
   );
 }
@@ -665,17 +669,21 @@ function AppContent() {
         <Route path="/reports/profit-loss" element={<InDepthProfitLossReportPage />} />
         <Route path="/reports/profit-loss-period" element={<ProfitLossPeriodReportPage />} />
         <Route path="/reports/vat-returns" element={<VatReturnsReportPage />} />
+        <Route path="/reports/soa-payment-monitoring" element={<SOAPaymentMonitoringReportPage />} />
 
-        
-        {/* Operations */}
-        <Route path="/operations" element={<OperationsPage />} />
-        <Route path="/operations/create" element={<CreateBookingPage />} />
-        <Route path="/operations/:bookingId" element={<BookingDetailPage />} />
-        <Route path="/operations/clients" element={<OperationsClientsPage />} />
-        <Route path="/operations/export" element={<ExportBookingsPage />} />
-        <Route path="/operations/import" element={<ImportBookingsPage />} />
-        <Route path="/operations/trucking" element={<TruckingModulePage />} />
-        {/* <Route path="/operations/reports" element={<RouteWrapper page="ops-reports"><OperationsReports /></RouteWrapper>} /> */}
+
+        {/* Export */}
+        <Route path="/export/bookings" element={<ExportBookingsPage />} />
+        <Route path="/export/trucking" element={<ExportTruckingPage />} />
+
+        {/* Import */}
+        <Route path="/import/bookings" element={<ImportBookingsPage />} />
+        <Route path="/import/trucking" element={<ImportTruckingPage />} />
+        <Route path="/import/create" element={<CreateBookingPage />} />
+        <Route path="/import/:bookingId" element={<BookingDetailPage />} />
+
+        {/* Clients */}
+        <Route path="/clients" element={<ClientsPage />} />
         
         {/* Accounting */}
         <Route path="/accounting/vouchers" element={<AccountingVouchersPage />} />

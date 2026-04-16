@@ -47,6 +47,12 @@ const accountingReports: ReportItem[] = [
     name: "Profit/Loss per Period",
     description: "Analyze total revenue, costs, and profit across a selected date range.",
     path: "/reports/profit-loss-period"
+  },
+  {
+    id: "soa-payment-monitoring",
+    name: "SOA Payment Monitoring",
+    description: "Track billing payments, check details, and collection status.",
+    path: "/reports/soa-payment-monitoring"
   }
 ];
 
