@@ -6,6 +6,7 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { StandardSelect } from '../design-system';
 
 // --- Data Interfaces ---
 
@@ -283,7 +284,7 @@ export function SOAPaymentMonitoringReport() {
         };
       });
 
-      rows.sort((a, b) => new Date(b.billingDate).getTime() - new Date(a.billingDate).getTime());
+      rows.sort((a, b) => new Date(a.billingDate).getTime() - new Date(b.billingDate).getTime());
 
       setData(rows);
     } catch (error) {
@@ -310,7 +311,7 @@ export function SOAPaymentMonitoringReport() {
       if (!item.serviceType.toLowerCase().includes(filters.serviceType.toLowerCase())) return false;
     }
 
-    if (filters.serviceType !== "All" && filters.port !== "All") {
+    if (filters.port !== "All") {
       if (!item.port.toLowerCase().includes(filters.port.toLowerCase())) return false;
     }
 
@@ -499,41 +500,24 @@ export function SOAPaymentMonitoringReport() {
             </div>
 
             {/* Service Type */}
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Service Type</label>
-              <select
-                value={filters.serviceType}
-                onChange={(e) => setFilters({ ...filters, serviceType: e.target.value, port: "All" })}
-                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", cursor: "pointer" }}
-              >
-                <option value="All">All Types</option>
-                <option value="Import">Import</option>
-                <option value="Export">Export</option>
-              </select>
-            </div>
+            <StandardSelect
+              label="Service Type"
+              value={filters.serviceType}
+              onChange={(value) => setFilters({ ...filters, serviceType: value, port: "All" })}
+              options={[
+                { value: "All", label: "All Types" },
+                { value: "Import", label: "Import" },
+                { value: "Export", label: "Export" }
+              ]}
+            />
 
             {/* Port */}
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Port</label>
-              <select
-                value={filters.port}
-                onChange={(e) => setFilters({ ...filters, port: e.target.value })}
-                disabled={filters.serviceType === "All"}
-                style={{
-                  width: "100%", height: "40px", padding: "0 12px", fontSize: "14px",
-                  color: filters.serviceType === "All" ? "var(--neuron-ink-muted)" : "var(--neuron-ink-primary)",
-                  backgroundColor: "var(--neuron-bg-page)",
-                  border: "1px solid var(--neuron-ui-border)",
-                  borderRadius: "8px", outline: "none",
-                  cursor: filters.serviceType === "All" ? "not-allowed" : "pointer",
-                  opacity: filters.serviceType === "All" ? 0.6 : 1
-                }}
-              >
-                {PORT_OPTIONS.map(p => (
-                  <option key={p} value={p}>{p === "All" ? "All Ports" : p}</option>
-                ))}
-              </select>
-            </div>
+            <StandardSelect
+              label="Port"
+              value={filters.port}
+              onChange={(value) => setFilters({ ...filters, port: value })}
+              options={PORT_OPTIONS.map(p => ({ value: p, label: p === "All" ? "All Ports" : p }))}
+            />
 
             {/* Client */}
             <div>
