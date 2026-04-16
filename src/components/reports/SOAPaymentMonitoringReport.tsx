@@ -210,8 +210,15 @@ export function SOAPaymentMonitoringReport() {
 
       // --- Assemble rows: one per billing ---
       const rows: SOAPaymentRow[] = billings.map(billing => {
-        const booking = bookingMap.get(billing.bookingId || "") ||
-                        bookingMap.get(billing.bookingNumber || "");
+        let booking = bookingMap.get(billing.bookingId || "") ||
+                      bookingMap.get(billing.bookingNumber || "");
+        // Also check bookingIds array
+        if (!booking && billing.bookingIds && Array.isArray(billing.bookingIds)) {
+          for (const bid of billing.bookingIds) {
+            booking = bookingMap.get(bid);
+            if (booking) break;
+          }
+        }
 
         const clientName = billing.clientName ||
           (booking ? (booking.customerName || booking.clientName || booking.client || booking.shipper) : null) ||
