@@ -24,6 +24,7 @@ interface Booking {
   containers?: any[];
   mode?: string;
   shipmentType?: string;
+  booking_type?: string; // Server always injects "Import" or "Export"
   origin?: string; // POL for export
   pod?: string;    // POD for import
 }
@@ -237,7 +238,7 @@ export function SOAPaymentMonitoringReport() {
           }
         }
 
-        const serviceType = booking?.mode || booking?.shipmentType || "Import";
+        const serviceType = booking?.shipmentType || booking?.booking_type || booking?.mode || "Import";
         const isImport = serviceType.toLowerCase().includes("import");
         const port = isImport ? (booking?.pod || "—") : (booking?.origin || "—");
 
