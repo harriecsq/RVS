@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
 import { NeuronStatusPill } from "../NeuronStatusPill";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 
 interface StatusEditDropdownProps {
   currentStatus: string;
@@ -18,6 +20,8 @@ export function StatusEditDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, isOpen);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -52,6 +56,7 @@ export function StatusEditDropdown({
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
       <button
+        ref={triggerRef}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled || isUpdating}
         style={{
@@ -78,21 +83,24 @@ export function StatusEditDropdown({
         )}
       </button>
 
-      {isOpen && !disabled && (
+      {isOpen && !disabled && createPortal(
         <div
+          ref={dropdownRef}
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
+            position: "fixed",
+            top: dropdownPos.top,
+            bottom: dropdownPos.bottom,
+            left: dropdownPos.left - 200 + dropdownPos.width,
             background: "#FFFFFF",
             border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            zIndex: 1000,
+            zIndex: 9999,
             minWidth: "200px",
-            maxHeight: "300px",
+            maxHeight: dropdownPos.maxHeight,
             overflowY: "auto",
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {availableStatuses.map((status) => (
             <button
@@ -127,7 +135,8 @@ export function StatusEditDropdown({
               )}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

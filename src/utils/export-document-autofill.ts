@@ -1,4 +1,6 @@
 import type { SalesContract, CommercialInvoice, PackingList, PackingListContainer, Declaration, DeclarationContainer } from "../types/export-documents";
+import type { TemplateDocType } from "../types/document-templates";
+import { BOOKING_SPECIFIC_FIELDS } from "../constants/template-excluded-fields";
 
 // Minimal booking shape needed for auto-fill (avoids circular import of ExportBooking)
 interface BookingForAutoFill {
@@ -123,6 +125,26 @@ export function buildPackingListDefaults(
     commodity: booking.commodity || "",
     containers,
   };
+}
+
+/**
+ * Merge template fields on top of auto-fill defaults.
+ * Template values override auto-fill, but booking-specific fields are stripped
+ * from the template to ensure they always come from the actual booking.
+ */
+export function applyTemplate<T extends Record<string, any>>(
+  autoFillDefaults: Partial<T>,
+  templateFields: Record<string, any>,
+  docType: TemplateDocType,
+): Partial<T> {
+  const excluded = new Set(BOOKING_SPECIFIC_FIELDS[docType]);
+  const safeTemplateFields: Record<string, any> = {};
+  for (const [key, value] of Object.entries(templateFields)) {
+    if (!excluded.has(key)) {
+      safeTemplateFields[key] = value;
+    }
+  }
+  return { ...autoFillDefaults, ...safeTemplateFields } as Partial<T>;
 }
 
 /** Build default Declaration fields from Sales Contract + booking. */

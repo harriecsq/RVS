@@ -16,6 +16,7 @@ interface Voucher {
   expenseNumber?: string;
   payee?: string;
   voucherDate: string;
+  postingDate?: string;
   status: string;
   created_at?: string;
 }
@@ -54,7 +55,9 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
 
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
-        setVouchers(result.data);
+        const data = result.data;
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setVouchers(data);
       } else {
         setVouchers([]);
       }
@@ -197,7 +200,8 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                 <thead>
                   <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Voucher Number</th>
-                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Creation Date</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Posting Date</th>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payee</th>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Linked Expense</th>
                     <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
@@ -225,6 +229,11 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                       <td style={{ padding: "16px 24px" }}>
                         <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {formatDate(voucher.voucherDate || voucher.created_at || "")}
+                        </div>
+                      </td>
+                      <td style={{ padding: "16px 24px" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                          {voucher.postingDate ? formatDate(voucher.postingDate) : "\u2014"}
                         </div>
                       </td>
                       <td style={{ padding: "16px 24px" }}>

@@ -14,6 +14,9 @@ interface Expense {
   id: string;
   expenseNumber: string;
   date: string;
+  voucherDate?: string;
+  postingDate?: string;
+  created_at?: string;
   category: string;
   amount: number;
   particulars?: string;
@@ -261,8 +264,8 @@ export function ExpenseSummaryReport() {
 
     data.forEach(item => {
       // Safety check for date
-      // Vouchers might use "voucherDate" (MM/DD/YYYY) or "created_at"
-      const dateStr = item.voucherDate || item.date || item.created_at;
+      // Prefer postingDate (accounting month basis); fall back to voucherDate/created_at for legacy data
+      const dateStr = item.postingDate || item.voucherDate || item.date || item.created_at;
       let itemDate = "";
       
       try {

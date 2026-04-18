@@ -95,7 +95,10 @@
       "Bash(mkdir -p supabase/functions/server)",
       "Bash(cp src/supabase/functions/server/*.tsx supabase/functions/server/)",
       "Bash(npx -p typescript tsc --noEmit --project tsconfig.json)",
-      "Bash(curl -s http://localhost:3000/)"
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(dora status *)",
+      "Bash(ls node_modules/typescript/bin)",
+      "Bash(ls tsconfig.json)"
     ]
   }
 }

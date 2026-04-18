@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight, Plus, X, Trash2, FileText, Receipt, Save, Pencil, Link2, Paperclip } from "lucide-react";
+import { PortalDropdown } from "../shared/PortalDropdown";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { VouchersTab } from "./VouchersTab";
@@ -1648,19 +1649,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                       Add Item
                       <ChevronDown size={12} />
                     </button>
-                    {showExportAddItemDropdown === categoryName && (
-                      <div style={{
-                        position: "absolute",
-                        top: "calc(100% + 4px)",
-                        right: 0,
-                        background: "white",
-                        border: "1px solid #E5E9F0",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                        zIndex: 50,
-                        minWidth: "220px",
-                        overflow: "hidden"
-                      }}>
+                    <PortalDropdown
+                      isOpen={showExportAddItemDropdown === categoryName}
+                      onClose={() => setShowExportAddItemDropdown(null)}
+                      triggerRef={exportAddItemRef}
+                      minWidth="220px"
+                    >
                         {availableSuggestions.length > 0 && (
                           <>
                             <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
@@ -1718,8 +1712,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                           <Plus size={14} color="#0F766E" />
                           Add Custom Item
                         </button>
-                      </div>
-                    )}
+                    </PortalDropdown>
                   </div>
                 );
               }
@@ -2905,19 +2898,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                             Add Category
                             <ChevronDown size={14} style={{ marginLeft: "2px" }} />
                           </button>
-                          {showAddCategoryDropdown && (
-                            <div style={{
-                              position: "absolute",
-                              top: "calc(100% + 4px)",
-                              right: 0,
-                              background: "white",
-                              border: "1px solid #E5E9F0",
-                              borderRadius: "8px",
-                              boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                              zIndex: 50,
-                              minWidth: "260px",
-                              overflow: "hidden"
-                            }}>
+                          <PortalDropdown
+                            isOpen={showAddCategoryDropdown}
+                            onClose={() => setShowAddCategoryDropdown(false)}
+                            triggerRef={addCategoryDropdownRef}
+                            minWidth="260px"
+                          >
                               <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
                                 Removed Categories
                               </div>
@@ -2950,8 +2936,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                   {formatCategoryName(categoryName)}
                                 </button>
                               ))}
-                            </div>
-                          )}
+                          </PortalDropdown>
                         </div>
                       )}
                   {!isEditing && expense.documentTemplate !== "IMPORT" && (
@@ -3324,19 +3309,23 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           )}
 
           {/* Refundable Deposits — separate standalone section below (Import only) */}
-          {expense.documentTemplate === "IMPORT" &&
-            ((displayedExpense.charges && displayedExpense.charges.length > 0) || isEditing) &&
-            filteredChargesByCategory["Refundable Deposits"] && filteredChargesByCategory["Refundable Deposits"].filter(item => parseFloat(String(item.amount)) !== 0).length > 0 && (
-            <div style={{
-              background: "white",
-              borderRadius: "8px",
-              border: "1px solid #E5E9F0",
-              overflow: "hidden",
-              marginBottom: "24px"
-            }}>
-              {renderCategoryTable("Refundable Deposits", filteredChargesByCategory["Refundable Deposits"].filter(item => parseFloat(String(item.amount)) !== 0))}
-            </div>
-          )}
+          {expense.documentTemplate === "IMPORT" && (() => {
+            const allDeposits = filteredChargesByCategory["Refundable Deposits"] || [];
+            const nonZeroDeposits = allDeposits.filter(item => parseFloat(String(item.amount)) !== 0);
+            if (!isEditing && nonZeroDeposits.length === 0) return null;
+            const itemsToRender = isEditing ? allDeposits : nonZeroDeposits;
+            return (
+              <div style={{
+                background: "white",
+                borderRadius: "8px",
+                border: "1px solid #E5E9F0",
+                overflow: "hidden",
+                marginBottom: "24px"
+              }}>
+                {renderCategoryTable("Refundable Deposits", itemsToRender)}
+              </div>
+            );
+          })()}
 
             {/* Notes Section */}
             <NotesSection

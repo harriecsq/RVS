@@ -1,11 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { FileText, Plus, Edit3, Save, X, ChevronDown, Check } from "lucide-react";
+import { useDropdownPosition } from "../../../hooks/useDropdownPortal";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
-import { buildSalesContractDefaults } from "../../../utils/export-document-autofill";
+import { buildSalesContractDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { SalesContract } from "../../../types/export-documents";
+import { TemplatePickerView } from "./TemplatePickerView";
+import { useDocTemplates } from "../../../hooks/useDocTemplates";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -18,6 +22,8 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", handler);
@@ -25,7 +31,7 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
   }, []);
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <div onClick={() => setOpen(!open)} style={{
+      <div ref={triggerRef} onClick={() => setOpen(!open)} style={{
         width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
         border: "1px solid #0F766E", fontSize: "14px", display: "flex",
         alignItems: "center", justifyContent: "space-between", cursor: "pointer",
@@ -34,12 +40,14 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
           background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
-        }}>
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        >
           {options.map((opt) => (
             <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
               style={{
@@ -54,7 +62,8 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
               {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -153,20 +162,36 @@ function EmptyDocumentState({ onCreateClick }: { onCreateClick: () => void }) {
 
 // ── Main component ───────────────────────────────────────────────────
 
+export interface DocumentEditState {
+  isEditing: boolean;
+  isSaving: boolean;
+  refNo: string;
+  handleEdit: () => void;
+  handleCancel: () => void;
+  handleSave: () => void;
+}
+
 interface SalesContractTabProps {
   bookingId: string;
   booking: any;
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
+  onEditStateChange?: (state: DocumentEditState) => void;
 }
 
-export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUpdated }: SalesContractTabProps) {
+export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: SalesContractTabProps) {
   const [doc, setDoc] = useState<SalesContract | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<SalesContract>>({});
+  const editDataRef = useRef(editData);
+  editDataRef.current = editData;
+
+  // Template state (prefetched on mount)
+  const { templates, fetchTemplateFields } = useDocTemplates("salesContract", booking?.clientId);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
@@ -222,9 +247,13 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     return `${refCompanyCode} ${refYear}-${num}`;
   };
 
-  const handleCreate = async () => {
+  const handleCreateClick = () => {
+    setShowTemplatePicker(true);
+  };
+
+  const proceedWithCreate = async (templateFields: Record<string, any> | null) => {
     const defaults = buildSalesContractDefaults(booking);
-    setEditData({
+    let merged: Partial<SalesContract> = {
       ...defaults,
       refNo: buildRefNo(),
       date: new Date().toISOString().split("T")[0],
@@ -235,9 +264,28 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
       portOfLoading: defaults.portOfLoading || "", portOfDestination: defaults.portOfDestination || "",
       vesselVoyage: defaults.vesselVoyage || "", termsOfPayment: "", shipmentDate: defaults.shipmentDate || "",
       bankName: "", swiftCode: "", accountNo: "", accountName: "", bankAddress: "",
-    });
+    };
+
+    if (templateFields) {
+      merged = applyTemplate(merged, templateFields, "salesContract");
+      // Re-apply booking-specific fields that must always come from the booking
+      merged.refNo = buildRefNo();
+      merged.date = new Date().toISOString().split("T")[0];
+      merged.vesselVoyage = defaults.vesselVoyage || "";
+      merged.shipmentDate = defaults.shipmentDate || "";
+      merged.marksAndNos = defaults.marksAndNos || "";
+    }
+
+    setEditData(merged);
     setIsCreating(true);
     setIsEditing(true);
+  };
+
+  const handleTemplateSelect = async (templateId: string | null) => {
+    setShowTemplatePicker(false);
+    if (!templateId) { proceedWithCreate(null); return; }
+    const fields = await fetchTemplateFields(templateId);
+    proceedWithCreate(fields);
   };
 
   const handleEdit = () => {
@@ -260,11 +308,11 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     setEditData({});
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const id = encodeURIComponent(bookingId);
-      const payload = { ...editData, refNo: buildRefNo(), createdBy: currentUser?.name || "Unknown" };
+      const payload = { ...editDataRef.current, refNo: buildRefNo(), createdBy: currentUser?.name || "Unknown" };
       const res = await fetch(`${API_BASE_URL}/export-bookings/${id}/documents/sales-contract`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
@@ -287,7 +335,16 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [bookingId, currentUser?.name]);
+
+  // Report edit state to parent (for panel header controls)
+  useEffect(() => {
+    onEditStateChange?.({
+      isEditing, isSaving,
+      refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
+      handleEdit, handleCancel, handleSave,
+    });
+  }, [isEditing, isSaving, doc?.refNo]);
 
   const field = (key: keyof SalesContract) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -302,34 +359,21 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
   }
 
   if (!doc && !isEditing) {
-    return <EmptyDocumentState onCreateClick={handleCreate} />;
+    if (showTemplatePicker) {
+      return (
+        <TemplatePickerView
+          onSelect={handleTemplateSelect}
+          onCancel={() => setShowTemplatePicker(false)}
+          templates={templates}
+          docType="salesContract"
+        />
+      );
+    }
+    return <EmptyDocumentState onCreateClick={handleCreateClick} />;
   }
 
   return (
     <div style={{ padding: "32px 48px", overflow: "auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-          Sales Contract {(doc?.refNo || (isEditing && buildRefNo())) && <span style={{ color: "#667085", fontWeight: 400 }}>— {isEditing ? buildRefNo() : doc?.refNo}</span>}
-        </h2>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {isEditing ? (
-            <>
-              <button onClick={handleCancel} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "1px solid #D1D5DB", borderRadius: "8px", background: "white", color: "#374151", cursor: "pointer" }}>
-                <X size={14} /> Cancel
-              </button>
-              <button onClick={handleSave} disabled={isSaving} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "white", cursor: "pointer", opacity: isSaving ? 0.6 : 1 }}>
-                <Save size={14} /> {isSaving ? "Saving..." : "Save"}
-              </button>
-            </>
-          ) : (
-            <button onClick={handleEdit} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "1px solid #D1D5DB", borderRadius: "8px", background: "white", color: "#374151", cursor: "pointer" }}>
-              <Edit3 size={14} /> Edit
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Ref No. + Date */}
       <SectionCard title="Document Details">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
@@ -469,9 +513,9 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
               setField("quantity", v);
               const total = (parseFloat(v) || 0) * (parseFloat(field("unitPrice")) || 0);
               setField("totalAmount", total ? total.toFixed(2) : "");
-            }} suffix="KGS" />
+            }} suffix="MT" />
           ) : (
-            <FieldView label="Quantity" value={field("quantity")} suffix="KGS" />
+            <FieldView label="Quantity" value={field("quantity")} suffix="MT" />
           )}
           {isEditing ? (
             <FieldInput label="Unit Price" value={field("unitPrice")} onChange={(v) => {

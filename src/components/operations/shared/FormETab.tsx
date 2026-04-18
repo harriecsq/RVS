@@ -1,10 +1,14 @@
-import { useState, useEffect } from "react";
-import { FileText, Plus, Edit3, Save, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { FileText, Plus } from "lucide-react";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
+import { applyTemplate } from "../../../utils/export-document-autofill";
 import type { FormE } from "../../../types/export-documents";
+import { TemplatePickerView } from "./TemplatePickerView";
+import { TemplatableFieldOverlay } from "./TemplatableFieldOverlay";
+import { useDocTemplates } from "../../../hooks/useDocTemplates";
 
 // ── Shared helpers (same pattern as DeclarationTab) ─────────────────
 
@@ -142,15 +146,22 @@ interface FormETabProps {
   booking: any;
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
+  onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
+  onTemplateSaveConfig?: (config: any) => void;
 }
 
-export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }: FormETabProps) {
+export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, onTemplateSaveConfig }: FormETabProps) {
   const [doc, setDoc] = useState<FormE | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<FormE>>({});
+  const editDataRef = useRef(editData);
+  editDataRef.current = editData;
+  const { templates, fetchTemplateFields } = useDocTemplates("formE", booking?.clientId);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
 
   const fetchDocuments = async () => {
     try {
@@ -171,10 +182,23 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
 
   useEffect(() => { fetchDocuments(); }, [bookingId]);
 
-  const handleCreate = () => {
-    setEditData({ ...emptyFormE });
+  const handleCreateClick = () => {
+    setShowTemplatePicker(true);
+  };
+
+  const proceedWithCreate = (templateFields: Record<string, any> | null) => {
+    let merged: Partial<FormE> = { ...emptyFormE };
+    if (templateFields) { merged = applyTemplate(merged, templateFields, "formE"); }
+    setEditData(merged);
     setIsCreating(true);
     setIsEditing(true);
+  };
+
+  const handleTemplateSelect = async (templateId: string | null) => {
+    setShowTemplatePicker(false);
+    if (!templateId) { proceedWithCreate(null); return; }
+    const fields = await fetchTemplateFields(templateId);
+    proceedWithCreate(fields);
   };
 
   const handleEdit = () => {
@@ -190,11 +214,11 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
     setEditData({});
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const id = encodeURIComponent(bookingId);
-      const payload = { ...editData, createdBy: currentUser?.name || "Unknown" };
+      const payload = { ...editDataRef.current, createdBy: currentUser?.name || "Unknown" };
       const res = await fetch(`${API_BASE_URL}/export-bookings/${id}/documents/form-e`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
@@ -217,7 +241,29 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [bookingId, currentUser?.name]);
+
+  useEffect(() => {
+    onEditStateChange?.({
+      isEditing, isSaving,
+      refNo: "",
+      handleEdit, handleCancel, handleSave,
+    });
+  }, [isEditing, isSaving]);
+
+  useEffect(() => {
+    if (doc && !isEditing) {
+      onTemplateSaveConfig?.({
+        docType: "formE",
+        docData: doc as any || {},
+        clientId: booking?.clientId,
+        clientName: booking?.customerName || booking?.clientName,
+        currentUser,
+      });
+    } else {
+      onTemplateSaveConfig?.(null);
+    }
+  }, [doc, isEditing]);
 
   const field = (key: keyof FormE) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -233,13 +279,16 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
 
   // Empty state — no Form E yet
   if (!doc && !isEditing) {
+    if (showTemplatePicker) {
+      return <TemplatePickerView onSelect={handleTemplateSelect} onCancel={() => setShowTemplatePicker(false)} templates={templates} docType="formE" />;
+    }
     return (
       <div style={{ padding: "32px 48px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
           <FileText size={44} style={{ color: "#D1D5DB", marginBottom: "14px" }} />
           <p style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>No Form E record</p>
           <p style={{ fontSize: "13px", color: "#667085", margin: "0 0 16px" }}>Create a Form E certificate of origin for this booking.</p>
-          <button onClick={handleCreate} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "#FFFFFF", cursor: "pointer" }}>
+          <button onClick={handleCreateClick} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "#FFFFFF", cursor: "pointer" }}>
             <Plus size={15} /> Create Form E
           </button>
         </div>
@@ -249,51 +298,30 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
 
   return (
     <div style={{ padding: "32px 48px", overflow: "auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>Form E</h2>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {isEditing ? (
-            <>
-              <button onClick={handleCancel} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "1px solid #D1D5DB", borderRadius: "8px", background: "white", color: "#374151", cursor: "pointer" }}>
-                <X size={14} /> Cancel
-              </button>
-              <button onClick={handleSave} disabled={isSaving} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "white", cursor: "pointer", opacity: isSaving ? 0.6 : 1 }}>
-                <Save size={14} /> {isSaving ? "Saving..." : "Save"}
-              </button>
-            </>
-          ) : (
-            <button onClick={handleEdit} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "1px solid #D1D5DB", borderRadius: "8px", background: "white", color: "#374151", cursor: "pointer" }}>
-              <Edit3 size={14} /> Edit
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Exporter */}
       <SectionCard title="Exporter">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {isEditing ? (
             <FieldInput label="Exporter" value={field("exporterName")} onChange={(v) => setField("exporterName", v)} placeholder="Exporter name" />
           ) : (
-            <FieldView label="Exporter" value={field("exporterName")} />
+            <TemplatableFieldOverlay fieldKey="exporterName"><FieldView label="Exporter" value={field("exporterName")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Address" value={field("exporterAddress")} onChange={(v) => setField("exporterAddress", v)} placeholder="Exporter address" />
           ) : (
-            <FieldView label="Address" value={field("exporterAddress")} />
+            <TemplatableFieldOverlay fieldKey="exporterAddress"><FieldView label="Address" value={field("exporterAddress")} /></TemplatableFieldOverlay>
           )}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {isEditing ? (
             <FieldInput label="Contact Number" value={field("exporterContactNumber")} onChange={(v) => setField("exporterContactNumber", v)} placeholder="Contact number" />
           ) : (
-            <FieldView label="Contact Number" value={field("exporterContactNumber")} />
+            <TemplatableFieldOverlay fieldKey="exporterContactNumber"><FieldView label="Contact Number" value={field("exporterContactNumber")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Email" value={field("exporterEmail")} onChange={(v) => setField("exporterEmail", v)} placeholder="Email address" />
           ) : (
-            <FieldView label="Email" value={field("exporterEmail")} />
+            <TemplatableFieldOverlay fieldKey="exporterEmail"><FieldView label="Email" value={field("exporterEmail")} /></TemplatableFieldOverlay>
           )}
         </div>
       </SectionCard>
@@ -304,31 +332,31 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
           {isEditing ? (
             <FieldInput label="Consignee" value={field("consigneeName")} onChange={(v) => setField("consigneeName", v)} placeholder="Consignee name" />
           ) : (
-            <FieldView label="Consignee" value={field("consigneeName")} />
+            <TemplatableFieldOverlay fieldKey="consigneeName"><FieldView label="Consignee" value={field("consigneeName")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Address" value={field("consigneeAddress")} onChange={(v) => setField("consigneeAddress", v)} placeholder="Consignee address" />
           ) : (
-            <FieldView label="Address" value={field("consigneeAddress")} />
+            <TemplatableFieldOverlay fieldKey="consigneeAddress"><FieldView label="Address" value={field("consigneeAddress")} /></TemplatableFieldOverlay>
           )}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {isEditing ? (
             <FieldInput label="Contact Number" value={field("consigneeContactNumber")} onChange={(v) => setField("consigneeContactNumber", v)} placeholder="Contact number" />
           ) : (
-            <FieldView label="Contact Number" value={field("consigneeContactNumber")} />
+            <TemplatableFieldOverlay fieldKey="consigneeContactNumber"><FieldView label="Contact Number" value={field("consigneeContactNumber")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Contact Email" value={field("consigneeContactEmail")} onChange={(v) => setField("consigneeContactEmail", v)} placeholder="Contact email" />
           ) : (
-            <FieldView label="Contact Email" value={field("consigneeContactEmail")} />
+            <TemplatableFieldOverlay fieldKey="consigneeContactEmail"><FieldView label="Contact Email" value={field("consigneeContactEmail")} /></TemplatableFieldOverlay>
           )}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
           {isEditing ? (
             <FieldInput label="Contact Person" value={field("consigneeContactPerson")} onChange={(v) => setField("consigneeContactPerson", v)} placeholder="Contact person" />
           ) : (
-            <FieldView label="Contact Person" value={field("consigneeContactPerson")} />
+            <TemplatableFieldOverlay fieldKey="consigneeContactPerson"><FieldView label="Contact Person" value={field("consigneeContactPerson")} /></TemplatableFieldOverlay>
           )}
         </div>
       </SectionCard>
@@ -339,24 +367,24 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
           {isEditing ? (
             <FieldInput label="Means of Transport" value={field("meansOfTransport")} onChange={(v) => setField("meansOfTransport", v)} placeholder="Means of transport" />
           ) : (
-            <FieldView label="Means of Transport" value={field("meansOfTransport")} />
+            <TemplatableFieldOverlay fieldKey="meansOfTransport"><FieldView label="Means of Transport" value={field("meansOfTransport")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <DateField label="Departure Date" value={field("departureDate")} onChange={(v) => setField("departureDate", v)} />
           ) : (
-            <FieldView label="Departure Date" value={field("departureDate")} />
+            <TemplatableFieldOverlay fieldKey="departureDate"><FieldView label="Departure Date" value={field("departureDate")} /></TemplatableFieldOverlay>
           )}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {isEditing ? (
             <FieldInput label="Vessel" value={field("vessel")} onChange={(v) => setField("vessel", v)} placeholder="Vessel name" />
           ) : (
-            <FieldView label="Vessel" value={field("vessel")} />
+            <TemplatableFieldOverlay fieldKey="vessel"><FieldView label="Vessel" value={field("vessel")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Port of Discharge" value={field("portOfDischarge")} onChange={(v) => setField("portOfDischarge", v)} placeholder="Port of discharge" />
           ) : (
-            <FieldView label="Port of Discharge" value={field("portOfDischarge")} />
+            <TemplatableFieldOverlay fieldKey="portOfDischarge"><FieldView label="Port of Discharge" value={field("portOfDischarge")} /></TemplatableFieldOverlay>
           )}
         </div>
       </SectionCard>
@@ -367,25 +395,25 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
           {isEditing ? (
             <FieldInput label="Item Number" value={field("itemNumber")} onChange={(v) => setField("itemNumber", v)} placeholder="Item number" />
           ) : (
-            <FieldView label="Item Number" value={field("itemNumber")} />
+            <TemplatableFieldOverlay fieldKey="itemNumber"><FieldView label="Item Number" value={field("itemNumber")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Marks and Numbers" value={field("marksAndNumbers")} onChange={(v) => setField("marksAndNumbers", v)} placeholder="Marks and numbers" />
           ) : (
-            <FieldView label="Marks and Numbers" value={field("marksAndNumbers")} />
+            <TemplatableFieldOverlay fieldKey="marksAndNumbers"><FieldView label="Marks and Numbers" value={field("marksAndNumbers")} /></TemplatableFieldOverlay>
           )}
         </div>
         {/* Large text area for packages/description */}
         {isEditing ? (
           <TextAreaField label="Number and type of packages, description of products" value={field("packagesDescription")} onChange={(v) => setField("packagesDescription", v)} placeholder="Enter number and type of packages, description of products..." />
         ) : (
-          <TextAreaView label="Number and type of packages, description of products" value={field("packagesDescription")} />
+          <TemplatableFieldOverlay fieldKey="packagesDescription"><TextAreaView label="Number and type of packages, description of products" value={field("packagesDescription")} /></TemplatableFieldOverlay>
         )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {isEditing ? (
             <FieldInput label="Origin Criteria" value={field("originCriteria")} onChange={(v) => setField("originCriteria", v)} placeholder="Origin criteria" />
           ) : (
-            <FieldView label="Origin Criteria" value={field("originCriteria")} />
+            <TemplatableFieldOverlay fieldKey="originCriteria"><FieldView label="Origin Criteria" value={field("originCriteria")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <div>
@@ -407,7 +435,7 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
               </div>
             </div>
           ) : (
-            <FieldView label="Gross Weight" value={field("grossWeight") ? `${field("grossWeight")} KGS` : ""} />
+            <TemplatableFieldOverlay fieldKey="grossWeight"><FieldView label="Gross Weight" value={field("grossWeight") ? `${field("grossWeight")} KGS` : ""} /></TemplatableFieldOverlay>
           )}
         </div>
       </SectionCard>
@@ -418,12 +446,12 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
           {isEditing ? (
             <FieldInput label="Invoice Number" value={field("invoiceNumber")} onChange={(v) => setField("invoiceNumber", v)} placeholder="Invoice number" />
           ) : (
-            <FieldView label="Invoice Number" value={field("invoiceNumber")} />
+            <TemplatableFieldOverlay fieldKey="invoiceNumber"><FieldView label="Invoice Number" value={field("invoiceNumber")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <DateField label="Dated" value={field("invoiceDated")} onChange={(v) => setField("invoiceDated", v)} />
           ) : (
-            <FieldView label="Dated" value={field("invoiceDated")} />
+            <TemplatableFieldOverlay fieldKey="invoiceDated"><FieldView label="Dated" value={field("invoiceDated")} /></TemplatableFieldOverlay>
           )}
         </div>
       </SectionCard>
@@ -434,12 +462,12 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated }:
           {isEditing ? (
             <FieldInput label="Exporter Country" value={field("exporterCountry")} onChange={(v) => setField("exporterCountry", v)} placeholder="Exporter country" />
           ) : (
-            <FieldView label="Exporter Country" value={field("exporterCountry")} />
+            <TemplatableFieldOverlay fieldKey="exporterCountry"><FieldView label="Exporter Country" value={field("exporterCountry")} /></TemplatableFieldOverlay>
           )}
           {isEditing ? (
             <FieldInput label="Importing Country" value={field("importingCountry")} onChange={(v) => setField("importingCountry", v)} placeholder="Importing country" />
           ) : (
-            <FieldView label="Importing Country" value={field("importingCountry")} />
+            <TemplatableFieldOverlay fieldKey="importingCountry"><FieldView label="Importing Country" value={field("importingCountry")} /></TemplatableFieldOverlay>
           )}
         </div>
       </SectionCard>

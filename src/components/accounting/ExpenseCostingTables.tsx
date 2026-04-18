@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { Input } from "../ui/input";
 import { formatAmount } from "../../utils/formatAmount";
+import { PortalDropdown } from "../shared/PortalDropdown";
 
 // Types
 export interface ExpenseLineItem {
@@ -17,12 +18,21 @@ export interface ExpenseLineItem {
   multiplyByContainers?: boolean; // Export only: multiply unit price by container count (default true)
 }
 
+export interface DomesticSection {
+  segmentId: string;
+  segmentLabel: string;
+  containerNos: string[];
+  items: ExpenseLineItem[];
+}
+
 export interface ExpenseTablesData {
   particulars: ExpenseLineItem[];
   additionalCharges: ExpenseLineItem[];
   refundableDeposits: ExpenseLineItem[];
   // Export-specific categories
   exportCategories?: { [categoryName: string]: ExpenseLineItem[] };
+  // Domestic sections — one per province segment
+  domesticSections?: DomesticSection[];
 }
 
 interface ExpenseCostingTablesProps {
@@ -63,6 +73,22 @@ export const EXPORT_STANDARD_PARTICULARS: Record<string, string[]> = {
   // TRUCKING intentionally omitted — remains manual/free-entry only
 };
 
+// Domestic section standardized items (for export province legs)
+export const DOMESTIC_STANDARD_PARTICULARS = [
+  "Domestic Freight",
+  "Stripping/Hustling/Stuffing",
+  "Trucking",
+  "Labor",
+  "Lona",
+  "BIR",
+];
+
+// Get available (not yet used) domestic suggested particulars
+export const getAvailableDomesticSuggestions = (currentItems: { particulars?: string; description?: string }[]): string[] => {
+  const usedLabels = new Set(currentItems.map(i => (i.particulars || i.description || "").trim()));
+  return DOMESTIC_STANDARD_PARTICULARS.filter(s => !usedLabels.has(s));
+};
+
 // Get available (not yet used) export suggested particulars for a category
 export const getAvailableExportSuggestions = (categoryName: string, currentItems: { particulars?: string; description?: string }[]): string[] => {
   const suggestions = EXPORT_STANDARD_PARTICULARS[categoryName] || [];
@@ -91,6 +117,27 @@ const IMPORT_STANDARD_PARTICULARS_KEYS = [
 
 type ImportStandardKey = typeof IMPORT_STANDARD_PARTICULARS_KEYS[number];
 
+// For provincial import PODs (CDO, Iloilo, Davao) these keys are not offered as standardized entries.
+const PROVINCIAL_POD_EXCLUDED_KEYS: readonly ImportStandardKey[] = [
+  "BROKER",
+  "SECTION",
+  "CUSTOMS_LOCATION",
+  "NOTARY_GOFAST_LODGEMENT",
+];
+
+function isProvincialImportPod(booking: any): boolean {
+  // Import bookings store the POD dropdown value in `pod`. Fall back to other field names for safety.
+  const pod = booking?.pod || booking?.portOfDestination || booking?.port_of_destination || booking?.destination || "";
+  return pod === "CDO" || pod === "Iloilo" || pod === "Davao";
+}
+
+function getActiveImportStandardKeys(booking: any): readonly ImportStandardKey[] {
+  if (isProvincialImportPod(booking)) {
+    return IMPORT_STANDARD_PARTICULARS_KEYS.filter(k => !PROVINCIAL_POD_EXCLUDED_KEYS.includes(k));
+  }
+  return IMPORT_STANDARD_PARTICULARS_KEYS;
+}
+
 function generateImportStandardLabel(key: ImportStandardKey, booking: any, truckingVendor?: string, containerCount?: number): string {
   switch (key) {
     case "DUTIES_AND_TAXES":
@@ -102,7 +149,7 @@ function generateImportStandardLabel(key: ImportStandardKey, booking: any, truck
       const volMatch = rawVol.match(/^\d+x(.+)$/i);
       const volumeType = volMatch ? volMatch[1] : rawVol; // e.g. "40'HC"
       const count = containerCount || 0;
-      const vol = count > 0 && volumeType ? `${count}x${volumeType}` : (rawVol || booking?.containerNo || "N/A");
+      const vol = volumeType === "LCL" ? "LCL" : (count > 0 && volumeType ? `${count}x${volumeType}` : (rawVol || booking?.containerNo || "N/A"));
       const shippingLine = booking?.shippingLine || booking?.shipping_line || "N/A";
       return `${vol} - ${shippingLine} (Invoice Number #####)`;
     }
@@ -112,7 +159,7 @@ function generateImportStandardLabel(key: ImportStandardKey, booking: any, truck
       const volMatch = rawVol.match(/^\d+x(.+)$/i);
       const volumeType = volMatch ? volMatch[1] : rawVol;
       if (containerCount && containerCount > 0 && volumeType) {
-        return `${vendor} ${containerCount}x${volumeType}`;
+        return volumeType === "LCL" ? `${vendor} LCL` : `${vendor} ${containerCount}x${volumeType}`;
       }
       const addr = booking?.destination || booking?.pod || "N/A";
       return `${vendor} Trucking - ${addr}`;
@@ -256,6 +303,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     } : {})
   });
 
+  // Detect province segments (segments beyond the first one, for export bookings)
+  const provinceSegments = (() => {
+    if (isImport || !booking?.segments || !Array.isArray(booking.segments) || booking.segments.length <= 1) return [];
+    return booking.segments.slice(1); // First segment is "Manila", rest are province legs
+  })();
+
   // Export: track which categories are hidden (removed)
   const [hiddenExportCategories, setHiddenExportCategories] = useState<string[]>([]);
   // Import: track which categories are hidden (removed)
@@ -271,6 +324,10 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
   // Export: track which category's add-item dropdown is open (by category name)
   const [showExportAddItemDropdown, setShowExportAddItemDropdown] = useState<string | null>(null);
   const exportAddItemRef = useRef<HTMLDivElement>(null);
+
+  // Domestic sections: track which section's add-item dropdown is open (by segmentId)
+  const [showDomesticAddItemDropdown, setShowDomesticAddItemDropdown] = useState<string | null>(null);
+  const domesticAddItemRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -311,6 +368,19 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showExportAddItemDropdown]);
 
+  // Close domestic add-item dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (domesticAddItemRef.current && !domesticAddItemRef.current.contains(e.target as Node)) {
+        setShowDomesticAddItemDropdown(null);
+      }
+    };
+    if (showDomesticAddItemDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDomesticAddItemDropdown]);
+
   // Track the last processed state to handle async voucher loading
   const [lastProcessedState, setLastProcessedState] = useState<{bookingId: string, voucherCount: number, wasImport: boolean} | null>(null);
 
@@ -324,10 +394,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     if (booking && (isNewBooking || hasNewVouchers || templateChanged)) {
 
       if (isImport) {
-        // ── IMPORT: Always generate the 8 standardized items ──
-        // Phase 1: Create all 8 standardized items with default amounts
-        const standardizedItems: (ExpenseLineItem & { _standardKey: ImportStandardKey })[] = 
-          IMPORT_STANDARD_PARTICULARS_KEYS.map(key => ({
+        // ── IMPORT: Generate the standardized items for this booking's POD ──
+        // Provincial PODs (CDO, Iloilo, Davao) use a reduced set.
+        const activeKeys = getActiveImportStandardKeys(booking);
+        // Phase 1: Create standardized items with default amounts
+        const standardizedItems: (ExpenseLineItem & { _standardKey: ImportStandardKey })[] =
+          activeKeys.map(key => ({
             id: Math.random().toString(36).substr(2, 9),
             particulars: generateImportStandardLabel(key, booking, truckingVendor, containerCount),
             amount: getImportStandardAmount(key, containerCount),
@@ -351,31 +423,29 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
               const sourceId = line.id;
 
               const matchedKey = matchVoucherToStandardKey(desc);
+              const stdItem = matchedKey ? standardizedItems.find(i => i._standardKey === matchedKey) : undefined;
 
-              if (matchedKey && !matchedKeys.has(matchedKey)) {
+              if (matchedKey && stdItem && !matchedKeys.has(matchedKey)) {
                 // Update the matching standardized item
-                const stdItem = standardizedItems.find(i => i._standardKey === matchedKey);
-                if (stdItem) {
-                  stdItem.amount = amt;
-                  stdItem.voucherNo = vNo;
-                  stdItem.sourceVoucherLineItemId = sourceId;
-                  matchedKeys.add(matchedKey);
+                stdItem.amount = amt;
+                stdItem.voucherNo = vNo;
+                stdItem.sourceVoucherLineItemId = sourceId;
+                matchedKeys.add(matchedKey);
 
-                  // For trucking vouchers with linked containers, update label with vendor + container info
-                  if (matchedKey === "TRUCKING") {
-                    const linkedContainers = (voucher as any).linkedContainerNos;
-                    const voucherVendor = (voucher as any).payee || truckingVendor || "";
-                    if (Array.isArray(linkedContainers) && linkedContainers.length > 0 && voucherVendor) {
-                      const rawVol = booking?.volume || "";
-                      const volMatch = rawVol.match(/^\d+x(.+)$/i);
-                      const volumeType = volMatch ? volMatch[1] : rawVol;
-                      if (volumeType) {
-                        stdItem.particulars = `${voucherVendor} ${linkedContainers.length}x${volumeType}`;
-                      }
+                // For trucking vouchers with linked containers, update label with vendor + container info
+                if (matchedKey === "TRUCKING") {
+                  const linkedContainers = (voucher as any).linkedContainerNos;
+                  const voucherVendor = (voucher as any).payee || truckingVendor || "";
+                  if (Array.isArray(linkedContainers) && linkedContainers.length > 0 && voucherVendor) {
+                    const rawVol = booking?.volume || "";
+                    const volMatch = rawVol.match(/^\d+x(.+)$/i);
+                    const volumeType = volMatch ? volMatch[1] : rawVol;
+                    if (volumeType) {
+                      stdItem.particulars = volumeType === "LCL" ? `${voucherVendor} LCL` : `${voucherVendor} ${linkedContainers.length}x${volumeType}`;
                     }
                   }
                 }
-              } else if (matchedKey && matchedKeys.has(matchedKey)) {
+              } else if (matchedKey && stdItem && matchedKeys.has(matchedKey)) {
                 // Duplicate match — add as additional item in Particulars
                 // (e.g. multiple trucking voucher lines)
                 standardizedItems.push({
@@ -446,6 +516,26 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
 
       } else {
         // ── EXPORT: Start with empty categories — user adds items via dropdown ──
+        // Build domestic sections for province segments (segments beyond the first)
+        const segments = booking.segments || [];
+        const domesticSections: DomesticSection[] = segments.length > 1
+          ? segments.slice(1).map((seg: any) => {
+              // Resolve containers: prefer containerNos array, fall back to parsing containerNo string
+              let cNos: string[] = seg.containerNos && Array.isArray(seg.containerNos) && seg.containerNos.length > 0
+                ? seg.containerNos.filter(Boolean)
+                : [];
+              if (cNos.length === 0 && seg.containerNo) {
+                cNos = (typeof seg.containerNo === "string" ? seg.containerNo.split(",") : []).map((s: string) => s.trim()).filter(Boolean);
+              }
+              return {
+                segmentId: seg.segmentId,
+                segmentLabel: seg.segmentLabel || "Province",
+                containerNos: cNos,
+                items: [],
+              };
+            })
+          : [];
+
         const newState: ExpenseTablesData = {
           particulars: [],
           additionalCharges: [],
@@ -453,6 +543,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           exportCategories: Object.fromEntries(
             EXPORT_CATEGORY_ORDER.map(cat => [cat, []])
           ),
+          domesticSections,
         };
 
         setTables(newState);
@@ -576,6 +667,67 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     setShowAddCategoryDropdown(false);
   };
 
+  // Domestic section handlers
+  const handleDomesticAddSuggestedItem = (segmentId: string, label: string) => {
+    const newItem = { ...createEmptyItem(), particulars: label };
+    const newTables = { ...tables };
+    const sections = (newTables.domesticSections || []).map(sec =>
+      sec.segmentId === segmentId ? { ...sec, items: [...sec.items, newItem] } : sec
+    );
+    newTables.domesticSections = sections;
+    setTables(newTables);
+    onChange(newTables);
+    setShowDomesticAddItemDropdown(null);
+  };
+
+  const handleDomesticAddCustomItem = (segmentId: string) => {
+    const newTables = { ...tables };
+    const sections = (newTables.domesticSections || []).map(sec =>
+      sec.segmentId === segmentId ? { ...sec, items: [...sec.items, createEmptyItem()] } : sec
+    );
+    newTables.domesticSections = sections;
+    setTables(newTables);
+    onChange(newTables);
+    setShowDomesticAddItemDropdown(null);
+  };
+
+  const handleDomesticUpdateItem = (segmentId: string, id: string, field: string, value: any) => {
+    const newTables = { ...tables };
+    const sections = (newTables.domesticSections || []).map(sec => {
+      if (sec.segmentId !== segmentId) return sec;
+      return {
+        ...sec,
+        items: sec.items.map(item => {
+          if (item.id !== id) return item;
+          const updated = { ...item, [field]: value };
+          if (field === 'unitPrice' || field === 'per' || field === 'currency' || field === 'multiplyByContainers') {
+            // Domestic sections use the segment's own container count
+            const segContainerCount = sec.containerNos.filter(Boolean).length || 0;
+            const parsedPrice = parseFloat(String(field === 'unitPrice' ? value : updated.unitPrice || 0)) || 0;
+            const cur = field === 'currency' ? value : updated.currency;
+            const currencyMultiplier = (cur === "USD" || cur === "RMB") ? parsedExchangeRate : 1;
+            const mult = (field === 'multiplyByContainers' ? value : updated.multiplyByContainers) !== false ? segContainerCount : 1;
+            updated.amount = parsedPrice * currencyMultiplier * mult;
+          }
+          return updated;
+        }),
+      };
+    });
+    newTables.domesticSections = sections;
+    setTables(newTables);
+    onChange(newTables);
+  };
+
+  const handleDomesticRemoveItem = (segmentId: string, id: string) => {
+    const newTables = { ...tables };
+    const sections = (newTables.domesticSections || []).map(sec =>
+      sec.segmentId === segmentId ? { ...sec, items: sec.items.filter(item => item.id !== id) } : sec
+    );
+    newTables.domesticSections = sections;
+    setTables(newTables);
+    onChange(newTables);
+  };
+
   // Import category handlers
   const handleRemoveImportCategory = (categoryKey: keyof ExpenseTablesData) => {
     setHiddenImportCategories(prev => [...prev, categoryKey as string]);
@@ -692,6 +844,10 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
         allItems.push(...items);
       });
     }
+    // Also include domestic section items
+    if (tables.domesticSections) {
+      tables.domesticSections.forEach(sec => allItems.push(...sec.items));
+    }
     allItems.forEach(item => {
       if (item.sourceVoucherLineItemId) {
         usedIds.add(String(item.sourceVoucherLineItemId));
@@ -732,9 +888,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
   const exportCategoryTotal = tables.exportCategories
     ? Object.values(tables.exportCategories).flat().reduce((sum, i) => sum + (i.amount || 0), 0)
     : 0;
+  const domesticTotal = (tables.domesticSections || []).reduce(
+    (sum, sec) => sum + sec.items.reduce((s, i) => s + (i.amount || 0), 0), 0
+  );
   const grandTotal = isImport
     ? calculateTotal(tables.particulars) + calculateTotal(tables.additionalCharges)
-    : exportCategoryTotal;
+    : exportCategoryTotal + domesticTotal;
 
   // Render a single export category section
   const renderExportCategorySection = (categoryName: string, catIndex: number) => {
@@ -795,19 +954,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   >
                     <Plus size={12} /> Add Item <ChevronDown size={12} />
                   </button>
-                  {showExportAddItemDropdown === categoryName && (
-                    <div style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      right: 0,
-                      background: "white",
-                      border: "1px solid #E5E9F0",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                      zIndex: 50,
-                      minWidth: "220px",
-                      overflow: "hidden"
-                    }}>
+                  <PortalDropdown
+                    isOpen={showExportAddItemDropdown === categoryName}
+                    onClose={() => setShowExportAddItemDropdown(null)}
+                    triggerRef={exportAddItemRef}
+                    minWidth="220px"
+                  >
                       {availableSuggestions.length > 0 && (
                         <>
                           <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
@@ -867,8 +1019,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         <Plus size={14} color="#0F766E" />
                         Add Custom Item
                       </button>
-                    </div>
-                  )}
+                  </PortalDropdown>
                 </div>
               );
             })() : (
@@ -1325,19 +1476,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 Add Category
                 <ChevronDown size={14} style={{ marginLeft: "2px" }} />
               </button>
-              {showAddCategoryDropdown && (
-                <div style={{
-                  position: "absolute",
-                  top: "calc(100% + 4px)",
-                  right: 0,
-                  background: "white",
-                  border: "1px solid #E5E9F0",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                  zIndex: 50,
-                  minWidth: "260px",
-                  overflow: "hidden"
-                }}>
+              <PortalDropdown
+                isOpen={showAddCategoryDropdown}
+                onClose={() => setShowAddCategoryDropdown(false)}
+                triggerRef={addCategoryRef}
+                minWidth="260px"
+              >
                   <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
                     Removed Categories
                   </div>
@@ -1368,8 +1512,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                       {cat.label}
                     </button>
                   ))}
-                </div>
-              )}
+              </PortalDropdown>
             </div>
           )}
           {/* Add Category button for EXPORT */}
@@ -1399,19 +1542,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 Add Category
                 <ChevronDown size={14} style={{ marginLeft: "2px" }} />
               </button>
-              {showAddCategoryDropdown && (
-                <div style={{
-                  position: "absolute",
-                  top: "calc(100% + 4px)",
-                  right: 0,
-                  background: "white",
-                  border: "1px solid #E5E9F0",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                  zIndex: 50,
-                  minWidth: "180px",
-                  overflow: "hidden"
-                }}>
+              <PortalDropdown
+                isOpen={showAddCategoryDropdown}
+                onClose={() => setShowAddCategoryDropdown(false)}
+                triggerRef={addCategoryRef}
+                minWidth="180px"
+              >
                   <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
                     Removed Categories
                   </div>
@@ -1442,8 +1578,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                       {formatExportCategoryName(cat)}
                     </button>
                   ))}
-                </div>
-              )}
+              </PortalDropdown>
             </div>
           )}
           </div>
@@ -1543,25 +1678,22 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         >
                           <Plus size={12} /> Add Item <ChevronDown size={12} />
                         </button>
-                        {showAddParticularsDropdown && (
-                          <div style={{
-                            position: "absolute",
-                            top: "calc(100% + 4px)",
-                            right: 0,
-                            background: "white",
-                            border: "1px solid #E5E9F0",
-                            borderRadius: "8px",
-                            boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                            zIndex: 50,
-                            minWidth: "260px",
-                            overflow: "hidden"
-                          }}>
-                            {removedStandardItems.length > 0 && (
+                        <PortalDropdown
+                          isOpen={showAddParticularsDropdown}
+                          onClose={() => setShowAddParticularsDropdown(false)}
+                          triggerRef={addParticularsRef}
+                          minWidth="260px"
+                        >
+                            {(() => {
+                              const activeKeys = getActiveImportStandardKeys(booking);
+                              const displayableRemoved = removedStandardItems.filter(k => activeKeys.includes(k));
+                              if (displayableRemoved.length === 0) return null;
+                              return (
                               <>
                                 <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
                                   Standardized Items
                                 </div>
-                                {removedStandardItems.map(key => (
+                                {displayableRemoved.map(key => (
                                   <button
                                     key={key}
                                     type="button"
@@ -1590,7 +1722,8 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                                 ))}
                                 <div style={{ height: "1px", background: "#E5E9F0", margin: "4px 0" }} />
                               </>
-                            )}
+                              );
+                            })()}
                             <button
                               type="button"
                               onClick={handleAddCustomParticular}
@@ -1615,8 +1748,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                               <Plus size={14} color="#0F766E" />
                               Add Custom Item
                             </button>
-                          </div>
-                        )}
+                        </PortalDropdown>
                       </div>
                     ) : (
                       <button
@@ -1825,6 +1957,320 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           // EXPORT: Use the 6 fixed export categories
           visibleExportCategories.map((catName, catIndex) => renderExportCategorySection(catName, catIndex))
         )}
+
+        {/* Domestic Sections — one per province segment */}
+        {!isImport && (tables.domesticSections || []).map((section) => {
+          const sectionTotal = calculateTotal(section.items);
+          const containerLabel = section.containerNos.filter(Boolean).join(", ") || "No containers";
+          const segContainerCount = section.containerNos.filter(Boolean).length || 0;
+          const availableSuggestions = getAvailableDomesticSuggestions(section.items);
+          // Derive volume type from booking for the domestic volume header
+          const rawVol = booking?.volume || "";
+          const volMatch = rawVol.match(/^\d+x(.+)$/i);
+          const volumeType = volMatch ? volMatch[1] : (rawVol || "40'HC");
+          const domesticVolumeLabel = `${segContainerCount}X${volumeType}`;
+
+          return (
+            <div key={section.segmentId}>
+              {/* Domestic Section Title */}
+              <div style={{
+                padding: "12px 16px",
+                background: "#F0F4F3",
+                borderTop: "2px solid #0F766E",
+                borderBottom: "1px solid #E5E9F0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "#0A1D4D",
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.03em"
+                  }}>
+                    Domestic — {containerLabel}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "#667085" }}>
+                    ({section.items.length} item{section.items.length !== 1 ? 's' : ''})
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div ref={showDomesticAddItemDropdown === section.segmentId ? domesticAddItemRef : undefined} style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowDomesticAddItemDropdown(prev => prev === section.segmentId ? null : section.segmentId)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        color: "#0F766E",
+                        fontSize: "12px",
+                        fontWeight: 500,
+                        background: "transparent",
+                        border: "1px solid #0F766E",
+                        cursor: "pointer",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        transition: "all 0.15s ease"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(15,118,110,0.05)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <Plus size={12} /> Add Item <ChevronDown size={12} />
+                    </button>
+                    <PortalDropdown
+                      isOpen={showDomesticAddItemDropdown === section.segmentId}
+                      onClose={() => setShowDomesticAddItemDropdown(null)}
+                      triggerRef={domesticAddItemRef}
+                      minWidth="240px"
+                    >
+                        {availableSuggestions.length > 0 && (
+                          <>
+                            <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
+                              Suggested Items
+                            </div>
+                            {availableSuggestions.map(label => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => handleDomesticAddSuggestedItem(section.segmentId, label)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  width: "100%",
+                                  padding: "9px 12px",
+                                  fontSize: "13px",
+                                  fontWeight: 500,
+                                  color: "#0A1D4D",
+                                  background: "white",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  textAlign: "left" as const,
+                                  transition: "background 0.1s ease"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
+                                onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                              >
+                                <Plus size={14} color="#0F766E" />
+                                {label}
+                              </button>
+                            ))}
+                            <div style={{ height: "1px", background: "#E5E9F0", margin: "4px 0" }} />
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDomesticAddCustomItem(section.segmentId)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            width: "100%",
+                            padding: "9px 12px",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            color: "#0F766E",
+                            background: "white",
+                            border: "none",
+                            cursor: "pointer",
+                            textAlign: "left" as const,
+                            transition: "background 0.1s ease"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                        >
+                          <Plus size={14} color="#0F766E" />
+                          Add Custom Item
+                        </button>
+                    </PortalDropdown>
+                  </div>
+                </div>
+              </div>
+
+              {/* Domestic Column Headers */}
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "30%" }}>Particulars</th>
+                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
+                    <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
+                    <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{domesticVolumeLabel}</th>
+                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
+                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "10%" }}>Voucher Amt</th>
+                    <th style={{ width: "5%" }}></th>
+                  </tr>
+                </thead>
+              </table>
+
+              {/* Domestic Line Items */}
+              {section.items.length === 0 ? (
+                <div style={{ padding: "16px", textAlign: "center", fontSize: "13px", color: "#667085", background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                  No items.{" "}
+                  <button type="button" onClick={() => setShowDomesticAddItemDropdown(section.segmentId)} style={{ color: "#0F766E", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}>
+                    Add one
+                  </button>
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {section.items.map((item) => {
+                      const parsedPrice = parseFloat(String(item.unitPrice || 0)) || 0;
+                      const cur = item.currency || "PHP";
+                      const currencyMultiplier = (cur === "USD" || cur === "RMB") ? parsedExchangeRate : 1;
+                      const mult = item.multiplyByContainers !== false ? segContainerCount : 1;
+                      const volumeAmount = parsedPrice * currencyMultiplier * mult;
+                      return (
+                        <tr
+                          key={item.id}
+                          style={{ borderBottom: "1px solid #E5E9F0", background: "white" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#FAFBFC"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                        >
+                          {/* Particulars */}
+                          <td style={{ padding: "8px 8px 8px 16px", width: "30%" }}>
+                            <input
+                              type="text"
+                              value={item.particulars}
+                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'particulars', e.target.value)}
+                              placeholder="Enter particulars"
+                              style={{
+                                height: "36px", width: "100%", border: "1px solid #E5E9F0", borderRadius: "4px",
+                                padding: "0 10px", fontSize: "14px", color: "#0A1D4D", background: "white",
+                                outline: "none", boxSizing: "border-box" as const, transition: "border-color 0.15s ease"
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                            />
+                          </td>
+                          {/* Unit Price */}
+                          <td style={{ padding: "8px", width: "25%", textAlign: "right" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", justifyContent: "flex-end" }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.unitPrice || ""}
+                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'unitPrice', e.target.value)}
+                                placeholder="0.00"
+                                style={{
+                                  height: "36px", flex: 1, minWidth: 0, border: "1px solid #E5E9F0", borderRadius: "4px",
+                                  padding: "0 6px", fontSize: "13px", color: "#0A1D4D", background: "white",
+                                  outline: "none", textAlign: "right" as const, boxSizing: "border-box" as const,
+                                  transition: "border-color 0.15s ease"
+                                }}
+                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                              />
+                              <select
+                                value={item.currency || "PHP"}
+                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'currency', e.target.value)}
+                                style={{
+                                  height: "36px", width: "58px", border: "1px solid #E5E9F0", borderRadius: "4px",
+                                  padding: "0 2px", fontSize: "11px", fontWeight: 600, color: "#0F766E",
+                                  background: "white", outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
+                                }}
+                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                              >
+                                <option value="PHP">PHP</option>
+                                <option value="USD">USD</option>
+                                <option value="RMB">RMB</option>
+                              </select>
+                              <select
+                                value={item.per || "40"}
+                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'per', e.target.value)}
+                                style={{
+                                  height: "36px", width: "70px", border: "1px solid #E5E9F0", borderRadius: "4px",
+                                  padding: "0 2px", fontSize: "11px", color: "#667085", background: "white",
+                                  outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
+                                }}
+                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                              >
+                                <option value="40">PER 40</option>
+                                <option value="20">PER 20</option>
+                                <option value="BL">PER BL</option>
+                              </select>
+                            </div>
+                          </td>
+                          {/* Multiply by containers checkbox */}
+                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={item.multiplyByContainers !== false}
+                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'multiplyByContainers', e.target.checked)}
+                              title={item.multiplyByContainers !== false ? `Multiplied by ${segContainerCount} containers` : "Not multiplied by containers"}
+                              style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "pointer" }}
+                            />
+                          </td>
+                          {/* Volume */}
+                          <td style={{ padding: "8px 16px", width: "13%", textAlign: "right", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, background: "#FAFBFC" }}>
+                            ₱{formatAmount(volumeAmount)}
+                          </td>
+                          {/* Voucher No */}
+                          <td style={{ padding: "8px", width: "15%" }}>
+                            <select
+                              value={item.voucherNo || ""}
+                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'voucherNo', e.target.value)}
+                              style={{
+                                height: "36px", width: "100%", border: "1px solid transparent", borderRadius: "6px",
+                                padding: "0 8px", fontSize: "13px", color: "#0A1D4D", background: "transparent",
+                                outline: "none", appearance: "none" as const, cursor: "pointer",
+                                transition: "border-color 0.15s ease",
+                                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                                backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "14px"
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                              onBlur={(e) => e.currentTarget.style.borderColor = "transparent"}
+                            >
+                              <option value="">Select Voucher</option>
+                              {(vouchers || []).map((v: any) => (
+                                <option key={v.id || v.voucherNumber} value={v.voucherNumber}>
+                                  {v.voucherNumber}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          {/* Voucher Amount */}
+                          <td style={{ padding: "8px", width: "10%" }}>
+                            <div style={{ padding: "0 10px", fontSize: "14px", color: "#0A1D4D", textAlign: "right", fontWeight: 500, lineHeight: "36px" }}>
+                              ₱{formatAmount(item.amount || 0)}
+                            </div>
+                          </td>
+                          {/* Actions */}
+                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDomesticRemoveItem(section.segmentId, item.id)}
+                              style={{ color: "#D1D5DB", background: "transparent", border: "none", cursor: "pointer", padding: "4px", transition: "color 0.15s ease" }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                              onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#FAFBFC", borderBottom: "1px solid #E5E9F0" }}>
+                      <td colSpan={4} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
+                        Subtotal
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
+                        ₱{formatAmount(sectionTotal)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          );
+        })}
 
         {/* Grand Total — integrated footer */}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>

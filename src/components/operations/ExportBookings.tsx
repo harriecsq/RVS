@@ -99,6 +99,7 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
             projectNumber: b.projectNumber || b.project_number,
             projectName: b.projectName || b.project_name,
           }));
+        exportBookings.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         setBookings(exportBookings);
       } else {
         setBookings([]);

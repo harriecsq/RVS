@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, Plus, Trash2, Receipt, Link2, ChevronDown, Check } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { formatAmount } from "../../utils/formatAmount";
@@ -24,6 +26,7 @@ function computeVolumeSummary(containerNo: string | string[], volume: string): s
     containerCount = Math.max(containers.length, 1);
   }
   if (!volume) return "—";
+  if (volume.trim() === "LCL") return "LCL";
   return `${containerCount}x${volume}`;
 }
 
@@ -32,6 +35,8 @@ function NeuronDropdown({
 }: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -44,6 +49,7 @@ function NeuronDropdown({
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <div
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         style={{
           width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
@@ -55,12 +61,14 @@ function NeuronDropdown({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
           background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
-        }}>
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        >
           {options.map((opt) => (
             <div
               key={opt}
@@ -77,7 +85,8 @@ function NeuronDropdown({
               {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

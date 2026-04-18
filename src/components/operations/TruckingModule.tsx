@@ -2,8 +2,8 @@
  * TruckingModule — Operations > Trucking list screen.
  * Identical layout pattern to ImportBookings / ExportBookings.
  */
-import { useState, useEffect, useRef } from "react";
-import { Plus, Search, Truck, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Search, Truck } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { CreateTruckingModal } from "./CreateTruckingModal";
@@ -22,98 +22,9 @@ import {
 } from "../../constants/truckingStatuses";
 
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
+import { StandardFilterDropdown } from "../design-system/StandardFilterDropdown";
 import { API_BASE_URL } from '@/utils/api-config';
 
-// ---- Filter Dropdown ----
-function FilterDropdown({
-  value,
-  options,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  options: { label: string; value: string }[];
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const selected = options.find((o) => o.value === value);
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "6px",
-          width: "100%",
-          padding: "10px 12px",
-          fontSize: "14px",
-          fontWeight: 400,
-          border: "1px solid #E5E9F0",
-          borderRadius: "8px",
-          background: "#FFFFFF",
-          color: "#0A1D4D",
-          cursor: "pointer",
-          whiteSpace: "nowrap" as const,
-          boxSizing: "border-box" as const,
-        }}
-      >
-        {selected?.label || placeholder}
-        <ChevronDown size={14} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-      </button>
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            marginTop: "4px",
-            backgroundColor: "#FFFFFF",
-            border: "1px solid #E5E9F0",
-            borderRadius: "8px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
-            zIndex: 1000,
-            minWidth: "180px",
-            maxHeight: "260px",
-            overflowY: "auto",
-          }}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt.value}
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              style={{
-                padding: "9px 14px",
-                fontSize: "13px",
-                color: "#0A1D4D",
-                cursor: "pointer",
-                backgroundColor: value === opt.value ? "#F0FAF8" : "transparent",
-                fontWeight: value === opt.value ? 600 : 400,
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt.value ? "#F0FAF8" : "transparent"; }}
-            >
-              {opt.label}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 
 // ---- Vendor Pill ----
@@ -162,9 +73,10 @@ function fmtUpdated(iso: string): string {
 // ---- Main component ----
 interface TruckingModuleProps {
   currentUser?: { name: string; email: string; department: string } | null;
+  bookingType?: "import" | "export";
 }
 
-export function TruckingModule({ currentUser }: TruckingModuleProps) {
+export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps) {
   const [records, setRecords] = useState<TruckingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -186,7 +98,11 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       const result = await res.json();
-      if (result.success) setRecords(result.data || []);
+      if (result.success) {
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setRecords(data);
+      }
       else setRecords([]);
     } catch (err) {
       console.error("Error fetching trucking records:", err);
@@ -202,8 +118,19 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
     toast.success("Trucking record created");
   };
 
+  // ---- Determine which status set to use ----
+  const isExport = bookingType === "export";
+  const statusOptions = isExport ? EXPORT_TRUCKING_STATUS_OPTIONS : TRUCKING_STATUS_OPTIONS;
+
   // ---- Filtering ----
   const filtered = records.filter((r) => {
+    // Filter by booking type when provided
+    if (bookingType) {
+      const recordType = (r.linkedBookingType || "").toLowerCase();
+      if (bookingType === "export" && !recordType.includes("export")) return false;
+      if (bookingType === "import" && recordType.includes("export")) return false;
+    }
+
     const s = search.toLowerCase();
     if (s) {
       const matchesSearch =
@@ -225,7 +152,7 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
     }
 
     if (selectedTruckingStatus) {
-      if ((r.truckingStatus || "Awaiting Trucking") !== selectedTruckingStatus) return false;
+      if ((r.truckingStatus || (isExport ? "For Pullout" : "Awaiting Trucking")) !== selectedTruckingStatus) return false;
     }
 
     return true;
@@ -258,9 +185,11 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
       }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
           <div>
-            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#0A1D4D", margin: 0 }}>Trucking</h1>
+            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#0A1D4D", margin: 0 }}>
+              {isExport ? "Export Trucking" : "Import Trucking"}
+            </h1>
             <p style={{ fontSize: "14px", color: "#667085", margin: "4px 0 0" }}>
-              Manage trucking assignments and delivery coordination
+              Manage {isExport ? "export" : "import"} trucking assignments and delivery coordination
             </p>
           </div>
           <button
@@ -328,26 +257,20 @@ export function TruckingModule({ currentUser }: TruckingModuleProps) {
               compact
             />
           </div>
-          <select
+          <StandardFilterDropdown
             value={selectedTruckingStatus}
-            onChange={(e) => setSelectedTruckingStatus(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              fontSize: "13px",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              color: "#0A1D4D",
-              background: "#FFFFFF",
-              cursor: "pointer",
-              outline: "none",
-            }}
-          >
-            <option value="">All Statuses</option>
-            {[...TRUCKING_STATUS_OPTIONS, ...EXPORT_TRUCKING_STATUS_OPTIONS].map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-          <FilterDropdown value={vendorFilter} options={vendorOptions} onChange={setVendorFilter} placeholder="All Vendors" />
+            onChange={setSelectedTruckingStatus}
+            options={[
+              { value: "", label: "All Statuses" },
+              ...statusOptions.map((status) => ({ value: status, label: status })),
+            ]}
+          />
+          <StandardFilterDropdown
+            value={vendorFilter}
+            onChange={setVendorFilter}
+            options={vendorOptions}
+            placeholder="All Vendors"
+          />
         </div>
       </div>
 

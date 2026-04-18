@@ -64,7 +64,9 @@ export function ExpensesSubTabs({
       });
       const result = await response.json();
       if (result.success) {
-        setExpenses(result.data || []);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setExpenses(data);
         // Auto-select first expense if only one exists
         if (result.data?.length === 1) {
           setSelectedExpenseId(result.data[0].id);

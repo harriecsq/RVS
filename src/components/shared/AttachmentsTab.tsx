@@ -18,8 +18,9 @@ interface Attachment {
 }
 
 interface AttachmentsTabProps {
-  entityType: "export-booking" | "import-booking" | "trucking-record" | "billing" | "collection" | "expense" | "voucher";
+  entityType: "export-booking" | "import-booking" | "trucking-record" | "billing" | "collection" | "expense" | "voucher" | "client" | "contact";
   entityId: string;
+  compact?: boolean;
 }
 
 function formatFileSize(bytes: number): string {
@@ -38,7 +39,7 @@ function getFileIcon(fileType: string) {
   return <File size={20} style={{ color: "#6B7280" }} />;
 }
 
-export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
+export function AttachmentsTab({ entityType, entityId, compact }: AttachmentsTabProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -174,7 +175,7 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
   };
 
   return (
-    <div style={{ padding: "32px 48px" }}>
+    <div style={{ padding: compact ? "0" : "32px 48px" }}>
       <div
         style={{
           background: "white",
@@ -385,54 +386,56 @@ export function AttachmentsTab({ entityType, entityId }: AttachmentsTabProps) {
             </div>
           )}
 
-          {/* Drop Zone */}
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: `2px dashed ${isDragOver ? "#0F766E" : "#E5E9F0"}`,
-              borderRadius: "12px",
-              padding: "48px 24px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: isDragOver ? "rgba(15, 118, 110, 0.04)" : "white",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
+          {/* Drop Zone — only show when no attachments exist */}
+          {attachments.length === 0 && !isLoading && (
             <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current?.click()}
               style={{
-                width: "48px",
-                height: "48px",
+                border: `2px dashed ${isDragOver ? "#0F766E" : "#E5E9F0"}`,
                 borderRadius: "12px",
-                backgroundColor: isDragOver ? "rgba(15, 118, 110, 0.1)" : "#F3F4F6",
+                padding: "48px 24px",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: "16px",
+                backgroundColor: isDragOver ? "rgba(15, 118, 110, 0.04)" : "white",
+                cursor: "pointer",
                 transition: "all 0.2s ease",
               }}
             >
-              <Upload size={24} style={{ color: isDragOver ? "#0F766E" : "#9CA3AF" }} />
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "12px",
+                  backgroundColor: isDragOver ? "rgba(15, 118, 110, 0.1)" : "#F3F4F6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "16px",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <Upload size={24} style={{ color: isDragOver ? "#0F766E" : "#9CA3AF" }} />
+              </div>
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: isDragOver ? "#0F766E" : "#0A1D4D",
+                  margin: "0 0 4px 0",
+                }}
+              >
+                {isDragOver ? "Drop files here" : "Drag and drop files here"}
+              </p>
+              <p style={{ fontSize: "13px", color: "#9CA3AF", margin: 0 }}>
+                or click &lsquo;Upload Files&rsquo; button above
+              </p>
             </div>
-            <p
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: isDragOver ? "#0F766E" : "#0A1D4D",
-                margin: "0 0 4px 0",
-              }}
-            >
-              {isDragOver ? "Drop files here" : "Drag and drop files here"}
-            </p>
-            <p style={{ fontSize: "13px", color: "#9CA3AF", margin: 0 }}>
-              or click &lsquo;Upload Files&rsquo; button above
-            </p>
-          </div>
+          )}
 
           {/* Loading state */}
           {isLoading && (

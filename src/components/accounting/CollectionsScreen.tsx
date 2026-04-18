@@ -73,7 +73,9 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       const result = await response.json();
 
       if (result.success && Array.isArray(result.data)) {
-        setCollections(result.data);
+        const data = result.data;
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setCollections(data);
       } else {
         setCollections([]);
       }

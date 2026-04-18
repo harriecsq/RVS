@@ -6,6 +6,7 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { StandardFilterDropdown } from "../design-system/StandardFilterDropdown";
 
 // --- Data Interfaces ---
 
@@ -683,17 +684,18 @@ export function FinalShipmentCostReport() {
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Service Type</label>
-              <select 
+              <StandardFilterDropdown
                 value={filters.serviceType}
-                onChange={(e) => setFilters({...filters, serviceType: e.target.value})}
-                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", cursor: "pointer" }}
-              >
-                <option value="All">All Types</option>
-                <option value="Import">Import</option>
-                <option value="Export">Export</option>
-                <option value="CDO Import">CDO Import</option>
-                <option value="CDO Export">CDO Export</option>
-              </select>
+                onChange={(v) => setFilters({...filters, serviceType: v})}
+                options={[
+                  { value: "All", label: "All Types" },
+                  { value: "Import", label: "Import" },
+                  { value: "Export", label: "Export" },
+                  { value: "CDO Import", label: "CDO Import" },
+                  { value: "CDO Export", label: "CDO Export" },
+                ]}
+                style={{ width: "100%" }}
+              />
             </div>
 
             <div>
@@ -709,15 +711,16 @@ export function FinalShipmentCostReport() {
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Status</label>
-              <select 
+              <StandardFilterDropdown
                 value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
-                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", cursor: "pointer" }}
-              >
-                <option value="All">All Statuses</option>
-                <option value="Paid">Paid</option>
-                <option value="Unpaid">Unpaid</option>
-              </select>
+                onChange={(v) => setFilters({...filters, status: v})}
+                options={[
+                  { value: "All", label: "All Statuses" },
+                  { value: "Paid", label: "Paid" },
+                  { value: "Unpaid", label: "Unpaid" },
+                ]}
+                style={{ width: "100%" }}
+              />
             </div>
           </div>
         </div>

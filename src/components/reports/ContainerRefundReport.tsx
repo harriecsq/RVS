@@ -6,6 +6,7 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { StandardFilterDropdown } from "../design-system/StandardFilterDropdown";
 
 // --- Data Interfaces ---
 
@@ -524,30 +525,30 @@ export function ContainerRefundReport() {
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Shipping Line</label>
-              <select 
+              <StandardFilterDropdown
                 value={filters.shippingLine}
-                onChange={(e) => setFilters({...filters, shippingLine: e.target.value})}
-                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", cursor: "pointer" }}
-              >
-                <option value="All">All Shipping Lines</option>
-                {uniqueShippingLines.map(sl => (
-                  <option key={sl} value={sl}>{sl}</option>
-                ))}
-              </select>
+                onChange={(v) => setFilters({...filters, shippingLine: v})}
+                options={[
+                  { value: "All", label: "All Shipping Lines" },
+                  ...uniqueShippingLines.map(sl => ({ value: sl, label: sl })),
+                ]}
+                style={{ width: "100%" }}
+              />
             </div>
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Refund Status</label>
-              <select 
+              <StandardFilterDropdown
                 value={filters.refundStatus}
-                onChange={(e) => setFilters({...filters, refundStatus: e.target.value})}
-                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none", cursor: "pointer" }}
-              >
-                <option value="All">All Statuses</option>
-                <option value="Waiting">Waiting for Approval</option>
-                <option value="Refunded">Refunded</option>
-                <option value="Not Refunded">Not Refunded</option>
-              </select>
+                onChange={(v) => setFilters({...filters, refundStatus: v})}
+                options={[
+                  { value: "All", label: "All Statuses" },
+                  { value: "Waiting", label: "Waiting for Approval" },
+                  { value: "Refunded", label: "Refunded" },
+                  { value: "Not Refunded", label: "Not Refunded" },
+                ]}
+                style={{ width: "100%" }}
+              />
             </div>
           </div>
         </div>

@@ -157,6 +157,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
             projectName: b.projectName || b.project_name,
             docsTimeline: b.docsTimeline || [],
           }));
+        importBookings.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         setBookings(importBookings);
       } else {
         setBookings([]);

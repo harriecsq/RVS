@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { MoreVertical, Download, FileText, Trash2 } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 
 interface ActionsDropdownProps {
   onDownloadPDF?: () => void;
@@ -18,6 +20,8 @@ export function ActionsDropdown({
 }: ActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, isOpen);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -39,6 +43,7 @@ export function ActionsDropdown({
     <div style={{ position: "relative" }} ref={dropdownRef}>
       {/* Actions Button */}
       <button
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         style={{
           display: "flex",
@@ -69,20 +74,24 @@ export function ActionsDropdown({
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && createPortal(
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            right: 0,
+            position: "fixed",
+            top: dropdownPos.top,
+            bottom: dropdownPos.bottom,
+            left: dropdownPos.left + dropdownPos.width - 200,
             background: "white",
             border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
             minWidth: "200px",
-            zIndex: 1000,
+            zIndex: 9999,
+            maxHeight: dropdownPos.maxHeight,
+            overflowY: "auto" as const,
             padding: "8px 0"
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {/* Download Section */}
           {showDownload && (
@@ -206,7 +215,8 @@ export function ActionsDropdown({
             <Trash2 size={16} />
             <span>Delete</span>
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

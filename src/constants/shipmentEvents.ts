@@ -1,8 +1,14 @@
 export const SHIPMENT_EVENT_KEYS = [
+  "eta",
+  "ata",
   "draft",
   "signed",
   "stowaged",
   "lodged",
+  "rcvd-billing",
+  "storage-begins",
+  "dem-begins",
+  "arrastre",
   "final",
   "for-debit",
   "debited",
@@ -17,10 +23,16 @@ export const SHIPMENT_EVENT_KEYS = [
 export type ShipmentEventKey = (typeof SHIPMENT_EVENT_KEYS)[number];
 
 export const SHIPMENT_EVENT_LABELS: Record<ShipmentEventKey, string> = {
+  eta: "ETA",
+  ata: "ATA",
   draft: "Draft",
   signed: "Signed",
   stowaged: "Stowaged",
   lodged: "Lodged",
+  "rcvd-billing": "RCVD Billing",
+  "storage-begins": "Storage Begins",
+  "dem-begins": "Demurrage Begins",
+  arrastre: "Arrastre",
   final: "Final",
   "for-debit": "For Debit",
   debited: "Debited",

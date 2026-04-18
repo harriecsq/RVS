@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronDown, Plus, Trash2, Link2, ChevronsUpDown, Check } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { ComboInput } from "../ui/ComboInput";
@@ -35,6 +37,8 @@ function CategoryDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +52,7 @@ function CategoryDropdown({
   return (
     <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => { if (!disabled) setOpen(!open); }}
@@ -77,20 +82,24 @@ function CategoryDropdown({
         <ChevronsUpDown size={16} style={{ flexShrink: 0, opacity: 0.5, marginLeft: "8px" }} />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div style={{
-          position: "absolute",
-          top: "calc(100% + 4px)",
-          left: 0,
-          width: "100%",
+          position: "fixed",
+          top: dropdownPos.top,
+          bottom: dropdownPos.bottom,
+          left: dropdownPos.left,
+          width: dropdownPos.width,
           minWidth: "280px",
           background: "white",
           border: "1px solid #E5E9F0",
           borderRadius: "12px",
           boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
-          zIndex: 100,
+          zIndex: 9999,
+          maxHeight: dropdownPos.maxHeight,
           overflow: "hidden",
-        }}>
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        >
           <div style={{ maxHeight: "300px", overflowY: "auto", padding: "4px" }}>
             {CATEGORY_GROUPS.map((group) => {
               const groupItems = group.items.filter((item) => options.includes(item));
@@ -135,7 +144,8 @@ function CategoryDropdown({
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -146,6 +156,8 @@ function NeuronDropdown({
 }: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -158,6 +170,7 @@ function NeuronDropdown({
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <div
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         style={{
           width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
@@ -169,12 +182,14 @@ function NeuronDropdown({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
           background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
-        }}>
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        >
           {options.map((opt) => (
             <div
               key={opt}
@@ -191,7 +206,8 @@ function NeuronDropdown({
               {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -208,6 +224,7 @@ function computeVolumeSummary(containerNo: string | string[], volume: string): s
     containerCount = Math.max(containers.length, 1);
   }
   if (!volume) return "—";
+  if (volume.trim() === "LCL") return "LCL";
   return `${containerCount}x${volume}`;
 }
 
@@ -313,6 +330,7 @@ export function CreateVoucherModal({
   const [bank, setBank] = useState("");
   const [checkNo, setCheckNo] = useState("");
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split("T")[0]);
+  const [postingDate, setPostingDate] = useState(new Date().toISOString().split("T")[0]);
   
   // Container State
   const [availableContainers, setAvailableContainers] = useState<string[]>([]);
@@ -385,6 +403,7 @@ export function CreateVoucherModal({
       setBank("");
       setCheckNo("");
       setVoucherDate("");
+      setPostingDate("");
       setSelectedBooking(null);
       setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
       setManualDeliveryAddress("");
@@ -582,10 +601,13 @@ export function CreateVoucherModal({
       const isImport = !isExport;
 
       // 1. Handle SOP Logic (Shared)
-      const pod = selectedBooking.portOfDestination || selectedBooking.port_of_destination || selectedBooking.destination || "";
+      // Import bookings store the dropdown value in `pod`. Fall back to other field names for safety.
+      const pod = selectedBooking.pod || selectedBooking.portOfDestination || selectedBooking.port_of_destination || selectedBooking.destination || "";
       const isNorth = /MICP|North/i.test(pod);
       const determinedSop = isNorth ? "SOP (MICP)" : "SOP (POM)";
-      
+      // Provincial import PODs use a reduced standardized set (no DO Fee, no SOP row, no default Distribution)
+      const isProvincialImportPod = isImport && (pod === "CDO" || pod === "Iloilo" || pod === "Davao");
+
       // Helper to preserve amounts
       const getExistingAmount = (desc: string) => {
         // Check particulars
@@ -608,39 +630,47 @@ export function CreateVoucherModal({
               "Form E Form",
               "Registration Fee"
           ];
+      } else if (isProvincialImportPod) {
+          particularItems = [
+              "Local Charges",
+              "Container Deposit",
+              "Duties & Taxes",
+              "Arrastre",
+              "Wharfage"
+          ];
       } else {
           // Import Defaults
           particularItems = [
-              "Local Charges", 
-              "Container Deposit", 
-              "Duties & Taxes", 
-              "Arrastre", 
+              "Local Charges",
+              "Container Deposit",
+              "Duties & Taxes",
+              "Arrastre",
               "DO Fee"
           ];
       }
 
       // Add Standard Particulars
       particularItems.forEach(desc => {
-         newParticulars.push({ 
-            id: Date.now().toString() + Math.random(), 
-            description: desc, 
-            amount: getExistingAmount(desc) 
+         newParticulars.push({
+            id: Date.now().toString() + Math.random(),
+            description: desc,
+            amount: getExistingAmount(desc)
          });
       });
 
-      // Add Dynamic SOP Row (Only for Import Bookings)
-      if (!isExport) {
+      // Add Dynamic SOP Row (Only for non-provincial Import Bookings)
+      if (!isExport && !isProvincialImportPod) {
         const existingSop = particulars.find(p => p.isSopRow);
         const currentSopType = existingSop?.sopType || existingSop?.defaultSop || determinedSop;
-        
+
         const isFacilitation = existingSop?.sopType === "Facilitation";
         const finalSopType = isFacilitation ? "Facilitation" : determinedSop;
-        
+
         // Auto-fill Section Number from Booking if available and not manually set
         // Support multiple field variations for robustness
         const bookingSection = selectedBooking.section || selectedBooking.SOP || selectedBooking.sop || "";
         const finalSopNum = existingSop?.sopNumber || bookingSection || "";
-        
+
         const finalSopDesc = finalSopNum ? `${finalSopType} ${finalSopNum}` : finalSopType;
 
         newParticulars.push({
@@ -668,6 +698,9 @@ export function CreateVoucherModal({
               "LONA",
               "Royalty Fee"
           ];
+      } else if (isProvincialImportPod) {
+          // Provincial imports: keep the table but no default rows
+          distributionItems = [];
       } else {
           // Import Defaults
           distributionItems = [
@@ -873,6 +906,7 @@ export function CreateVoucherModal({
         voucherType: voucherTypeCode,
         voucherYear: parseInt(voucherYear) || new Date().getFullYear(),
         voucherDate: formattedDate,
+        postingDate: postingDate || undefined,
         payee,
         category,
         bank,
@@ -1063,10 +1097,19 @@ export function CreateVoucherModal({
               </div>
 
               <div className="col-span-2 sm:col-span-1">
-                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Date</Label>
+                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Creation Date</Label>
                 <SingleDateInput
                   value={voucherDate}
                   onChange={(iso) => setVoucherDate(iso)}
+                  placeholder="MM/DD/YYYY"
+                />
+              </div>
+
+              <div className="col-span-2 sm:col-span-1">
+                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Posting Date</Label>
+                <SingleDateInput
+                  value={postingDate}
+                  onChange={(iso) => setPostingDate(iso)}
                   placeholder="MM/DD/YYYY"
                 />
               </div>
@@ -1196,7 +1239,7 @@ export function CreateVoucherModal({
                               <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
                               <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
                                 {category === "Trucking" && selectedTruckingContainerNos.length > 0
-                                  ? `${selectedTruckingContainerNos.length}x${bookingFields.volume || "—"}`
+                                  ? (bookingFields.volume?.trim() === "LCL" ? "LCL" : `${selectedTruckingContainerNos.length}x${bookingFields.volume || "—"}`)
                                   : computeVolumeSummary(bookingFields.containerNo, bookingFields.volume)}
                               </div>
                             </div>

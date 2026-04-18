@@ -1,6 +1,8 @@
 import { toast } from 'sonner@2.0.3';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronsUpDown, Search, Plus } from 'lucide-react';
+import { useDropdownPosition } from '../../hooks/useDropdownPortal';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
 
@@ -36,6 +38,8 @@ export function PayeeSelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -178,6 +182,7 @@ export function PayeeSelector({
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => {
@@ -211,21 +216,24 @@ export function PayeeSelector({
       </button>
 
       {/* Dropdown Panel */}
-      {open && (
+      {open && createPortal(
         <div
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            width: '100%',
+            position: 'fixed',
+            top: dropdownPos.top,
+            bottom: dropdownPos.bottom,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
             minWidth: '280px',
             background: 'white',
             border: '1px solid #E5E9F0',
             borderRadius: '12px',
             boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-            zIndex: 100,
+            zIndex: 9999,
+            maxHeight: dropdownPos.maxHeight,
             overflow: 'hidden',
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {/* Search bar */}
           <div
@@ -370,7 +378,8 @@ export function PayeeSelector({
               })
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

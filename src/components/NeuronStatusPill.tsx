@@ -46,8 +46,13 @@ export function NeuronStatusPill({ children, status, variant, size = "md" }: Neu
       return "danger";
     }
     
+    // DANGER (Red) - Inactive status
+    if (statusLower === "inactive") {
+      return "danger";
+    }
+
     // NEUTRAL (Gray) - Draft/Initial states
-    if (statusLower === "draft" || statusLower === "inactive") {
+    if (statusLower === "draft") {
       return "neutral";
     }
     

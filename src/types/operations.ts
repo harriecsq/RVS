@@ -30,6 +30,7 @@ export interface Contact {
   email?: string;
   phone?: string;
   notes?: string;
+  status?: "Active" | "Inactive";
   created_at?: string;
   updated_at?: string;
 }
@@ -320,6 +321,16 @@ export interface BookingSegment {
   containerNos: string[];
   sealNos?: string[];
 
+  // Client / Parties
+  customerName?: string;
+  consignee?: string;
+  shipper?: string;
+  commodity?: string;
+  volume?: string;
+  containerNo?: string;
+  sealNo?: string;
+  grossWeight?: string;
+
   // Route
   origin?: string;
   pod?: string;
@@ -343,6 +354,10 @@ export interface BookingSegment {
   // BL
   blNumber?: string;
   mblMawb?: string;
+
+  // Trucking
+  loadingAddress?: string;
+  loadingSchedule?: string;
 
   // Domestic Cost
   domesticFreight?: string;
@@ -372,6 +387,37 @@ export interface BookingSegment {
   bir?: string;
   labor?: string;
   otherCharges?: string;
+
+  // Operational Details
+  section?: string;
+  ot?: string;
+  receivedDocs?: string;
+  ata?: string;
+  discharged?: string;
+  storageBegins?: string;
+  demBegins?: string;
+  entryNumber?: string;
+  shippingLineStatus?: string;
+  registryNo?: string;
+  selectivity?: string;
+  ticket?: string;
+  rcvdBilling?: string;
+  finalTaxNavValue?: string;
+  stowage?: string;
+  gatepass?: string;
+
+  // Approval / Sign-off
+  preparedBy?: string;
+  checkedBy?: string;
+  approvedBy?: string;
+
+  // Assignment
+  accountOwner?: string;
+  accountHandler?: string;
+
+  // Notes
+  notes?: string;
+  docsTimeline?: any[];
 
   createdAt?: string;
   updatedAt?: string;

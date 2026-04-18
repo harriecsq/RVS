@@ -1,11 +1,15 @@
-import { useState, useEffect, useRef } from "react";
-import { FileText, Plus, Edit3, Save, X, AlertCircle, ChevronDown, Check } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { FileText, Plus, Edit3, X, AlertCircle, ChevronDown, Check } from "lucide-react";
+import { useDropdownPosition } from "../../../hooks/useDropdownPortal";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
-import { buildCommercialInvoiceDefaults } from "../../../utils/export-document-autofill";
+import { buildCommercialInvoiceDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { CommercialInvoice, SalesContract } from "../../../types/export-documents";
+import { TemplatePickerView } from "./TemplatePickerView";
+import { useDocTemplates } from "../../../hooks/useDocTemplates";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -18,6 +22,8 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", handler);
@@ -25,7 +31,7 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
   }, []);
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <div onClick={() => setOpen(!open)} style={{
+      <div ref={triggerRef} onClick={() => setOpen(!open)} style={{
         width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
         border: "1px solid #0F766E", fontSize: "14px", display: "flex",
         alignItems: "center", justifyContent: "space-between", cursor: "pointer",
@@ -34,12 +40,14 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
           background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
-        }}>
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        >
           {options.map((opt) => (
             <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
               style={{
@@ -54,7 +62,8 @@ function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }:
               {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -138,9 +147,10 @@ interface CommercialInvoiceTabProps {
   booking: any;
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
+  onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
 }
 
-export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocumentUpdated }: CommercialInvoiceTabProps) {
+export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: CommercialInvoiceTabProps) {
   const [doc, setDoc] = useState<CommercialInvoice | null>(null);
   const [sc, setSc] = useState<SalesContract | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,6 +158,10 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<CommercialInvoice>>({});
+  const editDataRef = useRef(editData);
+  editDataRef.current = editData;
+  const { templates, fetchTemplateFields } = useDocTemplates("commercialInvoice", booking?.clientId);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
@@ -202,11 +216,23 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
     return `${refCompanyCode} ${refYear}-${num}`;
   };
 
-  const handleCreate = () => {
-    const defaults = buildCommercialInvoiceDefaults(booking, sc || undefined);
-    setEditData({ ...defaults, invoiceNo: buildRefNo() });
+  const handleCreateClick = () => {
+    setShowTemplatePicker(true);
+  };
+
+  const proceedWithCreate = (templateFields: Record<string, any> | null) => {
+    let merged = buildCommercialInvoiceDefaults(booking, sc || undefined);
+    if (templateFields) { merged = applyTemplate(merged, templateFields, "commercialInvoice"); }
+    setEditData({ ...merged, invoiceNo: buildRefNo() });
     setIsCreating(true);
     setIsEditing(true);
+  };
+
+  const handleTemplateSelect = async (templateId: string | null) => {
+    setShowTemplatePicker(false);
+    if (!templateId) { proceedWithCreate(null); return; }
+    const fields = await fetchTemplateFields(templateId);
+    proceedWithCreate(fields);
   };
 
   const handleEdit = () => {
@@ -229,11 +255,11 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
     setEditData({});
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const id = encodeURIComponent(bookingId);
-      const payload = { ...editData, invoiceNo: buildRefNo(), createdBy: currentUser?.name || "Unknown" };
+      const payload = { ...editDataRef.current, invoiceNo: buildRefNo(), createdBy: currentUser?.name || "Unknown" };
       const res = await fetch(`${API_BASE_URL}/export-bookings/${id}/documents/commercial-invoice`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
@@ -256,7 +282,15 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [bookingId, currentUser?.name]);
+
+  useEffect(() => {
+    onEditStateChange?.({
+      isEditing, isSaving,
+      refNo: doc?.invoiceNo || (isEditing ? buildRefNo() : ""),
+      handleEdit, handleCancel, handleSave,
+    });
+  }, [isEditing, isSaving, doc?.invoiceNo]);
 
   const field = (key: keyof CommercialInvoice) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -284,13 +318,16 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
   }
 
   if (!doc && !isEditing) {
+    if (showTemplatePicker) {
+      return <TemplatePickerView onSelect={handleTemplateSelect} onCancel={() => setShowTemplatePicker(false)} templates={templates} docType="commercialInvoice" />;
+    }
     return (
       <div style={{ padding: "32px 48px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
           <FileText size={44} style={{ color: "#D1D5DB", marginBottom: "14px" }} />
           <p style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>No Commercial Invoice record</p>
           <p style={{ fontSize: "13px", color: "#667085", margin: "0 0 16px" }}>Create a Commercial Invoice for this booking.</p>
-          <button onClick={handleCreate} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "#FFFFFF", cursor: "pointer" }}>
+          <button onClick={handleCreateClick} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "#FFFFFF", cursor: "pointer" }}>
             <Plus size={15} /> Create Commercial Invoice
           </button>
         </div>
@@ -300,29 +337,6 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
 
   return (
     <div style={{ padding: "32px 48px", overflow: "auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-          Commercial Invoice {(doc?.invoiceNo || (isEditing && buildRefNo())) && <span style={{ color: "#667085", fontWeight: 400 }}>— {isEditing ? buildRefNo() : doc?.invoiceNo}</span>}
-        </h2>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {isEditing ? (
-            <>
-              <button onClick={handleCancel} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "1px solid #D1D5DB", borderRadius: "8px", background: "white", color: "#374151", cursor: "pointer" }}>
-                <X size={14} /> Cancel
-              </button>
-              <button onClick={handleSave} disabled={isSaving} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "white", cursor: "pointer", opacity: isSaving ? 0.6 : 1 }}>
-                <Save size={14} /> {isSaving ? "Saving..." : "Save"}
-              </button>
-            </>
-          ) : (
-            <button onClick={handleEdit} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 600, border: "1px solid #D1D5DB", borderRadius: "8px", background: "white", color: "#374151", cursor: "pointer" }}>
-              <Edit3 size={14} /> Edit
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Shipping + Invoice Details */}
       <SectionCard title="Invoice Details">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
@@ -442,9 +456,9 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
           {isEditing ? (
-            <FieldInput label="Total Net Weight" value={field("totalNetWeight")} onChange={(v) => setField("totalNetWeight", v)} suffix="KGS" />
+            <FieldInput label="Total Net Weight" value={field("totalNetWeight")} onChange={(v) => setField("totalNetWeight", v)} suffix="MT" />
           ) : (
-            <FieldView label="Total Net Weight" value={field("totalNetWeight")} suffix="KGS" />
+            <FieldView label="Total Net Weight" value={field("totalNetWeight")} suffix="MT" />
           )}
           {isEditing ? (
             <FieldInput label="Unit Price" value={field("unitPrice")} onChange={(v) => setField("unitPrice", v)} suffix="USD" />

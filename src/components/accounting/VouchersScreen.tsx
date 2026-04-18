@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Plus, Receipt, Search, ChevronDown, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { CreateVoucherModal } from "./CreateVoucherModal";
@@ -36,6 +37,7 @@ interface Voucher {
   destination?: string;
   blNumber?: string;
   voucherDate: string;
+  postingDate?: string;
   status: string;
   created_at?: string;
 }
@@ -56,7 +58,7 @@ function PayeeFilterDropdown({
   const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const dropdownPos = useDropdownPosition(triggerRef, isOpen);
 
   const filteredPayees = useMemo(() => {
     if (!search.trim()) return payees;
@@ -64,27 +66,6 @@ function PayeeFilterDropdown({
     return payees.filter((p) => p.toLowerCase().includes(term));
   }, [payees, search]);
 
-  const updatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    setDropdownPos({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, 280),
-    });
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      updatePosition();
-      window.addEventListener("scroll", updatePosition, true);
-      window.addEventListener("resize", updatePosition);
-      return () => {
-        window.removeEventListener("scroll", updatePosition, true);
-        window.removeEventListener("resize", updatePosition);
-      };
-    }
-  }, [isOpen, updatePosition]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -160,9 +141,10 @@ function PayeeFilterDropdown({
             style={{
               position: "fixed",
               top: dropdownPos.top,
+              bottom: dropdownPos.bottom,
               left: dropdownPos.left,
-              width: dropdownPos.width,
-              maxHeight: 360,
+              width: Math.max(dropdownPos.width, 280),
+              maxHeight: dropdownPos.maxHeight,
               backgroundColor: "#FFFFFF",
               border: "1px solid #E5E9F0",
               borderRadius: "8px",
@@ -279,7 +261,9 @@ export function VouchersScreen() {
       });
       const result = await response.json();
       if (result.success) {
-        setVouchers(result.data || []);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setVouchers(data);
       }
     } catch (error) {
       console.error("Error fetching vouchers:", error);
@@ -307,7 +291,8 @@ export function VouchersScreen() {
     if (!matchesSearch) return false;
 
     if (dateFilterStart || dateFilterEnd) {
-      const voucherISO = new Date(voucher.created_at || voucher.voucherDate).toISOString().split("T")[0];
+      // Filter by posting date (accounting month basis); fall back to voucherDate/created_at for legacy records
+      const voucherISO = new Date(voucher.postingDate || voucher.voucherDate || voucher.created_at || "").toISOString().split("T")[0];
       if (dateFilterStart && voucherISO < dateFilterStart) return false;
       if (dateFilterEnd && voucherISO > dateFilterEnd) return false;
     }
@@ -371,10 +356,18 @@ export function VouchersScreen() {
       cell: (voucher) => <NeuronStatusPill status={voucher.status} />,
     },
     {
-      header: "Created",
+      header: "Creation Date",
       cell: (voucher) => (
         <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
           {new Date(voucher.voucherDate).toLocaleDateString()}
+        </div>
+      ),
+    },
+    {
+      header: "Posting Date",
+      cell: (voucher) => (
+        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+          {voucher.postingDate ? new Date(voucher.postingDate).toLocaleDateString() : "—"}
         </div>
       ),
     },

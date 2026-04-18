@@ -3,7 +3,9 @@
  * Used in trucking creation (single-select + basis autofill) and voucher creation (multi-select).
  */
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Check, Copy, ChevronDown } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import type { TruckingRecord } from "../operations/CreateTruckingModal";
@@ -21,6 +23,8 @@ interface ContainerSelectorProps {
   onSelectionChange: (containerNos: string[], containers: ContainerInfo[]) => void;
   existingTruckingRecords?: TruckingRecord[];
   onBasisSelected?: (record: TruckingRecord) => void;
+  /** When provided, only show containers whose containerNo is in this array */
+  segmentContainerNos?: string[];
 }
 
 function extractSize(s: string): string {
@@ -91,6 +95,8 @@ function BasisDropdown({
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<TruckingRecord | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -118,6 +124,7 @@ function BasisDropdown({
       </label>
       <div ref={ref} style={{ position: "relative" }}>
         <div
+          ref={triggerRef}
           onClick={() => setOpen((o) => !o)}
           style={{
             width: "100%",
@@ -140,21 +147,23 @@ function BasisDropdown({
           <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0, marginLeft: "8px" }} />
         </div>
 
-        {open && (
+        {open && createPortal(
           <div
             style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: "calc(100% + 4px)",
+              position: "fixed",
+              left: dropdownPos.left,
+              top: dropdownPos.top,
+              bottom: dropdownPos.bottom,
+              width: dropdownPos.width,
               zIndex: 9999,
               backgroundColor: "#FFFFFF",
               border: "1px solid #E5E9F0",
               borderRadius: "8px",
               boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
               overflow: "auto",
-              maxHeight: "240px",
+              maxHeight: dropdownPos.maxHeight,
             }}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             {records.map((r) => {
               const isActive = selected?.id === r.id;
@@ -193,7 +202,8 @@ function BasisDropdown({
                 </div>
               );
             })}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
@@ -208,8 +218,9 @@ export function ContainerSelector({
   onSelectionChange,
   existingTruckingRecords = [],
   onBasisSelected,
+  segmentContainerNos,
 }: ContainerSelectorProps) {
-  const [containers, setContainers] = useState<ContainerInfo[]>([]);
+  const [allContainers, setAllContainers] = useState<ContainerInfo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -224,7 +235,7 @@ export function ContainerSelector({
       });
       const result = await res.json();
       if (result.success && result.data) {
-        setContainers(parseContainersFromBooking(result.data));
+        setAllContainers(parseContainersFromBooking(result.data));
       }
     } catch (err) {
       console.error("Error fetching booking containers:", err);
@@ -232,6 +243,11 @@ export function ContainerSelector({
       setIsLoading(false);
     }
   };
+
+  // Filter containers by segment when segmentContainerNos is provided
+  const containers = segmentContainerNos
+    ? allContainers.filter((c) => segmentContainerNos.includes(c.containerNo))
+    : allContainers;
 
   const toggleContainer = (containerNo: string) => {
     if (alreadyLinkedContainerNos.includes(containerNo)) return;

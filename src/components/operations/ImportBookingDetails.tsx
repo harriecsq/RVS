@@ -708,14 +708,30 @@ export function BrokerageBookingDetails({
                     projects={projects}
                   />
                 )}
-                {activeBookingSubTab === "shipment-milestones" && (
-                  <ShipmentMilestonesTab
-                    ref={milestonesRef}
-                    shipmentEvents={(currentBooking as any).shipmentEvents || []}
-                    onSave={handleSaveShipmentEvents}
-                    isEditing={milestonesEditing}
-                  />
-                )}
+                {activeBookingSubTab === "shipment-milestones" && (() => {
+                  const baseEvents: ShipmentEvent[] = (currentBooking as any).shipmentEvents || [];
+                  const existingKeys = new Set(baseEvents.map((e: ShipmentEvent) => e.event));
+                  const bookingFallbacks: Array<{ key: string; field: string }> = [
+                    { key: "eta", field: "eta" },
+                    { key: "ata", field: "ata" },
+                    { key: "storage-begins", field: "storageBegins" },
+                    { key: "dem-begins", field: "demBegins" },
+                  ];
+                  const merged = [...baseEvents];
+                  for (const { key, field } of bookingFallbacks) {
+                    if (!existingKeys.has(key) && (currentBooking as any)[field]) {
+                      merged.push({ event: key, dateTime: (currentBooking as any)[field], note: "" });
+                    }
+                  }
+                  return (
+                    <ShipmentMilestonesTab
+                      ref={milestonesRef}
+                      shipmentEvents={merged}
+                      onSave={handleSaveShipmentEvents}
+                      isEditing={milestonesEditing}
+                    />
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1421,6 +1437,7 @@ function computeVolumeSummary(containerNo: string, volume: string): string {
     containerCount = Math.max(containers.length, 1);
   }
   if (!volume) return "—";
+  if (volume.trim() === "LCL") return "LCL";
   return `${containerCount}x${volume}`;
 }
 
@@ -1462,6 +1479,7 @@ function BookingInformationTab({
   const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
   const [showSelectivityDD, setShowSelectivityDD] = useState(false);
   const [showGrossWeightUnitDD, setShowGrossWeightUnitDD] = useState(false);
+  const [showStowageUnitDD, setShowStowageUnitDD] = useState(false);
   const [showSectionDD, setShowSectionDD] = useState(false);
   const [sectionSearch, setSectionSearch] = useState("");
   const [shippingLineSearch, setShippingLineSearch] = useState("");
@@ -2122,8 +2140,136 @@ function BookingInformationTab({
     );
   };
 
+  const renderStowageField = () => {
+    const currentVal = getFieldVal("stowage");
+
+    if (!isEditing) {
+      const isEmpty = !currentVal || currentVal.trim() === "";
+      return (
+        <div>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+            Stowage
+          </label>
+          <div style={{
+            padding: "10px 14px",
+            backgroundColor: isEmpty ? "white" : "#F9FAFB",
+            border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+            borderRadius: "6px",
+            fontSize: "14px",
+            color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+            minHeight: "42px",
+            display: "flex",
+            alignItems: "center"
+          }}>
+            {isEmpty ? "—" : currentVal}
+          </div>
+        </div>
+      );
+    }
+
+    const parseStowage = (val: string): { value: string; unit: string } => {
+      if (!val) return { value: "", unit: "kg" };
+      const parts = val.trim().split(/\s+/);
+      if (parts.length >= 2) return { value: parts[0], unit: parts[1] };
+      return { value: parts[0] || "", unit: "kg" };
+    };
+
+    const parsed = parseStowage(currentVal);
+
+    return (
+      <div>
+        <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+          Stowage
+        </label>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <input
+            type="text"
+            value={parsed.value}
+            onChange={(e) => {
+              const numVal = e.target.value.replace(/[^0-9.]/g, '');
+              setEditData({ ...editData, stowage: numVal ? `${numVal} ${parsed.unit}` : "" } as any);
+            }}
+            placeholder="0.00"
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              fontSize: "14px",
+              border: "1px solid #0F766E",
+              borderRadius: "6px",
+              color: "var(--neuron-ink-primary)",
+              backgroundColor: "white",
+              outline: "none",
+              height: "42px"
+            }}
+          />
+          <div style={{ position: "relative", width: "80px" }}>
+            <div
+              onClick={() => setShowStowageUnitDD(!showStowageUnitDD)}
+              onBlur={() => setTimeout(() => setShowStowageUnitDD(false), 200)}
+              tabIndex={0}
+              style={{
+                padding: "10px 8px",
+                fontSize: "14px",
+                border: "1px solid #0F766E",
+                borderRadius: "6px",
+                color: "#111827",
+                fontWeight: 500,
+                backgroundColor: "white",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                outline: "none",
+                height: "42px"
+              }}
+            >
+              {parsed.unit}
+              <ChevronDown size={14} color="#667085" style={{ transform: showStowageUnitDD ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+            </div>
+            {showStowageUnitDD && (
+              <div style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                right: 0,
+                background: "white",
+                border: "1.5px solid #E5E9F0",
+                borderRadius: "8px",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                zIndex: 50
+              }}>
+                {GROSS_WEIGHT_UNITS.map((unit, index) => (
+                  <div
+                    key={unit}
+                    onClick={() => {
+                      setEditData({ ...editData, stowage: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
+                      setShowStowageUnitDD(false);
+                    }}
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      color: "#111827",
+                      background: parsed.unit === unit ? "#F0FDF4" : "transparent",
+                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
+                    }}
+                    onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
+                    onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    {unit}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ 
+    <div style={{
       padding: "32px 48px",
       maxWidth: "1400px",
       margin: "0 auto"
@@ -2265,12 +2411,14 @@ function BookingInformationTab({
             {/* Volume: View mode = computed summary, Edit mode = size+type dropdowns */}
             {isEditing ? (
               <div style={{ display: "flex", gap: "8px" }}>
-                <div style={{ flex: 1 }}>
-                  {renderEditDropdown(
-                    "__containerSize" as any, "Size", [...CONTAINER_SIZE_OPTIONS],
-                    showContainerSizeDD, setShowContainerSizeDD
-                  )}
-                </div>
+                {(editData as any).__containerType !== "LCL" && (
+                  <div style={{ flex: 1 }}>
+                    {renderEditDropdown(
+                      "__containerSize" as any, "Size", [...CONTAINER_SIZE_OPTIONS],
+                      showContainerSizeDD, setShowContainerSizeDD
+                    )}
+                  </div>
+                )}
                 <div style={{ flex: 1 }}>
                   {renderEditDropdown(
                     "__containerType" as any, "Type", [...CONTAINER_TYPE_OPTIONS],
@@ -2301,22 +2449,7 @@ function BookingInformationTab({
             {renderEditDropdown("shippingLineStatus", "Shipping Line Status", ["No Billing Yet", "With Billing", "Done Payment"], showShippingLineStatusDD, setShowShippingLineStatusDD)}
           </div>
 
-          {/* Row 4: Section, OT (Received Docs removed) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            {renderSectionDropdown()}
-            <EditableField
-              fieldName="ot"
-              label="OT"
-              value={(booking as any).ot || ""}
-              status={booking.status as ExecutionStatus}
-              placeholder="Enter OT..."
-              isEditing={isEditing}
-              editData={editData}
-              setEditData={setEditData}
-            />
-          </div>
-
-          {/* Row 5: POL & POD */}
+          {/* Row 4: POL & POD */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
             <EditableField
               fieldName="origin"
@@ -2345,7 +2478,7 @@ function BookingInformationTab({
         </div>
       </div>
 
-      {/* Dates and Additional Info Section (merged) */}
+      {/* Additional Info Section */}
       <div style={{
         background: "white",
         borderRadius: "12px",
@@ -2354,202 +2487,140 @@ function BookingInformationTab({
       }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #E5E9F0", background: "#F9FAFB" }}>
           <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-            Dates and Additional Info
+            Additional Info
           </h3>
         </div>
 
         <div style={{ padding: "24px" }}>
         <div style={{ display: "grid", gap: "20px" }}>
-          {/* Timeline & Dates sub-section */}
-          <div style={{ marginBottom: "4px" }}>
-            
-            {/* Row 1: ETA, ATA (date + time) */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-              {renderDateTimeEditField("eta", "ETA")}
-              {renderDateTimeEditField("ata", "ATA")}
-            </div>
 
-            {/* Row 2: Discharged, Storage Begins, DEM Begins (date + time with auto-calc) */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
-              {renderDateTimeEditField("discharged", "Discharged", handleDischargedChange)}
-              {renderDateTimeEditField("storageBegins", "Storage Begins", () => setStorageManualOverride(true))}
-              {renderDateTimeEditField("demBegins", "DEM Begins", () => setDemManualOverride(true))}
-            </div>
+          {/* Row: Section, OT */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            {renderSectionDropdown()}
+            <EditableField
+              fieldName="ot"
+              label="OT"
+              value={(booking as any).ot || ""}
+              status={booking.status as ExecutionStatus}
+              placeholder="Enter OT..."
+              isEditing={isEditing}
+              editData={editData}
+              setEditData={setEditData}
+            />
           </div>
 
-          
-
-          {/* Group 1: Clearance / References */}
-          <div style={{ marginBottom: "4px" }}>
-            
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-              <EditableField
-                fieldName="registryNo"
-                label="Registry No."
-                value={(booking as any).registryNo || ""}
-                status={booking.status as ExecutionStatus}
-                placeholder="Enter Registry No..."
-                isEditing={isEditing}
-                editData={editData}
-                setEditData={setEditData}
-              />
-              {/* Selectivity - Color-coded Dropdown */}
-              {renderEditDropdown("selectivity", "Selectivity", SELECTIVITY_OPTIONS, showSelectivityDD, setShowSelectivityDD, renderSelectivityOption)}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-              <EditableField
-                fieldName="ticket"
-                label="Ticket"
-                value={(booking as any).ticket || ""}
-                status={booking.status as ExecutionStatus}
-                placeholder="Enter Ticket..."
-                isEditing={isEditing}
-                editData={editData}
-                setEditData={setEditData}
-              />
-              {/* RCVD Billing - Date + Time */}
-              {renderDateTimeEditField("rcvdBilling", "RCVD Billing")}
-            </div>
+          {/* Row: Registry No., Selectivity */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <EditableField
+              fieldName="registryNo"
+              label="Registry No."
+              value={(booking as any).registryNo || ""}
+              status={booking.status as ExecutionStatus}
+              placeholder="Enter Registry No..."
+              isEditing={isEditing}
+              editData={editData}
+              setEditData={setEditData}
+            />
+            {renderEditDropdown("selectivity", "Selectivity", SELECTIVITY_OPTIONS, showSelectivityDD, setShowSelectivityDD, renderSelectivityOption)}
           </div>
 
-          {/* Group 2: Charges / Values */}
-          <div style={{ marginBottom: "4px", marginTop: "12px" }}>
-            
-            {/* Arrastre - Date + Amount + Time */}
-            <div style={{ marginBottom: "20px" }}>
-              {(() => {
-                const currentVal = getFieldVal("arrastre");
-                const { date: dVal, time: tVal } = splitDateTime(currentVal);
-                const amountVal = (editData as any).arrastreAmount !== undefined
-                  ? String((editData as any).arrastreAmount || "")
-                  : (booking as any).arrastreAmount || "";
-                const isEmpty = !currentVal || currentVal.trim() === "";
-                const isAmountEmpty = !amountVal || amountVal.trim() === "";
+          {/* Row: Entry #, Ticket */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <EditableField
+              fieldName="entryNumber"
+              label="Entry #"
+              value={(booking as any).entryNumber || ""}
+              status={booking.status as ExecutionStatus}
+              placeholder="Enter entry number..."
+              isEditing={isEditing}
+              editData={editData}
+              setEditData={setEditData}
+            />
+            <EditableField
+              fieldName="ticket"
+              label="Ticket"
+              value={(booking as any).ticket || ""}
+              status={booking.status as ExecutionStatus}
+              placeholder="Enter Ticket..."
+              isEditing={isEditing}
+              editData={editData}
+              setEditData={setEditData}
+            />
+          </div>
 
-                const isDateEmpty = !dVal || dVal.trim() === "";
-                const isTimeEmpty = !tVal || tVal.trim() === "";
+          {/* Row: Final Tax/NAV Value, Arrastre */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <EditableField
+              fieldName="finalTaxNavValue"
+              label="Final Tax/NAV Value"
+              value={(booking as any).finalTaxNavValue || ""}
+              status={booking.status as ExecutionStatus}
+              placeholder="0.00"
+              type="text"
+              isEditing={isEditing}
+              editData={editData}
+              setEditData={setEditData}
+            />
+            {(() => {
+              const amountVal = (editData as any).arrastreAmount !== undefined
+                ? String((editData as any).arrastreAmount || "")
+                : (booking as any).arrastreAmount || "";
+              const isAmountEmpty = !amountVal || amountVal.trim() === "";
 
-                if (!isEditing) {
-                  const viewFieldStyle = (empty: boolean) => ({
-                    padding: "10px 14px",
-                    backgroundColor: empty ? "white" : "#F9FAFB",
-                    border: empty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    color: empty ? "#9CA3AF" : "var(--neuron-ink-primary)",
-                    minHeight: "42px",
-                    display: "flex",
-                    alignItems: "center"
-                  } as React.CSSProperties);
-
-                  return (
-                    <div>
-                      <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
-                        Arrastre
-                      </label>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: "8px" }}>
-                        <div style={viewFieldStyle(isAmountEmpty)}>
-                          {isAmountEmpty ? "Amount —" : amountVal}
-                        </div>
-                        <div style={viewFieldStyle(isDateEmpty)}>
-                          {isDateEmpty ? "Date —" : dVal}
-                        </div>
-                        <div style={viewFieldStyle(isTimeEmpty)}>
-                          {isTimeEmpty ? "Time —" : tVal}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
+              if (!isEditing) {
                 return (
                   <div>
                     <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
                       Arrastre
                     </label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: "8px" }}>
-                      <div>
-                        <input
-                          type="text"
-                          value={amountVal}
-                          onChange={(e) => setEditData({ ...editData, arrastreAmount: e.target.value } as any)}
-                          placeholder="Amount (0.00)"
-                          style={{
-                            width: "100%",
-                            padding: "10px 14px",
-                            borderRadius: "6px",
-                            border: "1px solid #E5E9F0",
-                            fontSize: "14px",
-                            color: "var(--neuron-ink-primary)",
-                            outline: "none"
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <SingleDateInput
-                          value={mmddToISO(dVal)}
-                          onChange={(iso: string) => {
-                            const formatted = isoToMMDD(iso);
-                            const newCombined = combineDateTime(formatted, tVal);
-                            setEditData({ ...editData, arrastre: newCombined } as any);
-                          }}
-                          placeholder="MM/DD/YYYY"
-                        />
-                      </div>
-                      <div>
-                        <NeuronTimePicker
-                          value={tVal}
-                          onChange={(v: string) => {
-                            const newCombined = combineDateTime(dVal, v);
-                            setEditData({ ...editData, arrastre: newCombined } as any);
-                          }}
-                        />
-                      </div>
+                    <div style={{
+                      padding: "10px 14px",
+                      backgroundColor: isAmountEmpty ? "white" : "#F9FAFB",
+                      border: isAmountEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      color: isAmountEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+                      minHeight: "42px",
+                      display: "flex",
+                      alignItems: "center"
+                    }}>
+                      {isAmountEmpty ? "Amount —" : amountVal}
                     </div>
                   </div>
                 );
-              })()}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-              <EditableField
-                fieldName="finalTaxNavValue"
-                label="Final Tax/NAV Value"
-                value={(booking as any).finalTaxNavValue || ""}
-                status={booking.status as ExecutionStatus}
-                placeholder="0.00"
-                type="text"
-                isEditing={isEditing}
-                editData={editData}
-                setEditData={setEditData}
-              />
-              <EditableField
-                fieldName="stowage"
-                label="Stowage"
-                value={(booking as any).stowage || ""}
-                status={booking.status as ExecutionStatus}
-                placeholder="0.00"
-                type="text"
-                isEditing={isEditing}
-                editData={editData}
-                setEditData={setEditData}
-              />
-            </div>
-            {/* Gross Weight + Entry Number */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-              {renderGrossWeightField()}
-              <EditableField
-                fieldName="entryNumber"
-                label="Entry #"
-                value={(booking as any).entryNumber || ""}
-                status={booking.status as ExecutionStatus}
-                placeholder="Enter entry number..."
-                isEditing={isEditing}
-                editData={editData}
-                setEditData={setEditData}
-              />
-            </div>
+              }
+
+              return (
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                    Arrastre
+                  </label>
+                  <input
+                    type="text"
+                    value={amountVal}
+                    onChange={(e) => setEditData({ ...editData, arrastreAmount: e.target.value } as any)}
+                    placeholder="Amount (0.00)"
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "6px",
+                      border: "1px solid #E5E9F0",
+                      fontSize: "14px",
+                      color: "var(--neuron-ink-primary)",
+                      outline: "none",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+              );
+            })()}
           </div>
 
+          {/* Row: Gross Weight, Stowage */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            {renderGrossWeightField()}
+            {renderStowageField()}
+          </div>
 
         </div>
         </div>

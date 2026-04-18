@@ -1,4 +1,4 @@
-import { Plus, X, ChevronRight } from "lucide-react";
+import { Plus, X, ChevronLeft } from "lucide-react";
 import type { BookingSegment } from "../../../types/operations";
 
 interface SegmentSelectorProps {
@@ -38,7 +38,7 @@ export function SegmentSelector({
         return (
           <div key={seg.segmentId} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             {idx > 0 && (
-              <ChevronRight size={14} style={{ color: "#9CA3AF", flexShrink: 0 }} />
+              <ChevronLeft size={14} style={{ color: "#9CA3AF", flexShrink: 0 }} />
             )}
             <button
               onClick={() => onSegmentChange(seg.segmentId)}
@@ -105,7 +105,7 @@ export function SegmentSelector({
         }}
       >
         <Plus size={13} />
-        Add Leg
+        Add Province
       </button>
     </div>
   );

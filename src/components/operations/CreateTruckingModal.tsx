@@ -9,6 +9,8 @@
  */
 import { ArrowLeft, Plus, Trash2, ChevronDown, Check, X, Link2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { BookingSelector } from "../selectors/BookingSelector";
@@ -161,6 +163,7 @@ interface CreateTruckingModalProps {
   prefillBookingId?: string;
   prefillBookingType?: string;
   prefillSegmentId?: string;
+  segments?: import("../../types/operations").BookingSegment[];
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -234,6 +237,8 @@ function NeuronDropdown({
 }: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string; style?: React.CSSProperties }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -246,6 +251,7 @@ function NeuronDropdown({
   return (
     <div ref={ref} className="relative">
       <div
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer"
         style={{ borderColor: "#E5E9F0", fontSize: "14px", color: value ? "#0A1D4D" : "#9CA3AF", backgroundColor: "#FFFFFF", ...style }}
@@ -253,13 +259,15 @@ function NeuronDropdown({
         <span>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute left-0 right-0 mt-1 bg-white rounded-lg border overflow-auto"
+          className="bg-white rounded-lg border overflow-auto"
           style={{
-            top: "100%", zIndex: 9999, maxHeight: "220px",
+            position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
+            zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
             borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {options.map((opt) => (
             <div
@@ -277,7 +285,8 @@ function NeuronDropdown({
               {value === opt && <Check size={14} style={{ color: "#0F766E" }} />}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -288,6 +297,8 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
   const vendor = TRUCKING_VENDORS.find((v) => v.name === value);
 
   useEffect(() => {
@@ -309,6 +320,7 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
   return (
     <div ref={ref} className="relative">
       <div
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer"
         style={{ borderColor: "#E5E9F0", fontSize: "14px", backgroundColor: "#FFFFFF" }}
@@ -329,13 +341,15 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
         )}
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute left-0 right-0 mt-1 bg-white rounded-lg border overflow-hidden"
+          className="bg-white rounded-lg border overflow-hidden"
           style={{
-            top: "100%", zIndex: 9999,
+            position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
+            zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "hidden" as const,
             borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
             <input
@@ -368,7 +382,8 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -443,7 +458,7 @@ function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string, p
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function CreateTruckingModal({
-  isOpen, onClose, onSaved, existingRecord, prefillBookingId, prefillBookingType, prefillSegmentId,
+  isOpen, onClose, onSaved, existingRecord, prefillBookingId, prefillBookingType, prefillSegmentId, segments,
 }: CreateTruckingModalProps) {
   const [form, setForm] = useState<TruckingRecord>(
     existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType, prefillSegmentId)
@@ -972,6 +987,42 @@ export function CreateTruckingModal({
                   </div>
                 )}
 
+                {/* Leg Selection — shown when booking has multiple segments */}
+                {form.linkedBookingId && !existingRecord && segments && segments.length > 1 && (
+                  <div style={{ marginBottom: "4px" }}>
+                    <Label>Select Leg</Label>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      {[...segments].sort((a, b) => (a.legOrder || 0) - (b.legOrder || 0)).map((seg) => {
+                        const isActive = form.linkedSegmentId === seg.segmentId;
+                        return (
+                          <button
+                            key={seg.segmentId}
+                            type="button"
+                            onClick={() => {
+                              setForm((prev) => ({ ...prev, linkedSegmentId: seg.segmentId }));
+                              // Clear container selection when switching legs
+                              setSelectedContainerNos([]);
+                              handleContainerSelected([], []);
+                            }}
+                            style={{
+                              padding: "8px 16px",
+                              borderRadius: "8px",
+                              border: isActive ? "1.5px solid #0F766E" : "1px solid #D1D5DB",
+                              background: isActive ? "#E8F2EE" : "#FFFFFF",
+                              color: isActive ? "#0F766E" : "#374151",
+                              fontWeight: isActive ? 600 : 500,
+                              fontSize: "13px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {seg.segmentLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Container Selection — shown when a booking is linked */}
                 {form.linkedBookingId && !existingRecord && (
                   <div style={{ marginBottom: "4px" }}>
@@ -984,6 +1035,11 @@ export function CreateTruckingModal({
                       onSelectionChange={handleContainerSelected}
                       existingTruckingRecords={existingTruckingRecords}
                       onBasisSelected={handleBasisSelected}
+                      segmentContainerNos={
+                        segments && segments.length > 1 && form.linkedSegmentId
+                          ? segments.find((s) => s.segmentId === form.linkedSegmentId)?.containerNos
+                          : undefined
+                      }
                     />
                   </div>
                 )}

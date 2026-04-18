@@ -97,7 +97,9 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       });
       if (!response.ok) throw new Error("Failed to fetch expenses");
       const result = await response.json();
-      setExpenses(result.success && result.data ? result.data : []);
+      const data = result.success && result.data ? result.data : [];
+      data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      setExpenses(data);
     } catch (error) {
       console.error("Error fetching expenses:", error);
       setExpenses([]);

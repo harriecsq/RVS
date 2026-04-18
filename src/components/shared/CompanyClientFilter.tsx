@@ -225,9 +225,10 @@ export function CompanyClientFilter<T>({
             style={{
               position: "fixed",
               top: dropdownPos.top,
+              bottom: dropdownPos.bottom,
               left: dropdownPos.left,
               width: dropdownPos.width,
-              maxHeight: 360,
+              maxHeight: dropdownPos.maxHeight,
               backgroundColor: "#FFFFFF",
               border: "1px solid #E5E9F0",
               borderRadius: "8px",

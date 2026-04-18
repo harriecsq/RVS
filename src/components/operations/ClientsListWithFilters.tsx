@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Building2, TrendingUp, Briefcase, Target, ArrowUp, ArrowDown, MoreHorizontal } from "lucide-react";
+import { Plus, Building2, TrendingUp, Briefcase, Target, ArrowUp, ArrowDown, MoreHorizontal, Users } from "lucide-react";
 import type { Client, Industry, ClientStatus } from "../../types/operations";
 import { AddClientPanel } from "./AddClientPanel";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { NeuronStatusPill } from "../NeuronStatusPill";
-import { Mail, Phone } from "lucide-react";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
 import {
@@ -299,36 +298,41 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
       ),
     },
     {
-      header: "Address",
-      cell: (client) => {
-        const address = client.address || (client as any).registered_address || "—";
-        return (
-          <div title={address} style={{ fontSize: "14px", color: "#0A1D4D", maxWidth: "260px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {address}
-          </div>
-        );
-      },
+      header: "Email",
+      align: "right",
+      cell: (client) => (
+        <div style={{ fontSize: "14px", color: "#0A1D4D", textAlign: "right", maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginLeft: "auto" }}>
+          {(client as any).email || "—"}
+        </div>
+      ),
     },
     {
-      header: "Contact Info",
+      header: "Phone",
+      align: "right",
       cell: (client) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#0A1D4D" }}>
-            <Mail size={14} style={{ color: "#667085", flexShrink: 0 }} />
-            <span style={{ maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {(client as any).email || "—"}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "14px", color: "#0A1D4D" }}>
-            <Phone size={14} style={{ color: "#667085", flexShrink: 0 }} />
-            <span>{(client as any).phone || "—"}</span>
-          </div>
+        <div style={{ fontSize: "14px", color: "#0A1D4D", textAlign: "right" }}>
+          {(client as any).phone || "—"}
+        </div>
+      ),
+    },
+    {
+      header: "Clients",
+      align: "right",
+      cell: (client) => (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px", fontSize: "14px", color: "#0A1D4D" }}>
+          <Users size={14} style={{ color: "#667085", flexShrink: 0 }} />
+          <span>{(client as any).contacts?.length || 0}</span>
         </div>
       ),
     },
     {
       header: "Status",
-      cell: (client) => <NeuronStatusPill status={client.status} />,
+      align: "right",
+      cell: (client) => (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <NeuronStatusPill status={client.status} />
+        </div>
+      ),
     },
     {
       header: "",
@@ -358,7 +362,7 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
   return (
     <div className="h-full overflow-auto" style={{ background: "#FFFFFF" }}>
       <NeuronPageHeader
-        title="Clients"
+        title="Client Companies"
         subtitle="Manage client companies and business relationships"
         action={
           permissions.canCreate ? (

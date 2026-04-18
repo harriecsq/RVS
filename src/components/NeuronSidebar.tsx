@@ -32,7 +32,7 @@ import {
 import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png";
 import { useUser } from "../hooks/useUser";
 
-export type Page = "dashboard" | "ops-export" | "ops-import" | "ops-trucking" | "ops-requests" | "ops-clients" | "operations" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
+export type Page = "dashboard" | "export-bookings" | "export-trucking" | "import-bookings" | "import-trucking" | "clients" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
 
 // SVG for Philippine Peso icon
 const Vector = () => (
@@ -74,9 +74,17 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
   });
   
   // Initialize dropdown states from localStorage
-  const [isOperationsExpanded, setIsOperationsExpanded] = useState(() => {
+  const [isExportExpanded, setIsExportExpanded] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('neuron_operations_expanded');
+      const saved = localStorage.getItem('neuron_export_expanded');
+      return saved === 'true';
+    }
+    return false;
+  });
+
+  const [isImportExpanded, setIsImportExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('neuron_import_expanded');
       return saved === 'true';
     }
     return false;
@@ -97,8 +105,12 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
   
   // Persist dropdown states to localStorage
   useEffect(() => {
-    localStorage.setItem('neuron_operations_expanded', String(isOperationsExpanded));
-  }, [isOperationsExpanded]);
+    localStorage.setItem('neuron_export_expanded', String(isExportExpanded));
+  }, [isExportExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem('neuron_import_expanded', String(isImportExpanded));
+  }, [isImportExpanded]);
   
   useEffect(() => {
     localStorage.setItem('neuron_acct_expanded', String(isAcctExpanded));
@@ -118,13 +130,16 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
   // Dashboard - standalone
   const dashboardItem = { id: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard };
   
-  // Operations sub-items
-  const operationsSubItems = [
-    // Projects removed - migrated to Bookings
-    { id: "ops-export" as Page, label: "Export", icon: ArrowUpFromLine },
-    { id: "ops-import" as Page, label: "Import", icon: ArrowDownToLine },
-    { id: "ops-trucking" as Page, label: "Trucking", icon: Truck },
-    { id: "ops-clients" as Page, label: "Clients", icon: UsersIcon },
+  // Export sub-items
+  const exportSubItems = [
+    { id: "export-bookings" as Page, label: "Bookings", icon: Package },
+    { id: "export-trucking" as Page, label: "Trucking", icon: Truck },
+  ];
+
+  // Import sub-items
+  const importSubItems = [
+    { id: "import-bookings" as Page, label: "Bookings", icon: Package },
+    { id: "import-trucking" as Page, label: "Trucking", icon: Truck },
   ];
 
   // Accounting sub-items
@@ -135,17 +150,14 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
     { id: "acct-vouchers" as Page, label: "Vouchers", icon: FileText },
   ];
   
-  // Check if any Operations page is active
-  const isOpsActive = currentPage.startsWith("ops-");
-  
+  // Check if any Export page is active
+  const isExportActive = currentPage.startsWith("export-");
+
+  // Check if any Import page is active
+  const isImportActive = currentPage.startsWith("import-");
+
   // Check if any Accounting page is active
   const isAcctActive = currentPage.startsWith("acct-");
-  
-  // Work section (without BD and Accounting, we'll render them separately)
-  const workItems = [
-    { id: "operations" as Page, label: "Operations", icon: Package },
-    { id: "hr" as Page, label: "HR", icon: UserCircle },
-  ];
   
   // Personal section
   const personalItems = [];
@@ -331,17 +343,15 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         {/* Work Section */}
         {renderSectionHeader("WORK")}
         
-        {/* Operations with sub-items */}
+        {/* Export with sub-items */}
         {showOperations && (
-          <div style={{ marginBottom: isOperationsExpanded ? "8px" : "0px" }}>
+          <div style={{ marginBottom: isExportExpanded ? "8px" : "0px" }}>
             <button
               onClick={() => {
                 if (isCollapsed) {
-                  // If collapsed, navigate to first Operations item
-                  onNavigate("operations");
+                  onNavigate("export-bookings");
                 } else {
-                  // If expanded, toggle the dropdown
-                  setIsOperationsExpanded(!isOperationsExpanded);
+                  setIsExportExpanded(!isExportExpanded);
                 }
               }}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150"
@@ -361,46 +371,117 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
-              title={isCollapsed ? "Operations" : undefined}
+              title={isCollapsed ? "Export" : undefined}
             >
               <div className="flex items-center gap-3 flex-1 min-w-0" style={{ justifyContent: isCollapsed ? "center" : "flex-start" }}>
-                <Package 
-                  size={20} 
-                  style={{ 
-                    color: "var(--neuron-ink-muted)",
+                <ArrowUpFromLine
+                  size={20}
+                  style={{
+                    color: isExportActive ? "#0F766E" : "var(--neuron-ink-muted)",
                     flexShrink: 0
-                  }} 
+                  }}
                 />
                 {!isCollapsed && (
-                  <span style={{ fontSize: "14px", lineHeight: "20px", whiteSpace: "nowrap" }}>
-                    Operations
+                  <span style={{ fontSize: "14px", lineHeight: "20px", whiteSpace: "nowrap", color: isExportActive ? "#0F766E" : undefined, fontWeight: isExportActive ? 600 : 400 }}>
+                    Export
                   </span>
                 )}
               </div>
               {!isCollapsed && (
-                <ChevronDown 
-                  size={16} 
-                  style={{ 
+                <ChevronDown
+                  size={16}
+                  style={{
                     color: "var(--neuron-ink-muted)",
-                    transform: isOperationsExpanded ? "rotate(0deg)" : "rotate(-90deg)",
+                    transform: isExportExpanded ? "rotate(0deg)" : "rotate(-90deg)",
                     transition: "transform 0.2s",
                     flexShrink: 0
-                  }} 
+                  }}
                 />
               )}
             </button>
-            
-            {/* Operations Sub-items */}
-            <div 
+
+            <div
               style={{
-                maxHeight: isOperationsExpanded ? "280px" : "0px",
-                opacity: isOperationsExpanded ? 1 : 0,
+                maxHeight: isExportExpanded ? "280px" : "0px",
+                opacity: isExportExpanded ? 1 : 0,
                 overflow: "hidden",
                 transition: "max-height 0.3s ease-in-out, opacity 0.25s ease-in-out",
               }}
             >
               <div className="space-y-1 mt-1">
-                {operationsSubItems.map(item => renderNavButton(item, true))}
+                {exportSubItems.map(item => renderNavButton(item, true))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Import with sub-items */}
+        {showOperations && (
+          <div style={{ marginBottom: isImportExpanded ? "8px" : "0px" }}>
+            <button
+              onClick={() => {
+                if (isCollapsed) {
+                  onNavigate("import-bookings");
+                } else {
+                  setIsImportExpanded(!isImportExpanded);
+                }
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150"
+              style={{
+                height: "40px",
+                backgroundColor: "transparent",
+                border: "1.5px solid transparent",
+                color: "var(--neuron-ink-secondary)",
+                fontWeight: 400,
+                justifyContent: "space-between",
+                paddingLeft: isCollapsed ? "0" : "12px",
+                paddingRight: isCollapsed ? "0" : "12px",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "var(--neuron-state-hover)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+              title={isCollapsed ? "Import" : undefined}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0" style={{ justifyContent: isCollapsed ? "center" : "flex-start" }}>
+                <ArrowDownToLine
+                  size={20}
+                  style={{
+                    color: isImportActive ? "#0F766E" : "var(--neuron-ink-muted)",
+                    flexShrink: 0
+                  }}
+                />
+                {!isCollapsed && (
+                  <span style={{ fontSize: "14px", lineHeight: "20px", whiteSpace: "nowrap", color: isImportActive ? "#0F766E" : undefined, fontWeight: isImportActive ? 600 : 400 }}>
+                    Import
+                  </span>
+                )}
+              </div>
+              {!isCollapsed && (
+                <ChevronDown
+                  size={16}
+                  style={{
+                    color: "var(--neuron-ink-muted)",
+                    transform: isImportExpanded ? "rotate(0deg)" : "rotate(-90deg)",
+                    transition: "transform 0.2s",
+                    flexShrink: 0
+                  }}
+                />
+              )}
+            </button>
+
+            <div
+              style={{
+                maxHeight: isImportExpanded ? "280px" : "0px",
+                opacity: isImportExpanded ? 1 : 0,
+                overflow: "hidden",
+                transition: "max-height 0.3s ease-in-out, opacity 0.25s ease-in-out",
+              }}
+            >
+              <div className="space-y-1 mt-1">
+                {importSubItems.map(item => renderNavButton(item, true))}
               </div>
             </div>
           </div>
@@ -485,7 +566,14 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
         <div>
           {renderNavButton({ id: "reports" as Page, label: "Reports", icon: BarChart })}
         </div>
-        
+
+        {/* Clients - Standalone */}
+        {showOperations && (
+          <div>
+            {renderNavButton({ id: "clients" as Page, label: "Clients", icon: UsersIcon })}
+          </div>
+        )}
+
         {/* HR */}
         <div>
           {showHR && renderNavButton({ id: "hr" as Page, label: "HR", icon: UserCircle })}

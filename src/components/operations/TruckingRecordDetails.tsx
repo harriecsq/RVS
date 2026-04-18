@@ -1208,15 +1208,17 @@ export function TruckingRecordDetails({
 
           {/* Right: two status boxes */}
           <div style={{ display: "flex", gap: "16px", alignItems: "flex-end" }}>
-            {/* Shipment Status — synced with linked booking, editable */}
+            {/* Shipment Status — synced with linked booking, editable. Hidden for linked export bookings. */}
             {currentRecord.linkedBookingId ? (
-              <StatusTagBar
-                bookingType="trucking"
-                shipmentTags={linkedShipmentTags}
-                operationalTags={[]}
-                onShipmentTagsChange={handleLinkedShipmentTagsChange}
-                onOperationalTagsChange={() => {}}
-              />
+              !isExportBooking && (
+                <StatusTagBar
+                  bookingType="trucking"
+                  shipmentTags={linkedShipmentTags}
+                  operationalTags={[]}
+                  onShipmentTagsChange={handleLinkedShipmentTagsChange}
+                  onOperationalTagsChange={() => {}}
+                />
+              )
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>

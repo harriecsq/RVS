@@ -146,7 +146,9 @@ export function ActivityLogPage() {
       const result = await response.json();
       
       if (result.success) {
-        setActivities(result.data);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.timestamp || b.created_at || 0).getTime() - new Date(a.timestamp || a.created_at || 0).getTime());
+        setActivities(data);
         setTotal(result.total);
         
         // Track latest timestamp for new activity detection
@@ -311,7 +313,7 @@ export function ActivityLogPage() {
       const basePath = effectiveDepartment === "Business Development" ? "/bd/inquiries" : "/pricing/quotations";
       navigate(basePath);
     } else if (activity.entity_type === "booking") {
-      navigate("/operations");
+      navigate("/import/bookings");
     }
   };
   

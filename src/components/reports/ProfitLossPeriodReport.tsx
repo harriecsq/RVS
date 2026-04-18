@@ -70,6 +70,7 @@ interface Expense {
 interface Voucher {
   id: string;
   voucherDate: string;
+  postingDate?: string;
   category: string; // e.g., "Transportation", "Salary"
   amount: number;
   payee?: string;
@@ -326,7 +327,7 @@ export function ProfitLossPeriodReport() {
 
       vouchers.forEach(v => {
         // Date Filter
-        const rawDate = v.voucherDate || (v as any).voucher_date || (v as any).created_at || "";
+        const rawDate = v.postingDate || v.voucherDate || (v as any).voucher_date || (v as any).created_at || "";
         const vDate = toISODate(rawDate);
         
         if (filters.dateStart && vDate < filters.dateStart) return;

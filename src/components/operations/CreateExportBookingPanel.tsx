@@ -8,6 +8,7 @@ import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { API_BASE_URL } from '@/utils/api-config';
 import { PanelBackdrop } from "../shared/PanelBackdrop";
+import { PodDropdown } from "../shared/PodDropdown";
 
 interface CreateExportBookingPanelProps {
   isOpen: boolean;
@@ -612,15 +613,23 @@ export function CreateExportBookingPanel({
         mode: "Sea",
         segments: [{
           segmentId: crypto.randomUUID(),
-          segmentLabel: "Main Voyage",
+          segmentLabel: "Manila",
           legOrder: 1,
           containerNos: containerNumbers.filter((c) => c.trim()),
           sealNos: sealNumbers.filter((s) => s.trim()),
+          customerName: client.trim() || companyName,
+          consignee,
+          shipper: companyName,
+          commodity,
+          volume: formatContainerVolume(containerSize, containerType),
+          containerNo: containerNumbers.filter((c) => c.trim()).join(", "),
+          sealNo: sealNumbers.filter((s) => s.trim()).join(", "),
           origin, pod, destination: pod,
           vesselVoyage, shippingLine,
           etd, etdTime, atd, atdTime, eta, etaTime, vesselStatus,
           lctEdArrastre, lctEdArrastreTime, lctCargo, lctCargoTime,
           blNumber, mblMawb: "",
+          loadingAddress, loadingSchedule,
           domesticFreight, hustlingStripping, forkliftOperator,
           exportDivision, lodgmentCdsFee, formE,
           oceanFreight, sealFee, docsFee, lssFee, storageCost,
@@ -917,12 +926,14 @@ export function CreateExportBookingPanel({
               <div>
                 <label style={labelStyle}>Volume</label>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <NeuronDropdown
-                    value={containerSize}
-                    options={[...CONTAINER_SIZE_OPTIONS]}
-                    onChange={setContainerSize}
-                    placeholder="Size"
-                  />
+                  {containerType !== "LCL" && (
+                    <NeuronDropdown
+                      value={containerSize}
+                      options={[...CONTAINER_SIZE_OPTIONS]}
+                      onChange={setContainerSize}
+                      placeholder="Size"
+                    />
+                  )}
                   <NeuronDropdown
                     value={containerType}
                     options={[...CONTAINER_TYPE_OPTIONS]}
@@ -1133,7 +1144,7 @@ export function CreateExportBookingPanel({
               </div>
               <div>
                 <label style={labelStyle}>POD (Port of Destination)</label>
-                <NeuronInput value={pod} onChange={setPod} placeholder="Enter POD" />
+                <PodDropdown value={pod} onChange={setPod} placeholder="Select POD" />
               </div>
             </div>
 

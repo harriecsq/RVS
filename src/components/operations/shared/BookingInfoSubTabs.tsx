@@ -1,23 +1,10 @@
 import { useState } from "react";
-import { FileText, Plus } from "lucide-react";
 import { SubTabRow } from "./SubTabRow";
 import { SegmentSelector } from "./SegmentSelector";
-import { SalesContractTab } from "./SalesContractTab";
-import { CommercialInvoiceTab } from "./CommercialInvoiceTab";
-import { PackingListTab } from "./PackingListTab";
-import { DeclarationTab } from "./DeclarationTab";
-import { FormETab } from "./FormETab";
-import { FSITab } from "./FSITab";
+import { DocumentsSubTab } from "./DocumentsSubTab";
 import type { BookingSegment } from "../../../types/operations";
 
-type BookingInfoSubTab =
-  | "booking-details"
-  | "sales-contract"
-  | "commercial-invoice"
-  | "packing-list"
-  | "declaration"
-  | "form-e"
-  | "fsi";
+type BookingInfoSubTab = "booking-details" | "documents";
 
 interface BookingInfoSubTabsProps {
   bookingId: string;
@@ -39,58 +26,8 @@ interface BookingInfoSubTabsProps {
 
 const subTabs = [
   { id: "booking-details", label: "Booking Details" },
-  { id: "sales-contract", label: "Sales Contract" },
-  { id: "commercial-invoice", label: "Commercial Invoice" },
-  { id: "packing-list", label: "Packing List" },
-  { id: "declaration", label: "Declaration" },
-  { id: "form-e", label: "Form E" },
-  { id: "fsi", label: "FSI" },
+  { id: "documents", label: "Documents" },
 ];
-
-/** Placeholder empty state matching TruckingTab's "no record" design */
-function EmptyDocumentState({ title, description }: { title: string; description: string }) {
-  return (
-    <div style={{ padding: "32px 48px" }}>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "280px",
-        }}
-      >
-        <FileText size={44} style={{ color: "#D1D5DB", marginBottom: "14px" }} />
-        <p style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>
-          No {title} record
-        </p>
-        <p style={{ fontSize: "13px", color: "#667085", margin: "0 0 16px" }}>
-          {description}
-        </p>
-        <button
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 20px",
-            fontSize: "14px",
-            fontWeight: 600,
-            border: "none",
-            borderRadius: "8px",
-            background: "#0F766E",
-            color: "#FFFFFF",
-            cursor: "pointer",
-          }}
-          onClick={() => {
-            // Placeholder — future implementation
-          }}
-        >
-          <Plus size={15} /> Create {title}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export function BookingInfoSubTabs({
   bookingId,
@@ -134,53 +71,8 @@ export function BookingInfoSubTabs({
       <div style={{ flex: 1, overflow: "auto" }}>
         {activeSubTab === "booking-details" && children}
 
-        {activeSubTab === "sales-contract" && (
-          <SalesContractTab
-            bookingId={bookingId}
-            booking={booking}
-            currentUser={currentUser}
-            onDocumentUpdated={onDocumentUpdated}
-          />
-        )}
-
-        {activeSubTab === "commercial-invoice" && (
-          <CommercialInvoiceTab
-            bookingId={bookingId}
-            booking={booking}
-            currentUser={currentUser}
-            onDocumentUpdated={onDocumentUpdated}
-          />
-        )}
-
-        {activeSubTab === "packing-list" && (
-          <PackingListTab
-            bookingId={bookingId}
-            booking={booking}
-            currentUser={currentUser}
-            onDocumentUpdated={onDocumentUpdated}
-          />
-        )}
-
-        {activeSubTab === "declaration" && (
-          <DeclarationTab
-            bookingId={bookingId}
-            booking={booking}
-            currentUser={currentUser}
-            onDocumentUpdated={onDocumentUpdated}
-          />
-        )}
-
-        {activeSubTab === "form-e" && (
-          <FormETab
-            bookingId={bookingId}
-            booking={booking}
-            currentUser={currentUser}
-            onDocumentUpdated={onDocumentUpdated}
-          />
-        )}
-
-        {activeSubTab === "fsi" && (
-          <FSITab
+        {activeSubTab === "documents" && (
+          <DocumentsSubTab
             bookingId={bookingId}
             booking={booking}
             currentUser={currentUser}

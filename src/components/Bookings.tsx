@@ -207,13 +207,13 @@ export function Bookings({ onCreateBooking }: BookingsProps) {
     if (onCreateBooking) {
       onCreateBooking();
     } else {
-      navigate('/operations/create');
+      navigate('/import/create');
     }
   };
 
   // Handle navigate to detail
   const handleViewDetail = (booking: Booking) => {
-    navigate(`/operations/${booking.id}`);
+    navigate(`/import/${booking.id}`);
   };
 
   return (

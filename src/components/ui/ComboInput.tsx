@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 
 /**
  * ComboInput - Dynamic Auto-Fill Input Component
@@ -50,6 +52,8 @@ export function ComboInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(containerRef, isOpen);
 
   // Determine if field is auto-filled (1 option and value matches it)
   const isAutoFilled = options.length === 1 && value === options[0];
@@ -174,7 +178,7 @@ export function ComboInput({
           {label}
         </label>
       )}
-      <div style={{ position: "relative" }}>
+      <div ref={containerRef} style={{ position: "relative" }}>
         <input
           ref={inputRef}
           id={id}
@@ -263,23 +267,23 @@ export function ComboInput({
         )}
       </div>
 
-      {/* Dropdown - Only render when open AND there are 2+ options */}
-      {isOpen && showChevron && (
+      {/* Dropdown - rendered via portal to avoid overflow clipping */}
+      {isOpen && showChevron && createPortal(
         <div
           ref={dropdownRef}
           style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            marginTop: "4px",
+            position: "fixed",
+            top: dropdownPos.top,
+            bottom: dropdownPos.bottom,
+            left: dropdownPos.left,
+            width: dropdownPos.width,
             backgroundColor: "white",
             border: "1px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 4px 12px rgba(18, 51, 43, 0.08)",
-            maxHeight: "240px",
+            maxHeight: dropdownPos.maxHeight,
             overflowY: "auto",
-            zIndex: 50,
+            zIndex: 9999,
           }}
         >
           {filteredOptions.length === 0 ? (
@@ -342,7 +346,8 @@ export function ComboInput({
               );
             })
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -69,7 +69,9 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
       const result = await response.json();
 
       if (result.success) {
-        setExpenses(result.data || []);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setExpenses(data);
         // Store the summary data from API response
         if (result.summary) {
           setExpensesSummary(result.summary);

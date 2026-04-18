@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 
 interface HeaderStatusDropdownProps {
   currentStatus: string;
+  /** Override the label shown on the button (e.g. "In Transit - Drop 1 of 3") */
+  displayLabel?: string;
   statusOptions: readonly string[] | string[];
   statusColorMap: Record<string, string>;
   onStatusChange: (status: string) => void;
@@ -11,6 +15,7 @@ interface HeaderStatusDropdownProps {
 
 export function HeaderStatusDropdown({
   currentStatus,
+  displayLabel,
   statusOptions,
   statusColorMap,
   onStatusChange,
@@ -18,6 +23,8 @@ export function HeaderStatusDropdown({
 }: HeaderStatusDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -35,6 +42,7 @@ export function HeaderStatusDropdown({
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         style={{
           display: "flex",
@@ -64,7 +72,7 @@ export function HeaderStatusDropdown({
           }
         }}
       >
-        {currentStatus}
+        {displayLabel || currentStatus}
         <ChevronDown
           size={14}
           style={{
@@ -75,20 +83,23 @@ export function HeaderStatusDropdown({
         />
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            right: 0,
+            position: "fixed",
+            top: dropdownPos.top,
+            bottom: dropdownPos.bottom,
+            left: dropdownPos.left + dropdownPos.width - 200,
             background: "white",
             border: "1.5px solid #E5E9F0",
             borderRadius: "8px",
             boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-            zIndex: 1000,
+            zIndex: 9999,
             minWidth: "200px",
+            maxHeight: dropdownPos.maxHeight,
             overflow: "hidden",
           }}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {statusOptions.map((status) => {
             const isSelected = status === currentStatus;
@@ -126,7 +137,8 @@ export function HeaderStatusDropdown({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

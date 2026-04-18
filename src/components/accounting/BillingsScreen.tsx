@@ -72,7 +72,9 @@ export function BillingsScreen() {
       });
       const result = await response.json();
       if (result.success) {
-        setBillings(result.data || []);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setBillings(data);
       } else {
         toast.error("Failed to load billings");
       }

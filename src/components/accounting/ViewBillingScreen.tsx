@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, FileText, DollarSign, Receipt, Edit2, Save, XCircle, ChevronDown, X, Plus, Trash2, Link2, Check } from "lucide-react";
+import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { CreateCollectionPanel } from "./CreateCollectionPanel";
 import { CollectionDetailPanel } from "./CollectionDetailPanel";
@@ -145,6 +147,8 @@ function NeuronDropdown({
 }: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownPos = useDropdownPosition(triggerRef, open);
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -154,7 +158,7 @@ function NeuronDropdown({
   }, []);
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <div onClick={() => setOpen(!open)} style={{
+      <div ref={triggerRef} onClick={() => setOpen(!open)} style={{
         width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
         border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
         alignItems: "center", justifyContent: "space-between", cursor: "pointer",
@@ -163,12 +167,14 @@ function NeuronDropdown({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && (
+      {open && createPortal(
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
           background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 100, maxHeight: "220px", overflowY: "auto",
-        }}>
+          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        >
           {options.map((opt) => (
             <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
               style={{
@@ -183,7 +189,8 @@ function NeuronDropdown({
               {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -285,6 +292,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
       containerCount = Math.max(containers.length, 1);
     }
     if (!vol) return "—";
+    if (vol.trim() === "LCL") return "LCL";
     return `${containerCount}x${vol}`;
   };
 
@@ -456,7 +464,9 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
       const result = await response.json();
       
       if (result.success && result.data) {
-        setCollections(result.data);
+        const data = Array.isArray(result.data) ? result.data : [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setCollections(data);
       } else {
         toast.error("Failed to load collections");
       }

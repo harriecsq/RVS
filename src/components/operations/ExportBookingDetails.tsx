@@ -340,8 +340,6 @@ export function ExportBookingDetails({
     booking.segments?.[0]?.segmentId || ""
   );
   const [segmentEditData, setSegmentEditData] = useState<Record<string, any>>({});
-  const [showAddSegmentModal, setShowAddSegmentModal] = useState(false);
-  const [newSegmentLabel, setNewSegmentLabel] = useState("");
 
   useEffect(() => {
     setCurrentBooking(booking);
@@ -644,19 +642,19 @@ export function ExportBookingDetails({
     || currentBooking.segments?.[0];
 
   const handleAddSegment = () => {
-    if (!newSegmentLabel.trim()) return;
     const existingSegments = currentBooking.segments || [];
+    // Auto-label: "Province", "Province 2", "Province 3", etc.
+    const provinceCount = existingSegments.filter(s => s.segmentLabel.startsWith("Province")).length;
+    const label = provinceCount === 0 ? "Province" : `Province ${provinceCount + 1}`;
     const newSegment: BookingSegment = {
       segmentId: crypto.randomUUID(),
-      segmentLabel: newSegmentLabel.trim(),
+      segmentLabel: label,
       legOrder: existingSegments.length + 1,
       containerNos: [],
     };
     setCurrentBooking(prev => ({ ...prev, segments: [...(prev.segments || []), newSegment] }));
     setActiveSegmentId(newSegment.segmentId);
-    setNewSegmentLabel("");
-    setShowAddSegmentModal(false);
-    toast.success("Segment added — save booking to persist");
+    toast.success("Province added — save booking to persist");
   };
 
   const handleDeleteSegment = (segmentId: string) => {
@@ -857,7 +855,7 @@ export function ExportBookingDetails({
               segments={currentBooking.segments}
               activeSegmentId={activeSegmentId}
               onSegmentChange={setActiveSegmentId}
-              onAddSegment={() => setShowAddSegmentModal(true)}
+              onAddSegment={handleAddSegment}
               onDeleteSegment={handleDeleteSegment}
               isEditing={isEditing}
               booking={currentBooking}
@@ -888,6 +886,7 @@ export function ExportBookingDetails({
               currentUser={currentUser}
               onBookingTagsUpdated={fetchBookingDetails}
               segmentId={activeSegmentId}
+              segments={currentBooking.segments}
               externalEdit={activeTab === "trucking" ? subTabEditRequest : undefined}
               onEditStateChange={(editing) => setSubTabEditing(editing)}
               onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, trucking: has }))}
@@ -1007,59 +1006,6 @@ export function ExportBookingDetails({
         </div>
       )}
 
-      {/* Add Segment Modal */}
-      {showAddSegmentModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={() => setShowAddSegmentModal(false)}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "32px",
-              maxWidth: "420px",
-              width: "90%",
-              border: "1px solid #E5E9F0",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", marginBottom: "16px" }}>
-              Add Booking Leg
-            </h3>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#374151", marginBottom: "6px" }}>
-              Segment Label
-            </label>
-            <input
-              type="text"
-              value={newSegmentLabel}
-              onChange={(e) => setNewSegmentLabel(e.target.value)}
-              placeholder="e.g. Pre-Carriage, Main Voyage"
-              style={{
-                width: "100%", padding: "10px 14px", fontSize: "14px",
-                border: "1px solid #D1D5DB", borderRadius: "8px",
-                outline: "none", marginBottom: "20px", boxSizing: "border-box",
-              }}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddSegment(); }}
-              autoFocus
-            />
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-              <StandardButton variant="outline" onClick={() => { setShowAddSegmentModal(false); setNewSegmentLabel(""); }}>
-                Cancel
-              </StandardButton>
-              <StandardButton onClick={handleAddSegment} disabled={!newSegmentLabel.trim()}>
-                Add Leg
-              </StandardButton>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2071,16 +2017,36 @@ function computeVolumeSummary(containerNo: string, volume: string): string {
 // Booking Information Tab Component
 // Fields that live on the segment, not the booking
 const SEGMENT_FIELDS = new Set([
+  // Client / Parties
+  "customerName", "consignee", "shipper", "commodity", "volume",
+  "containerNo", "sealNo", "grossWeight",
+  // Route
   "origin", "pod", "destination",
+  // Vessel / VOY
   "vesselVoyage", "shippingLine",
   "etd", "etdTime", "atd", "atdTime", "eta", "etaTime", "vesselStatus",
   "lctEdArrastre", "lctEdArrastreTime", "lctCargo", "lctCargoTime",
+  // BL
   "blNumber", "mblMawb",
+  // Trucking
+  "loadingAddress", "loadingSchedule",
+  // Costs
   "domesticFreight", "hustlingStripping", "forkliftOperator",
   "exportDivision", "lodgmentCdsFee", "formE",
   "oceanFreight", "sealFee", "docsFee", "lssFee", "storageCost",
   "arrastre", "shutOut",
   "royaltyFee", "lona", "lalamove", "bir", "labor", "otherCharges",
+  // Operational Details
+  "section", "ot", "receivedDocs", "ata", "discharged",
+  "storageBegins", "demBegins", "entryNumber", "shippingLineStatus",
+  "registryNo", "selectivity", "ticket", "rcvdBilling",
+  "finalTaxNavValue", "stowage", "gatepass",
+  // Approval / Sign-off
+  "preparedBy", "checkedBy", "approvedBy",
+  // Assignment
+  "accountOwner", "accountHandler",
+  // Notes
+  "notes",
 ]);
 
 /* ── Section card wrapper (top-level to preserve React identity across renders) ── */

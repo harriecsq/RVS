@@ -59,17 +59,20 @@ export const EMPTY_RETURN_OPTIONS = [
 export const CONTAINER_SIZES = ["20GP", "40HC", "40RH"];
 
 export const CONTAINER_SIZE_OPTIONS = ["20", "40"] as const;
-export const CONTAINER_TYPE_OPTIONS = ["HQ", "HC", "RF", "GP", "SD"] as const;
+export const CONTAINER_TYPE_OPTIONS = ["HQ", "HC", "RF", "GP", "SD", "FR", "LCL"] as const;
 
-/** Build display string from size + type, e.g. "40'HC" */
+/** Build display string from size + type, e.g. "40'HC". Returns "LCL" when type is LCL. */
 export function formatContainerVolume(size: string, type: string): string {
   if (!size && !type) return "";
+  if (type === "LCL") return "LCL";
   return `${size}'${type}`;
 }
 
 /** Parse a volume string like "40'HC" or legacy "40HC" into { size, type } */
 export function parseContainerVolume(volume: string): { size: string; type: string } {
   if (!volume) return { size: "", type: "" };
+  // Handle plain "LCL"
+  if (volume.trim() === "LCL") return { size: "", type: "LCL" };
   // Handle new format: "40'HC"
   if (volume.includes("'")) {
     const [size, type] = volume.split("'");
@@ -98,6 +101,21 @@ export const SECTION_OPTIONS = [
   "13",
   "14",
   "15",
+];
+
+export const POD_OPTIONS = [
+  "XIAMEN, CHINA",
+  "NANSHA, CHINA",
+  "SHANGHAI, CHINA",
+  "NINGBO, CHINA",
+  "TIANJIN",
+  "XINGANG",
+  "SHIHU",
+  "YANGPU",
+  "SHEKOU",
+  "QINGDAO",
+  "WENZHOU",
+  "WEITOU",
 ];
 
 export const SHIPPING_LINE_OPTIONS = [

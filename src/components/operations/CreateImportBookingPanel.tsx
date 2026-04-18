@@ -980,7 +980,7 @@ export function CreateBrokerageBookingPanel({
                   Volume
                 </label>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  {renderNeuronDropdown(
+                  {containerType !== "LCL" && renderNeuronDropdown(
                     containerSize,
                     [...CONTAINER_SIZE_OPTIONS],
                     showContainerSizeDropdown,

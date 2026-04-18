@@ -21,6 +21,7 @@ interface Voucher {
   destination?: string;
   blNumber?: string;
   voucherDate: string;
+  postingDate?: string;
   status: string;
   created_at?: string;
 }
@@ -60,7 +61,9 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
 
       const result = await response.json();
       if (result.success) {
-        setLocalVouchers(result.data || []);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setLocalVouchers(data);
       }
     } catch (error) {
       console.error("Error fetching vouchers:", error);
@@ -200,7 +203,8 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
               <thead>
                 <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Voucher Number</th>
-                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Creation Date</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Posting Date</th>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payee</th>
                   <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
                   <th style={{ padding: "12px 24px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
@@ -227,6 +231,11 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
                     <td style={{ padding: "16px 24px" }}>
                       <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                         {formatDate(voucher.voucherDate)}
+                      </div>
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                        {voucher.postingDate ? formatDate(voucher.postingDate) : "—"}
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px" }}>

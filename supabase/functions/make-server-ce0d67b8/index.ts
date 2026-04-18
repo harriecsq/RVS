@@ -4482,6 +4482,7 @@ app.post("/make-server-ce0d67b8/vouchers", async (c) => {
       bank: body.bank || "",
       checkNo: body.checkNo || "",
       voucherDate: body.voucherDate || new Date().toISOString(),
+      postingDate: body.postingDate || null,
       amount: body.amount || 0,
       status: body.status || "Draft",
       currency: body.currency || "PHP",
@@ -6181,9 +6182,20 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
 
     const defaultSegment = {
       segmentId: `${id}-seg-1`,
-      segmentLabel: "Main Voyage",
+      segmentLabel: "Manila",
       legOrder: 1,
       containerNos,
+      sealNos: typeof migrated.sealNo === "string"
+        ? migrated.sealNo.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : [],
+      customerName: migrated.customerName || "",
+      consignee: migrated.consignee || "",
+      shipper: migrated.shipper || "",
+      commodity: migrated.commodity || "",
+      volume: migrated.volume || "",
+      containerNo: migrated.containerNo || "",
+      sealNo: migrated.sealNo || "",
+      grossWeight: migrated.grossWeight || "",
       origin: migrated.origin || "",
       pod: migrated.pod || "",
       destination: migrated.destination || "",
@@ -6202,6 +6214,8 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
       lctCargoTime: migrated.lctCargoTime || "",
       blNumber: migrated.blNumber || "",
       mblMawb: migrated.mblMawb || "",
+      loadingAddress: migrated.loadingAddress || "",
+      loadingSchedule: migrated.loadingSchedule || "",
       domesticFreight: migrated.domesticFreight || "",
       hustlingStripping: migrated.hustlingStripping || "",
       forkliftOperator: migrated.forkliftOperator || "",
@@ -6221,6 +6235,28 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
       bir: migrated.bir || "",
       labor: migrated.labor || "",
       otherCharges: migrated.otherCharges || "",
+      section: migrated.section || "",
+      ot: migrated.ot || "",
+      receivedDocs: migrated.receivedDocs || "",
+      ata: migrated.ata || "",
+      discharged: migrated.discharged || "",
+      storageBegins: migrated.storageBegins || "",
+      demBegins: migrated.demBegins || "",
+      entryNumber: migrated.entryNumber || "",
+      shippingLineStatus: migrated.shippingLineStatus || "",
+      registryNo: migrated.registryNo || "",
+      selectivity: migrated.selectivity || "",
+      ticket: migrated.ticket || "",
+      rcvdBilling: migrated.rcvdBilling || "",
+      finalTaxNavValue: migrated.finalTaxNavValue || "",
+      stowage: migrated.stowage || "",
+      gatepass: migrated.gatepass || "",
+      preparedBy: migrated.preparedBy || "",
+      checkedBy: migrated.checkedBy || "",
+      approvedBy: migrated.approvedBy || "",
+      accountOwner: migrated.accountOwner || "",
+      accountHandler: migrated.accountHandler || "",
+      notes: migrated.notes || "",
       createdAt: migrated.createdAt || new Date().toISOString(),
       updatedAt: migrated.updatedAt || new Date().toISOString(),
     };
@@ -8144,6 +8180,134 @@ app.delete("/make-server-ce0d67b8/fsi/:id", async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error("Error deleting FSI:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ==================== DOCUMENT TEMPLATES ====================
+
+// List document templates (filterable by clientId and/or docType)
+app.get("/make-server-ce0d67b8/doc-templates", async (c) => {
+  try {
+    const clientId = c.req.query("clientId");
+    const docType = c.req.query("docType");
+
+    let templates = await kv.getByPrefix("doc_template:");
+
+    if (clientId) {
+      templates = templates.filter((t: any) => t.clientId === clientId);
+    }
+    if (docType) {
+      templates = templates.filter((t: any) => t.docType === docType);
+    }
+
+    // Return summaries (without full field data) for list view
+    const summaries = templates.map((t: any) => ({
+      id: t.id,
+      clientId: t.clientId,
+      clientName: t.clientName,
+      docType: t.docType,
+      name: t.name,
+      updatedAt: t.updatedAt,
+    }));
+
+    console.log(`Fetched ${summaries.length} doc templates (clientId=${clientId}, docType=${docType})`);
+    return c.json({ success: true, data: summaries });
+  } catch (error) {
+    console.error("Error fetching doc templates:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Get single document template with full fields
+app.get("/make-server-ce0d67b8/doc-templates/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const template = await kv.get(`doc_template:${id}`);
+
+    if (!template) {
+      return c.json({ success: false, error: "Template not found" }, 404);
+    }
+
+    return c.json({ success: true, data: template });
+  } catch (error) {
+    console.error("Error fetching doc template:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Create document template
+app.post("/make-server-ce0d67b8/doc-templates", async (c) => {
+  try {
+    const body = await c.req.json();
+    const templateId = `tpl-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const newTemplate = {
+      id: templateId,
+      clientId: body.clientId || null,
+      clientName: body.clientName || null,
+      docType: body.docType,
+      name: body.name,
+      fields: body.fields || {},
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: body.createdBy || "Unknown",
+    };
+
+    await kv.set(`doc_template:${templateId}`, newTemplate);
+
+    console.log(`Created doc template ${templateId} (${body.docType}) for client ${body.clientName || "global"}`);
+    return c.json({ success: true, data: newTemplate });
+  } catch (error) {
+    console.error("Error creating doc template:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Update document template
+app.put("/make-server-ce0d67b8/doc-templates/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+
+    const existing = await kv.get(`doc_template:${id}`);
+    if (!existing) {
+      return c.json({ success: false, error: "Template not found" }, 404);
+    }
+
+    const updated = {
+      ...(existing as any),
+      ...body,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await kv.set(`doc_template:${id}`, updated);
+
+    console.log(`Updated doc template ${id}`);
+    return c.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating doc template:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// Delete document template
+app.delete("/make-server-ce0d67b8/doc-templates/:id", async (c) => {
+  try {
+    const id = c.req.param("id");
+
+    const existing = await kv.get(`doc_template:${id}`);
+    if (!existing) {
+      return c.json({ success: false, error: "Template not found" }, 404);
+    }
+
+    await kv.del(`doc_template:${id}`);
+
+    console.log(`Deleted doc template ${id}`);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting doc template:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });

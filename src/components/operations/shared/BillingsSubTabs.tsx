@@ -79,7 +79,9 @@ export function BillingsSubTabs({
       });
       const result = await response.json();
       if (result.success) {
-        setBillings(result.data || []);
+        const data = result.data || [];
+        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        setBillings(data);
         // Auto-select first billing if only one exists
         if (result.data?.length === 1) {
           setSelectedBillingId(result.data[0].id);

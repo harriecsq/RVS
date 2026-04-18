@@ -27,6 +27,7 @@ interface Booking {
   booking_type?: string; // Server always injects "Import" or "Export"
   origin?: string; // POL for export
   pod?: string;    // POD for import
+  segments?: { origin?: string; pod?: string }[];
 }
 
 interface Billing {
@@ -240,12 +241,10 @@ export function SOAPaymentMonitoringReport() {
 
         const serviceType = booking?.shipmentType || booking?.booking_type || booking?.mode || "Import";
         const isImport = serviceType.toLowerCase().includes("import");
-        const port = isImport ? (booking?.pod || "—") : (booking?.origin || "—");
-
-        // DEBUG: temporary logging to diagnose port filter
-        if (booking) {
-          console.log(`[SOA] billing=${billing.billingNumber} type=${serviceType} pod=${booking.pod} origin=${booking.origin} => port=${port}`);
-        }
+        const seg0 = booking?.segments?.[0];
+        const port = isImport
+          ? (booking?.pod || seg0?.pod || "—")
+          : (booking?.origin || seg0?.origin || "—");
 
         const soaNumber = billing.billingNumber || billing.soaNumber || "—";
         const soaAmount = Number(billing.totalAmount) || 0;
