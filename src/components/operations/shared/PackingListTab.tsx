@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { FileText, Plus, Edit3, Save, X, AlertCircle, Trash2, Check, ChevronDown, ChevronsUpDown, Search } from "lucide-react";
-import { useDropdownPosition } from "../../../hooks/useDropdownPortal";
+import { FileText, Plus, Edit3, Save, X, AlertCircle, Trash2, ChevronsUpDown, Search } from "lucide-react";
+import { NeuronDropdown } from "../../shared/NeuronDropdown";
+import { PortalDropdown } from "../../shared/PortalDropdown";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
@@ -17,57 +17,6 @@ const COMPANY_CODE_OPTIONS = ["SCI", "RDS", "RVS", "SW"];
 
 // ── NeuronDropdown (matches voucher/billing pattern) ─────────────────
 
-function NeuronDropdown({ value, options, onChange, placeholder = "Select..." }: {
-  value: string; options: string[]; onChange: (v: string) => void; placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-  useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <div ref={triggerRef} onClick={() => setOpen(!open)} style={{
-        width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
-        border: "1px solid #0F766E", fontSize: "14px", display: "flex",
-        alignItems: "center", justifyContent: "space-between", cursor: "pointer",
-        color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
-      }}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
-        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-      </div>
-      {open && createPortal(
-        <div style={{
-          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
-          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-        >
-          {options.map((opt) => (
-            <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
-              style={{
-                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
-              }}
-              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
-            >
-              {opt}
-              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-}
 
 // ── Shared helpers ───────────────────────────────────────────────────
 
@@ -152,21 +101,8 @@ function MetricDropdown({ value, onChange }: { value: string; onChange: (v: stri
     } catch { return DEFAULT_METRICS; }
   });
   const [searchQuery, setSearchQuery] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownPos = useDropdownPosition(buttonRef, open);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node) &&
-          dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
 
   useEffect(() => {
     if (open && searchRef.current) setTimeout(() => searchRef.current?.focus(), 50);
@@ -188,13 +124,11 @@ function MetricDropdown({ value, onChange }: { value: string; onChange: (v: stri
   };
 
   return (
-    <div ref={containerRef} style={{ position: "relative" }}>
+    <div style={{ position: "relative" }}>
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => {
-          setOpen(!open); setSearchQuery("");
-        }}
+        onClick={() => { setOpen(!open); setSearchQuery(""); }}
         style={{
           width: "100%", height: "42px", padding: "0 12px", borderRadius: "6px",
           border: "1px solid #0F766E", background: "white", color: value ? "var(--neuron-ink-primary)" : "#667085",
@@ -205,56 +139,51 @@ function MetricDropdown({ value, onChange }: { value: string; onChange: (v: stri
         <span>{value || "Select metric"}</span>
         <ChevronsUpDown size={14} color="#667085" />
       </button>
-      {open && createPortal(
-        <div ref={dropdownRef} style={{
-          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: Math.max(dropdownPos.width, 200), zIndex: 9999,
-          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)", maxHeight: dropdownPos.maxHeight, overflow: "auto",
-        }}>
-          <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px", border: "1px solid #E5E9F0", borderRadius: "6px" }}>
-              <Search size={14} color="#667085" />
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search or add..."
-                style={{ flex: 1, padding: "8px 0", border: "none", outline: "none", fontSize: "13px" }}
-              />
+
+      <PortalDropdown isOpen={open} onClose={() => { setOpen(false); setSearchQuery(""); }} triggerRef={buttonRef} minWidth="200px" align="left">
+        <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px", border: "1px solid #E5E9F0", borderRadius: "6px" }}>
+            <Search size={14} color="#667085" />
+            <input
+              ref={searchRef}
+              autoFocus
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search or add..."
+              style={{ flex: 1, padding: "8px 0", border: "none", outline: "none", fontSize: "13px" }}
+            />
+          </div>
+        </div>
+        <div style={{ padding: "4px" }}>
+          {filtered.map((o) => (
+            <div
+              key={o}
+              onClick={() => { onChange(o); setOpen(false); setSearchQuery(""); }}
+              style={{
+                padding: "8px 12px", fontSize: "13px", cursor: "pointer", borderRadius: "4px",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: value === o ? "#E8F2EE" : "transparent", color: "var(--neuron-ink-primary)",
+              }}
+              onMouseEnter={(e) => { if (value !== o) e.currentTarget.style.background = "#F3F4F6"; }}
+              onMouseLeave={(e) => { if (value !== o) e.currentTarget.style.background = "transparent"; }}
+            >
+              {o}
+              {value === o && <Check size={14} color="#0F766E" />}
             </div>
-          </div>
-          <div style={{ padding: "4px" }}>
-            {filtered.map((o) => (
-              <div
-                key={o}
-                onClick={() => { onChange(o); setOpen(false); setSearchQuery(""); }}
-                style={{
-                  padding: "8px 12px", fontSize: "13px", cursor: "pointer", borderRadius: "4px",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  background: value === o ? "#E8F2EE" : "transparent", color: "var(--neuron-ink-primary)",
-                }}
-                onMouseEnter={(e) => { if (value !== o) e.currentTarget.style.background = "#F3F4F6"; }}
-                onMouseLeave={(e) => { if (value !== o) e.currentTarget.style.background = "transparent"; }}
-              >
-                {o}
-                {value === o && <Check size={14} color="#0F766E" />}
-              </div>
-            ))}
-            {canAdd && (
-              <div
-                onClick={handleAdd}
-                style={{ padding: "8px 12px", fontSize: "13px", cursor: "pointer", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px", color: "#0F766E" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "#E8F2EE"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                <Plus size={14} /> Add "{searchQuery.trim()}"
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+          ))}
+          {canAdd && (
+            <div
+              onClick={handleAdd}
+              style={{ padding: "8px 12px", fontSize: "13px", cursor: "pointer", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px", color: "#0F766E" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#E8F2EE"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <Plus size={14} /> Add "{searchQuery.trim()}"
+            </div>
+          )}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

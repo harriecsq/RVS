@@ -1,8 +1,7 @@
 import { toast } from 'sonner@2.0.3';
 import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Check, ChevronsUpDown, Search, Plus } from 'lucide-react';
-import { useDropdownPosition } from '../../hooks/useDropdownPortal';
+import { PortalDropdown } from '../shared/PortalDropdown';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
 
@@ -37,26 +36,12 @@ export function PayeeSelector({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPayees();
   }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
 
   // Focus search input when opening
   useEffect(() => {
@@ -179,208 +164,102 @@ export function PayeeSelector({
       };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      {/* Trigger Button */}
+    <div style={{ position: 'relative', width: '100%' }}>
       <button
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setOpen(!open);
-            setSearchQuery('');
-          }
-        }}
+        onClick={() => { if (!disabled) { setOpen(!open); setSearchQuery(''); } }}
         style={triggerStyles}
         className={className}
-        onMouseEnter={(e) => {
-          if (!disabled) (e.currentTarget as HTMLButtonElement).style.borderColor = '#0F766E';
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = '#E5E9F0';
-        }}
+        onMouseEnter={(e) => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.borderColor = '#0F766E'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#E5E9F0'; }}
       >
-        <span
-          style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {loading ? 'Loading...' : value || placeholder}
         </span>
-        <ChevronsUpDown
-          size={16}
-          style={{ flexShrink: 0, opacity: 0.5, marginLeft: '8px' }}
-        />
+        <ChevronsUpDown size={16} style={{ flexShrink: 0, opacity: 0.5, marginLeft: '8px' }} />
       </button>
 
-      {/* Dropdown Panel */}
-      {open && createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            top: dropdownPos.top,
-            bottom: dropdownPos.bottom,
-            left: dropdownPos.left,
-            width: dropdownPos.width,
-            minWidth: '280px',
-            background: 'white',
-            border: '1px solid #E5E9F0',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-            zIndex: 9999,
-            maxHeight: dropdownPos.maxHeight,
-            overflow: 'hidden',
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {/* Search bar */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '10px 12px',
-              borderBottom: '1px solid #E5E9F0',
-              gap: '8px',
-            }}
-          >
-            <Search size={16} style={{ flexShrink: 0, opacity: 0.4, color: '#667085' }} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search or type to add..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && canAddNew) {
-                  e.preventDefault();
-                  handleAddPayee();
-                }
-              }}
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                fontSize: '14px',
-                color: '#0A1D4D',
-                background: 'transparent',
-              }}
-            />
-          </div>
+      <PortalDropdown
+        isOpen={open}
+        onClose={() => { setOpen(false); setSearchQuery(''); }}
+        triggerRef={triggerRef}
+        minWidth="280px"
+        align="left"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #E5E9F0', gap: '8px' }}>
+          <Search size={16} style={{ flexShrink: 0, opacity: 0.4, color: '#667085' }} />
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search or type to add..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && canAddNew) { e.preventDefault(); handleAddPayee(); } }}
+            autoFocus
+            style={{ flex: 1, border: 'none', outline: 'none', fontSize: '14px', color: '#0A1D4D', background: 'transparent' }}
+          />
+        </div>
 
-          {/* List */}
-          <div style={{ maxHeight: '260px', overflowY: 'auto', padding: '4px' }}>
-            {/* Add new payee option */}
-            {canAddNew && (
-              <div
-                onClick={handleAddPayee}
-                style={{
-                  padding: '10px 12px',
-                  cursor: isAdding ? 'wait' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.15s ease',
-                  background: 'transparent',
-                  borderBottom: filteredPayees.length > 0 ? '1px solid #E5E9F0' : 'none',
-                  marginBottom: filteredPayees.length > 0 ? '4px' : '0',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#F0FDF4';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <Plus
-                  size={16}
-                  style={{ flexShrink: 0, color: '#0F766E' }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: '#0F766E', fontSize: '14px' }}>
-                    {isAdding ? 'Adding...' : `Add "${searchQuery.trim()}"`}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#667085' }}>
-                    Save as new payee
+        <div style={{ maxHeight: '260px', overflowY: 'auto', padding: '4px' }}>
+          {canAddNew && (
+            <div
+              onClick={handleAddPayee}
+              style={{
+                padding: '10px 12px', cursor: isAdding ? 'wait' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                borderRadius: '8px', transition: 'background-color 0.15s ease',
+                background: 'transparent',
+                borderBottom: filteredPayees.length > 0 ? '1px solid #E5E9F0' : 'none',
+                marginBottom: filteredPayees.length > 0 ? '4px' : '0',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#F0FDF4'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Plus size={16} style={{ flexShrink: 0, color: '#0F766E' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, color: '#0F766E', fontSize: '14px' }}>
+                  {isAdding ? 'Adding...' : `Add "${searchQuery.trim()}"`}
+                </div>
+                <div style={{ fontSize: '12px', color: '#667085' }}>Save as new payee</div>
+              </div>
+            </div>
+          )}
+
+          {filteredPayees.length === 0 && !canAddNew ? (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#667085', fontSize: '14px' }}>
+              {loading ? 'Loading payees...' : 'No payees found. Type to add a new one.'}
+            </div>
+          ) : (
+            filteredPayees.map((payee) => {
+              const isSelected = value === payee.name;
+              return (
+                <div
+                  key={payee.id}
+                  onClick={() => { onSelect(isSelected ? '' : payee.name); setOpen(false); setSearchQuery(''); }}
+                  style={{
+                    padding: '10px 12px', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    borderRadius: '8px', transition: 'background-color 0.15s ease',
+                    background: isSelected ? '#E8F5F3' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#F3F4F6'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? '#E8F5F3' : 'transparent'; }}
+                >
+                  <Check size={16} style={{ flexShrink: 0, color: '#0F766E', opacity: isSelected ? 1 : 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#0A1D4D', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {payee.name}
+                    </div>
+                    {payee.type && <div style={{ fontSize: '12px', color: '#667085' }}>{payee.type}</div>}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {filteredPayees.length === 0 && !canAddNew ? (
-              <div
-                style={{
-                  padding: '24px 16px',
-                  textAlign: 'center',
-                  color: '#667085',
-                  fontSize: '14px',
-                }}
-              >
-                {loading ? 'Loading payees...' : 'No payees found. Type to add a new one.'}
-              </div>
-            ) : (
-              filteredPayees.map((payee) => {
-                const isSelected = value === payee.name;
-                return (
-                  <div
-                    key={payee.id}
-                    onClick={() => {
-                      onSelect(isSelected ? '' : payee.name);
-                      setOpen(false);
-                      setSearchQuery('');
-                    }}
-                    style={{
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      borderRadius: '8px',
-                      transition: 'background-color 0.15s ease',
-                      background: isSelected ? '#E8F5F3' : 'transparent',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) e.currentTarget.style.background = '#F3F4F6';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = isSelected ? '#E8F5F3' : 'transparent';
-                    }}
-                  >
-                    <Check
-                      size={16}
-                      style={{
-                        flexShrink: 0,
-                        color: '#0F766E',
-                        opacity: isSelected ? 1 : 0,
-                      }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          color: '#0A1D4D',
-                          fontSize: '14px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {payee.name}
-                      </div>
-                      {payee.type && (
-                        <div style={{ fontSize: '12px', color: '#667085' }}>{payee.type}</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+              );
+            })
+          )}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

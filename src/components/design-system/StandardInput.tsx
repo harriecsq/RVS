@@ -82,7 +82,7 @@ export function StandardInput({
           }}
           onFocus={(e) => {
             if (!error && !disabled) {
-              e.currentTarget.style.borderColor = 'var(--neuron-teal)';
+              e.currentTarget.style.borderColor = '#0F766E';
             }
           }}
           onBlur={(e) => {

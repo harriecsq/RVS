@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "../shared/PortalDropdown";
 
 /**
  * ComboInput - Dynamic Auto-Fill Input Component
@@ -53,7 +52,6 @@ export function ComboInput({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(containerRef, isOpen);
 
   // Determine if field is auto-filled (1 option and value matches it)
   const isAutoFilled = options.length === 1 && value === options[0];
@@ -84,22 +82,6 @@ export function ComboInput({
     }
   }, [isOpen, options]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        !inputRef.current?.contains(event.target as Node) &&
-        !buttonRef.current?.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -150,14 +132,11 @@ export function ComboInput({
   // Scroll highlighted option into view
   useEffect(() => {
     if (highlightedIndex >= 0 && dropdownRef.current) {
-      const highlightedElement = dropdownRef.current.children[
-        highlightedIndex
-      ] as HTMLElement;
+      const highlightedElement = dropdownRef.current.querySelector(
+        `[data-index="${highlightedIndex}"]`
+      ) as HTMLElement;
       if (highlightedElement) {
-        highlightedElement.scrollIntoView({
-          block: "nearest",
-          behavior: "smooth",
-        });
+        highlightedElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
     }
   }, [highlightedIndex]);
@@ -267,88 +246,47 @@ export function ComboInput({
         )}
       </div>
 
-      {/* Dropdown - rendered via portal to avoid overflow clipping */}
-      {isOpen && showChevron && createPortal(
-        <div
-          ref={dropdownRef}
-          style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            bottom: dropdownPos.bottom,
-            left: dropdownPos.left,
-            width: dropdownPos.width,
-            backgroundColor: "white",
-            border: "1px solid #E5E9F0",
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(18, 51, 43, 0.08)",
-            maxHeight: dropdownPos.maxHeight,
-            overflowY: "auto",
-            zIndex: 9999,
-          }}
-        >
+      <PortalDropdown
+        isOpen={isOpen && showChevron}
+        onClose={() => setIsOpen(false)}
+        triggerRef={containerRef}
+        align="left"
+      >
+        <div ref={dropdownRef}>
           {filteredOptions.length === 0 ? (
-            <div
-              style={{
-                padding: "12px 16px",
-                fontSize: "14px",
-                color: "#667085",
-                textAlign: "center",
-              }}
-            >
+            <div style={{ padding: "12px 16px", fontSize: "14px", color: "#667085", textAlign: "center" }}>
               No options found
             </div>
           ) : (
             filteredOptions.map((option, index) => {
               const isHighlighted = index === highlightedIndex;
               const isSelected = option === value;
-
               return (
                 <div
                   key={index}
+                  data-index={index}
                   onClick={() => handleSelectOption(option)}
                   style={{
-                    padding: "10px 16px",
-                    fontSize: "14px",
-                    color: "#0A1D4D",
-                    cursor: "pointer",
-                    backgroundColor: isHighlighted
-                      ? "#0F766E0A"
-                      : isSelected
-                      ? "#0F766E15"
-                      : "white",
-                    borderBottom:
-                      index < filteredOptions.length - 1
-                        ? "1px solid #F0F2F5"
-                        : "none",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    padding: "10px 16px", fontSize: "14px", color: "#0A1D4D", cursor: "pointer",
+                    backgroundColor: isHighlighted ? "#0F766E0A" : isSelected ? "#0F766E15" : "white",
+                    borderBottom: index < filteredOptions.length - 1 ? "1px solid #F0F2F5" : "none",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
                     transition: "background-color 0.15s",
                   }}
-                  onMouseEnter={(e) => {
-                    if (!isHighlighted) {
-                      e.currentTarget.style.backgroundColor = "#F8FAFB";
-                    }
-                  }}
+                  onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.backgroundColor = "#F8FAFB"; }}
                   onMouseLeave={(e) => {
-                    if (!isHighlighted && !isSelected) {
-                      e.currentTarget.style.backgroundColor = "white";
-                    } else if (isSelected && !isHighlighted) {
-                      e.currentTarget.style.backgroundColor = "#0F766E15";
-                    }
+                    if (!isHighlighted && !isSelected) e.currentTarget.style.backgroundColor = "white";
+                    else if (isSelected && !isHighlighted) e.currentTarget.style.backgroundColor = "#0F766E15";
                   }}
                 >
                   <span>{option}</span>
-                  {isSelected && (
-                    <Check size={16} style={{ color: "#0F766E", flexShrink: 0 }} />
-                  )}
+                  {isSelected && <Check size={16} style={{ color: "#0F766E", flexShrink: 0 }} />}
                 </div>
               );
             })
           )}
-        </div>,
-        document.body
-      )}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

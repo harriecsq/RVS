@@ -94,13 +94,13 @@ const VALUE_BOX: React.CSSProperties = {
   color: "#0A1D4D",
   background: "#F9FAFB",
   border: "1px solid #E5E9F0",
-  borderRadius: "8px",
+  borderRadius: "6px",
 };
 
 /** Compact label-value for booking-derived summary card */
 const SUMMARY_LABEL: React.CSSProperties = {
-  fontSize: "11px",
-  color: "#9CA3AF",
+  fontSize: "12px",
+  color: "#667085",
   fontWeight: 500,
   marginBottom: "2px",
   textTransform: "uppercase" as const,
@@ -134,7 +134,7 @@ function ReadField({ label, value }: { label: string; value?: string | null }) {
 
 function VendorPill({ vendor }: { vendor: string }) {
   const v = TRUCKING_VENDORS.find((v) => v.name === vendor);
-  if (!v) return <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, backgroundColor: "#F3F4F6", border: "1px solid #E5E9F0", color: "#6B7280", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{vendor || "—"}</span>;
+  if (!v) return <span style={{ display: "inline-flex", alignItems: "center", padding: "4px 12px", borderRadius: "6px", fontSize: "13px", fontWeight: 600, backgroundColor: "#F3F4F6", border: "1px solid #E5E9F0", color: "#667085", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{vendor || "—"}</span>;
   return (
     <span style={{
       display: "inline-flex",
@@ -204,14 +204,17 @@ function EditTextInput({
       style={{
         width: "100%",
         padding: "10px 12px",
-        borderRadius: "8px",
+        borderRadius: "6px",
         border: "1px solid #E5E9F0",
         fontSize: "14px",
-        color: "#0A1D4D",
+        color: disabled ? "#9CA3AF" : "#0A1D4D",
         outline: "none",
-        backgroundColor: "#FFFFFF",
+        backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF",
         boxSizing: "border-box",
+        transition: "border-color 0.15s ease",
       }}
+      onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#0F766E"; }}
+      onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
     />
   );
 }
@@ -310,7 +313,6 @@ function EditNeuronDropdown({
             maxHeight: "220px",
             overflowY: "auto",
             zIndex: 9999,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
           }}
         >
           {options.map((opt) => (
@@ -401,7 +403,6 @@ function EditVendorDropdown({ value, onChange }: { value: string; onChange: (v: 
             borderRadius: "8px",
             border: "1px solid #E5E9F0",
             zIndex: 9999,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
             overflow: "hidden",
           }}
         >
@@ -550,8 +551,7 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
               maxHeight: "300px",
               overflowY: "auto",
               zIndex: 9999,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-            }}
+              }}
           >
             <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
               <input
@@ -578,7 +578,7 @@ function EditTagSelector({ selected, onChange }: { selected: string[]; onChange:
               if (!groupTags.length) return null;
               return (
                 <div key={group.id}>
-                  <div style={{ padding: "6px 12px", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#9CA3AF", letterSpacing: "0.07em" }}>
+                  <div style={{ padding: "6px 12px", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.05em" }}>
                     {group.label}
                   </div>
                   {groupTags.map((tag) => (
@@ -1221,7 +1221,7 @@ export function TruckingRecordDetails({
               )
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.05em" }}>
                   Shipment Status
                 </span>
                 <span style={{ fontSize: "12px", color: "#9CA3AF", fontStyle: "italic" }}>No linked booking</span>
@@ -1230,7 +1230,7 @@ export function TruckingRecordDetails({
 
             {/* Trucking Status — independent dropdown */}
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>
+              <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.05em" }}>
                 Trucking Status
               </span>
               <HeaderStatusDropdown
@@ -1769,7 +1769,7 @@ export function TruckingRecordDetails({
                             }}
                           >
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.06em" }}>Recipient {ri + 1}</span>
+                              <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", color: "#667085", letterSpacing: "0.05em" }}>Recipient {ri + 1}</span>
                               {addr.recipients.length > 1 && <RemoveBtn onClick={() => removeRecipient(ai, ri)} />}
                             </div>
                             <div style={{ marginBottom: "12px" }}>
@@ -1824,7 +1824,7 @@ export function TruckingRecordDetails({
                             backgroundColor: "#FFFFFF",
                           }}>
                             <div style={{ marginBottom: "12px" }}>
-                              <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase" as const, color: "#667085", letterSpacing: "0.06em" }}>Recipient {ri + 1}</span>
+                              <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase" as const, color: "#667085", letterSpacing: "0.05em" }}>Recipient {ri + 1}</span>
                             </div>
                             <div style={{ marginBottom: "12px" }}>
                               <ReadField label="Recipient Name" value={rec.name} />

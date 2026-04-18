@@ -560,16 +560,19 @@ export function CreateBrokerageBookingPanel({
   const isFormValid = companyName.trim() !== "" || client.trim() !== "";
 
   const inputStyle = {
-    borderColor: "var(--neuron-ui-border)",
+    borderColor: "#E5E9F0",
+    borderRadius: "6px",
     fontSize: "14px",
-    color: "var(--neuron-ink-primary)"
+    color: "#0A1D4D",
+    outline: "none",
+    transition: "border-color 0.15s ease",
   };
-  
+
   // Visual indicator for autofilled fields
   const autofilledInputStyle = {
     ...inputStyle,
-    background: "#E8F5F3",
-    borderColor: "#0F766E"
+    backgroundColor: "#E8F5F3",
+    borderColor: "#0F766E",
   };
   
   // Helper function to get input style with autofill indicator
@@ -582,6 +585,19 @@ export function CreateBrokerageBookingPanel({
       };
     }
     return inputStyle;
+  };
+
+  const inputFocusHandlers = {
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      if (!autofilledFields.has(e.currentTarget.name || "")) {
+        e.currentTarget.style.borderColor = "#0F766E";
+      }
+    },
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      if (!autofilledFields.has(e.currentTarget.name || "")) {
+        e.currentTarget.style.borderColor = "#E5E9F0";
+      }
+    },
   };
 
   // Reusable Neuron dropdown renderer
@@ -635,7 +651,6 @@ export function CreateBrokerageBookingPanel({
           background: "white",
           border: "1.5px solid #E5E9F0",
           borderRadius: "8px",
-          boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
           zIndex: 50,
           maxHeight: "300px",
           overflowY: "auto"
@@ -802,11 +817,11 @@ export function CreateBrokerageBookingPanel({
                 </div>
                 <div>
                   <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
-                  <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                  <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
                 </div>
                 <div>
                   <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
-                  <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                  <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
                 </div>
               </div>
               <p className="text-xs mt-1" style={{ color: "#667085", fontWeight: 500 }}>
@@ -969,8 +984,9 @@ export function CreateBrokerageBookingPanel({
                   value={commodity}
                   onChange={(e) => setCommodity(e.target.value)}
                   placeholder="Enter commodity"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={getInputStyle('commodity')}
+                  {...inputFocusHandlers}
                 />
               </div>
 
@@ -1008,8 +1024,9 @@ export function CreateBrokerageBookingPanel({
                   value={vesselVoyage}
                   onChange={(e) => setVesselVoyage(e.target.value)}
                   placeholder="Enter vessel & voyage"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={getInputStyle('vesselVoyage')}
+                  {...inputFocusHandlers}
                 />
               </div>
 
@@ -1022,8 +1039,9 @@ export function CreateBrokerageBookingPanel({
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
                   placeholder="Enter POL"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={getInputStyle('origin')}
+                  {...inputFocusHandlers}
                 />
               </div>
 
@@ -1036,7 +1054,7 @@ export function CreateBrokerageBookingPanel({
                     onClick={() => setShowPodDropdown(!showPodDropdown)}
                     onBlur={() => setTimeout(() => setShowPodDropdown(false), 200)}
                     tabIndex={0}
-                    className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                    className="w-full px-4 py-2.5 rounded border transition-colors"
                     style={{
                       ...inputStyle,
                       color: pod ? "#111827" : "#9CA3AF",
@@ -1060,8 +1078,7 @@ export function CreateBrokerageBookingPanel({
                       background: "white",
                       border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
-                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                      zIndex: 50,
+                                  zIndex: 50,
                       maxHeight: "300px",
                       overflowY: "auto"
                     }}>
@@ -1159,8 +1176,7 @@ export function CreateBrokerageBookingPanel({
                       background: "white",
                       border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
-                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                      zIndex: 50,
+                                  zIndex: 50,
                       maxHeight: "300px",
                       overflow: "hidden",
                       display: "flex",
@@ -1239,7 +1255,8 @@ export function CreateBrokerageBookingPanel({
                   value={ot}
                   onChange={(e) => setOt(e.target.value)}
                   placeholder="Enter OT"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
               </div>
@@ -1316,7 +1333,8 @@ export function CreateBrokerageBookingPanel({
                   value={registryNo}
                   onChange={(e) => setRegistryNo(e.target.value)}
                   placeholder="Enter registry no."
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
               </div>
@@ -1346,7 +1364,8 @@ export function CreateBrokerageBookingPanel({
                   value={ticket}
                   onChange={(e) => setTicket(e.target.value)}
                   placeholder="Enter ticket"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
               </div>
@@ -1378,7 +1397,7 @@ export function CreateBrokerageBookingPanel({
                       value={arrastreAmount}
                       onChange={(e) => setArrastreAmount(e.target.value)}
                       placeholder="Amount (0.00)"
-                      className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                      className="w-full px-4 py-2.5 rounded border transition-colors"
                       style={inputStyle}
                     />
                   </div>
@@ -1405,7 +1424,8 @@ export function CreateBrokerageBookingPanel({
                   value={finalTaxNavValue}
                   onChange={(e) => setFinalTaxNavValue(e.target.value)}
                   placeholder="0.00"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
               </div>
@@ -1419,7 +1439,8 @@ export function CreateBrokerageBookingPanel({
                   value={stowage}
                   onChange={(e) => setStowage(e.target.value)}
                   placeholder="0.00"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
               </div>
@@ -1505,7 +1526,6 @@ export function CreateBrokerageBookingPanel({
                         background: "white",
                         border: "1.5px solid #E5E9F0",
                         borderRadius: "8px",
-                        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                         zIndex: 50,
                       }}>
                         {GROSS_WEIGHT_UNITS.map((unit, index) => (
@@ -1551,7 +1571,8 @@ export function CreateBrokerageBookingPanel({
                   value={entryNumber}
                   onChange={(e) => setEntryNumber(e.target.value)}
                   placeholder="Enter entry number"
-                  className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
               </div>
@@ -1565,7 +1586,7 @@ export function CreateBrokerageBookingPanel({
                     onClick={() => setShowShippingLineStatusDropdown(!showShippingLineStatusDropdown)}
                     onBlur={() => setTimeout(() => setShowShippingLineStatusDropdown(false), 200)}
                     tabIndex={0}
-                    className="w-full px-4 py-2.5 rounded-lg border transition-colors"
+                    className="w-full px-4 py-2.5 rounded border transition-colors"
                     style={{
                       ...inputStyle,
                       color: shippingLineStatus ? "#111827" : "#9CA3AF",
@@ -1589,8 +1610,7 @@ export function CreateBrokerageBookingPanel({
                       background: "white",
                       border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
-                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                      zIndex: 50,
+                                  zIndex: 50,
                       maxHeight: "300px",
                       overflowY: "auto"
                     }}>

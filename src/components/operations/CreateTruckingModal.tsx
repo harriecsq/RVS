@@ -9,8 +9,8 @@
  */
 import { ArrowLeft, Plus, Trash2, ChevronDown, Check, X, Link2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "../shared/PortalDropdown";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { BookingSelector } from "../selectors/BookingSelector";
@@ -231,94 +231,22 @@ function DateRow({
   return <NeuronDatePicker value={dateValue} onChange={onDateChange} style={dateStyle} />;
 }
 
-/** Custom div-based dropdown */
-function NeuronDropdown({
-  value, options, onChange, placeholder = "Select...", style = {},
-}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string; style?: React.CSSProperties }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <div
-        ref={triggerRef}
-        onClick={() => setOpen(!open)}
-        className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer"
-        style={{ borderColor: "#E5E9F0", fontSize: "14px", color: value ? "#0A1D4D" : "#9CA3AF", backgroundColor: "#FFFFFF", ...style }}
-      >
-        <span>{value || placeholder}</span>
-        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-      </div>
-      {open && createPortal(
-        <div
-          className="bg-white rounded-lg border overflow-auto"
-          style={{
-            position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
-            zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
-            borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt}
-              onClick={() => { onChange(opt); setOpen(false); }}
-              className="px-4 py-2 cursor-pointer flex items-center justify-between"
-              style={{
-                fontSize: "14px", color: "#0A1D4D",
-                backgroundColor: value === opt ? "#F0FAF8" : "transparent",
-              }}
-              onMouseEnter={(e) => { if (value !== opt) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === opt ? "#F0FAF8" : "transparent"; }}
-            >
-              {opt}
-              {value === opt && <Check size={14} style={{ color: "#0F766E" }} />}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-}
 
 /** Vendor-coloured dropdown */
 function VendorDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
   const vendor = TRUCKING_VENDORS.find((v) => v.name === value);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  useEffect(() => {
-    if (!open) setSearch("");
-  }, [open]);
+  useEffect(() => { if (!open) setSearch(""); }, [open]);
 
   const filtered = TRUCKING_VENDORS.filter(
     (v) => !search || v.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <div
         ref={triggerRef}
         onClick={() => setOpen(!open)}
@@ -328,11 +256,7 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
         {vendor ? (
           <span
             className="inline-flex items-center px-2 py-0.5 rounded text-xs"
-            style={{
-              backgroundColor: hexToRgba(vendor.hex, 0.14),
-              color: vendor.hex,
-              border: `1px solid ${hexToRgba(vendor.hex, 0.4)}`,
-            }}
+            style={{ backgroundColor: hexToRgba(vendor.hex, 0.14), color: vendor.hex, border: `1px solid ${hexToRgba(vendor.hex, 0.4)}` }}
           >
             {vendor.name}
           </span>
@@ -341,50 +265,36 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
         )}
         <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
       </div>
-      {open && createPortal(
-        <div
-          className="bg-white rounded-lg border overflow-hidden"
-          style={{
-            position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
-            zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "hidden" as const,
-            borderColor: "#E5E9F0", boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search vendors..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full px-3 py-1.5 rounded-md border text-sm"
-              style={{ borderColor: "#E5E9F0", color: "#0A1D4D", outline: "none", fontSize: "14px", backgroundColor: "#FFFFFF" }}
-            />
-          </div>
-          <div className="overflow-auto" style={{ maxHeight: "220px" }}>
-            {filtered.length === 0 && (
-              <div className="px-4 py-3 text-sm" style={{ color: "#9CA3AF" }}>No vendors found</div>
-            )}
-            {filtered.map((v) => (
-              <div
-                key={v.name}
-                onClick={() => { onChange(v.name); setOpen(false); }}
-                className="px-4 py-2 cursor-pointer flex items-center gap-3"
-                style={{ fontSize: "14px", backgroundColor: value === v.name ? "#F0FAF8" : "transparent" }}
-                onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === v.name ? "#F0FAF8" : "transparent"; }}
-              >
-                <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
-                <span style={{ color: "#0A1D4D" }}>{v.name}</span>
-                {value === v.name && <Check size={14} style={{ color: "#0F766E", marginLeft: "auto" }} />}
-              </div>
-            ))}
-          </div>
-        </div>,
-        document.body
-      )}
+
+      <PortalDropdown isOpen={open} onClose={() => setOpen(false)} triggerRef={triggerRef} align="left">
+        <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
+          <input
+            autoFocus type="text" placeholder="Search vendors..." value={search}
+            onChange={(e) => setSearch(e.target.value)} onClick={(e) => e.stopPropagation()}
+            className="w-full px-3 py-1.5 rounded-md border text-sm"
+            style={{ borderColor: "#E5E9F0", color: "#0A1D4D", outline: "none", fontSize: "14px", backgroundColor: "#FFFFFF" }}
+          />
+        </div>
+        <div className="overflow-auto" style={{ maxHeight: "220px" }}>
+          {filtered.length === 0 && (
+            <div className="px-4 py-3 text-sm" style={{ color: "#9CA3AF" }}>No vendors found</div>
+          )}
+          {filtered.map((v) => (
+            <div
+              key={v.name}
+              onClick={() => { onChange(v.name); setOpen(false); }}
+              className="px-4 py-2 cursor-pointer flex items-center gap-3"
+              style={{ fontSize: "14px", backgroundColor: value === v.name ? "#F0FAF8" : "transparent" }}
+              onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === v.name ? "#F0FAF8" : "transparent"; }}
+            >
+              <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
+              <span style={{ color: "#0A1D4D" }}>{v.name}</span>
+              {value === v.name && <Check size={14} style={{ color: "#0F766E", marginLeft: "auto" }} />}
+            </div>
+          ))}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

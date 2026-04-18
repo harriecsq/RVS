@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Plus, Receipt, Search, ChevronDown, X } from "lucide-react";
-import { createPortal } from "react-dom";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "../shared/PortalDropdown";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { CreateVoucherModal } from "./CreateVoucherModal";
@@ -57,8 +56,6 @@ function PayeeFilterDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, isOpen);
 
   const filteredPayees = useMemo(() => {
     if (!search.trim()) return payees;
@@ -66,32 +63,8 @@ function PayeeFilterDropdown({
     return payees.filter((p) => p.toLowerCase().includes(term));
   }, [payees, search]);
 
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-        setSearch("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [isOpen]);
-
-  const select = (v: string) => {
-    onChange(v);
-    setIsOpen(false);
-    setSearch("");
-  };
-
+  const select = (v: string) => { onChange(v); setIsOpen(false); setSearch(""); };
   const hasSelection = value !== "all";
-  const displayLabel = hasSelection ? value : placeholder;
 
   return (
     <>
@@ -99,138 +72,61 @@ function PayeeFilterDropdown({
         ref={triggerRef}
         onClick={() => setIsOpen((p) => !p)}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          padding: "10px 12px",
-          border: "1px solid #E5E9F0",
-          borderRadius: "8px",
-          fontSize: "14px",
-          color: hasSelection ? "#0A1D4D" : "#667085",
-          backgroundColor: "#FFFFFF",
-          cursor: "pointer",
-          outline: "none",
-          width: "100%",
-          textAlign: "left",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          minHeight: "40px",
-          height: "40px",
-          position: "relative",
+          display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px",
+          border: "1px solid #E5E9F0", borderRadius: "8px", fontSize: "14px",
+          color: hasSelection ? "#0A1D4D" : "#667085", backgroundColor: "#FFFFFF",
+          cursor: "pointer", outline: "none", width: "100%", textAlign: "left",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          minHeight: "40px", height: "40px",
         }}
       >
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {displayLabel}
+          {hasSelection ? value : placeholder}
         </span>
         {hasSelection ? (
-          <X
-            size={14}
-            style={{ flexShrink: 0, color: "#667085", cursor: "pointer" }}
-            onClick={(e) => { e.stopPropagation(); select("all"); }}
-          />
+          <X size={14} style={{ flexShrink: 0, color: "#667085" }} onClick={(e) => { e.stopPropagation(); select("all"); }} />
         ) : (
           <ChevronDown size={14} style={{ flexShrink: 0, color: "#9CA3AF" }} />
         )}
       </button>
 
-      {isOpen &&
-        createPortal(
-          <div
-            ref={dropdownRef}
-            style={{
-              position: "fixed",
-              top: dropdownPos.top,
-              bottom: dropdownPos.bottom,
-              left: dropdownPos.left,
-              width: Math.max(dropdownPos.width, 280),
-              maxHeight: dropdownPos.maxHeight,
-              backgroundColor: "#FFFFFF",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-              zIndex: 9999,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
+      <PortalDropdown isOpen={isOpen} onClose={() => { setIsOpen(false); setSearch(""); }} triggerRef={triggerRef} minWidth="280px" align="left">
+        <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
+          <div style={{ position: "relative" }}>
+            <Search size={14} style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} />
+            <input
+              type="text" placeholder="Search..." value={search}
+              onChange={(e) => setSearch(e.target.value)} autoFocus
+              style={{ width: "100%", padding: "6px 8px 6px 28px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "13px", outline: "none", color: "#0A1D4D", backgroundColor: "#F9FAFB" }}
+            />
+          </div>
+        </div>
+        <div style={{ overflowY: "auto", padding: "4px 0" }}>
+          <button
+            onClick={() => select("all")}
+            style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "8px 12px", border: "none", background: !hasSelection ? "rgba(0,102,68,0.06)" : "transparent", cursor: "pointer", fontSize: "13px", fontWeight: !hasSelection ? 600 : 400, color: "#0A1D4D", textAlign: "left" }}
+            onMouseEnter={(e) => { if (hasSelection) (e.currentTarget as HTMLElement).style.background = "#F9FAFB"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = !hasSelection ? "rgba(0,102,68,0.06)" : "transparent"; }}
           >
-            <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", flexShrink: 0 }}>
-              <div style={{ position: "relative" }}>
-                <Search
-                  size={14}
-                  style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }}
-                />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  autoFocus
-                  style={{
-                    width: "100%",
-                    padding: "6px 8px 6px 28px",
-                    border: "1px solid #E5E9F0",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    outline: "none",
-                    color: "#0A1D4D",
-                    backgroundColor: "#F9FAFB",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
-              <button
-                onClick={() => select("all")}
-                style={{
-                  display: "flex", alignItems: "center", gap: "8px",
-                  width: "100%", padding: "8px 12px", border: "none",
-                  background: !hasSelection ? "rgba(0, 102, 68, 0.06)" : "transparent",
-                  cursor: "pointer", fontSize: "13px",
-                  fontWeight: !hasSelection ? 600 : 400,
-                  color: "#0A1D4D", textAlign: "left",
-                }}
-                onMouseEnter={(e) => { if (hasSelection) (e.currentTarget as HTMLElement).style.background = "#F9FAFB"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = !hasSelection ? "rgba(0, 102, 68, 0.06)" : "transparent"; }}
+            {placeholder}
+          </button>
+          {filteredPayees.length === 0 && (
+            <div style={{ padding: "16px 12px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>No payees found</div>
+          )}
+          {filteredPayees.map((payee) => {
+            const isSelected = value === payee;
+            return (
+              <button key={payee} onClick={() => select(payee)}
+                style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "8px 12px", border: "none", background: isSelected ? "rgba(0,102,68,0.06)" : "transparent", cursor: "pointer", fontSize: "13px", fontWeight: isSelected ? 600 : 400, color: "#0A1D4D", textAlign: "left", overflow: "hidden" }}
+                onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#F9FAFB"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isSelected ? "rgba(0,102,68,0.06)" : "transparent"; }}
               >
-                {placeholder}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{payee}</span>
               </button>
-
-              {filteredPayees.length === 0 && (
-                <div style={{ padding: "16px 12px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>
-                  No payees found
-                </div>
-              )}
-
-              {filteredPayees.map((payee) => {
-                const isSelected = value === payee;
-                return (
-                  <button
-                    key={payee}
-                    onClick={() => select(payee)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "8px",
-                      width: "100%", padding: "8px 12px", border: "none",
-                      background: isSelected ? "rgba(0, 102, 68, 0.06)" : "transparent",
-                      cursor: "pointer", fontSize: "13px",
-                      fontWeight: isSelected ? 600 : 400,
-                      color: "#0A1D4D", textAlign: "left", overflow: "hidden",
-                    }}
-                    onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = "#F9FAFB"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isSelected ? "rgba(0, 102, 68, 0.06)" : "transparent"; }}
-                  >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {payee}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>,
-          document.body
-        )}
+            );
+          })}
+        </div>
+      </PortalDropdown>
     </>
   );
 }

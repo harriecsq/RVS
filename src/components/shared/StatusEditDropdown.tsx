@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useRef } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { NeuronStatusPill } from "../NeuronStatusPill";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "./PortalDropdown";
 
 interface StatusEditDropdownProps {
   currentStatus: string;
@@ -19,29 +18,10 @@ export function StatusEditDropdown({
 }: StatusEditDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, isOpen);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
 
   const handleStatusSelect = async (newStatus: string) => {
     if (newStatus === currentStatus || isUpdating) return;
-
     setIsUpdating(true);
     try {
       await onStatusChange(newStatus);
@@ -54,7 +34,7 @@ export function StatusEditDropdown({
   };
 
   return (
-    <div style={{ position: "relative" }} ref={dropdownRef}>
+    <div style={{ position: "relative" }}>
       <button
         ref={triggerRef}
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -83,61 +63,45 @@ export function StatusEditDropdown({
         )}
       </button>
 
-      {isOpen && !disabled && createPortal(
-        <div
-          ref={dropdownRef}
-          style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            bottom: dropdownPos.bottom,
-            left: dropdownPos.left - 200 + dropdownPos.width,
-            background: "#FFFFFF",
-            border: "1px solid #E5E9F0",
-            borderRadius: "8px",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            zIndex: 9999,
-            minWidth: "200px",
-            maxHeight: dropdownPos.maxHeight,
-            overflowY: "auto",
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {availableStatuses.map((status) => (
-            <button
-              key={status}
-              onClick={() => handleStatusSelect(status)}
-              disabled={isUpdating}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "12px",
-                padding: "10px 12px",
-                background: "transparent",
-                border: "none",
-                cursor: isUpdating ? "not-allowed" : "pointer",
-                textAlign: "left",
-                transition: "background-color 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (!isUpdating) {
-                  e.currentTarget.style.backgroundColor = "#F9FAFB";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
-              <NeuronStatusPill status={status} size="sm" />
-              {status === currentStatus && (
-                <Check size={16} color="#0F766E" strokeWidth={2.5} />
-              )}
-            </button>
-          ))}
-        </div>,
-        document.body
-      )}
+      <PortalDropdown
+        isOpen={isOpen && !disabled}
+        onClose={() => setIsOpen(false)}
+        triggerRef={triggerRef}
+        minWidth="200px"
+        align="right"
+      >
+        {availableStatuses.map((status) => (
+          <button
+            key={status}
+            onClick={() => handleStatusSelect(status)}
+            disabled={isUpdating}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              padding: "10px 12px",
+              background: "transparent",
+              border: "none",
+              cursor: isUpdating ? "not-allowed" : "pointer",
+              textAlign: "left",
+              transition: "background-color 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!isUpdating) e.currentTarget.style.backgroundColor = "#F9FAFB";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
+          >
+            <NeuronStatusPill status={status} size="sm" />
+            {status === currentStatus && (
+              <Check size={16} color="#0F766E" strokeWidth={2.5} />
+            )}
+          </button>
+        ))}
+      </PortalDropdown>
     </div>
   );
 }

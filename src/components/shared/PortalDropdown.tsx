@@ -1,4 +1,4 @@
-import { useRef, useEffect, type ReactNode } from "react";
+import { useRef, useEffect, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 
@@ -11,10 +11,6 @@ interface PortalDropdownProps {
   align?: "left" | "right";
 }
 
-/**
- * Renders a dropdown menu via portal so it is never clipped by
- * parent overflow containers. Position is anchored to triggerRef.
- */
 export function PortalDropdown({
   isOpen,
   onClose,
@@ -26,9 +22,16 @@ export function PortalDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const pos = useDropdownPosition(triggerRef, isOpen);
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    },
+    [onClose]
+  );
+
   useEffect(() => {
     if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
+    const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (
         dropdownRef.current &&
@@ -39,9 +42,13 @@ export function PortalDropdown({
         onClose();
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [isOpen, onClose, triggerRef]);
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose, triggerRef, handleKeyDown]);
 
   if (!isOpen) return null;
 
@@ -52,12 +59,11 @@ export function PortalDropdown({
     background: "white",
     border: "1px solid #E5E9F0",
     borderRadius: "8px",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
     zIndex: 9999,
     minWidth,
     maxHeight: pos.maxHeight,
     overflowY: "auto",
-    overflow: "hidden auto",
   };
 
   if (align === "right") {
@@ -68,9 +74,9 @@ export function PortalDropdown({
   }
 
   return createPortal(
-    <div ref={dropdownRef} style={style}>
+    <div ref={dropdownRef} style={style} onMouseDown={(e) => e.stopPropagation()}>
       {children}
     </div>,
-    document.body,
+    document.body
   );
 }

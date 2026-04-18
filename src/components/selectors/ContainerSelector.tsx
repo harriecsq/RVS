@@ -3,9 +3,8 @@
  * Used in trucking creation (single-select + basis autofill) and voucher creation (multi-select).
  */
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { Check, Copy, ChevronDown } from "lucide-react";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "../shared/PortalDropdown";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import type { TruckingRecord } from "../operations/CreateTruckingModal";
@@ -94,17 +93,7 @@ function BasisDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<TruckingRecord | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   const handleSelect = (r: TruckingRecord) => {
     setSelected(r);
@@ -122,7 +111,7 @@ function BasisDropdown({
         <Copy size={13} style={{ marginRight: "4px", verticalAlign: "middle" }} />
         Copy details from existing trucking record:
       </label>
-      <div ref={ref} style={{ position: "relative" }}>
+      <div style={{ position: "relative" }}>
         <div
           ref={triggerRef}
           onClick={() => setOpen((o) => !o)}
@@ -147,64 +136,42 @@ function BasisDropdown({
           <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0, marginLeft: "8px" }} />
         </div>
 
-        {open && createPortal(
-          <div
-            style={{
-              position: "fixed",
-              left: dropdownPos.left,
-              top: dropdownPos.top,
-              bottom: dropdownPos.bottom,
-              width: dropdownPos.width,
-              zIndex: 9999,
-              backgroundColor: "#FFFFFF",
-              border: "1px solid #E5E9F0",
-              borderRadius: "8px",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
-              overflow: "auto",
-              maxHeight: dropdownPos.maxHeight,
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {records.map((r) => {
-              const isActive = selected?.id === r.id;
-              return (
-                <div
-                  key={r.id}
-                  onClick={() => handleSelect(r)}
-                  style={{
-                    padding: "10px 14px",
-                    cursor: "pointer",
-                    backgroundColor: isActive ? "#F0FAF8" : "transparent",
-                    borderBottom: "1px solid #F3F4F6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "8px",
-                  }}
-                  onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = isActive ? "#F0FAF8" : "transparent"; }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F766E", flexShrink: 0 }}>
-                      {getTruckingRef(r)}
-                    </span>
-                    <span style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D", flexShrink: 0 }}>
-                      {r.containerNo || "—"}
-                    </span>
-                    <span style={{ fontSize: "13px", color: "#667085", flexShrink: 0 }}>
-                      {r.truckingVendor || "No vendor"}
-                    </span>
-                    <span style={{ fontSize: "13px", color: "#374151", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-                      {formatRate(r.truckingRate)}
-                    </span>
-                  </div>
-                  {isActive && <Check size={14} style={{ color: "#0F766E", flexShrink: 0 }} />}
+        <PortalDropdown
+          isOpen={open}
+          onClose={() => setOpen(false)}
+          triggerRef={triggerRef}
+          align="left"
+        >
+          {records.map((r) => {
+            const isActive = selected?.id === r.id;
+            return (
+              <div
+                key={r.id}
+                onClick={() => handleSelect(r)}
+                style={{
+                  padding: "10px 14px",
+                  cursor: "pointer",
+                  backgroundColor: isActive ? "#F0FAF8" : "transparent",
+                  borderBottom: "1px solid #F3F4F6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                }}
+                onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = isActive ? "#F0FAF8" : "transparent"; }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#0F766E", flexShrink: 0 }}>{getTruckingRef(r)}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D", flexShrink: 0 }}>{r.containerNo || "—"}</span>
+                  <span style={{ fontSize: "13px", color: "#667085", flexShrink: 0 }}>{r.truckingVendor || "No vendor"}</span>
+                  <span style={{ fontSize: "13px", color: "#374151", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{formatRate(r.truckingRate)}</span>
                 </div>
-              );
-            })}
-          </div>,
-          document.body
-        )}
+                {isActive && <Check size={14} style={{ color: "#0F766E", flexShrink: 0 }} />}
+              </div>
+            );
+          })}
+        </PortalDropdown>
       </div>
     </div>
   );

@@ -591,11 +591,11 @@ export function BrokerageBookingDetails({
                   </div>
                   <div>
                     <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
-                    <input value={yearPart} onChange={e => { const y = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `IMP ${y}-${num}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                    <input value={yearPart} onChange={e => { const y = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `IMP ${y}-${num}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
                   </div>
                   <div>
                     <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
-                    <input value={num} onChange={e => { const n = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `IMP ${yearPart}-${n}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                    <input value={num} onChange={e => { const n = e.target.value.replace(/\D/g, ""); setEditData({ ...editData, bookingId: `IMP ${yearPart}-${n}` }); }} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
                   </div>
                 </div>
               );
@@ -907,12 +907,12 @@ function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
               <div style={{
                 backgroundColor: "white",
                 border: "1px solid var(--neuron-ui-border)",
-                borderRadius: "8px",
+                borderRadius: "6px",
                 padding: "12px 16px"
               }}>
                 {/* Timestamp */}
                 <div style={{
-                  fontSize: "11px",
+                  fontSize: "12px",
                   color: "var(--neuron-ink-muted)",
                   marginBottom: "6px"
                 }}>
@@ -972,7 +972,7 @@ function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
 
                 {/* User */}
                 <div style={{
-                  fontSize: "11px",
+                  fontSize: "12px",
                   color: "var(--neuron-ink-muted)",
                   marginTop: "8px"
                 }}>
@@ -1186,15 +1186,16 @@ function EditableField({
             width: "100%",
             padding: "10px 12px",
             backgroundColor: "white",
-            border: "1px solid var(--neuron-ui-border)",
-            borderRadius: "8px",
+            border: "1px solid #E5E9F0",
+            borderRadius: "6px",
             fontSize: "14px",
-            color: "var(--neuron-ink-primary)",
+            color: "#0A1D4D",
             outline: "none",
-            resize: "vertical"
+            resize: "vertical",
+            transition: "border-color 0.15s ease",
           }}
           onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
         />
       ) : type === "select" ? (
         <select
@@ -1204,15 +1205,17 @@ function EditableField({
             width: "100%",
             padding: "10px 12px",
             backgroundColor: "white",
-            border: "1px solid var(--neuron-ui-border)",
-            borderRadius: "8px",
+            border: "1px solid #E5E9F0",
+            borderRadius: "6px",
             fontSize: "14px",
-            color: "var(--neuron-ink-primary)",
+            color: "#0A1D4D",
             outline: "none",
-            minHeight: "42px"
+            minHeight: "40px",
+            appearance: "auto",
+            transition: "border-color 0.15s ease",
           }}
           onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
         >
           <option value="">Select...</option>
           {options.map(opt => (
@@ -1235,15 +1238,16 @@ function EditableField({
             width: "100%",
             padding: "10px 12px",
             backgroundColor: "white",
-            border: "1px solid var(--neuron-ui-border)",
-            borderRadius: "8px",
+            border: "1px solid #E5E9F0",
+            borderRadius: "6px",
             fontSize: "14px",
-            color: "var(--neuron-ink-primary)",
+            color: "#0A1D4D",
             outline: "none",
-            minHeight: "42px"
+            minHeight: "40px",
+            transition: "border-color 0.15s ease",
           }}
           onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--neuron-ui-border)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
         />
       )}
     </div>
@@ -1762,7 +1766,6 @@ function BookingInformationTab({
               background: "white",
               border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
               zIndex: 50,
               maxHeight: "300px",
               overflowY: "auto"
@@ -1911,7 +1914,6 @@ function BookingInformationTab({
               background: "white",
               border: "1.5px solid #E5E9F0",
               borderRadius: "8px",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
               zIndex: 50,
               maxHeight: "300px",
               overflow: "hidden",
@@ -2107,8 +2109,7 @@ function BookingInformationTab({
                 background: "white",
                 border: "1.5px solid #E5E9F0",
                 borderRadius: "8px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                zIndex: 50
+                  zIndex: 50
               }}>
                 {GROSS_WEIGHT_UNITS.map((unit, index) => (
                   <div
@@ -2235,8 +2236,7 @@ function BookingInformationTab({
                 background: "white",
                 border: "1.5px solid #E5E9F0",
                 borderRadius: "8px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                zIndex: 50
+                  zIndex: 50
               }}>
                 {GROSS_WEIGHT_UNITS.map((unit, index) => (
                   <div

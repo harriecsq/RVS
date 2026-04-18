@@ -1,11 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useRef } from "react";
 import { ChevronDown, Check } from "lucide-react";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "./PortalDropdown";
 
 interface HeaderStatusDropdownProps {
   currentStatus: string;
-  /** Override the label shown on the button (e.g. "In Transit - Drop 1 of 3") */
   displayLabel?: string;
   statusOptions: readonly string[] | string[];
   statusColorMap: Record<string, string>;
@@ -22,25 +20,13 @@ export function HeaderStatusDropdown({
   disabled,
 }: HeaderStatusDropdownProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
   const statusColor = statusColorMap[currentStatus] || "#6B7280";
 
   if (disabled) return null;
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div style={{ position: "relative" }}>
       <button
         ref={triggerRef}
         onClick={() => setOpen(!open)}
@@ -83,63 +69,50 @@ export function HeaderStatusDropdown({
         />
       </button>
 
-      {open && createPortal(
-        <div
-          style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            bottom: dropdownPos.bottom,
-            left: dropdownPos.left + dropdownPos.width - 200,
-            background: "white",
-            border: "1.5px solid #E5E9F0",
-            borderRadius: "8px",
-            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
-            zIndex: 9999,
-            minWidth: "200px",
-            maxHeight: dropdownPos.maxHeight,
-            overflow: "hidden",
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {statusOptions.map((status) => {
-            const isSelected = status === currentStatus;
-            return (
-              <button
-                key={status}
-                onClick={() => {
-                  onStatusChange(status);
-                  setOpen(false);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  padding: "10px 16px",
-                  border: "none",
-                  background: isSelected ? "#F0FDF4" : "transparent",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: isSelected ? 600 : 500,
-                  color: statusColorMap[status] || "#6B7280",
-                  textAlign: "left",
-                  transition: "background 0.1s ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) e.currentTarget.style.background = "#F9FAFB";
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <span>{status}</span>
-                {isSelected && <Check size={14} style={{ color: "#10B981", flexShrink: 0, marginLeft: "12px" }} />}
-              </button>
-            );
-          })}
-        </div>,
-        document.body
-      )}
+      <PortalDropdown
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        triggerRef={triggerRef}
+        minWidth="200px"
+        align="right"
+      >
+        {statusOptions.map((status) => {
+          const isSelected = status === currentStatus;
+          return (
+            <button
+              key={status}
+              onClick={() => {
+                onStatusChange(status);
+                setOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                padding: "10px 16px",
+                border: "none",
+                background: isSelected ? "#F0FDF4" : "transparent",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: isSelected ? 600 : 500,
+                color: statusColorMap[status] || "#6B7280",
+                textAlign: "left",
+                transition: "background 0.1s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) e.currentTarget.style.background = "#F9FAFB";
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <span>{status}</span>
+              {isSelected && <Check size={14} style={{ color: "#10B981", flexShrink: 0, marginLeft: "12px" }} />}
+            </button>
+          );
+        })}
+      </PortalDropdown>
     </div>
   );
 }

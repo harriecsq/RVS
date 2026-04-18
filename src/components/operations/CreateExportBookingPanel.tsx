@@ -114,7 +114,6 @@ function NeuronDropdown({
             background: "white",
             border: "1.5px solid #E5E9F0",
             borderRadius: "8px",
-            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
             zIndex: 9999,
             maxHeight: "220px",
             overflowY: "auto" as const,
@@ -222,7 +221,6 @@ function ShippingLineDropdown({
             background: "white",
             border: "1.5px solid #E5E9F0",
             borderRadius: "8px",
-            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
             zIndex: 9999,
             maxHeight: "300px",
             overflowY: "auto" as const,
@@ -318,12 +316,12 @@ const neuronInputStyle: React.CSSProperties = {
   padding: "10px 12px",
   fontSize: "14px",
   border: "1px solid #E5E9F0",
-  borderRadius: "8px",
+  borderRadius: "6px",
   color: "#0A1D4D",
   backgroundColor: "white",
   outline: "none",
-  transition: "all 0.2s",
-  minHeight: "42px",
+  transition: "border-color 0.15s ease",
+  minHeight: "40px",
   boxSizing: "border-box" as const,
 };
 
@@ -353,20 +351,8 @@ function NeuronInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       style={neuronInputStyle}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#D0D5DD";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#E5E9F0";
-      }}
-      onFocus={(e) => {
-        e.currentTarget.style.borderColor = "#0F766E";
-        e.currentTarget.style.boxShadow = "0 0 0 2px rgba(15, 118, 110, 0.1)";
-      }}
-      onBlur={(e) => {
-        e.currentTarget.style.borderColor = "#E5E9F0";
-        e.currentTarget.style.boxShadow = "none";
-      }}
+      onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+      onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
     />
   );
 }
@@ -789,11 +775,11 @@ export function CreateExportBookingPanel({
                   </div>
                   <div>
                     <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
-                    <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                    <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
                   </div>
                   <div>
                     <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
-                    <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                    <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
                   </div>
                 </div>
               </div>
@@ -1099,7 +1085,6 @@ export function CreateExportBookingPanel({
                       background: "white",
                       border: "1.5px solid #E5E9F0",
                       borderRadius: "8px",
-                      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                       zIndex: 9999,
                       maxHeight: "300px",
                       overflowY: "auto"

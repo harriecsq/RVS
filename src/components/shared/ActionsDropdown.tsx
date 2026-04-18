@@ -1,14 +1,13 @@
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useRef } from "react";
 import { MoreVertical, Download, FileText, Trash2 } from "lucide-react";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { PortalDropdown } from "./PortalDropdown";
 
 interface ActionsDropdownProps {
   onDownloadPDF?: () => void;
   onDownloadWord?: () => void;
   onDelete: () => void;
-  showDownload?: boolean; // Control whether to show download options
-  compact?: boolean; // Smaller button for tab row placement
+  showDownload?: boolean;
+  compact?: boolean;
 }
 
 export function ActionsDropdown({
@@ -16,32 +15,13 @@ export function ActionsDropdown({
   onDownloadWord,
   onDelete,
   showDownload = true,
-  compact = false
+  compact = false,
 }: ActionsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, isOpen);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
 
   return (
-    <div style={{ position: "relative" }} ref={dropdownRef}>
-      {/* Actions Button */}
+    <div style={{ position: "relative" }}>
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
@@ -58,7 +38,7 @@ export function ActionsDropdown({
           fontWeight: 600,
           color: "#0A1D4D",
           cursor: "pointer",
-          transition: "all 0.15s ease"
+          transition: "all 0.15s ease",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "#F9FAFB";
@@ -73,30 +53,16 @@ export function ActionsDropdown({
         Actions
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && createPortal(
-        <div
-          style={{
-            position: "fixed",
-            top: dropdownPos.top,
-            bottom: dropdownPos.bottom,
-            left: dropdownPos.left + dropdownPos.width - 200,
-            background: "white",
-            border: "1px solid #E5E9F0",
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-            minWidth: "200px",
-            zIndex: 9999,
-            maxHeight: dropdownPos.maxHeight,
-            overflowY: "auto" as const,
-            padding: "8px 0"
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {/* Download Section */}
+      <PortalDropdown
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        triggerRef={triggerRef}
+        minWidth="200px"
+        align="right"
+      >
+        <div style={{ padding: "8px 0" }}>
           {showDownload && (
             <>
-              {/* Download Label */}
               <div
                 style={{
                   display: "flex",
@@ -105,92 +71,65 @@ export function ActionsDropdown({
                   padding: "10px 16px",
                   fontSize: "14px",
                   color: "#344054",
-                  fontWeight: 500
+                  fontWeight: 500,
                 }}
               >
                 <Download size={16} style={{ color: "#6B7280" }} />
                 <span>Download</span>
               </div>
 
-              {/* PDF Option - Indented */}
               <button
-                onClick={() => {
-                  onDownloadPDF?.();
-                  setIsOpen(false);
-                }}
+                onClick={() => { onDownloadPDF?.(); setIsOpen(false); }}
                 style={{
                   width: "100%",
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
-                  padding: "10px 16px 10px 44px", // Extra left padding for indentation
+                  padding: "10px 16px 10px 44px",
                   background: "transparent",
                   border: "none",
                   fontSize: "14px",
                   color: "#344054",
                   cursor: "pointer",
                   textAlign: "left",
-                  transition: "background 0.15s ease"
+                  transition: "background 0.15s ease",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#F9FAFB";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#F9FAFB"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <FileText size={16} style={{ color: "#EF4444" }} />
                 <span>PDF</span>
               </button>
 
-              {/* Word Option - Indented */}
               <button
-                onClick={() => {
-                  onDownloadWord?.();
-                  setIsOpen(false);
-                }}
+                onClick={() => { onDownloadWord?.(); setIsOpen(false); }}
                 style={{
                   width: "100%",
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
-                  padding: "10px 16px 10px 44px", // Extra left padding for indentation
+                  padding: "10px 16px 10px 44px",
                   background: "transparent",
                   border: "none",
                   fontSize: "14px",
                   color: "#344054",
                   cursor: "pointer",
                   textAlign: "left",
-                  transition: "background 0.15s ease"
+                  transition: "background 0.15s ease",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#F9FAFB";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "#F9FAFB"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <FileText size={16} style={{ color: "#2563EB" }} />
                 <span>Word</span>
               </button>
 
-              {/* Divider */}
-              <div
-                style={{
-                  height: "1px",
-                  background: "#E5E9F0",
-                  margin: "8px 0"
-                }}
-              />
+              <div style={{ height: "1px", background: "#E5E9F0", margin: "8px 0" }} />
             </>
           )}
 
-          {/* Delete Option */}
           <button
-            onClick={() => {
-              onDelete();
-              setIsOpen(false);
-            }}
+            onClick={() => { onDelete(); setIsOpen(false); }}
             style={{
               width: "100%",
               display: "flex",
@@ -203,21 +142,16 @@ export function ActionsDropdown({
               color: "#EF4444",
               cursor: "pointer",
               textAlign: "left",
-              transition: "background 0.15s ease"
+              transition: "background 0.15s ease",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#FEF2F2";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#FEF2F2"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Trash2 size={16} />
             <span>Delete</span>
           </button>
-        </div>,
-        document.body
-      )}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

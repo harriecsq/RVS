@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { X, ChevronDown, Plus, Trash2, Link2, ChevronsUpDown, Check } from "lucide-react";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { X, Plus, Trash2, Link2, ChevronsUpDown, Check } from "lucide-react";
+import { PortalDropdown } from "../shared/PortalDropdown";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { ComboInput } from "../ui/ComboInput";
@@ -36,179 +36,64 @@ function CategoryDropdown({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
 
   return (
-    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
+    <div style={{ position: "relative", width: "100%" }}>
       <button
         ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => { if (!disabled) setOpen(!open); }}
         style={{
-          width: "100%",
-          height: "40px",
-          padding: "0 12px",
-          borderRadius: "12px",
-          border: "1px solid #E5E9F0",
-          background: disabled ? "#F9FAFB" : "#FFFFFF",
-          color: value ? "#0A1D4D" : "#667085",
-          fontWeight: value ? 500 : 400,
-          fontSize: "14px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: disabled ? "not-allowed" : "pointer",
-          outline: "none",
-          transition: "border-color 0.15s ease",
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "12px",
+          border: "1px solid #E5E9F0", background: disabled ? "#F9FAFB" : "#FFFFFF",
+          color: value ? "#0A1D4D" : "#667085", fontWeight: value ? 500 : 400,
+          fontSize: "14px", display: "flex", alignItems: "center",
+          justifyContent: "space-between", cursor: disabled ? "not-allowed" : "pointer",
+          outline: "none", transition: "border-color 0.15s ease",
         }}
-        onMouseEnter={(e) => { if (!disabled) (e.currentTarget).style.borderColor = "#0F766E"; }}
-        onMouseLeave={(e) => { (e.currentTarget).style.borderColor = "#E5E9F0"; }}
+        onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#0F766E"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {value || placeholder}
-        </span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
         <ChevronsUpDown size={16} style={{ flexShrink: 0, opacity: 0.5, marginLeft: "8px" }} />
       </button>
 
-      {open && createPortal(
-        <div style={{
-          position: "fixed",
-          top: dropdownPos.top,
-          bottom: dropdownPos.bottom,
-          left: dropdownPos.left,
-          width: dropdownPos.width,
-          minWidth: "280px",
-          background: "white",
-          border: "1px solid #E5E9F0",
-          borderRadius: "12px",
-          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
-          zIndex: 9999,
-          maxHeight: dropdownPos.maxHeight,
-          overflow: "hidden",
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div style={{ maxHeight: "300px", overflowY: "auto", padding: "4px" }}>
-            {CATEGORY_GROUPS.map((group) => {
-              const groupItems = group.items.filter((item) => options.includes(item));
-              if (groupItems.length === 0) return null;
-              return (
-                <div key={group.label}>
-                  <div style={{
-                    padding: "8px 12px 4px",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    color: "#9CA3AF",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}>
-                    {group.label}
-                  </div>
-                  {groupItems.map((item) => {
-                    const isSelected = value === item;
-                    return (
-                      <div
-                        key={item}
-                        onClick={() => { onChange(item); setOpen(false); }}
-                        style={{
-                          padding: "10px 12px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          borderRadius: "8px",
-                          transition: "background-color 0.15s ease",
-                          background: isSelected ? "#E8F5F3" : "transparent",
-                        }}
-                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#F3F4F6"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "#E8F5F3" : "transparent"; }}
-                      >
-                        <Check size={16} style={{ flexShrink: 0, color: "#0F766E", opacity: isSelected ? 1 : 0 }} />
-                        <div style={{ fontWeight: 500, color: "#0A1D4D", fontSize: "14px" }}>{item}</div>
-                      </div>
-                    );
-                  })}
+      <PortalDropdown isOpen={open} onClose={() => setOpen(false)} triggerRef={triggerRef} minWidth="280px" align="left">
+        <div style={{ maxHeight: "300px", overflowY: "auto", padding: "4px" }}>
+          {CATEGORY_GROUPS.map((group) => {
+            const groupItems = group.items.filter((item) => options.includes(item));
+            if (groupItems.length === 0) return null;
+            return (
+              <div key={group.label}>
+                <div style={{ padding: "8px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  {group.label}
                 </div>
-              );
-            })}
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-}
-
-function NeuronDropdown({
-  value, options, onChange, placeholder = "Select...",
-}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <div
-        ref={triggerRef}
-        onClick={() => setOpen(!open)}
-        style={{
-          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
-          border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
-          alignItems: "center", justifyContent: "space-between", cursor: "pointer",
-          color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
-        }}
-      >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
-        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-      </div>
-      {open && createPortal(
-        <div style={{
-          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
-          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt}
-              onClick={() => { onChange(opt); setOpen(false); }}
-              style={{
-                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
-              }}
-              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
-            >
-              {opt}
-              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
+                {groupItems.map((item) => {
+                  const isSelected = value === item;
+                  return (
+                    <div
+                      key={item}
+                      onClick={() => { onChange(item); setOpen(false); }}
+                      style={{
+                        padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center",
+                        gap: "10px", borderRadius: "8px", transition: "background-color 0.15s ease",
+                        background: isSelected ? "#E8F5F3" : "transparent",
+                      }}
+                      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#F3F4F6"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "#E8F5F3" : "transparent"; }}
+                    >
+                      <Check size={16} style={{ flexShrink: 0, color: "#0F766E", opacity: isSelected ? 1 : 0 }} />
+                      <div style={{ fontWeight: 500, color: "#0A1D4D", fontSize: "14px" }}>{item}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

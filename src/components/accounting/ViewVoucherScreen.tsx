@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { ArrowLeft, Trash2, Plus, ChevronDown, Link2, FileText, Paperclip, Check } from "lucide-react";
-import { useDropdownPosition } from "../../hooks/useDropdownPortal";
+import { ArrowLeft, Trash2, Plus, Link2, FileText, Paperclip } from "lucide-react";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
@@ -127,60 +126,6 @@ const Field = ({ label, value }: { label: string; value?: string | number | null
     </div>
   </div>
 );
-
-function NeuronDropdown({
-  value, options, onChange, placeholder = "Select...",
-}: { value: string; options: string[]; onChange: (v: string) => void; placeholder?: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const dropdownPos = useDropdownPosition(triggerRef, open);
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <div ref={triggerRef} onClick={() => setOpen(!open)} style={{
-        width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
-        border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
-        alignItems: "center", justifyContent: "space-between", cursor: "pointer",
-        color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
-      }}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
-        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
-      </div>
-      {open && createPortal(
-        <div style={{
-          position: "fixed", top: dropdownPos.top, bottom: dropdownPos.bottom, left: dropdownPos.left, width: dropdownPos.width,
-          background: "white", border: "1px solid #E5E9F0", borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.10)", zIndex: 9999, maxHeight: dropdownPos.maxHeight, overflowY: "auto" as const,
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-        >
-          {options.map((opt) => (
-            <div key={opt} onClick={() => { onChange(opt); setOpen(false); }}
-              style={{
-                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                backgroundColor: value === opt ? "#E8F2EE" : "transparent",
-              }}
-              onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}
-            >
-              {opt}
-              {value === opt && <Check size={14} style={{ color: "#237F66" }} />}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-}
 
 const EditableField = ({
   label, 
