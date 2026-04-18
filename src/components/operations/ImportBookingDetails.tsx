@@ -1254,6 +1254,97 @@ function EditableField({
   );
 }
 
+const PORT_OPTIONS = ["Manila North", "Manila South", "CDO", "Iloilo", "Davao"];
+
+function PodSelectField({
+  label,
+  value,
+  placeholder = "—",
+  status,
+  isEditing = false,
+  editData = {},
+  setEditData,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  status: ExecutionStatus | string;
+  isEditing?: boolean;
+  editData?: Partial<BrokerageBooking>;
+  setEditData?: (data: Partial<BrokerageBooking>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const lockStatus = isFieldLocked("pod", status as ExecutionStatus);
+  const rawValue =
+    (editData as any).pod !== undefined ? String((editData as any).pod || "") : value;
+  const isEmpty = !rawValue || rawValue.trim() === "";
+
+  const handleChange = (newValue: string) => {
+    if (setEditData) setEditData({ ...editData, pod: newValue } as any);
+  };
+
+  if (lockStatus.locked) {
+    return (
+      <div>
+        <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+          {label}
+          <Lock size={12} color="#9CA3AF" title={lockStatus.reason} style={{ cursor: "help" }} />
+        </label>
+        <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: "#6B7280", cursor: "not-allowed" }}>
+          {rawValue || "—"}
+        </div>
+      </div>
+    );
+  }
+
+  if (!isEditing) {
+    return (
+      <div>
+        <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+          {label}
+        </label>
+        <div style={{ padding: "10px 14px", backgroundColor: isEmpty ? "white" : "#F9FAFB", border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)", minHeight: "40px", display: "flex", alignItems: "center" }}>
+          {isEmpty ? <span style={{ color: "#9CA3AF" }}>{placeholder}</span> : rawValue}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+        {label}
+      </label>
+      <div style={{ position: "relative" }}>
+        <div
+          onClick={() => setOpen(!open)}
+          onBlur={() => setTimeout(() => setOpen(false), 200)}
+          tabIndex={0}
+          style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box" }}
+        >
+          {rawValue || "Select POD"}
+          <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+        </div>
+        {open && (
+          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "white", border: "1px solid #E5E9F0", borderRadius: "8px", zIndex: 9999, maxHeight: "300px", overflowY: "auto" }}>
+            {PORT_OPTIONS.map((option, index) => (
+              <div
+                key={option}
+                onClick={() => { handleChange(option); setOpen(false); }}
+                style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease" }}
+                onMouseEnter={(e) => { if (rawValue !== option) e.currentTarget.style.background = "#F9FAFB"; }}
+                onMouseLeave={(e) => { if (rawValue !== option) e.currentTarget.style.background = "transparent"; }}
+              >
+                {option}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ContainerListField({
   fieldName,
   label,
@@ -2461,14 +2552,11 @@ function BookingInformationTab({
               editData={editData}
               setEditData={setEditData}
             />
-            <EditableField
-              fieldName="pod"
+            <PodSelectField
               label="POD (Port of Discharge)"
               value={(booking as any).pod || ""}
               status={booking.status as ExecutionStatus}
               placeholder="Select POD..."
-              type="select"
-              options={["Manila North", "Manila South", "CDO", "Iloilo", "Davao"]}
               isEditing={isEditing}
               editData={editData}
               setEditData={setEditData}

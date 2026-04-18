@@ -413,15 +413,15 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
             <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
               <div>
                 <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
-                <div style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#12332B", backgroundColor: "#F9FAFB" }}>COL</div>
+                <div style={{ height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", display: "flex", alignItems: "center", color: "#667085", backgroundColor: "#F9FAFB" }}>COL</div>
               </div>
               <div>
                 <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
-                <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                <input value={refYear} onChange={e => setRefYear(e.target.value.replace(/\D/g, ""))} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
               </div>
               <div>
                 <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
-                <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }} />
+                <input value={refNumber} onChange={e => setRefNumber(e.target.value.replace(/\D/g, ""))} placeholder={nextRefNumber !== null ? String(nextRefNumber) : "…"} style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "6px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none", transition: "border-color 0.15s ease" }} onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }} onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }} />
               </div>
             </div>
             <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
@@ -563,10 +563,10 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                     height: "40px",
                     paddingLeft: "34px",
                     paddingRight: "12px",
-                    borderRadius: "12px",
+                    borderRadius: "6px",
                     border: "1px solid #E5E9F0",
                     backgroundColor: "#FFFFFF",
-                    fontSize: "13px",
+                    fontSize: "14px",
                     color: "#0A1D4D",
                     outline: "none",
                     transition: "border-color 0.15s ease",
@@ -599,10 +599,10 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                     height: "40px",
                     paddingLeft: "34px",
                     paddingRight: "12px",
-                    borderRadius: "12px",
+                    borderRadius: "6px",
                     border: "1px solid #E5E9F0",
                     backgroundColor: "#FFFFFF",
-                    fontSize: "13px",
+                    fontSize: "14px",
                     color: "#0A1D4D",
                     outline: "none",
                     transition: "border-color 0.15s ease",

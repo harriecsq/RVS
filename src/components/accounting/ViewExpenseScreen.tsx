@@ -961,7 +961,9 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                             type="text"
                             value={c}
                             onChange={(e) => handleChange(i, e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", fontSize: "14px", color: "#0A1D4D", background: "white", border: "1px solid #E5E9F0", borderRadius: "8px" }}
+                            style={{ width: "100%", padding: "10px 12px", fontSize: "14px", color: "#0A1D4D", background: "white", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", transition: "border-color 0.15s ease" }}
+                            onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                            onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
                             placeholder={`Container #${i + 1}`}
                         />
                         <button

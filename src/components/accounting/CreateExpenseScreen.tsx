@@ -526,7 +526,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
               </div>
               <div style={{ padding: "20px 24px" }}>
                 <div style={{ maxWidth: "280px" }}>
-                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
                     Date
                   </div>
                   <SingleDateInput
@@ -561,7 +561,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
               <div style={{ padding: "20px 24px" }}>
                 {/* BookingSelector — always functional */}
                 <div style={{ marginBottom: "16px" }}>
-                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
                     Select Booking
                   </div>
                   <BookingSelector
@@ -578,8 +578,8 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                       alignItems: "center",
                       gap: "8px",
                       padding: "10px 16px",
-                      borderRadius: "8px",
-                      fontSize: "13px",
+                      borderRadius: "6px",
+                      fontSize: "14px",
                       backgroundColor: "#F0FDF4",
                       color: "#15803D",
                       border: "1px solid #BBF7D0",
@@ -597,7 +597,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                     style={{
                       background: "#FAFBFC",
                       border: "1px solid #E5E9F0",
-                      borderRadius: "8px",
+                      borderRadius: "12px",
                       padding: "16px 20px",
                       display: "flex",
                       flexDirection: "column",
@@ -609,40 +609,40 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                       <>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.shipperConsignee || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.shipperConsignee || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.client || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.client || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.blNumber || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.blNumber || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.commodity || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.commodity || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.vesselVoyage || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.vesselVoyage || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.containerNumbers.filter(Boolean).join(", ") || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.containerNumbers.filter(Boolean).join(", ") || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.origin || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.origin || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Port of Destination (POD)</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.pod || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Port of Destination (POD)</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.pod || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Weight</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.weight || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Weight</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.weight || "—"}</div>
                           </div>
                         </div>
                         {/* Releasing Date — standalone editable field */}
@@ -663,36 +663,36 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                       <>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.shipperConsignee || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.shipperConsignee || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.client || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.client || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Destination</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.destination || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Destination</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.destination || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.vesselVoyage || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.vesselVoyage || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.commodity || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.commodity || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.blNumber || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.blNumber || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.containerNumbers.filter(Boolean).join(", ") || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.containerNumbers.filter(Boolean).join(", ") || "—"}</div>
                           </div>
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{formData.loadingAddress || "—"}</div>
+                            <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.loadingAddress || "—"}</div>
                           </div>
                         </div>
                       </>
@@ -737,7 +737,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                 </div>
                 <div style={{ padding: "20px 24px" }}>
                   <div>
-                    <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                    <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
                       Exchange Rate
                     </div>
                     <Input
