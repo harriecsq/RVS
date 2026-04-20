@@ -38,7 +38,7 @@ interface CollectionsListTabProps {
  */
 export function CollectionsListTab({ billingId, billingNumber, bookingId, onUpdate }: CollectionsListTabProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [totalBillingsAmount, setTotalBillingsAmount] = useState(0);

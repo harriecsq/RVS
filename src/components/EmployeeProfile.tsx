@@ -1,5 +1,5 @@
 import { Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Shuffle, Wrench, RotateCcw, LogOut } from "lucide-react";
-import { StandardSelect } from "./design-system/StandardSelect";
+import { FilterSingleDropdown } from "./shared/FilterSingleDropdown";
 import { useState } from "react";
 import { useUser } from "../hooks/useUser";
 
@@ -309,7 +309,7 @@ export function EmployeeProfile({ currentUser, onDepartmentChange }: EmployeePro
                     Department
                   </label>
                 </div>
-                <StandardSelect
+                <FilterSingleDropdown
                   value={selectedDepartment}
                   onChange={handleDepartmentChange}
                   options={departments}

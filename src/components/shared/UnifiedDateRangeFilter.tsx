@@ -224,7 +224,12 @@ export function SingleDateInput({
   const updatePopoverPosition = useCallback(() => {
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
-      setPopoverPos({ top: rect.bottom + 6 + window.scrollY, left: rect.left + window.scrollX });
+      const calendarHeight = 340;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top = spaceBelow < calendarHeight
+        ? rect.top - calendarHeight - 6 + window.scrollY
+        : rect.bottom + 6 + window.scrollY;
+      setPopoverPos({ top, left: rect.left + window.scrollX });
     }
   }, []);
 

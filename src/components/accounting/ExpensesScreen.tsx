@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Plus, CreditCard } from "lucide-react";
 import { useLocation } from "react-router";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -6,14 +6,17 @@ import { CreateExpensePanel } from "./CreateExpensePanel";
 import { ViewExpenseScreen } from "./ViewExpenseScreen";
 import { formatAmount } from "../../utils/formatAmount";
 import { publicAnonKey } from "../../utils/supabase/info";
+import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
 import {
   StandardButton,
   StandardSearchInput,
-  StandardFilterDropdown,
   StandardTable,
 } from "../design-system";
 import type { ColumnDef } from "../design-system";
@@ -43,8 +46,15 @@ interface Expense {
 
 export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const location = useLocation();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: expensesResult, isLoading: isLoadingExpenses, refetch: refetchExpenses } = useCachedFetch<{ success: boolean; data: any[] }>("/expenses");
+  const { data: bookingsResult, isLoading: isLoadingBookings } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const isLoading = isLoadingExpenses || isLoadingBookings;
+  const expenses = useMemo<Expense[]>(() => {
+    if (!expensesResult?.success) return [];
+    const data = [...(expensesResult.data || [])];
+    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return data;
+  }, [expensesResult]);
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [showViewScreen, setShowViewScreen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
@@ -54,17 +64,35 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
+  const [portFilter, setPortFilter] = useState<string[]>([]);
   const [companyFilter, setCompanyFilter] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
+  const clientsMasterList = useClientsMasterList();
 
   useEffect(() => {
-    fetchExpenses();
     const state = location.state as { selectedExpenseId?: string } | null;
     if (state?.selectedExpenseId) {
       fetchAndSelectExpense(state.selectedExpenseId);
       window.history.replaceState({}, document.title);
     }
   }, []);
+
+  useEffect(() => {
+    if (!bookingsResult?.success) return;
+    const enrichMap = new Map<string, { serviceType: string; port: string }>();
+    (bookingsResult.data || []).forEach((b: any) => {
+      const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
+      const isImport = serviceType.toLowerCase().includes("import");
+      const seg0 = b.segments?.[0];
+      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      const enrich = { serviceType, port };
+      if (b.id) enrichMap.set(b.id, enrich);
+      if (b.bookingId) enrichMap.set(b.bookingId, enrich);
+    });
+    bookingEnrichMapRef.current = enrichMap;
+  }, [bookingsResult]);
 
   const fetchAndSelectExpense = async (expenseId: string) => {
     try {
@@ -86,27 +114,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     }
   };
 
-  const fetchExpenses = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/expenses`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`,
-        },
-      });
-      if (!response.ok) throw new Error("Failed to fetch expenses");
-      const result = await response.json();
-      const data = result.success && result.data ? result.data : [];
-      data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-      setExpenses(data);
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
-      setExpenses([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchExpenses = () => { invalidateCache("/expenses"); refetchExpenses(); };
 
   if (showViewScreen && selectedExpense) {
     return (
@@ -148,6 +156,17 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     if (statusFilter !== "all" && expense.status !== statusFilter) return false;
     if (categoryFilter !== "all" && expense.category !== categoryFilter) return false;
     if (paymentMethodFilter !== "all" && expense.paymentMethod !== paymentMethodFilter) return false;
+
+    if (serviceTypeFilter !== "all" || portFilter.length > 0) {
+      const bId = (expense as any).bookingId || ((expense as any).bookingIds)?.[0];
+      const enrich = bId ? bookingEnrichMapRef.current.get(bId) : undefined;
+      if (serviceTypeFilter !== "all") {
+        if (!enrich?.serviceType.toLowerCase().includes(serviceTypeFilter.toLowerCase())) return false;
+      }
+      if (portFilter.length > 0) {
+        if (!portFilter.some(p => (enrich?.port || "").toLowerCase().includes(p.toLowerCase()))) return false;
+      }
+    }
 
     if (companyFilter) {
       const expenseCompany = expense.companyName || expense.clientName || "";
@@ -257,7 +276,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             />
           </div>
 
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={statusFilter}
             onChange={(v) => setStatusFilter(v as ExpenseStatus | "all")}
             options={[
@@ -271,7 +290,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             ]}
           />
 
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={categoryFilter}
             onChange={setCategoryFilter}
             options={[
@@ -280,7 +299,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             ]}
           />
 
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={paymentMethodFilter}
             onChange={setPaymentMethodFilter}
             options={[
@@ -289,10 +308,30 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             ]}
           />
 
+          <FilterSingleDropdown
+            value={serviceTypeFilter}
+            options={[
+              { value: "all", label: "All Types" },
+              { value: "Import", label: "Import" },
+              { value: "Export", label: "Export" },
+            ]}
+            onChange={setServiceTypeFilter}
+            placeholder="All Types"
+          />
+          <MultiSelectPortalDropdown
+            value={portFilter}
+            options={[
+              { value: "Manila North", label: "Manila North" },
+              { value: "Manila South", label: "Manila South" },
+              { value: "CDO", label: "CDO" },
+              { value: "Iloilo", label: "Iloilo" },
+              { value: "Davao", label: "Davao" },
+            ]}
+            onChange={setPortFilter}
+            placeholder="All Ports"
+          />
           <CompanyClientFilter
-            items={expenses}
-            getCompany={(e) => e.companyName || e.clientName || ""}
-            getClient={(e) => e.clientName || ""}
+            extraEntries={clientsMasterList}
             selectedCompany={companyFilter}
             selectedClient={clientFilter}
             onCompanyChange={setCompanyFilter}

@@ -35,7 +35,7 @@ interface CollectionBillingsTabProps {
 
 export function CollectionBillingsTab({ collectionId, collectionNumber, allocations }: CollectionBillingsTabProps) {
   const [billings, setBillings] = useState<Billing[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {

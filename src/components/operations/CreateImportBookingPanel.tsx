@@ -1,4 +1,4 @@
-import { X, Package, ArrowLeft, ChevronDown, Trash2, Plus } from "lucide-react";
+import { X, Package, ArrowLeft, ChevronDown, Trash2, Plus, Search } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
@@ -6,9 +6,13 @@ import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
 import { ComboInput } from "../ui/ComboInput";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { API_BASE_URL } from '@/utils/api-config';
 import { PanelBackdrop } from "../shared/PanelBackdrop";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { ShippingLineDropdown } from "../shared/ShippingLineDropdown";
+import { PortalDropdown } from "../shared/PortalDropdown";
 
 interface CreateBrokerageBookingPanelProps {
   isOpen: boolean;
@@ -138,14 +142,12 @@ export function CreateBrokerageBookingPanel({
   const [showShippingLineStatusDropdown, setShowShippingLineStatusDropdown] = useState(false);
 
   // Dropdown visibility states
-  const [showShippingLineDropdown, setShowShippingLineDropdown] = useState(false);
-  const [showContainerSizeDropdown, setShowContainerSizeDropdown] = useState(false);
-  const [showContainerTypeDropdown, setShowContainerTypeDropdown] = useState(false);
   const [showSelectivityDropdown, setShowSelectivityDropdown] = useState(false);
   const [showGrossWeightUnitDropdown, setShowGrossWeightUnitDropdown] = useState(false);
   const [showSectionDropdown, setShowSectionDropdown] = useState(false);
   const [sectionSearch, setSectionSearch] = useState("");
-  const [shippingLineSearch, setShippingLineSearch] = useState("");
+  const selectivityRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
 
   // Status Dropdown Constants
   const IMPORT_STATUS_COLORS: Record<string, string> = {
@@ -600,126 +602,6 @@ export function CreateBrokerageBookingPanel({
     },
   };
 
-  // Reusable Neuron dropdown renderer
-  const renderNeuronDropdown = (
-    value: string,
-    options: string[],
-    isOpen: boolean,
-    setIsOpen: (v: boolean) => void,
-    onSelect: (v: string) => void,
-    placeholder: string,
-    renderOption?: (option: string) => React.ReactNode,
-    searchable?: boolean,
-    searchValue?: string,
-    setSearchValue?: (v: string) => void
-  ) => {
-    const filteredOptions = searchable && searchValue
-      ? options.filter(opt => opt.toLowerCase().includes(searchValue.toLowerCase()))
-      : options;
-    return (
-    <div style={{ position: "relative" }}>
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        tabIndex={0}
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          fontSize: "14px",
-          border: "1px solid #E5E9F0",
-          borderRadius: "8px",
-          color: value ? "#111827" : "#9CA3AF",
-          fontWeight: value ? 500 : 400,
-          backgroundColor: "white",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          outline: "none",
-          minHeight: "42px",
-        }}
-      >
-        {renderOption && value ? renderOption(value) : (value || placeholder)}
-        <ChevronDown size={16} color="#667085" style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
-      </div>
-      {isOpen && (
-        <div style={{
-          position: "absolute",
-          top: "calc(100% + 4px)",
-          left: 0,
-          right: 0,
-          background: "white",
-          border: "1.5px solid #E5E9F0",
-          borderRadius: "8px",
-          zIndex: 50,
-          maxHeight: "300px",
-          overflowY: "auto"
-        }}>
-          {searchable && setSearchValue && (
-            <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
-              <input
-                type="text"
-                value={searchValue || ""}
-                onChange={(e) => setSearchValue(e.target.value)}
-                placeholder="Search..."
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  fontSize: "13px",
-                  border: "1px solid #E5E9F0",
-                  borderRadius: "6px",
-                  outline: "none",
-                  color: "#111827",
-                  backgroundColor: "#F9FAFB"
-                }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
-              />
-            </div>
-          )}
-          {filteredOptions.map((option, index) => (
-            <div
-              key={option}
-              onClick={() => {
-                onSelect(option);
-                setIsOpen(false);
-                if (setSearchValue) setSearchValue("");
-              }}
-              style={{
-                padding: "10px 14px",
-                fontSize: "14px",
-                fontWeight: 500,
-                cursor: "pointer",
-                color: "#111827",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                background: value === option ? "#F0FDF4" : "transparent",
-                borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
-                transition: "all 0.15s ease"
-              }}
-              onMouseEnter={(e) => {
-                if (value !== option) e.currentTarget.style.background = "#F9FAFB";
-              }}
-              onMouseLeave={(e) => {
-                if (value !== option) e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {renderOption ? renderOption(option) : option}
-            </div>
-          ))}
-          {searchable && filteredOptions.length === 0 && (
-            <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>
-              No results found
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-    );
-  };
 
   // Selectivity option renderer with color dot
   const renderSelectivityOption = (option: string) => {
@@ -875,7 +757,7 @@ export function CreateBrokerageBookingPanel({
 
             {/* BL Number Row */}
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: "#667085" }}>
+              <label className="block text-sm font-medium mb-2" style={{ color: "#0A1D4D" }}>
                 BL Number
               </label>
               <input
@@ -996,22 +878,20 @@ export function CreateBrokerageBookingPanel({
                   Volume
                 </label>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  {containerType !== "LCL" && renderNeuronDropdown(
-                    containerSize,
-                    [...CONTAINER_SIZE_OPTIONS],
-                    showContainerSizeDropdown,
-                    setShowContainerSizeDropdown,
-                    setContainerSize,
-                    "Size"
+                  {containerType !== "LCL" && (
+                    <FilterSingleDropdown
+                      value={containerSize}
+                      options={CONTAINER_SIZE_OPTIONS.map((o) => ({ value: o, label: o }))}
+                      onChange={setContainerSize}
+                      placeholder="Size"
+                    />
                   )}
-                  {renderNeuronDropdown(
-                    containerType,
-                    [...CONTAINER_TYPE_OPTIONS],
-                    showContainerTypeDropdown,
-                    setShowContainerTypeDropdown,
-                    setContainerType,
-                    "Type"
-                  )}
+                  <FilterSingleDropdown
+                    value={containerType}
+                    options={CONTAINER_TYPE_OPTIONS.map((o) => ({ value: o, label: o }))}
+                    onChange={setContainerType}
+                    placeholder="Type"
+                  />
                 </div>
               </div>
 
@@ -1126,18 +1006,7 @@ export function CreateBrokerageBookingPanel({
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Shipping Line
                 </label>
-                {renderNeuronDropdown(
-                  shippingLine,
-                  SHIPPING_LINE_OPTIONS,
-                  showShippingLineDropdown,
-                  setShowShippingLineDropdown,
-                  setShippingLine,
-                  "Select shipping line",
-                  undefined,
-                  true,
-                  shippingLineSearch,
-                  setShippingLineSearch
-                )}
+                <ShippingLineDropdown value={shippingLine} onChange={setShippingLine} />
               </div>
 
               <div>
@@ -1146,43 +1015,24 @@ export function CreateBrokerageBookingPanel({
                 </label>
                 <div style={{ position: "relative" }}>
                   <div
+                    ref={sectionRef}
                     onClick={() => setShowSectionDropdown(!showSectionDropdown)}
                     style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      fontSize: "14px",
-                      border: "1px solid #E5E9F0",
-                      borderRadius: "8px",
-                      color: section ? "#111827" : "#9CA3AF",
-                      fontWeight: section ? 500 : 400,
-                      backgroundColor: "white",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      outline: "none",
-                      minHeight: "42px",
+                      width: "100%", padding: "10px 12px", fontSize: "14px",
+                      border: "1px solid #E5E9F0", borderRadius: "6px",
+                      color: section ? "#0A1D4D" : "#9CA3AF", fontWeight: section ? 500 : 400,
+                      backgroundColor: "white", cursor: "pointer", display: "flex",
+                      alignItems: "center", justifyContent: "space-between",
+                      outline: "none", minHeight: "40px",
                     }}
                   >
                     {section || "Select section"}
                     <ChevronDown size={16} color="#667085" style={{ transform: showSectionDropdown ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
                   </div>
-                  {showSectionDropdown && (
-                    <div style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      left: 0,
-                      right: 0,
-                      background: "white",
-                      border: "1.5px solid #E5E9F0",
-                      borderRadius: "8px",
-                                  zIndex: 50,
-                      maxHeight: "300px",
-                      overflow: "hidden",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}>
-                      <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
+                  <PortalDropdown isOpen={showSectionDropdown} onClose={() => { setShowSectionDropdown(false); setSectionSearch(""); }} triggerRef={sectionRef} align="left">
+                    <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+                      <div style={{ position: "relative" }}>
+                        <Search size={14} color="#9CA3AF" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                         <input
                           type="text"
                           value={sectionSearch}
@@ -1190,59 +1040,32 @@ export function CreateBrokerageBookingPanel({
                           placeholder="Search section..."
                           autoFocus
                           onClick={(e) => e.stopPropagation()}
-                          style={{
-                            width: "100%",
-                            padding: "8px 10px",
-                            fontSize: "13px",
-                            border: "1px solid #E5E9F0",
-                            borderRadius: "6px",
-                            outline: "none",
-                            color: "#111827",
-                          }}
+                          style={{ width: "100%", padding: "8px 12px 8px 30px", fontSize: "13px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", color: "#0A1D4D", backgroundColor: "#F9FAFB", boxSizing: "border-box" }}
                           onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
                           onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
                         />
                       </div>
-                      <div style={{ overflowY: "auto", maxHeight: "240px" }}>
-                        {SECTION_OPTIONS.filter(opt => opt.toLowerCase().includes(sectionSearch.toLowerCase())).map((option, index, arr) => (
-                          <div
-                            key={option}
-                            onClick={() => {
-                              setSection(option);
-                              setShowSectionDropdown(false);
-                              setSectionSearch("");
-                            }}
-                            style={{
-                              padding: "10px 14px",
-                              fontSize: "14px",
-                              fontWeight: 500,
-                              cursor: "pointer",
-                              color: "#111827",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "10px",
-                              background: section === option ? "#F0FDF4" : "transparent",
-                              borderBottom: index < arr.length - 1 ? "1px solid #E5E9F0" : "none",
-                              transition: "all 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (section !== option) e.currentTarget.style.background = "#F9FAFB";
-                            }}
-                            onMouseLeave={(e) => {
-                              if (section !== option) e.currentTarget.style.background = "transparent";
-                            }}
-                          >
-                            {option}
-                          </div>
-                        ))}
-                        {SECTION_OPTIONS.filter(opt => opt.toLowerCase().includes(sectionSearch.toLowerCase())).length === 0 && (
-                          <div style={{ padding: "10px 14px", fontSize: "13px", color: "#9CA3AF" }}>
-                            No matching sections
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  )}
+                    {SECTION_OPTIONS.filter(opt => opt.toLowerCase().includes(sectionSearch.toLowerCase())).map((option, index, arr) => (
+                      <div
+                        key={option}
+                        onClick={() => { setSection(option); setShowSectionDropdown(false); setSectionSearch(""); }}
+                        style={{
+                          padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer",
+                          color: "#0A1D4D", background: section === option ? "#E8F2EE" : "transparent",
+                          borderBottom: index < arr.length - 1 ? "1px solid #E5E9F0" : "none",
+                          transition: "background 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => { if (section !== option) e.currentTarget.style.background = "#F9FAFB"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = section === option ? "#E8F2EE" : "transparent"; }}
+                      >
+                        {option}
+                      </div>
+                    ))}
+                    {SECTION_OPTIONS.filter(opt => opt.toLowerCase().includes(sectionSearch.toLowerCase())).length === 0 && (
+                      <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>No matching sections</div>
+                    )}
+                  </PortalDropdown>
                 </div>
               </div>
 
@@ -1344,15 +1167,41 @@ export function CreateBrokerageBookingPanel({
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Selectivity
                 </label>
-                {renderNeuronDropdown(
-                  selectivity,
-                  SELECTIVITY_OPTIONS,
-                  showSelectivityDropdown,
-                  setShowSelectivityDropdown,
-                  setSelectivity,
-                  "Select selectivity",
-                  renderSelectivityOption
-                )}
+                <div style={{ position: "relative" }}>
+                  <div
+                    ref={selectivityRef}
+                    onClick={() => setShowSelectivityDropdown(!showSelectivityDropdown)}
+                    style={{
+                      width: "100%", padding: "10px 12px", fontSize: "14px",
+                      border: "1px solid #E5E9F0", borderRadius: "6px",
+                      color: selectivity ? "#0A1D4D" : "#9CA3AF", fontWeight: selectivity ? 500 : 400,
+                      backgroundColor: "white", cursor: "pointer", display: "flex",
+                      alignItems: "center", justifyContent: "space-between",
+                      outline: "none", minHeight: "40px",
+                    }}
+                  >
+                    {selectivity ? renderSelectivityOption(selectivity) : "Select selectivity"}
+                    <ChevronDown size={16} color="#667085" style={{ transform: showSelectivityDropdown ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+                  </div>
+                  <PortalDropdown isOpen={showSelectivityDropdown} onClose={() => setShowSelectivityDropdown(false)} triggerRef={selectivityRef} align="left">
+                    {SELECTIVITY_OPTIONS.map((option, index) => (
+                      <div
+                        key={option}
+                        onClick={() => { setSelectivity(option); setShowSelectivityDropdown(false); }}
+                        style={{
+                          padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer",
+                          background: selectivity === option ? "#E8F2EE" : "transparent",
+                          borderBottom: index < SELECTIVITY_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
+                          transition: "background 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => { if (selectivity !== option) e.currentTarget.style.background = "#F9FAFB"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = selectivity === option ? "#E8F2EE" : "transparent"; }}
+                      >
+                        {renderSelectivityOption(option)}
+                      </div>
+                    ))}
+                  </PortalDropdown>
+                </div>
               </div>
 
               <div>

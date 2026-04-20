@@ -7,12 +7,11 @@ import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildCommercialInvoiceDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { CommercialInvoice, SalesContract } from "../../../types/export-documents";
-import { TemplatePickerView } from "./TemplatePickerView";
-import { useDocTemplates } from "../../../hooks/useDocTemplates";
 
 // ── Constants ────────────────────────────────────────────────────────
 
 const COMPANY_CODE_OPTIONS = ["SCI", "RDS", "RVS", "SW"];
+const fmtNum = (v: string) => { const n = parseFloat(v.replace(/,/g, "")); return isNaN(n) ? v : n.toLocaleString("en-US"); };
 
 // ── NeuronDropdown (matches voucher/billing pattern) ─────────────────
 
@@ -96,9 +95,10 @@ interface CommercialInvoiceTabProps {
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
+  initialDraftData?: Partial<CommercialInvoice>;
 }
 
-export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: CommercialInvoiceTabProps) {
+export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: CommercialInvoiceTabProps) {
   const [doc, setDoc] = useState<CommercialInvoice | null>(null);
   const [sc, setSc] = useState<SalesContract | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,9 +108,6 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
   const [editData, setEditData] = useState<Partial<CommercialInvoice>>({});
   const editDataRef = useRef(editData);
   editDataRef.current = editData;
-  const { templates, fetchTemplateFields } = useDocTemplates("commercialInvoice", booking?.clientId);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
   const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
@@ -164,23 +161,15 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
     return `${refCompanyCode} ${refYear}-${num}`;
   };
 
-  const handleCreateClick = () => {
-    setShowTemplatePicker(true);
-  };
+  const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
     let merged = buildCommercialInvoiceDefaults(booking, sc || undefined);
+    if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "commercialInvoice"); }
     setEditData({ ...merged, invoiceNo: buildRefNo() });
     setIsCreating(true);
     setIsEditing(true);
-  };
-
-  const handleTemplateSelect = async (templateId: string | null) => {
-    setShowTemplatePicker(false);
-    if (!templateId) { proceedWithCreate(null); return; }
-    const fields = await fetchTemplateFields(templateId);
-    proceedWithCreate(fields);
   };
 
   const handleEdit = () => {
@@ -237,8 +226,9 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
       isEditing, isSaving,
       refNo: doc?.invoiceNo || (isEditing ? buildRefNo() : ""),
       handleEdit, handleCancel, handleSave,
+      docData: isEditing ? { ...editData, invoiceNo: buildRefNo() } : doc,
     });
-  }, [isEditing, isSaving, doc?.invoiceNo]);
+  }, [isEditing, isSaving, doc, editData]);
 
   const field = (key: keyof CommercialInvoice) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -266,9 +256,6 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
   }
 
   if (!doc && !isEditing) {
-    if (showTemplatePicker) {
-      return <TemplatePickerView onSelect={handleTemplateSelect} onCancel={() => setShowTemplatePicker(false)} templates={templates} docType="commercialInvoice" />;
-    }
     return (
       <div style={{ padding: "32px 48px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
@@ -371,31 +358,20 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
       {/* Goods */}
       <SectionCard title="Goods">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-          {(() => {
-            const containerNo = booking?.containerNo || "";
-            const containerCount = containerNo ? (Array.isArray(containerNo) ? containerNo : containerNo.split(',').map((s: string) => s.trim()).filter(Boolean)).length : 0;
-            const marksVal = field("marksAndNos");
-            const displayValue = marksVal ? `${containerCount}x${marksVal} CONTAINER` : "";
-            if (isEditing) {
-              return (
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Marks & Nos</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "14px", color: "var(--neuron-ink-primary)", whiteSpace: "nowrap" }}>{containerCount}x</span>
-                    <input
-                      type="text"
-                      value={marksVal}
-                      onChange={(e) => setField("marksAndNos", e.target.value)}
-                      placeholder="e.g. 40'HC"
-                      style={{ flex: 1, padding: "10px 14px", border: "1px solid #0F766E", borderRadius: "6px", fontSize: "14px", color: "var(--neuron-ink-primary)", background: "white", outline: "none", boxSizing: "border-box" }}
-                    />
-                    <span style={{ fontSize: "14px", color: "var(--neuron-ink-primary)", whiteSpace: "nowrap" }}>CONTAINER</span>
-                  </div>
-                </div>
-              );
-            }
-            return <FieldView label="Marks & Nos" value={displayValue} />;
-          })()}
+          {/* Marks & Nos — number input, fixed CONTAINER unit */}
+          <div>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Marks &amp; Nos</label>
+            {isEditing ? (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input value={field("marksAndNos")} onChange={(e) => setField("marksAndNos", e.target.value)} placeholder="e.g. 4" style={{ flex: 1, height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+                <span style={{ whiteSpace: "nowrap", fontSize: "13px", color: "#667085", padding: "0 10px", height: "42px", display: "flex", alignItems: "center", background: "#F3F4F6", borderRadius: "6px", border: "1px solid #E5E9F0" }}>CONTAINER</span>
+              </div>
+            ) : (
+              <div style={{ padding: "10px 14px", backgroundColor: field("marksAndNos") ? "#F9FAFB" : "white", border: field("marksAndNos") ? "1px solid #E5E9F0" : "2px dashed #E5E9F0", borderRadius: "6px", fontSize: "14px", color: field("marksAndNos") ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center", gap: "6px" }}>
+                {field("marksAndNos") ? <>{fmtNum(field("marksAndNos"))} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "—"}
+              </div>
+            )}
+          </div>
           {isEditing ? (
             <FieldInput label="Description" value={field("description")} onChange={(v) => setField("description", v)} />
           ) : (
@@ -406,17 +382,17 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
           {isEditing ? (
             <FieldInput label="Total Net Weight" value={field("totalNetWeight")} onChange={(v) => setField("totalNetWeight", v)} suffix="MT" />
           ) : (
-            <FieldView label="Total Net Weight" value={field("totalNetWeight")} suffix="MT" />
+            <FieldView label="Total Net Weight" value={fmtNum(field("totalNetWeight"))} suffix="MT" />
           )}
           {isEditing ? (
             <FieldInput label="Unit Price" value={field("unitPrice")} onChange={(v) => setField("unitPrice", v)} suffix="USD" />
           ) : (
-            <FieldView label="Unit Price" value={field("unitPrice")} suffix="USD" />
+            <FieldView label="Unit Price" value={fmtNum(field("unitPrice"))} suffix="USD" />
           )}
           {isEditing ? (
             <FieldInput label="Total Invoice Value" value={field("totalInvoiceValue")} onChange={(v) => setField("totalInvoiceValue", v)} suffix="USD" />
           ) : (
-            <FieldView label="Total Invoice Value" value={field("totalInvoiceValue")} suffix="USD" />
+            <FieldView label="Total Invoice Value" value={fmtNum(field("totalInvoiceValue"))} suffix="USD" />
           )}
         </div>
       </SectionCard>

@@ -4,7 +4,7 @@ import { NeuronStatusPill } from "./NeuronStatusPill";
 import { useUser } from "../hooks/useUser";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { useNavigate } from "react-router";
-import { StandardFilterDropdown } from "./design-system/StandardFilterDropdown";
+import { FilterSingleDropdown } from "./shared/FilterSingleDropdown";
 import { API_BASE_URL } from '@/utils/api-config';
 
 interface ActivityLog {
@@ -445,7 +445,7 @@ export function ActivityLogPage() {
             </div>
             
             <div style={{ minWidth: "160px" }}>
-              <StandardFilterDropdown
+              <FilterSingleDropdown
                 value={entityTypeFilter}
                 onChange={setEntityTypeFilter}
                 options={[
@@ -458,7 +458,7 @@ export function ActivityLogPage() {
             </div>
             
             <div style={{ minWidth: "140px" }}>
-              <StandardFilterDropdown
+              <FilterSingleDropdown
                 value={actionTypeFilter}
                 onChange={setActionTypeFilter}
                 options={[
@@ -474,7 +474,7 @@ export function ActivityLogPage() {
             {/* Show Department filter only for Executives */}
             {actualRole === "director" && (
               <div style={{ minWidth: "160px" }}>
-                <StandardFilterDropdown
+                <FilterSingleDropdown
                     value={departmentFilter}
                   onChange={(value) => {
                     setDepartmentFilter(value);
@@ -494,7 +494,7 @@ export function ActivityLogPage() {
             {/* Show User filter when department is selected (not "all") */}
             {(departmentFilter !== "all" || actualRole === "manager") && (
               <div style={{ minWidth: "150px" }}>
-                <StandardFilterDropdown
+                <FilterSingleDropdown
                     value={userFilter}
                   onChange={setUserFilter}
                   options={[

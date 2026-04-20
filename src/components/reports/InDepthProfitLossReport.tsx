@@ -77,7 +77,7 @@ export function InDepthProfitLossReport() {
   const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [billings, setBillings] = useState<Billing[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchBookingDetails = async (bookingId: string) => {
     const endpoints = [

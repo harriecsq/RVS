@@ -1,4 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Component, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(_e: Error, info: ErrorInfo) { console.error("App crash:", _e, info); }
+  render() {
+    if (this.state.error) {
+      const err = this.state.error as Error;
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", background: "#F8F9FB" }}>
+          <div style={{ maxWidth: 480, padding: "40px 48px", background: "#fff", borderRadius: 16, border: "1px solid #E5E9F0", textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
+            <h2 style={{ color: "#12332B", marginBottom: 8, fontSize: 18 }}>Something went wrong</h2>
+            <p style={{ color: "#6B7A76", fontSize: 14, marginBottom: 24 }}>The app encountered an error. Open DevTools (F12) → Console for details.</p>
+            <pre style={{ textAlign: "left", background: "#F8F9FB", border: "1px solid #E5E9F0", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#12332B", whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 24 }}>{err.message}</pre>
+            <button onClick={() => window.location.reload()} style={{ padding: "10px 24px", background: "#237F66", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Reload</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, useParams } from "react-router";
 import { Layout } from "./components/Layout";
 import type { Page } from "./components/NeuronSidebar";
@@ -6,31 +29,33 @@ import { UserProvider, useUser } from "./hooks/useUser";
 import { Toaster, toast } from "sonner@2.0.3";
 import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png";
 
-// Direct imports — static import graph ensures Tailwind v4 scans all component files
-import { ExecutiveDashboard } from "./components/ExecutiveDashboard";
-import { ClientsModule } from "./components/operations/ClientsModule";
-import { VouchersScreen } from "./components/accounting/VouchersScreen";
-import { BillingsScreen } from "./components/accounting/BillingsScreen";
-import { CollectionsScreen } from "./components/accounting/CollectionsScreen";
-import { ExpensesScreen } from "./components/accounting/ExpensesScreen";
-import { HR } from "./components/HR";
-import { Reports } from "./components/Reports";
-import { ContainerRefundReport } from "./components/reports/ContainerRefundReport";
-import { FinalShipmentCostReport } from "./components/reports/FinalShipmentCostReport";
-import { ExpenseSummaryReport } from "./components/reports/ExpenseSummaryReport";
-import { InDepthProfitLossReport } from "./components/reports/InDepthProfitLossReport";
-import { ProfitLossPeriodReport } from "./components/reports/ProfitLossPeriodReport";
-import { VatReturnsReport } from "./components/reports/VatReturnsReport";
-import { SOAPaymentMonitoringReport } from "./components/reports/SOAPaymentMonitoringReport";
-import { ActivityLogPage } from "./components/ActivityLogPage";
-import { EmployeeProfile } from "./components/EmployeeProfile";
-import { CreateBooking } from "./components/CreateBooking";
-import { BookingFullView } from "./components/operations/BookingFullView";
-import { ImportBookings } from "./components/operations/ImportBookings";
 import { projectId, publicAnonKey } from './utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
-import { ExportBookings } from "./components/operations/ExportBookings";
-import { TruckingModule } from "./components/operations/TruckingModule";
+
+// Lazy-loaded route components — split into separate chunks for faster initial load
+const ExecutiveDashboard = lazy(() => import("./components/ExecutiveDashboard").then(m => ({ default: m.ExecutiveDashboard })));
+const ClientsModule = lazy(() => import("./components/operations/ClientsModule").then(m => ({ default: m.ClientsModule })));
+const VouchersScreen = lazy(() => import("./components/accounting/VouchersScreen").then(m => ({ default: m.VouchersScreen })));
+const BillingsScreen = lazy(() => import("./components/accounting/BillingsScreen").then(m => ({ default: m.BillingsScreen })));
+const CollectionsScreen = lazy(() => import("./components/accounting/CollectionsScreen").then(m => ({ default: m.CollectionsScreen })));
+const ExpensesScreen = lazy(() => import("./components/accounting/ExpensesScreen").then(m => ({ default: m.ExpensesScreen })));
+const HR = lazy(() => import("./components/HR").then(m => ({ default: m.HR })));
+const Reports = lazy(() => import("./components/Reports").then(m => ({ default: m.Reports })));
+const ContainerRefundReport = lazy(() => import("./components/reports/ContainerRefundReport").then(m => ({ default: m.ContainerRefundReport })));
+const FinalShipmentCostReport = lazy(() => import("./components/reports/FinalShipmentCostReport").then(m => ({ default: m.FinalShipmentCostReport })));
+const ExpenseSummaryReport = lazy(() => import("./components/reports/ExpenseSummaryReport").then(m => ({ default: m.ExpenseSummaryReport })));
+const InDepthProfitLossReport = lazy(() => import("./components/reports/InDepthProfitLossReport").then(m => ({ default: m.InDepthProfitLossReport })));
+const ProfitLossPeriodReport = lazy(() => import("./components/reports/ProfitLossPeriodReport").then(m => ({ default: m.ProfitLossPeriodReport })));
+const VatReturnsReport = lazy(() => import("./components/reports/VatReturnsReport").then(m => ({ default: m.VatReturnsReport })));
+const SOAPaymentMonitoringReport = lazy(() => import("./components/reports/SOAPaymentMonitoringReport").then(m => ({ default: m.SOAPaymentMonitoringReport })));
+const ActivityLogPage = lazy(() => import("./components/ActivityLogPage").then(m => ({ default: m.ActivityLogPage })));
+const EmployeeProfile = lazy(() => import("./components/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
+const CreateBooking = lazy(() => import("./components/CreateBooking").then(m => ({ default: m.CreateBooking })));
+const BookingFullView = lazy(() => import("./components/operations/BookingFullView").then(m => ({ default: m.BookingFullView })));
+const ImportBookings = lazy(() => import("./components/operations/ImportBookings").then(m => ({ default: m.ImportBookings })));
+const ExportBookings = lazy(() => import("./components/operations/ExportBookings").then(m => ({ default: m.ExportBookings })));
+const TruckingModule = lazy(() => import("./components/operations/TruckingModule").then(m => ({ default: m.TruckingModule })));
+const DocumentSettingsPage = lazy(() => import("./components/admin/DocumentSettingsPage").then(m => ({ default: m.DocumentSettingsPage })));
 
 // App entry point
 function LoginPage() {
@@ -615,13 +640,29 @@ function ProfilePage() {
 function AdminPage() {
   return (
     <RouteWrapper page="admin">
-      <div style={{ padding: '32px', textAlign: 'center', color: '#667085' }}>Admin module unavailable</div>
+      <div style={{ overflow: "auto", height: "calc(100vh - 56px)" }}>
+        <DocumentSettingsPage />
+      </div>
     </RouteWrapper>
   );
 }
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useUser();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const headers = { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" };
+    const prefetch = (path: string) =>
+      fetch(`${API_BASE_URL}${path}`, { headers })
+        .then((r) => r.json())
+        .then((data) => {
+          (window as any).__neuronCache = (window as any).__neuronCache || new Map();
+          (window as any).__neuronCache.set(path, { data, timestamp: Date.now() });
+        })
+        .catch(() => {});
+    ["/bookings", "/clients", "/contacts", "/vouchers", "/billings", "/collections", "/expenses", "/trucking-records"].forEach(prefetch);
+  }, [isAuthenticated]);
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -654,6 +695,7 @@ function AppContent() {
   return (
     <>
       <Toaster position="bottom-right" richColors />
+      <Suspense fallback={null}>
       <Routes>
         {/* Default route */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -701,6 +743,7 @@ function AppContent() {
         {/* 404 fallback */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      </Suspense>
     </>
   );
 }
@@ -722,29 +765,6 @@ export default function App() {
       // Remove overlay from DOM after fade-out animation completes
       setTimeout(() => setShowOverlay(false), 400);
     });
-  }, []);
-
-  // Load Google Fonts via <link> tag — avoids the @import-not-at-top CSS error
-  useEffect(() => {
-    const fontId = 'neuron-google-fonts';
-    if (!document.getElementById(fontId)) {
-      const preconnect1 = document.createElement('link');
-      preconnect1.rel = 'preconnect';
-      preconnect1.href = 'https://fonts.googleapis.com';
-      document.head.appendChild(preconnect1);
-
-      const preconnect2 = document.createElement('link');
-      preconnect2.rel = 'preconnect';
-      preconnect2.href = 'https://fonts.gstatic.com';
-      preconnect2.crossOrigin = 'anonymous';
-      document.head.appendChild(preconnect2);
-
-      const link = document.createElement('link');
-      link.id = fontId;
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
-      document.head.appendChild(link);
-    }
   }, []);
 
   return (
@@ -807,11 +827,13 @@ export default function App() {
         </div>
       )}
 
-      <UserProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </UserProvider>
+      <ErrorBoundary>
+        <UserProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </UserProvider>
+      </ErrorBoundary>
     </>
   );
 }

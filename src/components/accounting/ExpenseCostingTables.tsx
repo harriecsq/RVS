@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { Input } from "../ui/input";
 import { formatAmount } from "../../utils/formatAmount";
 import { PortalDropdown } from "../shared/PortalDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 
 // Types
 export interface ExpenseLineItem {
@@ -1217,37 +1218,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                       </td>
                       {/* Voucher No */}
                       <td style={{ padding: "8px", width: "15%" }}>
-                        <select
+                        <FilterSingleDropdown
                           value={item.voucherNo || ""}
-                          onChange={(e) => handleExportCategoryUpdate(categoryName, item.id, 'voucherNo', e.target.value)}
-                          style={{
-                            height: "36px",
-                            width: "100%",
-                            border: "1px solid transparent",
-                            borderRadius: "6px",
-                            padding: "0 8px",
-                            fontSize: "13px",
-                            color: "#0A1D4D",
-                            background: "transparent",
-                            outline: "none",
-                            appearance: "none" as const,
-                            cursor: "pointer",
-                            transition: "border-color 0.15s ease",
-                            backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                            backgroundRepeat: "no-repeat",
-                            backgroundPosition: "right 8px center",
-                            backgroundSize: "14px"
-                          }}
-                          onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                          onBlur={(e) => e.currentTarget.style.borderColor = "transparent"}
-                        >
-                          <option value="">Select Voucher</option>
-                          {(vouchers || []).map((v: any) => (
-                            <option key={v.id || v.voucherNumber} value={v.voucherNumber}>
-                              {v.voucherNumber}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(v) => handleExportCategoryUpdate(categoryName, item.id, 'voucherNo', v)}
+                          options={(vouchers || []).map((v: any) => ({ value: v.voucherNumber, label: v.voucherNumber }))}
+                          placeholder="Select Voucher"
+                        />
                       </td>
                       {/* Voucher Amount */}
                       <td style={{ padding: "8px", width: "10%" }}>
@@ -1855,37 +1831,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                           </td>
                           {/* Voucher No */}
                           <td style={{ padding: "8px", width: "15%" }}>
-                            <select
+                            <FilterSingleDropdown
                               value={item.voucherNo || ""}
-                              onChange={(e) => handleUpdate(cat.key, item.id, 'voucherNo', e.target.value)}
-                              style={{
-                                height: "36px",
-                                width: "100%",
-                                border: "1px solid transparent",
-                                borderRadius: "6px",
-                                padding: "0 8px",
-                                fontSize: "13px",
-                                color: "#0A1D4D",
-                                background: "transparent",
-                                outline: "none",
-                                appearance: "none" as const,
-                                cursor: "pointer",
-                                transition: "border-color 0.15s ease",
-                                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                                backgroundRepeat: "no-repeat",
-                                backgroundPosition: "right 8px center",
-                                backgroundSize: "14px"
-                              }}
-                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                              onBlur={(e) => e.currentTarget.style.borderColor = "transparent"}
-                            >
-                              <option value="">Select Voucher</option>
-                              {(vouchers || []).map((v: any) => (
-                                <option key={v.id || v.voucherNumber} value={v.voucherNumber}>
-                                  {v.voucherNumber}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(v) => handleUpdate(cat.key, item.id, 'voucherNo', v)}
+                              options={(vouchers || []).map((v: any) => ({ value: v.voucherNumber, label: v.voucherNumber }))}
+                              placeholder="Select Voucher"
+                            />
                           </td>
                           {/* Amount */}
                           <td style={{ padding: "8px", width: "25%" }}>

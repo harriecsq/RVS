@@ -141,7 +141,7 @@ export function TruckingTab({
   externalSaveCounter,
 }: TruckingTabProps) {
   const [records, setRecords] = useState<TruckingRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TruckingRecord | null>(null);
   const [createPrefillSegmentId, setCreatePrefillSegmentId] = useState<string | undefined>(undefined);

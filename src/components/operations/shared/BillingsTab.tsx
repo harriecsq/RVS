@@ -46,7 +46,7 @@ interface AccountingBilling {
 
 export function BillingsTab({ bookingId, bookingNumber, projectId: bookingProjectId, projectNumber, bookingType, currentUser, onBillingSelect }: BillingsTabProps) {
   const [billings, setBillings] = useState<AccountingBilling[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [billingsSummary, setBillingsSummary] = useState<any>(null);
   const [selectedBillingId, setSelectedBillingId] = useState<string | null>(null);

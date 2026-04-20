@@ -2,9 +2,10 @@
  * TruckingModule — Operations > Trucking list screen.
  * Identical layout pattern to ImportBookings / ExportBookings.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Plus, Search, Truck } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { toast } from "../ui/toast-utils";
 import { CreateTruckingModal } from "./CreateTruckingModal";
 import { TruckingRecordDetails } from "./TruckingRecordDetails";
@@ -22,7 +23,8 @@ import {
 } from "../../constants/truckingStatuses";
 
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { StandardFilterDropdown } from "../design-system/StandardFilterDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import { API_BASE_URL } from '@/utils/api-config';
 
 
@@ -77,8 +79,15 @@ interface TruckingModuleProps {
 }
 
 export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps) {
-  const [records, setRecords] = useState<TruckingRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: truckingResult, isLoading: isLoadingTrucking, refetch: refetchTrucking } = useCachedFetch<{ success: boolean; data: any[] }>("/trucking-records");
+  const { data: bookingsResult, isLoading: isLoadingBookings } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const isLoading = isLoadingTrucking || isLoadingBookings;
+  const records = useMemo<TruckingRecord[]>(() => {
+    if (!truckingResult?.success) return [];
+    const data = [...(truckingResult.data || [])];
+    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return data;
+  }, [truckingResult]);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<TruckingRecord | null>(null);
 
@@ -88,29 +97,23 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [selectedTruckingStatus, setSelectedTruckingStatus] = useState<string>("");
   const [vendorFilter, setVendorFilter] = useState("all");
+  const [portFilter, setPortFilter] = useState<string[]>([]);
+  const bookingPortMapRef = useRef<Map<string, string>>(new Map());
 
-  useEffect(() => { fetchRecords(); }, []);
+  useEffect(() => {
+    if (!bookingsResult?.success) return;
+    const portMap = new Map<string, string>();
+    (bookingsResult.data || []).forEach((b: any) => {
+      const isImport = (b.shipmentType || b.booking_type || b.mode || "Import").toLowerCase().includes("import");
+      const seg0 = b.segments?.[0];
+      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      if (b.id) portMap.set(b.id, port);
+      if (b.bookingId) portMap.set(b.bookingId, port);
+    });
+    bookingPortMapRef.current = portMap;
+  }, [bookingsResult]);
 
-  const fetchRecords = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/trucking-records`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await res.json();
-      if (result.success) {
-        const data = result.data || [];
-        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setRecords(data);
-      }
-      else setRecords([]);
-    } catch (err) {
-      console.error("Error fetching trucking records:", err);
-      setRecords([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchRecords = () => { invalidateCache("/trucking-records"); refetchTrucking(); };
 
   const handleCreated = (record: TruckingRecord) => {
     setShowCreate(false);
@@ -153,6 +156,11 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
 
     if (selectedTruckingStatus) {
       if ((r.truckingStatus || (isExport ? "For Pullout" : "Awaiting Trucking")) !== selectedTruckingStatus) return false;
+    }
+
+    if (portFilter.length > 0) {
+      const port = bookingPortMapRef.current.get(r.linkedBookingId || "") || "";
+      if (!portFilter.some(p => port.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
     return true;
@@ -257,7 +265,7 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
               compact
             />
           </div>
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={selectedTruckingStatus}
             onChange={setSelectedTruckingStatus}
             options={[
@@ -265,11 +273,23 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
               ...statusOptions.map((status) => ({ value: status, label: status })),
             ]}
           />
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={vendorFilter}
             onChange={setVendorFilter}
             options={vendorOptions}
             placeholder="All Vendors"
+          />
+          <MultiSelectPortalDropdown
+            value={portFilter}
+            options={[
+              { value: "Manila North", label: "Manila North" },
+              { value: "Manila South", label: "Manila South" },
+              { value: "CDO", label: "CDO" },
+              { value: "Iloilo", label: "Iloilo" },
+              { value: "Davao", label: "Davao" },
+            ]}
+            onChange={setPortFilter}
+            placeholder="All Ports"
           />
         </div>
       </div>
@@ -413,6 +433,7 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
         onSaved={handleCreated}
+        prefillBookingType={isExport ? "export" : "import"}
       />
     </div>
   );

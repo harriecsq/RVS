@@ -1,7 +1,8 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Plus, Receipt, Search, ChevronDown, X } from "lucide-react";
 import { PortalDropdown } from "../shared/PortalDropdown";
 import { publicAnonKey } from "../../utils/supabase/info";
+import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { toast } from "sonner@2.0.3";
 import { CreateVoucherModal } from "./CreateVoucherModal";
 import { ViewVoucherScreen } from "./ViewVoucherScreen";
@@ -9,12 +10,14 @@ import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
 import {
   StandardButton,
   StandardSearchInput,
-  StandardFilterDropdown,
   StandardTable,
 } from "../design-system";
 import type { ColumnDef } from "../design-system";
@@ -24,6 +27,7 @@ interface Voucher {
   voucherNumber: string;
   expenseId: string;
   expenseNumber?: string;
+  bookingId?: string;
   lineItemIds?: string[];
   amount: number;
   currency: string;
@@ -132,8 +136,15 @@ function PayeeFilterDropdown({
 }
 
 export function VouchersScreen() {
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: vouchersResult, isLoading: isLoadingVouchers, refetch: refetchVouchers } = useCachedFetch<{ success: boolean; data: any[] }>("/vouchers");
+  const { data: bookingsResult, isLoading: isLoadingBookings } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const isLoading = isLoadingVouchers || isLoadingBookings;
+  const vouchers = useMemo<Voucher[]>(() => {
+    if (!vouchersResult?.success) return [];
+    const data = [...(vouchersResult.data || [])];
+    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return data;
+  }, [vouchersResult]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
@@ -144,30 +155,27 @@ export function VouchersScreen() {
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [payeeFilter, setPayeeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
+  const [portFilter, setPortFilter] = useState<string[]>([]);
+  const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
+  const clientsMasterList = useClientsMasterList();
 
   useEffect(() => {
-    fetchVouchers();
-  }, []);
+    if (!bookingsResult?.success) return;
+    const enrichMap = new Map<string, { serviceType: string; port: string }>();
+    (bookingsResult.data || []).forEach((b: any) => {
+      const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
+      const isImport = serviceType.toLowerCase().includes("import");
+      const seg0 = b.segments?.[0];
+      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      const enrich = { serviceType, port };
+      if (b.id) enrichMap.set(b.id, enrich);
+      if (b.bookingId) enrichMap.set(b.bookingId, enrich);
+    });
+    bookingEnrichMapRef.current = enrichMap;
+  }, [bookingsResult]);
 
-  const fetchVouchers = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/vouchers`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await response.json();
-      if (result.success) {
-        const data = result.data || [];
-        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setVouchers(data);
-      }
-    } catch (error) {
-      console.error("Error fetching vouchers:", error);
-      toast.error("Failed to load vouchers");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchVouchers = () => { invalidateCache("/vouchers"); refetchVouchers(); };
 
   if (selectedVoucherId) {
     return (
@@ -196,6 +204,16 @@ export function VouchersScreen() {
     if (statusFilter !== "all" && voucher.status !== statusFilter) return false;
     if (payeeFilter !== "all" && (voucher.payee || "") !== payeeFilter) return false;
     if (categoryFilter !== "all" && (voucher.category || "") !== categoryFilter) return false;
+
+    if (serviceTypeFilter !== "all" || portFilter.length > 0) {
+      const enrich = voucher.bookingId ? bookingEnrichMapRef.current.get(voucher.bookingId) : undefined;
+      if (serviceTypeFilter !== "all") {
+        if (!enrich?.serviceType.toLowerCase().includes(serviceTypeFilter.toLowerCase())) return false;
+      }
+      if (portFilter.length > 0) {
+        if (!portFilter.some(p => (enrich?.port || "").toLowerCase().includes(p.toLowerCase()))) return false;
+      }
+    }
 
     if (companyFilter) {
       if ((voucher.consignee || "") !== companyFilter) return false;
@@ -311,7 +329,7 @@ export function VouchersScreen() {
             />
           </div>
 
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
@@ -331,7 +349,7 @@ export function VouchersScreen() {
             placeholder="All Payees"
           />
 
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={categoryFilter}
             onChange={setCategoryFilter}
             options={[
@@ -340,10 +358,30 @@ export function VouchersScreen() {
             ]}
           />
 
+          <FilterSingleDropdown
+            value={serviceTypeFilter}
+            options={[
+              { value: "all", label: "All Types" },
+              { value: "Import", label: "Import" },
+              { value: "Export", label: "Export" },
+            ]}
+            onChange={setServiceTypeFilter}
+            placeholder="All Types"
+          />
+          <MultiSelectPortalDropdown
+            value={portFilter}
+            options={[
+              { value: "Manila North", label: "Manila North" },
+              { value: "Manila South", label: "Manila South" },
+              { value: "CDO", label: "CDO" },
+              { value: "Iloilo", label: "Iloilo" },
+              { value: "Davao", label: "Davao" },
+            ]}
+            onChange={setPortFilter}
+            placeholder="All Ports"
+          />
           <CompanyClientFilter
-            items={vouchers}
-            getCompany={(v) => v.consignee || ""}
-            getClient={(v) => v.shipper || ""}
+            extraEntries={clientsMasterList}
             selectedCompany={companyFilter}
             selectedClient={clientFilter}
             onCompanyChange={setCompanyFilter}

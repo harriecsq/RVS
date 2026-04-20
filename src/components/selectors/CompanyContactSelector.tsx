@@ -1,19 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Check, ChevronsUpDown, Search, User, Building2, Loader2, X } from 'lucide-react';
-import { Button } from '../ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '../ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../ui/popover';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { useState, useEffect, useRef } from 'react';
+import { Check, ChevronDown, Search, User, Building2, Loader2, X } from 'lucide-react';
+import { PortalDropdown } from '../shared/PortalDropdown';
+import { publicAnonKey } from '../../utils/supabase/info';
 import type { Client, Contact } from '../../types/operations';
 import { API_BASE_URL } from '@/utils/api-config';
 
@@ -29,6 +17,15 @@ interface CompanyContactSelectorProps {
   contactRequired?: boolean;
 }
 
+const triggerStyle = (disabled: boolean, hasValue: boolean): React.CSSProperties => ({
+  width: '100%', height: '40px', padding: '0 12px', borderRadius: '8px',
+  border: '1px solid #E5E9F0', background: disabled ? '#F9FAFB' : '#FFFFFF',
+  color: hasValue ? '#12332B' : '#9CA3AF', fontSize: '14px',
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  cursor: disabled ? 'not-allowed' : 'pointer', outline: 'none', gap: '8px',
+  opacity: disabled ? 0.7 : 1,
+});
+
 export function CompanyContactSelector({
   companyId,
   contactId,
@@ -40,99 +37,59 @@ export function CompanyContactSelector({
   contactLabel = "Contact Person",
   contactRequired = false,
 }: CompanyContactSelectorProps) {
-  // Company State
   const [openCompany, setOpenCompany] = useState(false);
   const [companies, setCompanies] = useState<Client[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [searchCompany, setSearchCompany] = useState('');
+  const companyTriggerRef = useRef<HTMLButtonElement>(null);
 
-  // Contact State
   const [openContact, setOpenContact] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [searchContact, setSearchContact] = useState('');
+  const contactTriggerRef = useRef<HTMLButtonElement>(null);
 
-  // Initial Fetch Companies
+  useEffect(() => { fetchCompanies(); }, []);
   useEffect(() => {
-    fetchCompanies();
-  }, []);
-
-  // Fetch Contacts when companyId changes
-  useEffect(() => {
-    if (companyId) {
-      fetchContacts(companyId);
-    } else {
-      setContacts([]);
-    }
+    if (companyId) fetchContacts(companyId);
+    else setContacts([]);
   }, [companyId]);
+  useEffect(() => { if (!openCompany) setSearchCompany(''); }, [openCompany]);
+  useEffect(() => { if (!openContact) setSearchContact(''); }, [openContact]);
 
   const fetchCompanies = async () => {
     setLoadingCompanies(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/clients`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` }
-      });
-      const result = await response.json();
-      if (result.success) {
-        setCompanies(result.data.filter((c: Client) => c.status === 'Active'));
-      }
-    } catch (error) {
-      console.error('Error fetching companies:', error);
-    } finally {
-      setLoadingCompanies(false);
-    }
+      const res = await fetch(`${API_BASE_URL}/clients`, { headers: { Authorization: `Bearer ${publicAnonKey}` } });
+      const result = await res.json();
+      if (result.success) setCompanies(result.data.filter((c: Client) => c.status === 'Active'));
+    } catch { /* silent */ } finally { setLoadingCompanies(false); }
   };
 
   const fetchContacts = async (clientId: string) => {
     setLoadingContacts(true);
     try {
-      // Backend expects 'customer_id' filter, not 'client_id'
-      const response = await fetch(`${API_BASE_URL}/contacts?customer_id=${clientId}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` }
-      });
-      const result = await response.json();
+      const res = await fetch(`${API_BASE_URL}/contacts?customer_id=${clientId}`, { headers: { Authorization: `Bearer ${publicAnonKey}` } });
+      const result = await res.json();
       if (result.success) {
-        // Construct displayName from first_name and last_name if name is missing
-        const mappedContacts = result.data.map((c: any) => ({
+        setContacts(result.data.map((c: any) => ({
           ...c,
-          name: c.name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Unnamed Contact'
-        }));
-        setContacts(mappedContacts);
-      } else {
-        setContacts([]);
-      }
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      setContacts([]);
-    } finally {
-      setLoadingContacts(false);
-    }
+          name: c.name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Unnamed Contact',
+        })));
+      } else { setContacts([]); }
+    } catch { setContacts([]); } finally { setLoadingContacts(false); }
   };
 
   const selectedCompany = companies.find(c => c.id === companyId);
   const selectedContact = contacts.find(c => c.id === contactId);
 
-  const filteredCompanies = companies.filter(c => 
-    (c.name || c.company_name || '').toLowerCase().includes(searchCompany.toLowerCase())
-  ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const filteredCompanies = companies
+    .filter(c => (c.name || c.company_name || '').toLowerCase().includes(searchCompany.toLowerCase()))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-  const filteredContacts = contacts.filter(c => 
-    (c.name || '').toLowerCase().includes(searchContact.toLowerCase())
-  ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-  const buttonStyle = {
-    width: "100%",
-    padding: "10px 14px",
-    height: "auto",
-    minHeight: "42px",
-    backgroundColor: disabled ? "#FAFBFC" : "white",
-    border: disabled ? "1px solid #E5E9F0" : "1px solid #0F766E",
-    borderRadius: "6px",
-    fontSize: "14px",
-    color: "var(--neuron-ink-primary)",
-    justifyContent: "space-between",
-    fontWeight: 400
-  };
+  const filteredContacts = contacts
+    .filter(c => (c.name || '').toLowerCase().includes(searchContact.toLowerCase()))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   return (
     <div className="flex gap-4 w-full">
@@ -143,70 +100,72 @@ export function CompanyContactSelector({
             {companyLabel} <span style={{ color: "#EF4444" }}>*</span>
           </label>
         )}
-        <Popover open={openCompany} onOpenChange={setOpenCompany}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              role="combobox"
-              aria-expanded={openCompany}
-              disabled={disabled}
-              className="hover:bg-transparent"
-              style={buttonStyle}
-            >
-              {loadingCompanies ? (
-                <div className="flex items-center gap-2 text-[#667085]">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Loading...
-                </div>
-              ) : selectedCompany ? (
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#0F766E]" />
-                  <span className="font-medium text-[#0A1D4D]">{selectedCompany.name || selectedCompany.company_name}</span>
-                </div>
-              ) : (
-                <span className="text-[#667085]">{disabled ? "—" : `Select ${companyLabel.toLowerCase()}...`}</span>
-              )}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-[#667085]" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start">
-            <Command shouldFilter={false}>
-              <div className="flex items-center border-b px-3">
-                <Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-[#667085]" />
+        <div style={{ position: "relative" }}>
+          <button
+            ref={companyTriggerRef}
+            type="button"
+            disabled={disabled}
+            onClick={() => { if (!disabled) setOpenCompany(!openCompany); }}
+            style={triggerStyle(disabled, !!selectedCompany)}
+          >
+            {loadingCompanies ? (
+              <span style={{ color: "#9CA3AF", display: "flex", alignItems: "center", gap: "6px" }}>
+                <Loader2 size={14} className="animate-spin" /> Loading...
+              </span>
+            ) : selectedCompany ? (
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                <Building2 size={14} style={{ color: "#237F66", flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {selectedCompany.name || selectedCompany.company_name}
+                </span>
+              </span>
+            ) : (
+              <span>{disabled ? "—" : `Select ${companyLabel.toLowerCase()}...`}</span>
+            )}
+            <ChevronDown size={16} style={{ flexShrink: 0, color: "#9CA3AF", transform: openCompany ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }} />
+          </button>
+
+          <PortalDropdown isOpen={openCompany && !disabled} onClose={() => setOpenCompany(false)} triggerRef={companyTriggerRef} align="left">
+            <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+              <div style={{ position: "relative" }}>
+                <Search size={14} color="#9CA3AF" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                 <input
-                  placeholder="Search companies..."
-                  value={searchCompany}
-                  onChange={(e) => setSearchCompany(e.target.value)}
-                  className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50 text-[#0A1D4D]"
+                  type="text" value={searchCompany} onChange={(e) => setSearchCompany(e.target.value)}
+                  placeholder="Search companies..." autoFocus onClick={(e) => e.stopPropagation()}
+                  style={{ width: "100%", padding: "8px 12px 8px 30px", fontSize: "13px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", color: "#12332B", backgroundColor: "#F9FAFB", boxSizing: "border-box" }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "#237F66"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
                 />
               </div>
-              <CommandList>
-                <CommandEmpty className="py-6 text-center text-sm" style={{ color: "#667085" }}>No companies found.</CommandEmpty>
-                <CommandGroup className="max-h-[200px] overflow-auto">
-                  {filteredCompanies.map((company) => (
-                    <CommandItem
-                      key={company.id}
-                      value={company.id}
-                      onSelect={() => {
-                        onSelect({ 
-                          company: company, 
-                          contact: null // Reset contact when company changes
-                        });
-                        setOpenCompany(false);
-                      }}
-                      className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 data-[selected=true]:bg-gray-100"
-                      style={{ color: "#0A1D4D" }}
-                    >
-                      <Check
-                        className={`h-4 w-4 ${company.id === companyId ? "opacity-100" : "opacity-0"} text-[#0F766E]`}
-                      />
-                      <span style={{ color: "#0A1D4D" }}>{company.name || company.company_name}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+            </div>
+            {filteredCompanies.length === 0 ? (
+              <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>No companies found.</div>
+            ) : filteredCompanies.map((company, idx) => {
+              const isSelected = company.id === companyId;
+              const isLast = idx === filteredCompanies.length - 1;
+              return (
+                <div
+                  key={company.id}
+                  onClick={() => { onSelect({ company, contact: null }); setOpenCompany(false); }}
+                  style={{
+                    padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                    display: "flex", alignItems: "center", gap: "10px",
+                    backgroundColor: isSelected ? "#E8F2EE" : "transparent",
+                    borderBottom: isLast ? "none" : "1px solid #E5E9F0",
+                    userSelect: "none",
+                  }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? "#E8F2EE" : "transparent"; }}
+                >
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {company.name || company.company_name}
+                  </span>
+                  {isSelected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
+                </div>
+              );
+            })}
+          </PortalDropdown>
+        </div>
       </div>
 
       {/* Contact Selector */}
@@ -217,103 +176,85 @@ export function CompanyContactSelector({
               {contactLabel} {!contactRequired && <span style={{ color: "#667085", fontWeight: 400, fontSize: "12px" }}>(Optional)</span>}
             </label>
           )}
-          <Popover open={openContact} onOpenChange={setOpenContact}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                role="combobox"
-                aria-expanded={openContact}
-                disabled={!companyId || disabled || loadingContacts}
-                className="hover:bg-transparent"
-                style={buttonStyle}
-              >
-                {loadingContacts ? (
-                  <div className="flex items-center gap-2 text-[#667085]">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Loading...
-                  </div>
-                ) : selectedContact ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <User className="h-4 w-4 text-[#0F766E]" />
-                    <span className="font-medium text-[#0A1D4D]">{selectedContact.name}</span>
-                  </div>
-                ) : (
-                  <span className="text-[#667085]">{disabled ? "—" : "Select contact..."}</span>
-                )}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 text-[#667085]" />
-              </Button>
-            </PopoverTrigger>
-            {/* Clear contact button */}
+          <div style={{ position: "relative" }}>
+            <button
+              ref={contactTriggerRef}
+              type="button"
+              disabled={!companyId || disabled || loadingContacts}
+              onClick={() => { if (companyId && !disabled) setOpenContact(!openContact); }}
+              style={triggerStyle(!companyId || disabled || loadingContacts, !!selectedContact)}
+            >
+              {loadingContacts ? (
+                <span style={{ color: "#9CA3AF", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Loader2 size={14} className="animate-spin" /> Loading...
+                </span>
+              ) : selectedContact ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                  <User size={14} style={{ color: "#237F66", flexShrink: 0 }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {selectedContact.name}
+                  </span>
+                </span>
+              ) : (
+                <span>{disabled ? "—" : "Select contact..."}</span>
+              )}
+              <ChevronDown size={16} style={{ flexShrink: 0, color: "#9CA3AF", transform: openContact ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }} />
+            </button>
+
             {selectedContact && !disabled && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect({ company: selectedCompany || null, contact: null });
-                }}
-                style={{
-                  position: "absolute",
-                  right: "36px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "2px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: "50%",
-                  color: "#667085",
-                }}
+                onClick={(e) => { e.stopPropagation(); onSelect({ company: selectedCompany || null, contact: null }); }}
+                style={{ position: "absolute", right: "36px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center", color: "#667085", borderRadius: "50%" }}
                 onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "#EF4444"; }}
                 onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "#667085"; }}
-                title="Clear contact"
               >
-                <X className="h-3.5 w-3.5" />
+                <X size={14} />
               </button>
             )}
-            <PopoverContent className="w-[300px] p-0" align="start">
-              <Command shouldFilter={false}>
-                <div className="flex items-center border-b px-3">
-                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50 text-[#667085]" />
+
+            <PortalDropdown isOpen={openContact && !!companyId && !disabled} onClose={() => setOpenContact(false)} triggerRef={contactTriggerRef} align="left">
+              <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+                <div style={{ position: "relative" }}>
+                  <Search size={14} color="#9CA3AF" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                   <input
-                    placeholder="Search contacts..."
-                    value={searchContact}
-                    onChange={(e) => setSearchContact(e.target.value)}
-                    className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-50 text-[#0A1D4D]"
+                    type="text" value={searchContact} onChange={(e) => setSearchContact(e.target.value)}
+                    placeholder="Search contacts..." autoFocus onClick={(e) => e.stopPropagation()}
+                    style={{ width: "100%", padding: "8px 12px 8px 30px", fontSize: "13px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", color: "#12332B", backgroundColor: "#F9FAFB", boxSizing: "border-box" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#237F66"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
                   />
                 </div>
-                <CommandList>
-                  <CommandEmpty className="py-6 text-center text-sm" style={{ color: "#667085" }}>No contacts found.</CommandEmpty>
-                  <CommandGroup className="max-h-[200px] overflow-auto">
-                    {filteredContacts.map((contact) => (
-                      <CommandItem
-                        key={contact.id}
-                        value={contact.id}
-                        onSelect={() => {
-                          onSelect({ 
-                            company: selectedCompany || null,
-                            contact: contact 
-                          });
-                          setOpenContact(false);
-                        }}
-                        className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 data-[selected=true]:bg-gray-100"
-                        style={{ color: "#0A1D4D" }}
-                      >
-                        <Check
-                          className={`h-4 w-4 ${contact.id === contactId ? "opacity-100" : "opacity-0"} text-[#0F766E]`}
-                        />
-                        <div className="flex flex-col">
-                          <span style={{ color: "#0A1D4D" }}>{contact.name}</span>
-                          {contact.title && <span className="text-xs" style={{ color: "#667085" }}>{contact.title}</span>}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+              </div>
+              {filteredContacts.length === 0 ? (
+                <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>No contacts found.</div>
+              ) : filteredContacts.map((contact, idx) => {
+                const isSelected = contact.id === contactId;
+                const isLast = idx === filteredContacts.length - 1;
+                return (
+                  <div
+                    key={contact.id}
+                    onClick={() => { onSelect({ company: selectedCompany || null, contact }); setOpenContact(false); }}
+                    style={{
+                      padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                      display: "flex", alignItems: "center", gap: "10px",
+                      backgroundColor: isSelected ? "#E8F2EE" : "transparent",
+                      borderBottom: isLast ? "none" : "1px solid #E5E9F0",
+                      userSelect: "none",
+                    }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? "#E8F2EE" : "transparent"; }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contact.name}</div>
+                      {contact.title && <div style={{ fontSize: "12px", color: "#6B7A76" }}>{contact.title}</div>}
+                    </div>
+                    {isSelected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
+                  </div>
+                );
+              })}
+            </PortalDropdown>
+          </div>
         </div>
       )}
     </div>

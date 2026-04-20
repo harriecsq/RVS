@@ -131,6 +131,7 @@ export interface Declaration {
   vesselVoyage: string;
   blNumber: string;
   containers: DeclarationContainer[];
+  totalNetWeight: string;
   description: string;
 
   createdAt: string;
@@ -168,13 +169,17 @@ export interface FSI {
 
   // Shipping Details
   preCarriageBy: string;
+  placeOfReceipt: string;
   vesselVoyageNo: string;
+  portOfLoading: string;
   portOfDischarge: string;
   placeOfDelivery: string;
   freightTerm: string;
   lss: string;
 
   // Booking Reference
+  to: string;
+  attn: string;
   from: string;
   bookingNumber: string;
   billedTo: string;
@@ -183,8 +188,12 @@ export interface FSI {
   containers: FSIContainer[];
 
   // Cargo Details
-  descriptionOfGoods: string;
+  volume: string;
+  amount: string;
+  amountMetric: string;
+  commodity: string;
   grossWeight: string;
+  netWeight: string;
   measurement: string;
   totalNumberOfContainers: string;
 
@@ -220,7 +229,14 @@ export interface FormE {
   // Goods
   itemNumber: string;
   marksAndNumbers: string;
-  packagesDescription: string;   // large text area — "Number and type of packages, description of products"
+  packagesVolume: string;
+  packagesAmount: string;
+  packagesAmountMetric: string;
+  packagesCommodity: string;
+  packagesNetWeight: string;
+  packagesHsCode: string;
+  packagesNotifyParty: string;
+  packagesNotifyAddress: string;
   originCriteria: string;
   grossWeight: string;
 
@@ -231,6 +247,11 @@ export interface FormE {
   // Countries
   exporterCountry: string;
   importingCountry: string;
+
+  // Signatory
+  signatoryPlace: string;
+  signatoryDate: string;
+  authorizedSignatory: string;
 
   createdAt: string;
   updatedAt: string;

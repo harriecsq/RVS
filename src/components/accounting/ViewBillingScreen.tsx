@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, FileText, DollarSign, Receipt, Edit2, Save, XCircle, X, Plus, Trash2, Link2 } from "lucide-react";
+import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
+import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
+import { DocumentSettingsPanel } from "../shared/document-preview/DocumentSettingsPanel";
+import { BillingDocTemplate } from "../shared/document-preview/templates/BillingDocTemplate";
+import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
+import type { DocumentSettings } from "../../types/document-settings";
 import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { CreateCollectionPanel } from "./CreateCollectionPanel";
@@ -148,6 +154,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "collections" | "attachments">("overview");
   const [isEditing, setIsEditingInternal] = useState(false);
+  const [billingView, setBillingView] = useState<"form" | "pdf">("form");
+  const [billingDocSettings, setBillingDocSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
 
   // Sync with external edit control
   const setIsEditing = (editing: boolean) => {
@@ -1003,8 +1011,11 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         </div>
       </div>
 
+      {/* Form / PDF view toggle */}
+      <DocumentViewToggle value={billingView} onChange={setBillingView} />
+
       {/* Tab Navigation */}
-      {!embedded && (
+      {!embedded && billingView === "form" && (
         <StandardTabs
           tabs={[
             { id: "overview", label: "Billings Overview", icon: <FileText size={18} /> },
@@ -1035,12 +1046,43 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         />
       )}
 
+      {/* PDF View */}
+      {billingView === "pdf" && billing && (
+        <DocumentPreviewShell
+          settings={
+            <DocumentSettingsPanel
+              settings={billingDocSettings}
+              onChange={setBillingDocSettings}
+            />
+          }
+        >
+          <BillingDocTemplate
+            data={{
+              billingNumber: billing.billingNumber,
+              billingDate: billing.billingDate,
+              clientName: billing.clientName,
+              companyName: billing.companyName,
+              currency: billing.currency,
+              particulars: billing.particulars,
+              totalAmount: billing.totalAmount,
+              vessel: billing.vessel,
+              blNumber: billing.blNumber,
+              containerNumbers: billing.containerNumbers,
+              origin: billing.origin,
+              destination: billing.destination,
+            }}
+            settings={billingDocSettings}
+          />
+        </DocumentPreviewShell>
+      )}
+
       {/* Content */}
       <div style={{
         padding: "32px 48px",
         flex: 1,
         overflowY: "auto",
-        overflowX: "hidden"
+        overflowX: "hidden",
+        display: billingView === "pdf" ? "none" : undefined,
       }}>
         <div style={{ display: (embedded || activeTab === "overview") ? undefined : "none" }}>
           <div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { StandardInput } from "../design-system/StandardInput";
-import { StandardSelect } from "../design-system/StandardSelect";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { StandardButton } from "../design-system/StandardButton";
 import { PanelBackdrop } from "../shared/PanelBackdrop";
 
@@ -132,7 +132,7 @@ export function AddClientPanel({ isOpen, onClose, onSave }: AddClientPanelProps)
                   placeholder="info@acmecorp.com"
                   type="email"
                 />
-                <StandardSelect
+                <FilterSingleDropdown
                   label="Status"
                   value={formData.status}
                   onChange={(v) => handleChange("status", v)}

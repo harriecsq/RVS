@@ -1,20 +1,9 @@
-/**
- * CompanyClientFilter
- *
- * A hierarchical dropdown filter that shows companies at the top level,
- * with expandable client sub-items nested under each company.
- * Clients are only revealed when a company's chevron is clicked.
- *
- * Designed to match existing filter dropdown styling in the Neuron OS system.
- */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, ChevronRight, Search, Building2, User, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Building2, User, X, Check } from "lucide-react";
 
-interface CompanyClientFilterProps<T> {
-  items: T[];
-  getCompany: (item: T) => string;
-  getClient: (item: T) => string;
+interface CompanyClientFilterProps {
+  extraEntries?: Array<{ company: string; client: string }>;
   selectedCompany: string | null;
   selectedClient: string | null;
   onCompanyChange: (company: string | null) => void;
@@ -22,16 +11,14 @@ interface CompanyClientFilterProps<T> {
   placeholder?: string;
 }
 
-export function CompanyClientFilter<T>({
-  items,
-  getCompany,
-  getClient,
+export function CompanyClientFilter({
+  extraEntries,
   selectedCompany,
   selectedClient,
   onCompanyChange,
   onClientChange,
   placeholder = "All Companies",
-}: CompanyClientFilterProps<T>) {
+}: CompanyClientFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -39,35 +26,20 @@ export function CompanyClientFilter<T>({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
 
-  // Build the hierarchy: Map<company, string[]>
   const hierarchy = useMemo(() => {
     const map = new Map<string, Set<string>>();
-    for (const item of items) {
-      const company = getCompany(item)?.trim();
-      const client = getClient(item)?.trim();
+    for (const { company, client } of (extraEntries ?? [])) {
       if (!company) continue;
       if (!map.has(company)) map.set(company, new Set());
-      if (client && client !== company) {
-        map.get(company)!.add(client);
-      }
+      if (client && client !== company) map.get(company)!.add(client);
     }
-    // Sort companies, and sort clients within each
     const sorted = new Map<string, string[]>();
-    const sortedKeys = Array.from(map.keys()).sort((a, b) =>
-      a.localeCompare(b, undefined, { sensitivity: "base" })
-    );
-    for (const key of sortedKeys) {
-      sorted.set(
-        key,
-        Array.from(map.get(key)!).sort((a, b) =>
-          a.localeCompare(b, undefined, { sensitivity: "base" })
-        )
-      );
+    for (const key of Array.from(map.keys()).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))) {
+      sorted.set(key, Array.from(map.get(key)!).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })));
     }
     return sorted;
-  }, [items, getCompany, getClient]);
+  }, [extraEntries]);
 
-  // Filter by search
   const filteredHierarchy = useMemo(() => {
     if (!search.trim()) return hierarchy;
     const term = search.toLowerCase();
@@ -82,15 +54,10 @@ export function CompanyClientFilter<T>({
     return result;
   }, [hierarchy, search]);
 
-  // Position dropdown
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setDropdownPos({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: Math.max(rect.width, 280),
-    });
+    setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 280) });
   }, []);
 
   useEffect(() => {
@@ -105,15 +72,12 @@ export function CompanyClientFilter<T>({
     }
   }, [isOpen, updatePosition]);
 
-  // Close on outside click
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: MouseEvent) => {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node)
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
       ) {
         setIsOpen(false);
         setSearch("");
@@ -134,38 +98,27 @@ export function CompanyClientFilter<T>({
     });
   };
 
-  const selectCompany = (company: string) => {
-    onCompanyChange(company);
-    onClientChange(null);
-    setIsOpen(false);
-    setSearch("");
-    setExpandedCompanies(new Set());
-  };
+  const close = () => { setIsOpen(false); setSearch(""); setExpandedCompanies(new Set()); };
+  const selectCompany = (company: string) => { onCompanyChange(company); onClientChange(null); close(); };
+  const selectClient = (company: string, client: string) => { onCompanyChange(company); onClientChange(client); close(); };
+  const clearAll = () => { onCompanyChange(null); onClientChange(null); close(); };
 
-  const selectClient = (company: string, client: string) => {
-    onCompanyChange(company);
-    onClientChange(client);
-    setIsOpen(false);
-    setSearch("");
-    setExpandedCompanies(new Set());
-  };
-
-  const clearAll = () => {
-    onCompanyChange(null);
-    onClientChange(null);
-    setIsOpen(false);
-    setSearch("");
-    setExpandedCompanies(new Set());
-  };
-
-  // Build display label
   const displayLabel = selectedCompany
-    ? selectedClient
-      ? `${selectedCompany} \u203A ${selectedClient}`
-      : selectedCompany
+    ? selectedClient ? `${selectedCompany} › ${selectedClient}` : selectedCompany
     : placeholder;
-
   const hasSelection = selectedCompany !== null;
+
+  // Flatten visible entries to determine which ones get a bottom border
+  const flatEntries: Array<{ type: "all" | "company" | "client"; company?: string; client?: string }> = [
+    { type: "all" },
+    ...Array.from(filteredHierarchy.entries()).flatMap(([company, clients]) => {
+      const isExpanded = expandedCompanies.has(company);
+      return [
+        { type: "company" as const, company },
+        ...(isExpanded ? clients.map((client) => ({ type: "client" as const, company, client })) : []),
+      ];
+    }),
+  ];
 
   return (
     <>
@@ -176,45 +129,35 @@ export function CompanyClientFilter<T>({
           display: "flex",
           alignItems: "center",
           gap: "6px",
-          padding: "10px 12px",
+          padding: "0 12px",
           border: "1px solid #E5E9F0",
           borderRadius: "8px",
           fontSize: "14px",
-          color: hasSelection ? "#0A1D4D" : "#667085",
+          color: hasSelection ? "#12332B" : "#9CA3AF",
           backgroundColor: "#FFFFFF",
           cursor: "pointer",
           outline: "none",
           width: "100%",
           textAlign: "left",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          minHeight: "42px",
-          position: "relative",
+          height: "40px",
+          minWidth: 0,
         }}
       >
-        <Building2 size={14} style={{ flexShrink: 0, color: "#667085" }} />
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
+        <Building2 size={14} style={{ flexShrink: 0, color: "#9CA3AF" }} />
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {displayLabel}
         </span>
         {hasSelection ? (
           <X
             size={14}
-            style={{ flexShrink: 0, color: "#667085", cursor: "pointer" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              clearAll();
-            }}
+            style={{ flexShrink: 0, color: "#9CA3AF", cursor: "pointer" }}
+            onClick={(e) => { e.stopPropagation(); clearAll(); }}
           />
         ) : (
-          <ChevronDown size={14} style={{ flexShrink: 0, color: "#667085" }} />
+          <ChevronDown
+            size={16}
+            style={{ flexShrink: 0, color: "#9CA3AF", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}
+          />
         )}
       </button>
 
@@ -225,14 +168,13 @@ export function CompanyClientFilter<T>({
             style={{
               position: "fixed",
               top: dropdownPos.top,
-              bottom: dropdownPos.bottom,
               left: dropdownPos.left,
               width: dropdownPos.width,
-              maxHeight: dropdownPos.maxHeight,
+              maxHeight: 320,
               backgroundColor: "#FFFFFF",
               border: "1px solid #E5E9F0",
               borderRadius: "8px",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
               zIndex: 9999,
               display: "flex",
               flexDirection: "column",
@@ -240,24 +182,9 @@ export function CompanyClientFilter<T>({
             }}
           >
             {/* Search */}
-            <div
-              style={{
-                padding: "8px",
-                borderBottom: "1px solid #E5E9F0",
-                flexShrink: 0,
-              }}
-            >
+            <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", flexShrink: 0 }}>
               <div style={{ position: "relative" }}>
-                <Search
-                  size={14}
-                  style={{
-                    position: "absolute",
-                    left: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "#9CA3AF",
-                  }}
-                />
+                <Search size={14} style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", pointerEvents: "none" }} />
                 <input
                   type="text"
                   placeholder="Search..."
@@ -271,228 +198,144 @@ export function CompanyClientFilter<T>({
                     borderRadius: "6px",
                     fontSize: "13px",
                     outline: "none",
-                    color: "#0A1D4D",
+                    color: "#12332B",
                     backgroundColor: "#F9FAFB",
+                    boxSizing: "border-box",
                   }}
                 />
               </div>
             </div>
 
             {/* Options list */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "4px 0",
-              }}
-            >
-              {/* All Companies option */}
-              <button
-                onClick={clearAll}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "none",
-                  background:
-                    !selectedCompany ? "rgba(0, 102, 68, 0.06)" : "transparent",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: !selectedCompany ? 600 : 400,
-                  color: "#0A1D4D",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedCompany)
-                    (e.currentTarget as HTMLElement).style.background = "#F9FAFB";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background =
-                    !selectedCompany ? "rgba(0, 102, 68, 0.06)" : "transparent";
-                }}
-              >
-                <span style={{ width: 16 }} />
-                {placeholder}
-              </button>
-
-              {filteredHierarchy.size === 0 && (
-                <div
-                  style={{
-                    padding: "16px 12px",
-                    textAlign: "center",
-                    color: "#9CA3AF",
-                    fontSize: "13px",
-                  }}
-                >
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {filteredHierarchy.size === 0 ? (
+                <div style={{ padding: "16px 12px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>
                   No companies found
                 </div>
-              )}
+              ) : (
+                flatEntries.map((entry, idx) => {
+                  const isLast = idx === flatEntries.length - 1;
+                  const borderBottom = isLast ? "none" : "1px solid #E5E9F0";
 
-              {Array.from(filteredHierarchy.entries()).map(([company, clients]) => {
-                const isExpanded = expandedCompanies.has(company);
-                const hasClients = clients.length > 0;
-                const isSelected =
-                  selectedCompany === company && selectedClient === null;
-                const isParentOfSelected = selectedCompany === company;
+                  if (entry.type === "all") {
+                    const selected = !selectedCompany;
+                    return (
+                      <div
+                        key="__all__"
+                        onClick={clearAll}
+                        style={{
+                          padding: "10px 12px",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          color: "#12332B",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          backgroundColor: selected ? "#E8F2EE" : "transparent",
+                          borderBottom,
+                          userSelect: "none",
+                        }}
+                        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : "transparent"; }}
+                      >
+                        {placeholder}
+                        {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
+                      </div>
+                    );
+                  }
 
-                return (
-                  <div key={company}>
-                    {/* Company row */}
+                  if (entry.type === "company") {
+                    const company = entry.company!;
+                    const clients = filteredHierarchy.get(company) ?? [];
+                    const hasClients = clients.length > 0;
+                    const isExpanded = expandedCompanies.has(company);
+                    const selected = selectedCompany === company && selectedClient === null;
+                    const isParentOfSelected = selectedCompany === company;
+                    return (
+                      <div
+                        key={`co:${company}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          fontSize: "14px",
+                          color: "#12332B",
+                          backgroundColor: selected ? "#E8F2EE" : isParentOfSelected ? "#F3F8F6" : "transparent",
+                          borderBottom,
+                          userSelect: "none",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : isParentOfSelected ? "#F3F8F6" : "transparent";
+                        }}
+                      >
+                        {/* Expand chevron */}
+                        <button
+                          onClick={(e) => hasClients && toggleExpand(company, e)}
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            width: 32, height: 40, border: "none", background: "transparent",
+                            cursor: hasClients ? "pointer" : "default", padding: 0, flexShrink: 0,
+                            color: "#9CA3AF",
+                          }}
+                        >
+                          {hasClients && (isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />)}
+                        </button>
+
+                        {/* Company name */}
+                        <div
+                          onClick={() => selectCompany(company)}
+                          style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px 10px 0", overflow: "hidden" }}
+                        >
+                          <Building2 size={13} style={{ flexShrink: 0, color: "#9CA3AF" }} />
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: selected ? 500 : 400 }}>
+                            {company}
+                          </span>
+                          {hasClients && (
+                            <span style={{ fontSize: "11px", color: "#9CA3AF", flexShrink: 0 }}>({clients.length})</span>
+                          )}
+                        </div>
+
+                        {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0, marginRight: 12 }} />}
+                      </div>
+                    );
+                  }
+
+                  // type === "client"
+                  const company = entry.company!;
+                  const client = entry.client!;
+                  const selected = selectedCompany === company && selectedClient === client;
+                  return (
                     <div
+                      key={`cl:${company}__${client}`}
+                      onClick={() => selectClient(company, client)}
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        width: "100%",
-                        background: isSelected
-                          ? "rgba(0, 102, 68, 0.06)"
-                          : isParentOfSelected
-                          ? "rgba(0, 102, 68, 0.03)"
-                          : "transparent",
+                        justifyContent: "space-between",
+                        gap: "6px",
+                        padding: "10px 12px 10px 44px",
+                        fontSize: "13px",
+                        color: "#12332B",
+                        backgroundColor: selected ? "#E8F2EE" : "transparent",
+                        borderBottom,
+                        cursor: "pointer",
+                        userSelect: "none",
                       }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected)
-                          (e.currentTarget as HTMLElement).style.background =
-                            "#F9FAFB";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.background = isSelected
-                          ? "rgba(0, 102, 68, 0.06)"
-                          : isParentOfSelected
-                          ? "rgba(0, 102, 68, 0.03)"
-                          : "transparent";
-                      }}
+                      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : "transparent"; }}
                     >
-                      {/* Expand/collapse chevron */}
-                      <button
-                        onClick={(e) => hasClients && toggleExpand(company, e)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 28,
-                          height: 36,
-                          border: "none",
-                          background: "transparent",
-                          cursor: hasClients ? "pointer" : "default",
-                          padding: 0,
-                          flexShrink: 0,
-                          marginLeft: "4px",
-                          color: hasClients ? "#667085" : "transparent",
-                        }}
-                      >
-                        {hasClients &&
-                          (isExpanded ? (
-                            <ChevronDown size={14} />
-                          ) : (
-                            <ChevronRight size={14} />
-                          ))}
-                      </button>
-
-                      {/* Company name */}
-                      <button
-                        onClick={() => selectCompany(company)}
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "8px 12px 8px 0",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          fontSize: "13px",
-                          fontWeight: isSelected ? 600 : 400,
-                          color: "#0A1D4D",
-                          textAlign: "left",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Building2
-                          size={13}
-                          style={{ flexShrink: 0, color: "#667085" }}
-                        />
-                        <span
-                          style={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {company}
+                      <span style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                        <User size={12} style={{ flexShrink: 0, color: "#9CA3AF" }} />
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: selected ? 500 : 400 }}>
+                          {client}
                         </span>
-                        {hasClients && (
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              color: "#9CA3AF",
-                              flexShrink: 0,
-                            }}
-                          >
-                            ({clients.length})
-                          </span>
-                        )}
-                      </button>
+                      </span>
+                      {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
                     </div>
-
-                    {/* Client sub-items (only when expanded) */}
-                    {isExpanded &&
-                      hasClients &&
-                      clients.map((client) => {
-                        const isClientSelected =
-                          selectedCompany === company && selectedClient === client;
-                        return (
-                          <button
-                            key={`${company}__${client}`}
-                            onClick={() => selectClient(company, client)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              width: "100%",
-                              padding: "7px 12px 7px 44px",
-                              border: "none",
-                              background: isClientSelected
-                                ? "rgba(0, 102, 68, 0.06)"
-                                : "transparent",
-                              cursor: "pointer",
-                              fontSize: "12.5px",
-                              fontWeight: isClientSelected ? 600 : 400,
-                              color: isClientSelected ? "#006644" : "#344054",
-                              textAlign: "left",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isClientSelected)
-                                (e.currentTarget as HTMLElement).style.background =
-                                  "#F9FAFB";
-                            }}
-                            onMouseLeave={(e) => {
-                              (e.currentTarget as HTMLElement).style.background =
-                                isClientSelected
-                                  ? "rgba(0, 102, 68, 0.06)"
-                                  : "transparent";
-                            }}
-                          >
-                            <User
-                              size={12}
-                              style={{ flexShrink: 0, color: "#9CA3AF" }}
-                            />
-                            <span
-                              style={{
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {client}
-                            </span>
-                          </button>
-                        );
-                      })}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>,
           document.body

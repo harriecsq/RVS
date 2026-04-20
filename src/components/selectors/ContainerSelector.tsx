@@ -20,8 +20,6 @@ interface ContainerSelectorProps {
   alreadyLinkedContainerNos?: string[];
   selectedContainerNos: string[];
   onSelectionChange: (containerNos: string[], containers: ContainerInfo[]) => void;
-  existingTruckingRecords?: TruckingRecord[];
-  onBasisSelected?: (record: TruckingRecord) => void;
   /** When provided, only show containers whose containerNo is in this array */
   segmentContainerNos?: string[];
 }
@@ -44,8 +42,18 @@ function extractSize(s: string): string {
 }
 
 function parseContainersFromBooking(b: any): ContainerInfo[] {
-  const rawContainers = b.containers || b.containerNo || b.container_no || b.containerNumber || b.container_number || "";
-  const rawVolume = b.volume_containers || b.volume || b.measurement || "";
+  // Check segments for container data first (segments are authoritative for export bookings)
+  const seg0 = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : null;
+  const segContainerNos: string[] = seg0?.containerNos ?? [];
+  const segContainerNo: string = seg0?.containerNo ?? "";
+  const segVolume: string = seg0?.volume ?? "";
+
+  const rawContainers =
+    b.containers ||
+    (segContainerNos.length > 0 ? segContainerNos : undefined) ||
+    segContainerNo ||
+    b.containerNo || b.container_no || b.containerNumber || b.container_number || "";
+  const rawVolume = b.volume_containers || segVolume || b.volume || b.measurement || "";
 
   if (rawContainers) {
     if (Array.isArray(rawContainers)) {
@@ -84,7 +92,7 @@ function getTruckingRef(record: TruckingRecord): string {
   return "—";
 }
 
-function BasisDropdown({
+export function BasisDropdown({
   records,
   onSelect,
 }: {
@@ -107,8 +115,8 @@ function BasisDropdown({
 
   return (
     <div style={{ marginTop: "12px" }}>
-      <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "6px" }}>
-        <Copy size={13} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+      <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px" }}>
+        <Copy size={13} style={{ flexShrink: 0 }} />
         Copy details from existing trucking record:
       </label>
       <div style={{ position: "relative" }}>
@@ -183,8 +191,6 @@ export function ContainerSelector({
   alreadyLinkedContainerNos = [],
   selectedContainerNos,
   onSelectionChange,
-  existingTruckingRecords = [],
-  onBasisSelected,
   segmentContainerNos,
 }: ContainerSelectorProps) {
   const [allContainers, setAllContainers] = useState<ContainerInfo[]>([]);
@@ -305,12 +311,6 @@ export function ContainerSelector({
         })}
       </div>
 
-      {onBasisSelected && existingTruckingRecords.length > 0 && (
-        <BasisDropdown
-          records={existingTruckingRecords}
-          onSelect={onBasisSelected}
-        />
-      )}
     </div>
   );
 }

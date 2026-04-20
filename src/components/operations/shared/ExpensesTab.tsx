@@ -41,7 +41,7 @@ interface AccountingExpense {
 
 export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjectId, projectNumber, bookingType, currentUser, onExpenseSelect }: ExpensesTabProps) {
   const [expenses, setExpenses] = useState<AccountingExpense[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);

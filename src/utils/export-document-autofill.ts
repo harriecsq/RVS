@@ -184,6 +184,7 @@ export function buildDeclarationDefaults(
     vesselVoyage: booking.vesselVoyage || booking.segments?.[0]?.vesselVoyage || "",
     blNumber: booking.blNumber || booking.segments?.[0]?.blNumber || "",
     containers,
+    totalNetWeight: sc?.quantity || "",
     description: booking.commodity || "",
   };
 }

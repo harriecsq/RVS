@@ -1,19 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, DollarSign } from "lucide-react";
 import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { CreateCollectionPanel } from "./CreateCollectionPanel";
 import { ViewCollectionScreen } from "./ViewCollectionScreen";
 import { publicAnonKey } from "../../utils/supabase/info";
+import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
+import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
 import {
   StandardButton,
   StandardSearchInput,
-  StandardFilterDropdown,
   StandardTable,
 } from "../design-system";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import type { ColumnDef } from "../design-system";
 
 interface CollectionsScreenProps {
@@ -41,8 +44,13 @@ interface Collection {
 }
 
 export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: collectionsResult, isLoading, refetch } = useCachedFetch<{ success: boolean; data: any[] }>("/collections");
+  const collections = useMemo<Collection[]>(() => {
+    if (!collectionsResult?.success || !Array.isArray(collectionsResult.data)) return [];
+    const data = [...collectionsResult.data];
+    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return data;
+  }, [collectionsResult]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,41 +59,11 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
+  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const clientsMasterList = useClientsMasterList();
 
-  useEffect(() => {
-    // Fetch collections from backend
-    fetchCollections();
-  }, []);
-
-  const fetchCollections = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/collections`, {
-        headers: {
-          Authorization: `Bearer ${publicAnonKey}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success && Array.isArray(result.data)) {
-        const data = result.data;
-        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setCollections(data);
-      } else {
-        setCollections([]);
-      }
-    } catch (error) {
-      console.error("Error fetching collections:", error);
-      setCollections([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchCollections = () => { invalidateCache("/collections"); refetch(); };
 
   const handleViewCollection = (collectionId: string) => {
     setSelectedCollectionId(collectionId);
@@ -139,6 +117,13 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
 
     // Payment method filter
     if (paymentMethodFilter !== "all" && collection.paymentMethod !== paymentMethodFilter) return false;
+
+    // Company / client filter
+    if (companyFilter) {
+      const collCompany = (collection as any).companyName || collection.customerName || "";
+      if (collCompany !== companyFilter) return false;
+      if (clientFilter && (collection.customerName || "") !== clientFilter) return false;
+    }
 
     return true;
   });
@@ -311,17 +296,27 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           </div>
 
           {/* Status Filter */}
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={statusFilter}
             onChange={(v) => setStatusFilter(v as CollectionStatus | "all")}
             options={statusOptions}
           />
 
           {/* Payment Method Filter */}
-          <StandardFilterDropdown
+          <FilterSingleDropdown
             value={paymentMethodFilter}
             onChange={setPaymentMethodFilter}
             options={paymentMethodOptions}
+          />
+
+          {/* Company / Client Filter */}
+          <CompanyClientFilter
+            extraEntries={clientsMasterList}
+            selectedCompany={companyFilter}
+            selectedClient={clientFilter}
+            onCompanyChange={setCompanyFilter}
+            onClientChange={setClientFilter}
+            placeholder="All Companies"
           />
         </div>
       </div>

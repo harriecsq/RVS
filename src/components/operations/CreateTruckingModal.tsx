@@ -14,7 +14,7 @@ import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { BookingSelector } from "../selectors/BookingSelector";
-import { ContainerSelector } from "../selectors/ContainerSelector";
+import { ContainerSelector, BasisDropdown } from "../selectors/ContainerSelector";
 import type { ContainerInfo } from "../selectors/ContainerSelector";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
@@ -32,7 +32,7 @@ import {
   getTruckingStatusOptions,
   getDefaultTruckingStatus,
 } from "../../constants/truckingStatuses";
-import { StandardSelect } from "../design-system/StandardSelect";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +66,8 @@ interface AddressEntry {
   postalCode: string;
   recipients: RecipientEntry[];
   additionalNote: string;
+  contactPerson?: string;
+  contact?: string;
 }
 
 interface EmptyReturnLocation {
@@ -232,7 +234,7 @@ function DateRow({
 }
 
 
-/** Vendor-coloured dropdown */
+/** Vendor dropdown — Neuron standard style */
 function VendorDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -246,54 +248,77 @@ function VendorDropdown({ value, onChange }: { value: string; onChange: (v: stri
   );
 
   return (
-    <div className="relative">
+    <div style={{ position: "relative" }}>
       <div
         ref={triggerRef}
         onClick={() => setOpen(!open)}
-        className="w-full px-4 py-2.5 rounded-lg border flex items-center justify-between cursor-pointer"
-        style={{ borderColor: "#E5E9F0", fontSize: "14px", backgroundColor: "#FFFFFF" }}
+        style={{
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+          border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
+          alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+          backgroundColor: "#FFFFFF", gap: "8px",
+        }}
       >
         {vendor ? (
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded text-xs"
-            style={{ backgroundColor: hexToRgba(vendor.hex, 0.14), color: vendor.hex, border: `1px solid ${hexToRgba(vendor.hex, 0.4)}` }}
+            style={{
+              display: "inline-flex", alignItems: "center", padding: "2px 8px",
+              borderRadius: "4px", fontSize: "12px",
+              backgroundColor: hexToRgba(vendor.hex, 0.14),
+              color: vendor.hex,
+              border: `1px solid ${hexToRgba(vendor.hex, 0.4)}`,
+            }}
           >
             {vendor.name}
           </span>
         ) : (
           <span style={{ color: "#9CA3AF" }}>Select vendor...</span>
         )}
-        <ChevronDown size={16} style={{ color: "#9CA3AF", flexShrink: 0 }} />
+        <ChevronDown
+          size={16}
+          style={{ color: "#9CA3AF", flexShrink: 0, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}
+        />
       </div>
 
       <PortalDropdown isOpen={open} onClose={() => setOpen(false)} triggerRef={triggerRef} align="left">
-        <div className="px-3 py-2 border-b" style={{ borderColor: "#E5E9F0" }}>
+        <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
           <input
             autoFocus type="text" placeholder="Search vendors..." value={search}
             onChange={(e) => setSearch(e.target.value)} onClick={(e) => e.stopPropagation()}
-            className="w-full px-3 py-1.5 rounded-md border text-sm"
-            style={{ borderColor: "#E5E9F0", color: "#0A1D4D", outline: "none", fontSize: "14px", backgroundColor: "#FFFFFF" }}
+            style={{
+              width: "100%", padding: "8px 12px", fontSize: "13px", border: "1px solid #E5E9F0",
+              borderRadius: "6px", outline: "none", color: "#12332B", backgroundColor: "#F9FAFB", boxSizing: "border-box",
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "#237F66"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
           />
         </div>
-        <div className="overflow-auto" style={{ maxHeight: "220px" }}>
-          {filtered.length === 0 && (
-            <div className="px-4 py-3 text-sm" style={{ color: "#9CA3AF" }}>No vendors found</div>
-          )}
-          {filtered.map((v) => (
+        {filtered.length === 0 && (
+          <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>No vendors found</div>
+        )}
+        {filtered.map((v, idx) => {
+          const selected = value === v.name;
+          const isLast = idx === filtered.length - 1;
+          return (
             <div
               key={v.name}
               onClick={() => { onChange(v.name); setOpen(false); }}
-              className="px-4 py-2 cursor-pointer flex items-center gap-3"
-              style={{ fontSize: "14px", backgroundColor: value === v.name ? "#F0FAF8" : "transparent" }}
-              onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === v.name ? "#F0FAF8" : "transparent"; }}
+              style={{
+                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                display: "flex", alignItems: "center", gap: "10px",
+                backgroundColor: selected ? "#E8F2EE" : "transparent",
+                borderBottom: isLast ? "none" : "1px solid #E5E9F0",
+                userSelect: "none",
+              }}
+              onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : "transparent"; }}
             >
-              <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
-              <span style={{ color: "#0A1D4D" }}>{v.name}</span>
-              {value === v.name && <Check size={14} style={{ color: "#0F766E", marginLeft: "auto" }} />}
+              <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
+              <span style={{ flex: 1 }}>{v.name}</span>
+              {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </PortalDropdown>
     </div>
   );
@@ -349,7 +374,7 @@ function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string, p
     deliveryAddresses: [{ address: "", postalCode: "", recipients: [{ name: "", contacts: [""] }], additionalNote: "" }],
     truckingRate: "", truckingVendor: "", dispatcher: "", gatepass: "", truckingSoa: "",
     remarks: [],
-    remarksDrops: [],
+    remarksDrops: (prefillBookingType || "").toLowerCase().includes("import") ? [{ startDate: "", startTime: "", doneDate: "", doneTime: "" }] : [],
     emptyReturn: "", emptyReturnLocations: [],
     detentionStartDate: "", detentionStartTime: "", freeTime: "", containerYard: "", emptyReturnNote: "",
     otherFees: "",
@@ -873,6 +898,7 @@ export function CreateTruckingModal({
                     value={form.linkedBookingId || ""}
                     onSelect={handleBookingSelect}
                     placeholder="Search by Booking Ref, BL No, or Client..."
+                    bookingTypeFilter={(form.linkedBookingType || "").toLowerCase().includes("export") ? "export" : "import"}
                   />
                 </div>
                 {isLoadingBooking && (
@@ -943,8 +969,6 @@ export function CreateTruckingModal({
                       alreadyLinkedContainerNos={alreadyLinkedContainerNos}
                       selectedContainerNos={selectedContainerNos}
                       onSelectionChange={handleContainerSelected}
-                      existingTruckingRecords={existingTruckingRecords}
-                      onBasisSelected={handleBasisSelected}
                       segmentContainerNos={
                         segments && segments.length > 1 && form.linkedSegmentId
                           ? segments.find((s) => s.segmentId === form.linkedSegmentId)?.containerNos
@@ -1031,39 +1055,220 @@ export function CreateTruckingModal({
                     </div>
                   </div>
                 )}
+
+                {/* Copy from existing trucking record — shown after booking details when records exist */}
+                {!existingRecord && form.linkedBookingId && existingTruckingRecords.length > 0 && (
+                  <BasisDropdown
+                    records={existingTruckingRecords}
+                    onSelect={handleBasisSelected}
+                  />
+                )}
               </div>
             </div>
 
             {/* ── Conditional: EXPORT vs IMPORT trucking sections ── */}
             {(form.linkedBookingType || "").toLowerCase().includes("export") ? (
               <>
-                {/* ── TRUCKING INFORMATION (Export-specific) ── */}
+                {/* ── TABS BOOKING ── */}
                 <div>
-                  <SectionHeader>Trucking Information</SectionHeader>
+                  <SectionHeader>Tabs Booking</SectionHeader>
+                  <DateTimeRow
+                    dateValue={form.tabsBookingDate} timeValue={form.tabsBookingTime}
+                    onDateChange={(v) => set("tabsBookingDate", v)} onTimeChange={(v) => set("tabsBookingTime", v)}
+                  />
+                </div>
+
+                {/* ── LOADING SCHEDULE ── */}
+                <div>
+                  <SectionHeader>Loading Schedule</SectionHeader>
+                  <div className="space-y-4">
+                    {form.deliveryDrops.map((drop, di) => (
+                      <div
+                        key={di}
+                        className="rounded-xl p-5 space-y-4"
+                        style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Load {di + 1}</span>
+                          {form.deliveryDrops.length > 1 && <RemoveBtn onClick={() => removeDrop(di)} />}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: "#667085", letterSpacing: "0.06em" }}>Loading Schedule Date</label>
+                          <DateRow dateValue={drop.deliveryScheduleDate} onDateChange={(v) => updateDrop(di, "deliveryScheduleDate", v)} />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase mb-1.5" style={{ color: "#667085", letterSpacing: "0.06em" }}>
+                            Loading Time
+                          </label>
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <NeuronTimePicker value={drop.deliveryScheduleTime} onChange={(v) => updateDrop(di, "deliveryScheduleTime", v)} />
+                            </div>
+                            {drop.unloadingEnd ? (
+                              <>
+                                <span className="text-sm font-medium" style={{ color: "#667085" }}>to</span>
+                                <div className="flex-1">
+                                  <NeuronTimePicker value={drop.unloadingEnd} onChange={(v) => updateDrop(di, "unloadingEnd", v)} />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => updateDrop(di, "unloadingEnd", "")}
+                                  className="p-1 hover:bg-red-50 rounded transition-colors"
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444" }}
+                                >
+                                  <X size={15} />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => updateDrop(di, "unloadingEnd", drop.deliveryScheduleTime || "00:00")}
+                                className="flex items-center gap-1 text-sm font-semibold hover:opacity-80 transition-opacity"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#0F766E", padding: 0 }}
+                              >
+                                <Plus size={14} />
+                                Add end time
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label>Additional Note</Label>
+                          <textarea
+                            value={drop.additionalNote}
+                            onChange={(e) => updateDrop(di, "additionalNote", e.target.value)}
+                            rows={5}
+                            placeholder="Enter any additional notes or instructions..."
+                            className="w-full px-4 py-2.5 rounded-lg border resize-y"
+                            style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <AddLink onClick={addDrop}>Add Load</AddLink>
+                  </div>
+                </div>
+
+                {/* ── LOADING ADDRESS ── */}
+                <div>
+                  <SectionHeader>Loading Address</SectionHeader>
+                  <div className="space-y-4">
+                    {form.deliveryAddresses.map((addr, ai) => (
+                      <div
+                        key={ai}
+                        className="rounded-xl p-5 space-y-4"
+                        style={{ border: "1px solid #E5E9F0", backgroundColor: "#FAFAFA" }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold" style={{ color: "#0A1D4D" }}>Address {ai + 1}</span>
+                          {form.deliveryAddresses.length > 1 && <RemoveBtn onClick={() => removeAddress(ai)} />}
+                        </div>
+
+                        <div>
+                          <Label>Full Address</Label>
+                          <TextInput value={addr.address} onChange={(v) => updateAddress(ai, "address", v)} placeholder="Full address" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Contact Person</Label>
+                            <TextInput
+                              value={addr.contactPerson || ""}
+                              onChange={(v) => setForm((prev) => ({
+                                ...prev,
+                                deliveryAddresses: prev.deliveryAddresses.map((a, i) => i === ai ? { ...a, contactPerson: v } : a),
+                              }))}
+                              placeholder="Full name"
+                            />
+                          </div>
+                          <div>
+                            <Label>Contact</Label>
+                            <TextInput
+                              value={addr.contact || ""}
+                              onChange={(v) => setForm((prev) => ({
+                                ...prev,
+                                deliveryAddresses: prev.deliveryAddresses.map((a, i) => i === ai ? { ...a, contact: v } : a),
+                              }))}
+                              placeholder="Mobile number"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label>Additional Note</Label>
+                          <textarea
+                            value={addr.additionalNote}
+                            onChange={(e) => updateAddress(ai, "additionalNote", e.target.value)}
+                            rows={5}
+                            placeholder="Enter any additional notes or instructions..."
+                            className="w-full px-4 py-2.5 rounded-lg border resize-y"
+                            style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", fontFamily: "inherit", backgroundColor: "#FFFFFF", minHeight: "120px" }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <AddLink onClick={addAddress}>Add Address</AddLink>
+                  </div>
+                </div>
+
+                {/* ── PORT ARRIVAL ── */}
+                <div>
+                  <SectionHeader>Port Arrival</SectionHeader>
+                  <DateTimeRow
+                    dateValue={warehouseArrivals[0]?.date || ""}
+                    timeValue={warehouseArrivals[0]?.time || ""}
+                    onDateChange={(v) => updateWarehouseArrival(0, "date", v)}
+                    onTimeChange={(v) => updateWarehouseArrival(0, "time", v)}
+                  />
+                </div>
+
+                {/* ── RATE AND VENDOR ── */}
+                <div>
+                  <SectionHeader>Rate and Vendor</SectionHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Rate (₱)</Label>
+                        <TextInput value={form.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
+                      </div>
+                      <div>
+                        <Label>Trucking Company</Label>
+                        <VendorDropdown value={form.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Driver</Label>
+                        <TextInput value={form.driverHelperName} onChange={(v) => set("driverHelperName", v)} placeholder="Enter driver name" />
+                      </div>
+                      <div>
+                        <Label>Contact</Label>
+                        <TextInput value={form.contact} onChange={(v) => set("contact", v)} placeholder="Enter contact number" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Plate Number</Label>
+                        <TextInput value={form.plateNo} onChange={(v) => set("plateNo", v)} placeholder="Enter plate number" />
+                      </div>
+                      <div>
+                        <Label>SOA Number</Label>
+                        <TextInput value={form.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── ADDITIONAL INFO ── */}
+                <div>
+                  <SectionHeader>Additional Info</SectionHeader>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Trucking</Label>
-                      <VendorDropdown value={form.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
-                    </div>
-                    <div>
-                      <Label>Plate No.</Label>
-                      <TextInput value={form.plateNo} onChange={(v) => set("plateNo", v)} placeholder="Enter plate number" />
-                    </div>
-                    <div>
-                      <Label>Contact</Label>
-                      <TextInput value={form.contact} onChange={(v) => set("contact", v)} placeholder="Enter contact number" />
-                    </div>
-                    <div>
-                      <Label>Driver/Helper Name</Label>
-                      <TextInput value={form.driverHelperName} onChange={(v) => set("driverHelperName", v)} placeholder="Enter driver/helper name" />
-                    </div>
-                    <div>
-                      <Label>Rate</Label>
-                      <TextInput value={form.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
-                    </div>
-                    <div>
-                      <Label>Stickers</Label>
-                      <TextInput value={form.stickers} onChange={(v) => set("stickers", v)} placeholder="Enter stickers" />
+                      <Label>Sticker</Label>
+                      <TextInput value={form.stickers} onChange={(v) => set("stickers", v)} placeholder="Enter sticker details" />
                     </div>
                     <div>
                       <Label>Weighing</Label>
@@ -1074,19 +1279,7 @@ export function CreateTruckingModal({
                       <TextInput value={form.waitingFee} onChange={(v) => set("waitingFee", v)} placeholder="0.00" />
                     </div>
                     <div>
-                      <Label>SOA Number</Label>
-                      <TextInput value={form.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
-                    </div>
-                    <div>
-                      <Label>Loading Date</Label>
-                      <DateRow dateValue={form.loadingDate} onDateChange={(v) => set("loadingDate", v)} />
-                    </div>
-                    <div>
-                      <Label>Loading Address</Label>
-                      <TextInput value={form.truckingAddress} onChange={(v) => set("truckingAddress", v)} placeholder="Enter address" />
-                    </div>
-                    <div>
-                      <Label>Inyard Status</Label>
+                      <Label>Done Inyard</Label>
                       <DateRow dateValue={form.inyardDate} onDateChange={(v) => set("inyardDate", v)} />
                     </div>
                   </div>
@@ -1248,16 +1441,10 @@ export function CreateTruckingModal({
                           <Label>Recipient Name</Label>
                           <TextInput value={rec.name} onChange={(v) => updateRecipient(ai, ri, "name", v)} placeholder="Full name" />
                         </div>
-                        {rec.contacts.map((contact, ci) => (
-                          <div key={ci} className="flex items-center gap-2">
-                            <div className="flex-1">
-                              <label className="block text-xs font-semibold uppercase mb-1" style={{ color: "#667085", letterSpacing: "0.06em" }}>Contact {ci + 1}</label>
-                              <TextInput value={contact} onChange={(v) => updateContact(ai, ri, ci, v)} placeholder="Mobile number" />
-                            </div>
-                            {rec.contacts.length > 1 && <div className="pt-5"><RemoveBtn onClick={() => removeContact(ai, ri, ci)} /></div>}
-                          </div>
-                        ))}
-                        <AddLink onClick={() => addContact(ai, ri)}>Add contact number</AddLink>
+                        <div>
+                          <label className="block text-xs font-semibold uppercase mb-1" style={{ color: "#667085", letterSpacing: "0.06em" }}>Contact</label>
+                          <TextInput value={rec.contacts[0] ?? ""} onChange={(v) => updateContact(ai, ri, 0, v)} placeholder="Mobile number" />
+                        </div>
                       </div>
                     ))}
                     <AddLink onClick={() => addRecipient(ai)}>Add Recipient</AddLink>
@@ -1320,16 +1507,18 @@ export function CreateTruckingModal({
             {/* ── Status ── */}
             <div>
               <SectionHeader>Status</SectionHeader>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <label style={{ fontSize: "13px", fontWeight: 600, color: "#344054" }}>
-                  Trucking Status
-                </label>
-                <StandardSelect
-                  value={form.truckingStatus || getDefaultTruckingStatus(form.linkedBookingType)}
-                  onChange={(value) => setForm((prev) => ({ ...prev, truckingStatus: value }))}
-                  options={getTruckingStatusOptions(form.linkedBookingType).map((status) => ({ value: status, label: status }))}
-                />
-              </div>
+              {!(form.linkedBookingType || "").toLowerCase().includes("import") && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <label style={{ fontSize: "13px", fontWeight: 600, color: "#344054" }}>
+                    Trucking Status
+                  </label>
+                  <FilterSingleDropdown
+                    value={form.truckingStatus || getDefaultTruckingStatus(form.linkedBookingType)}
+                    onChange={(value) => setForm((prev) => ({ ...prev, truckingStatus: value }))}
+                    options={getTruckingStatusOptions(form.linkedBookingType).map((status) => ({ value: status, label: status }))}
+                  />
+                </div>
+              )}
 
               {/* Remarks Drops — Start & Done date/time per drop */}
               <div className="mt-5 space-y-3">
@@ -1374,7 +1563,12 @@ export function CreateTruckingModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Location</Label>
-                    <NeuronDropdown value={form.emptyReturn} options={EMPTY_RETURN_OPTIONS} onChange={(v) => set("emptyReturn", v)} placeholder="Select location..." />
+                    <FilterSingleDropdown
+                      value={form.emptyReturn}
+                      options={EMPTY_RETURN_OPTIONS.map((o) => ({ value: o, label: o }))}
+                      onChange={(v) => set("emptyReturn", v)}
+                      placeholder="Select location..."
+                    />
                   </div>
                   <div>
                     <Label>Free Time</Label>

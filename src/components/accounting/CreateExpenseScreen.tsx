@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Plus, Trash2, Link2 } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Card } from "../ui/card";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { ExpenseCostingTables, ExpenseTablesData } from "./ExpenseCostingTables";
 import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
@@ -79,13 +69,6 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
   };
 
   // Helper for input styling
-  const getInputStyle = (field: string) => {
-    const isAutoFilled = autoFilledFields[field];
-    return `h-11 border-[#E5E9F0] transition-colors ${
-      isAutoFilled ? "bg-green-50 text-[#0A1D4D]" : "bg-white"
-    }`;
-  };
-
   const handleBookingSelect = async (booking: any) => {
     console.log("Selected Booking for Expense:", booking);
     setSelectedBooking(booking);
@@ -391,18 +374,26 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
 
   const ContainerInputList = () => (
     <div>
-      <Label className="text-[13px] font-medium text-[#667085] mb-2 block">Container Number/s</Label>
+      <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "8px" }}>Container Number/s</label>
       <div className="flex flex-col gap-2">
         {formData.containerNumbers.map((container, index) => (
           <div key={index} className="flex gap-2">
-            <Input 
+            <input
+              type="text"
               value={container}
               onChange={(e) => handleContainerChange(index, e.target.value)}
-              onFocus={() => {
+              onFocus={(e) => {
                 if (autoFilledFields["containerNo"]) setAutoFilledFields(prev => ({ ...prev, containerNo: false }));
+                e.currentTarget.style.borderColor = "#0F766E";
               }}
-              className={getInputStyle("containerNo")}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
               placeholder={`Container #${index + 1}`}
+              style={{
+                flex: 1, height: "40px", padding: "0 12px", fontSize: "14px",
+                border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none",
+                backgroundColor: autoFilledFields["containerNo"] ? "#F0FDF4" : "white",
+                color: "#0A1D4D", transition: "border-color 0.15s ease",
+              }}
             />
             <button
               type="button"
@@ -526,7 +517,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
               </div>
               <div style={{ padding: "20px 24px" }}>
                 <div style={{ maxWidth: "280px" }}>
-                  <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "12px", color: "#0A1D4D", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
                     Date
                   </div>
                   <SingleDateInput
@@ -561,7 +552,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
               <div style={{ padding: "20px 24px" }}>
                 {/* BookingSelector — always functional */}
                 <div style={{ marginBottom: "16px" }}>
-                  <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                  <div style={{ fontSize: "12px", color: "#0A1D4D", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
                     Select Booking
                   </div>
                   <BookingSelector
@@ -647,7 +638,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                         </div>
                         {/* Releasing Date — standalone editable field */}
                         <div style={{ marginTop: "14px" }}>
-                          <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
+                          <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "4px" }}>
                             Releasing Date
                           </label>
                           <NeuronDatePicker
@@ -737,14 +728,17 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                 </div>
                 <div style={{ padding: "20px 24px" }}>
                   <div>
-                    <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                    <div style={{ fontSize: "12px", color: "#0A1D4D", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
                       Exchange Rate
                     </div>
-                    <Input
+                    <input
+                      type="text"
                       value={formData.exchangeRate}
                       onChange={(e) => handleFieldChange("exchangeRate", e.target.value)}
-                      className="h-11 border-[#E5E9F0] bg-white"
                       placeholder="Enter exchange rate"
+                      style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
                     />
                   </div>
                 </div>

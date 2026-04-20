@@ -572,6 +572,19 @@ export function ExportBookingDetails({
         );
       }
 
+      // Sync containerNo/sealNo (segment fields) into segments[0].containerNos/sealNos arrays
+      // containerNo/sealNo are SEGMENT_FIELDS so they live in segmentEditData, not cleanEditData
+      const seg0 = finalSegments[0] as any;
+      const mergedContainerNo = segmentEditData.containerNo ?? seg0?.containerNo ?? currentBooking.containerNo ?? "";
+      const mergedSealNo = segmentEditData.sealNo ?? seg0?.sealNo ?? currentBooking.sealNo ?? "";
+      if (finalSegments.length > 0) {
+        const containerNos = mergedContainerNo ? mergedContainerNo.split(",").map((s: string) => s.trim()).filter(Boolean) : (seg0?.containerNos || []);
+        const sealNos = mergedSealNo ? mergedSealNo.split(",").map((s: string) => s.trim()).filter(Boolean) : (seg0?.sealNos || []);
+        finalSegments = finalSegments.map((seg, i) =>
+          i === 0 ? { ...seg, containerNos, sealNos, containerNo: mergedContainerNo, sealNo: mergedSealNo } : seg
+        );
+      }
+
       const payload = {
         ...cleanEditData,
         segments: finalSegments,

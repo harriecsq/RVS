@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Package } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
 import { publicAnonKey } from "../../utils/supabase/info";
+import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { CreateBrokerageBookingPanel } from "./CreateImportBookingPanel";
 import { BrokerageBookingDetails } from "./ImportBookingDetails";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
@@ -12,9 +13,11 @@ import { NeuronPageHeader } from "../NeuronPageHeader";
 import {
   StandardButton,
   StandardSearchInput,
-  StandardFilterDropdown,
   StandardTable,
 } from "../design-system";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import type { ColumnDef } from "../design-system";
 
 interface BrokerageBooking {
@@ -87,14 +90,32 @@ function getBookingShipmentTags(booking: BrokerageBooking): string[] {
 }
 
 export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
-  const [bookings, setBookings] = useState<BrokerageBooking[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: bookingsResult, isLoading, refetch } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const bookings = useMemo<BrokerageBooking[]>(() => {
+    if (!bookingsResult?.success) return [];
+    const list = (bookingsResult.data || [])
+      .filter((b: any) => b.booking_type === "Import" || b.shipmentType === "Import" || b.mode === "Import")
+      .map((b: any) => ({
+        ...b,
+        bookingId: b.id || b.bookingId,
+        customerName: b.customerName || b.client || b.clientName || "Unknown",
+        companyName: b.companyName || b.company_name || "",
+        contactPersonName: b.contactPersonName || b.contact_person_name || "",
+        projectNumber: b.projectNumber || b.project_number,
+        projectName: b.projectName || b.project_name,
+        docsTimeline: b.docsTimeline || [],
+      }));
+    list.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return list;
+  }, [bookingsResult]);
+  const fetchBookings = () => { invalidateCache("/bookings"); refetch(); };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
-  const [destinationFilter, setDestinationFilter] = useState<string>("all");
+  const [portFilter, setPortFilter] = useState<string[]>([]);
+  const clientsMasterList = useClientsMasterList();
   const [companyFilter, setCompanyFilter] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<BrokerageBooking | null>(null);
@@ -104,7 +125,6 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchBookings();
     const state = location.state as any;
     if (state?.createFromProject) {
       setPrefillData({
@@ -136,38 +156,6 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     }
   }, [location, bookings]);
 
-  const fetchBookings = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/bookings`, {
-        headers: { 'Authorization': `Bearer ${publicAnonKey}`, 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const result = await response.json();
-      if (result.success) {
-        const importBookings = result.data
-          .filter((b: any) => b.booking_type === "Import" || b.shipmentType === "Import" || b.mode === "Import")
-          .map((b: any) => ({
-            ...b,
-            bookingId: b.id || b.bookingId,
-            customerName: b.customerName || b.client || b.clientName || "Unknown",
-            companyName: b.companyName || b.company_name || "",
-            contactPersonName: b.contactPersonName || b.contact_person_name || "",
-            projectNumber: b.projectNumber || b.project_number,
-            projectName: b.projectName || b.project_name,
-            docsTimeline: b.docsTimeline || [],
-          }));
-        importBookings.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setBookings(importBookings);
-      } else {
-        setBookings([]);
-      }
-    } catch (error) {
-      setBookings([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (selectedBooking) {
     return (
@@ -179,7 +167,6 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     );
   }
 
-  const uniqueDestinations = Array.from(new Set(bookings.map(b => b.destination).filter(Boolean))) as string[];
 
   const filteredBookings = bookings.filter(booking => {
     const timelineStatus = getTimelineStatus(booking.docsTimeline);
@@ -208,7 +195,10 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     const matchesStatus = activeTab === "all" || matchesStatusByTags || booking.status === activeTab;
     if (!matchesStatus) return false;
 
-    if (destinationFilter !== "all" && booking.destination !== destinationFilter) return false;
+    if (portFilter.length > 0) {
+      const bookingPort = booking.pod || booking.destination || "";
+      if (!portFilter.some(p => bookingPort.toLowerCase().includes(p.toLowerCase()))) return false;
+    }
 
     if (companyFilter) {
       const bookingCompany = booking.consignee || booking.customerName || "";
@@ -347,7 +337,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               />
             </div>
 
-            <StandardFilterDropdown
+            <FilterSingleDropdown
               value={activeTab}
               onChange={setActiveTab}
               options={[
@@ -356,19 +346,21 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               ]}
             />
 
-            <StandardFilterDropdown
-              value={destinationFilter}
-              onChange={setDestinationFilter}
+            <MultiSelectPortalDropdown
+              value={portFilter}
               options={[
-                { value: "all", label: "All Destinations" },
-                ...uniqueDestinations.map(d => ({ value: d, label: d })),
+                { value: "Manila North", label: "Manila North" },
+                { value: "Manila South", label: "Manila South" },
+                { value: "CDO", label: "CDO" },
+                { value: "Iloilo", label: "Iloilo" },
+                { value: "Davao", label: "Davao" },
               ]}
+              onChange={setPortFilter}
+              placeholder="All Ports"
             />
 
             <CompanyClientFilter
-              items={bookings}
-              getCompany={(b: any) => b.consignee || b.customerName || ""}
-              getClient={(b: any) => b.customerName || ""}
+              extraEntries={clientsMasterList}
               selectedCompany={companyFilter}
               selectedClient={clientFilter}
               onCompanyChange={setCompanyFilter}

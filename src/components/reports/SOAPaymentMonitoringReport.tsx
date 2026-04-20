@@ -6,7 +6,11 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
-import { StandardSelect, StandardInput } from '../design-system';
+import { MultiSelectPortalDropdown } from '../shared/MultiSelectPortalDropdown';
+import { FilterSingleDropdown } from '../shared/FilterSingleDropdown';
+import { CompanyClientFilter } from '../shared/CompanyClientFilter';
+import { useClientsMasterList } from '../../hooks/useClientsMasterList';
+import { StandardInput } from '../design-system/StandardInput';
 
 // --- Data Interfaces ---
 
@@ -89,8 +93,9 @@ interface FilterState {
   dateStart: string;
   dateEnd: string;
   serviceType: string;
-  port: string;
-  client: string;
+  port: string[];
+  client: string | null;
+  clientCompany: string | null;
   searchQuery: string;
 }
 
@@ -127,7 +132,19 @@ function KPICard({ label, value, color = "var(--neuron-brand-green)" }: { label:
   );
 }
 
-const PORT_OPTIONS = ["All", "Manila North", "Manila South", "CDO", "Iloilo", "Davao"];
+const PORT_OPTIONS = [
+  { value: "Manila North", label: "Manila North" },
+  { value: "Manila South", label: "Manila South" },
+  { value: "CDO", label: "CDO" },
+  { value: "Iloilo", label: "Iloilo" },
+  { value: "Davao", label: "Davao" },
+];
+
+const SERVICE_TYPE_OPTIONS = [
+  { value: "All", label: "All Types" },
+  { value: "Import", label: "Import" },
+  { value: "Export", label: "Export" },
+];
 
 export function SOAPaymentMonitoringReport() {
   const navigate = useNavigate();
@@ -135,10 +152,12 @@ export function SOAPaymentMonitoringReport() {
     dateStart: "",
     dateEnd: "",
     serviceType: "All",
-    port: "All",
-    client: "",
+    port: [],
+    client: null,
+    clientCompany: null,
     searchQuery: ""
   });
+  const clientsMasterList = useClientsMasterList();
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SOAPaymentRow[]>([]);
@@ -316,12 +335,13 @@ export function SOAPaymentMonitoringReport() {
       if (!item.serviceType.toLowerCase().includes(filters.serviceType.toLowerCase())) return false;
     }
 
-    if (filters.port !== "All") {
-      if (!item.port.toLowerCase().includes(filters.port.toLowerCase())) return false;
+    if (filters.port.length > 0) {
+      if (!filters.port.some(p => item.port.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
-    if (filters.client) {
-      if (!item.clientName.toLowerCase().includes(filters.client.toLowerCase())) return false;
+    if (filters.clientCompany) {
+      if (item.clientName !== filters.clientCompany && item.clientName !== filters.client) return false;
+      if (filters.client && item.clientName !== filters.client) return false;
     }
 
     if (filters.dateStart && item.billingDate < filters.dateStart) return false;
@@ -483,32 +503,37 @@ export function SOAPaymentMonitoringReport() {
             </div>
 
             {/* Service Type */}
-            <StandardSelect
+            <FilterSingleDropdown
               label="Service Type"
               value={filters.serviceType}
-              onChange={(value) => setFilters({ ...filters, serviceType: value, port: "All" })}
-              options={[
-                { value: "All", label: "All Types" },
-                { value: "Import", label: "Import" },
-                { value: "Export", label: "Export" }
-              ]}
+              options={SERVICE_TYPE_OPTIONS}
+              onChange={(value) => setFilters({ ...filters, serviceType: value, port: [] })}
             />
 
             {/* Port */}
-            <StandardSelect
+            <MultiSelectPortalDropdown
               label="Port"
               value={filters.port}
-              onChange={(value) => setFilters({ ...filters, port: value })}
-              options={PORT_OPTIONS.map(p => ({ value: p, label: p === "All" ? "All Ports" : p }))}
+              options={PORT_OPTIONS}
+              onChange={(selected) => setFilters({ ...filters, port: selected })}
+              placeholder="All Ports"
             />
 
             {/* Client */}
-            <StandardInput
-              label="Client"
-              value={filters.client}
-              onChange={(value) => setFilters({ ...filters, client: value })}
-              placeholder="Filter by client..."
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "14px", fontWeight: 500, color: "#344054" }}>Client</label>
+              <CompanyClientFilter
+                items={[]}
+                extraEntries={clientsMasterList}
+                getCompany={() => ""}
+                getClient={() => ""}
+                selectedCompany={filters.clientCompany}
+                selectedClient={filters.client}
+                onCompanyChange={(v) => setFilters({ ...filters, clientCompany: v, client: null })}
+                onClientChange={(v) => setFilters({ ...filters, client: v })}
+                placeholder="All Clients"
+              />
+            </div>
           </div>
         </div>
 

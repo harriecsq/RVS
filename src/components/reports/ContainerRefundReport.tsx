@@ -6,7 +6,7 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
-import { StandardFilterDropdown } from "../design-system/StandardFilterDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 
 // --- Data Interfaces ---
 
@@ -525,7 +525,7 @@ export function ContainerRefundReport() {
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Shipping Line</label>
-              <StandardFilterDropdown
+              <FilterSingleDropdown
                 value={filters.shippingLine}
                 onChange={(v) => setFilters({...filters, shippingLine: v})}
                 options={[
@@ -538,7 +538,7 @@ export function ContainerRefundReport() {
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Refund Status</label>
-              <StandardFilterDropdown
+              <FilterSingleDropdown
                 value={filters.refundStatus}
                 onChange={(v) => setFilters({...filters, refundStatus: v})}
                 options={[

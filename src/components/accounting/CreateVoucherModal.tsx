@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Plus, Trash2, Link2, ChevronsUpDown, Check } from "lucide-react";
+import { X, Plus, Trash2, Link2, ChevronDown, Check } from "lucide-react";
 import { PortalDropdown } from "../shared/PortalDropdown";
 import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
@@ -46,53 +46,52 @@ function CategoryDropdown({
         disabled={disabled}
         onClick={() => { if (!disabled) setOpen(!open); }}
         style={{
-          width: "100%", height: "40px", padding: "0 12px", borderRadius: "12px",
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
           border: "1px solid #E5E9F0", background: disabled ? "#F9FAFB" : "#FFFFFF",
-          color: value ? "#0A1D4D" : "#667085", fontWeight: value ? 500 : 400,
+          color: value ? "#12332B" : "#9CA3AF",
           fontSize: "14px", display: "flex", alignItems: "center",
           justifyContent: "space-between", cursor: disabled ? "not-allowed" : "pointer",
-          outline: "none", transition: "border-color 0.15s ease",
+          outline: "none", gap: "8px",
         }}
-        onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.borderColor = "#0F766E"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
-        <ChevronsUpDown size={16} style={{ flexShrink: 0, opacity: 0.5, marginLeft: "8px" }} />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "left" }}>{value || placeholder}</span>
+        <ChevronDown size={16} style={{ flexShrink: 0, color: "#9CA3AF", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }} />
       </button>
 
       <PortalDropdown isOpen={open} onClose={() => setOpen(false)} triggerRef={triggerRef} minWidth="280px" align="left">
-        <div style={{ maxHeight: "300px", overflowY: "auto", padding: "4px" }}>
-          {CATEGORY_GROUPS.map((group) => {
-            const groupItems = group.items.filter((item) => options.includes(item));
-            if (groupItems.length === 0) return null;
-            return (
-              <div key={group.label}>
-                <div style={{ padding: "8px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {group.label}
-                </div>
-                {groupItems.map((item) => {
-                  const isSelected = value === item;
-                  return (
-                    <div
-                      key={item}
-                      onClick={() => { onChange(item); setOpen(false); }}
-                      style={{
-                        padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center",
-                        gap: "10px", borderRadius: "8px", transition: "background-color 0.15s ease",
-                        background: isSelected ? "#E8F5F3" : "transparent",
-                      }}
-                      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#F3F4F6"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "#E8F5F3" : "transparent"; }}
-                    >
-                      <Check size={16} style={{ flexShrink: 0, color: "#0F766E", opacity: isSelected ? 1 : 0 }} />
-                      <div style={{ fontWeight: 500, color: "#0A1D4D", fontSize: "14px" }}>{item}</div>
-                    </div>
-                  );
-                })}
+        {CATEGORY_GROUPS.map((group) => {
+          const groupItems = group.items.filter((item) => options.includes(item));
+          if (groupItems.length === 0) return null;
+          return (
+            <div key={group.label}>
+              <div style={{ padding: "8px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {group.label}
               </div>
-            );
-          })}
-        </div>
+              {groupItems.map((item, idx) => {
+                const isSelected = value === item;
+                const isLast = idx === groupItems.length - 1;
+                return (
+                  <div
+                    key={item}
+                    onClick={() => { onChange(item); setOpen(false); }}
+                    style={{
+                      padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center",
+                      gap: "10px", fontSize: "14px", color: "#12332B",
+                      backgroundColor: isSelected ? "#E8F2EE" : "transparent",
+                      borderBottom: isLast ? "none" : "1px solid #E5E9F0",
+                      userSelect: "none",
+                    }}
+                    onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? "#E8F2EE" : "transparent"; }}
+                  >
+                    <span style={{ flex: 1 }}>{item}</span>
+                    {isSelected && <Check size={14} style={{ flexShrink: 0, color: "#237F66" }} />}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </PortalDropdown>
     </div>
   );

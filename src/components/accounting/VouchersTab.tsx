@@ -37,7 +37,7 @@ interface VouchersTabProps {
 
 export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, vouchers: providedVouchers, onUpdate }: VouchersTabProps) {
   const [localVouchers, setLocalVouchers] = useState<Voucher[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
   

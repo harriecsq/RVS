@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FileText, Plus, Edit3, Save, X, AlertCircle, Trash2, ChevronsUpDown, Search } from "lucide-react";
+import { FileText, Plus, Edit3, Save, X, AlertCircle, Trash2, ChevronsUpDown, Search, Check } from "lucide-react";
 import { NeuronDropdown } from "../../shared/NeuronDropdown";
 import { PortalDropdown } from "../../shared/PortalDropdown";
 import { toast } from "../../ui/toast-utils";
@@ -8,8 +8,6 @@ import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildPackingListDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { PackingList, PackingListContainer, SalesContract } from "../../../types/export-documents";
-import { TemplatePickerView } from "./TemplatePickerView";
-import { useDocTemplates } from "../../../hooks/useDocTemplates";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -294,9 +292,10 @@ interface PackingListTabProps {
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
+  initialDraftData?: Partial<PackingList>;
 }
 
-export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: PackingListTabProps) {
+export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: PackingListTabProps) {
   const [doc, setDoc] = useState<PackingList | null>(null);
   const [sc, setSc] = useState<SalesContract | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -306,9 +305,6 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
   const [editData, setEditData] = useState<Partial<PackingList>>({});
   const editDataRef = useRef(editData);
   editDataRef.current = editData;
-  const { templates, fetchTemplateFields } = useDocTemplates("packingList", booking?.clientId);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
   const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
@@ -362,23 +358,15 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
     return `${refCompanyCode} ${refYear}-${num}`;
   };
 
-  const handleCreateClick = () => {
-    setShowTemplatePicker(true);
-  };
+  const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
     let merged = buildPackingListDefaults(booking, sc || undefined);
+    if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "packingList"); }
     setEditData({ ...merged, refNo: buildRefNo() });
     setIsCreating(true);
     setIsEditing(true);
-  };
-
-  const handleTemplateSelect = async (templateId: string | null) => {
-    setShowTemplatePicker(false);
-    if (!templateId) { proceedWithCreate(null); return; }
-    const fields = await fetchTemplateFields(templateId);
-    proceedWithCreate(fields);
   };
 
   const handleEdit = () => {
@@ -434,9 +422,10 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
     onEditStateChange?.({
       isEditing, isSaving,
       refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
+      docData: isEditing ? { ...editData, refNo: buildRefNo() } as any : doc,
       handleEdit, handleCancel, handleSave,
     });
-  }, [isEditing, isSaving, doc?.refNo]);
+  }, [isEditing, isSaving, doc?.refNo, editData]);
 
   const field = (key: keyof PackingList) => {
     if (key === "containers") return;
@@ -466,9 +455,6 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
   }
 
   if (!doc && !isEditing) {
-    if (showTemplatePicker) {
-      return <TemplatePickerView onSelect={handleTemplateSelect} onCancel={() => setShowTemplatePicker(false)} templates={templates} docType="packingList" />;
-    }
     return (
       <div style={{ padding: "32px 48px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
@@ -588,22 +574,9 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
       <SectionCard title="Description of Goods">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {isEditing ? (
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Volume</label>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "14px", color: "var(--neuron-ink-primary)", whiteSpace: "nowrap" }}>{containers.length}x</span>
-                <input
-                  type="text"
-                  value={field("volume") || ""}
-                  onChange={(e) => setField("volume", e.target.value)}
-                  placeholder="e.g. 40'HC"
-                  style={{ flex: 1, padding: "10px 14px", border: "1px solid #0F766E", borderRadius: "6px", fontSize: "14px", color: "var(--neuron-ink-primary)", background: "white", outline: "none", boxSizing: "border-box" }}
-                />
-                <span style={{ fontSize: "14px", color: "var(--neuron-ink-primary)", whiteSpace: "nowrap" }}>CONTAINER</span>
-              </div>
-            </div>
+            <FieldInput label="Volume" value={field("volume") || ""} onChange={(v) => setField("volume", v)} placeholder="e.g. 2x40'HC CONTAINER" />
           ) : (
-            <FieldView label="Volume" value={field("volume") ? (field("volume").trim() === "LCL" ? "LCL" : `${containers.length}x${field("volume")} CONTAINER`) : ""} />
+            <FieldView label="Volume" value={field("volume") || ""} />
           )}
           {isEditing ? (
             <FieldInput label="Commodity" value={field("commodity") || ""} onChange={(v) => setField("commodity", v)} />

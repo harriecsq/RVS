@@ -1,14 +1,17 @@
-import { ArrowLeft, ChevronDown, Plus, Trash2, Check } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Plus, Trash2, Check } from "lucide-react";
+import { useState, useEffect } from "react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume } from "../../utils/truckingTags";
+import { CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume } from "../../utils/truckingTags";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { API_BASE_URL } from '@/utils/api-config';
 import { PanelBackdrop } from "../shared/PanelBackdrop";
 import { PodDropdown } from "../shared/PodDropdown";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { ShippingLineDropdown } from "../shared/ShippingLineDropdown";
 
 interface CreateExportBookingPanelProps {
   isOpen: boolean;
@@ -49,267 +52,6 @@ function SectionTitle({ children, first }: { children: React.ReactNode; first?: 
   );
 }
 
-/* ── Neuron-styled dropdown ── */
-function NeuronDropdown({
-  value,
-  options,
-  onChange,
-  placeholder = "Select...",
-}: {
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          fontSize: "14px",
-          border: "1px solid #E5E9F0",
-          borderRadius: "8px",
-          color: value ? "#0A1D4D" : "#9CA3AF",
-          fontWeight: value ? 500 : 400,
-          backgroundColor: "white",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          outline: "none",
-          minHeight: "42px",
-        }}
-      >
-        <span>{value || placeholder}</span>
-        <ChevronDown
-          size={16}
-          color="#667085"
-          style={{
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.2s",
-            flexShrink: 0,
-          }}
-        />
-      </div>
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
-            background: "white",
-            border: "1.5px solid #E5E9F0",
-            borderRadius: "8px",
-            zIndex: 9999,
-            maxHeight: "220px",
-            overflowY: "auto" as const,
-          }}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt}
-              onClick={() => {
-                onChange(opt);
-                setOpen(false);
-              }}
-              style={{
-                padding: "10px 14px",
-                fontSize: "14px",
-                fontWeight: 500,
-                cursor: "pointer",
-                color: "#0A1D4D",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                backgroundColor: value === opt ? "#F0FAF8" : "transparent",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (value !== opt) e.currentTarget.style.backgroundColor = "#F9FAFB";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = value === opt ? "#F0FAF8" : "transparent";
-              }}
-            >
-              {opt}
-              {value === opt && <Check size={14} style={{ color: "#0F766E" }} />}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Searchable shipping-line dropdown ── */
-function ShippingLineDropdown({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const filtered = search
-    ? SHIPPING_LINE_OPTIONS.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
-    : SHIPPING_LINE_OPTIONS;
-
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{
-          width: "100%",
-          padding: "10px 12px",
-          fontSize: "14px",
-          border: "1px solid #E5E9F0",
-          borderRadius: "8px",
-          color: value ? "#111827" : "#9CA3AF",
-          fontWeight: value ? 500 : 400,
-          backgroundColor: "white",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          outline: "none",
-          minHeight: "42px",
-        }}
-      >
-        {value || "Select shipping line"}
-        <ChevronDown
-          size={16}
-          color="#667085"
-          style={{
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.2s",
-            flexShrink: 0,
-          }}
-        />
-      </div>
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
-            background: "white",
-            border: "1.5px solid #E5E9F0",
-            borderRadius: "8px",
-            zIndex: 9999,
-            maxHeight: "300px",
-            overflowY: "auto" as const,
-          }}
-        >
-          <div
-            style={{
-              padding: "8px",
-              borderBottom: "1px solid #E5E9F0",
-              position: "sticky" as const,
-              top: 0,
-              background: "white",
-              zIndex: 1,
-            }}
-          >
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                fontSize: "13px",
-                border: "1px solid #E5E9F0",
-                borderRadius: "6px",
-                outline: "none",
-                color: "#111827",
-                backgroundColor: "#F9FAFB",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "#0F766E";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "#E5E9F0";
-              }}
-            />
-          </div>
-          {filtered.map((option, index) => (
-            <div
-              key={option}
-              onClick={() => {
-                onChange(option);
-                setOpen(false);
-                setSearch("");
-              }}
-              style={{
-                padding: "10px 14px",
-                fontSize: "14px",
-                fontWeight: 500,
-                cursor: "pointer",
-                color: "#111827",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                background: value === option ? "#F0FDF4" : "transparent",
-                borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
-                transition: "all 0.15s ease",
-              }}
-              onMouseEnter={(e) => {
-                if (value !== option) e.currentTarget.style.background = "#F9FAFB";
-              }}
-              onMouseLeave={(e) => {
-                if (value !== option) e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {option}
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div
-              style={{
-                padding: "12px 14px",
-                fontSize: "13px",
-                color: "#9CA3AF",
-                textAlign: "center" as const,
-              }}
-            >
-              No results found
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ── Neuron text input ── */
 const neuronInputStyle: React.CSSProperties = {
   width: "100%",
@@ -330,7 +72,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: "14px",
   fontWeight: 500,
   marginBottom: "8px",
-  color: "#667085",
+  color: "#0A1D4D",
 };
 
 function NeuronInput({
@@ -416,8 +158,6 @@ export function CreateExportBookingPanel({
     { id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }
   ]);
   const [origin, setOrigin] = useState(prefillData?.origin || "");
-  const [showPolDropdown, setShowPolDropdown] = useState(false);
-  const polRef = useRef<HTMLDivElement>(null);
   const [pod, setPod] = useState(prefillData?.pod || "");
 
   // ── Vessel/VOY Details ──
@@ -913,16 +653,16 @@ export function CreateExportBookingPanel({
                 <label style={labelStyle}>Volume</label>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {containerType !== "LCL" && (
-                    <NeuronDropdown
+                    <FilterSingleDropdown
                       value={containerSize}
-                      options={[...CONTAINER_SIZE_OPTIONS]}
+                      options={CONTAINER_SIZE_OPTIONS.map((o) => ({ value: o, label: o }))}
                       onChange={setContainerSize}
                       placeholder="Size"
                     />
                   )}
-                  <NeuronDropdown
+                  <FilterSingleDropdown
                     value={containerType}
-                    options={[...CONTAINER_TYPE_OPTIONS]}
+                    options={CONTAINER_TYPE_OPTIONS.map((o) => ({ value: o, label: o }))}
                     onChange={setContainerType}
                     placeholder="Type"
                   />
@@ -1057,75 +797,18 @@ export function CreateExportBookingPanel({
             <div style={twoCol}>
               <div>
                 <label style={labelStyle}>POL (Port of Loading)</label>
-                <div ref={polRef} style={{ position: "relative" }}>
-                  <div
-                    onClick={() => setShowPolDropdown(!showPolDropdown)}
-                    onBlur={() => setTimeout(() => setShowPolDropdown(false), 200)}
-                    tabIndex={0}
-                    style={{
-                      ...neuronInputStyle,
-                      color: origin ? "#111827" : "#9CA3AF",
-                      fontWeight: origin ? 500 : 400,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    {origin || "Select POL"}
-                    <ChevronDown size={16} color="#667085" style={{ transform: showPolDropdown ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-                  </div>
-
-                  {showPolDropdown && (
-                    <div style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      left: 0,
-                      right: 0,
-                      background: "white",
-                      border: "1.5px solid #E5E9F0",
-                      borderRadius: "8px",
-                      zIndex: 9999,
-                      maxHeight: "300px",
-                      overflowY: "auto"
-                    }}>
-                      {["Manila North", "Manila South", "CDO", "Iloilo", "Davao"].map((option, index) => (
-                        <div
-                          key={option}
-                          onClick={() => {
-                            setOrigin(option);
-                            setShowPolDropdown(false);
-                          }}
-                          style={{
-                            padding: "10px 14px",
-                            fontSize: "14px",
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            color: "#111827",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            background: origin === option ? "#F0FDF4" : "transparent",
-                            borderBottom: index < 4 ? "1px solid #E5E9F0" : "none",
-                            transition: "all 0.15s ease"
-                          }}
-                          onMouseEnter={(e) => {
-                            if (origin !== option) {
-                              e.currentTarget.style.background = "#F9FAFB";
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (origin !== option) {
-                              e.currentTarget.style.background = "transparent";
-                            }
-                          }}
-                        >
-                          {option}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <FilterSingleDropdown
+                  value={origin}
+                  options={[
+                    { value: "Manila North", label: "Manila North" },
+                    { value: "Manila South", label: "Manila South" },
+                    { value: "CDO", label: "CDO" },
+                    { value: "Iloilo", label: "Iloilo" },
+                    { value: "Davao", label: "Davao" },
+                  ]}
+                  onChange={setOrigin}
+                  placeholder="Select POL"
+                />
               </div>
               <div>
                 <label style={labelStyle}>POD (Port of Destination)</label>

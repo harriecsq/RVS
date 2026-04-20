@@ -110,7 +110,7 @@ export function ProfitLossPeriodReport() {
     dateEnd: ""
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [reportData, setReportData] = useState<{
     revenue: {
       luzonImport: number;

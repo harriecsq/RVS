@@ -34,7 +34,7 @@ interface BookingVouchersTabProps {
  */
 export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: BookingVouchersTabProps) {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 

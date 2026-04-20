@@ -1,21 +1,7 @@
-import { useState, useEffect } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
-import { cn } from "../ui/utils";
-import { Button } from "../ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "../ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../ui/popover";
-import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { useState, useEffect, useRef } from "react";
+import { Check, ChevronDown, Search } from "lucide-react";
+import { PortalDropdown } from "../shared/PortalDropdown";
+import { publicAnonKey } from "../../utils/supabase/info";
 import { API_BASE_URL } from '@/utils/api-config';
 
 interface Booking {
@@ -38,6 +24,7 @@ interface BookingSelectorProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  bookingTypeFilter?: "import" | "export";
 }
 
 export function BookingSelector({
@@ -45,57 +32,51 @@ export function BookingSelector({
   onSelect,
   className,
   placeholder = "Select booking...",
-  disabled = false
+  disabled = false,
+  bookingTypeFilter,
 }: BookingSelectorProps) {
   const [open, setOpen] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
         setIsLoading(true);
-        // Use the new unified endpoint with retry logic for transient failures
         let response: Response | null = null;
         let lastError: any = null;
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             response = await fetch(`${API_BASE_URL}/bookings`, {
-              headers: {
-                'Authorization': `Bearer ${publicAnonKey}`
-              }
+              headers: { 'Authorization': `Bearer ${publicAnonKey}` }
             });
-            break; // Success, exit retry loop
+            break;
           } catch (fetchErr) {
             lastError = fetchErr;
-            console.warn(`Booking fetch attempt ${attempt + 1} failed:`, fetchErr);
             if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
           }
         }
-        
         if (!response) throw lastError || new Error("Failed to fetch bookings after retries");
         if (!response.ok) throw new Error("Failed to fetch bookings");
-        
         const result = await response.json();
         if (result.success) {
-          const mappedBookings = result.data.map((b: any) => ({
-            ...b, // Spread original properties
+          const mapped = result.data.map((b: any) => ({
+            ...b,
             id: b.id || b.bookingId,
             trackingNo: b.trackingNumber || b.trackingNo || b.booking_number || b.id || b.bookingId,
             client: b.client || b.clientName || b.customerName || b.customer_name || b.shipper || "Unknown Client",
             status: b.status,
             bl_number: b.bl_number || b.blNumber || b.awbBlNo || b.awb_bl_no || "",
             shipmentType: b.shipmentType || b.booking_type || "Unknown",
-            mode: b.mode || "Unknown"
           }));
-          // Sort by most recent first (using createdAt, created_at, or date fields)
-          mappedBookings.sort((a: any, b: any) => {
-            const dateA = new Date(a.createdAt || a.created_at || a.date || a.bookingDate || a.booking_date || 0).getTime();
-            const dateB = new Date(b.createdAt || b.created_at || b.date || b.bookingDate || b.booking_date || 0).getTime();
-            return dateB - dateA;
+          mapped.sort((a: any, b: any) => {
+            const da = new Date(a.createdAt || a.created_at || a.date || 0).getTime();
+            const db = new Date(b.createdAt || b.created_at || b.date || 0).getTime();
+            return db - da;
           });
-          setBookings(mappedBookings);
+          setBookings(mapped);
         }
       } catch (error) {
         console.error("Error loading bookings:", error);
@@ -109,99 +90,109 @@ export function BookingSelector({
     }
   }, [open, value]);
 
+  useEffect(() => { if (!open) setSearchQuery(""); }, [open]);
+
   const selectedBooking = bookings.find((b) => b.id === value) || null;
 
   const filteredBookings = bookings.filter((booking) => {
-    const searchLower = searchQuery.toLowerCase();
-    const trackingNo = booking.trackingNo || "";
-    const client = booking.client || "";
-    const blNumber = booking.bl_number || "";
-    
+    if (bookingTypeFilter) {
+      const type = (booking.shipmentType || "").toLowerCase();
+      if (!type.includes(bookingTypeFilter)) return false;
+    }
+    const q = searchQuery.toLowerCase();
     return (
-      trackingNo.toLowerCase().includes(searchLower) ||
-      client.toLowerCase().includes(searchLower) ||
-      (blNumber && blNumber.toLowerCase().includes(searchLower))
+      (booking.trackingNo || "").toLowerCase().includes(q) ||
+      (booking.client || "").toLowerCase().includes(q) ||
+      (booking.bl_number || "").toLowerCase().includes(q)
     );
   });
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between h-11 text-left font-normal border-[#E5E9F0] bg-white hover:bg-[#F9FAFB]", className)}
-          disabled={disabled}
-        >
-          {selectedBooking ? (
-            <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-              <span className="font-medium text-[#0A1D4D] truncate w-full flex items-center gap-2">
-                {selectedBooking.trackingNo}
-              </span>
-              <span className="text-xs text-[#667085] truncate w-full">
-                {selectedBooking.client} {selectedBooking.bl_number ? `• BL: ${selectedBooking.bl_number}` : ""}
-              </span>
-            </div>
-          ) : (
-            <span className="text-[#667085]">{placeholder}</span>
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0 z-[9999]" align="start">
-        <Command shouldFilter={false}>
-          <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+    <div style={{ position: "relative", width: "100%" }}>
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(!open); }}
+        style={{
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+          border: "1px solid #E5E9F0", background: disabled ? "#F9FAFB" : "#FFFFFF",
+          color: selectedBooking ? "#12332B" : "#9CA3AF", fontSize: "14px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          cursor: disabled ? "not-allowed" : "pointer", outline: "none", gap: "8px",
+          opacity: disabled ? 0.7 : 1,
+        }}
+        className={className}
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "left" }}>
+          {selectedBooking ? selectedBooking.trackingNo : placeholder}
+        </span>
+        <ChevronDown size={16} style={{ flexShrink: 0, color: "#9CA3AF", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }} />
+      </button>
+
+      <PortalDropdown isOpen={open && !disabled} onClose={() => setOpen(false)} triggerRef={triggerRef} align="left">
+        <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+          <div style={{ position: "relative" }}>
+            <Search size={14} color="#9CA3AF" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
             <input
-              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Search by Booking Ref, BL Number, or Company..."
+              type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by Ref, BL Number, or Company..."
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "100%", padding: "8px 12px 8px 30px", fontSize: "13px",
+                border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none",
+                color: "#12332B", backgroundColor: "#F9FAFB", boxSizing: "border-box",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "#237F66"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
             />
           </div>
-          <CommandList>
-            {isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">Loading bookings...</div>
-            ) : filteredBookings.length === 0 ? (
-              <CommandEmpty>No booking found.</CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {filteredBookings.slice(0, 50).map((booking, index) => (
-                  <CommandItem
-                    key={`${booking.id}-${index}`}
-                    value={booking.id}
-                    onSelect={() => {
-                      onSelect(booking);
-                      setOpen(false);
-                    }}
-                    className="flex flex-col items-start gap-1 py-3 cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-2 font-medium text-[#0A1D4D]">
-                        <span>{booking.trackingNo}</span>
-                        {booking.id === value && <Check className="h-4 w-4 ml-2 text-[#0F766E]" />}
-                      </div>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#667085]">
-                        {booking.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-[#667085] w-full truncate">
-                      <span className="font-medium text-[#4B5563]">{booking.client}</span>
-                      {booking.bl_number && (
-                        <>
-                          <span className="mx-1">•</span>
-                          <span>BL: {booking.bl_number}</span>
-                        </>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+        </div>
+
+        {isLoading ? (
+          <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>Loading bookings...</div>
+        ) : filteredBookings.length === 0 ? (
+          <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>No booking found.</div>
+        ) : (
+          filteredBookings.slice(0, 50).map((booking, idx) => {
+            const isSelected = booking.id === value;
+            const isLast = idx === Math.min(filteredBookings.length, 50) - 1;
+            return (
+              <div
+                key={`${booking.id}-${idx}`}
+                onClick={() => { onSelect(booking); setOpen(false); }}
+                style={{
+                  padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
+                  backgroundColor: isSelected ? "#E8F2EE" : "transparent",
+                  borderBottom: isLast ? "none" : "1px solid #E5E9F0",
+                  userSelect: "none",
+                }}
+                onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? "#E8F2EE" : "transparent"; }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {booking.trackingNo}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#6B7A76", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {booking.client}{booking.bl_number ? ` • BL: ${booking.bl_number}` : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                  <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "4px", background: "#F3F4F6", color: "#6B7A76" }}>
+                    {booking.status}
+                  </span>
+                  {isSelected && <Check size={14} style={{ color: "#237F66" }} />}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </PortalDropdown>
+    </div>
   );
 }

@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { X, Search, Plus, Minus } from "lucide-react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { formatAmount } from "../../utils/formatAmount";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { API_BASE_URL } from '@/utils/api-config';
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 
 interface CreateCollectionScreenProps {
   onBack: () => void;
@@ -409,7 +408,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
           
           {/* 0. Collection Reference Number */}
           <div>
-            <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Collection Number</Label>
+            <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Collection Number</label>
             <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: "8px", alignItems: "end" }}>
               <div>
                 <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Prefix</span>
@@ -432,23 +431,19 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
           {/* 1. Payment Details — flat grid like voucher header fields */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-5">
             <div>
-              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">
-                Payment Method <span className="text-red-500">*</span>
-              </Label>
-              <select
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>
+                Payment Method <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <FilterSingleDropdown
                 value={formData.paymentMethod}
-                onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                className="w-full h-10 px-3 rounded-md border border-[#E5E9F0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-[#0A1D4D]"
-              >
-                <option value="" disabled>Select method</option>
-                {PAYMENT_METHODS.map((method) => (
-                  <option key={method} value={method}>{method}</option>
-                ))}
-              </select>
+                onChange={(v) => setFormData({ ...formData, paymentMethod: v })}
+                options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
+                placeholder="Select method"
+              />
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Date</Label>
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Date</label>
               <SingleDateInput
                 value={formData.collectionDate}
                 onChange={(date) => setFormData({ ...formData, collectionDate: date })}
@@ -457,22 +452,28 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Reference No.</Label>
-              <Input
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Reference No.</label>
+              <input
+                type="text"
                 value={formData.referenceNumber}
                 onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                className="h-10 border-[#E5E9F0] text-sm text-[#0A1D4D] focus-visible:ring-[#0F766E]"
                 placeholder="Check # or Transaction ID"
+                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
               />
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Notes</Label>
-              <Input
+              <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Notes</label>
+              <input
+                type="text"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="h-10 border-[#E5E9F0] text-sm text-[#0A1D4D] focus-visible:ring-[#0F766E]"
                 placeholder="Optional notes"
+                style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
               />
             </div>
           </div>

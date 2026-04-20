@@ -17,6 +17,7 @@ import { StandardButton } from "../design-system";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
+import { PortalDropdown } from "../shared/PortalDropdown";
 import { NotesSection } from "../shared/NotesSection";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
 import { TabRowActions } from "../shared/TabRowActions";
@@ -345,116 +346,88 @@ function EditNeuronDropdown({
 function EditVendorDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const vendor = TRUCKING_VENDORS.find((v) => v.name === value);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  useEffect(() => {
-    if (!open) setSearch("");
-  }, [open]);
+  useEffect(() => { if (!open) setSearch(""); }, [open]);
 
   const filtered = TRUCKING_VENDORS.filter(
     (v) => !search || v.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div style={{ position: "relative" }}>
       <div
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         style={{
-          width: "100%",
-          padding: "10px 12px",
-          borderRadius: "8px",
-          border: vendor ? `1px solid ${hexToRgba(vendor.hex, 0.3)}` : "1px solid #E5E9F0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: "pointer",
-          fontSize: "14px",
-          backgroundColor: vendor ? hexToRgba(vendor.hex, 0.08) : "#FFFFFF",
-          color: vendor ? vendor.hex : "#0A1D4D",
-          fontWeight: vendor ? 500 : 400,
-          boxSizing: "border-box",
+          width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px",
+          border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
+          alignItems: "center", justifyContent: "space-between", cursor: "pointer",
+          backgroundColor: "#FFFFFF", gap: "8px",
         }}
       >
         {vendor ? (
-          <span>{vendor.name}</span>
+          <span
+            style={{
+              display: "inline-flex", alignItems: "center", padding: "2px 8px",
+              borderRadius: "4px", fontSize: "12px",
+              backgroundColor: hexToRgba(vendor.hex, 0.14),
+              color: vendor.hex,
+              border: `1px solid ${hexToRgba(vendor.hex, 0.4)}`,
+            }}
+          >
+            {vendor.name}
+          </span>
         ) : (
           <span style={{ color: "#9CA3AF" }}>Select vendor...</span>
         )}
-        <ChevronDown size={16} style={{ color: vendor ? vendor.hex : "#9CA3AF", flexShrink: 0 }} />
+        <ChevronDown
+          size={16}
+          style={{ color: "#9CA3AF", flexShrink: 0, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s ease" }}
+        />
       </div>
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: "100%",
-            marginTop: "4px",
-            background: "white",
-            borderRadius: "8px",
-            border: "1px solid #E5E9F0",
-            zIndex: 9999,
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ padding: "8px 12px", borderBottom: "1px solid #E5E9F0" }}>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search vendors..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "100%",
-                padding: "6px 12px",
-                borderRadius: "6px",
-                border: "1px solid #E5E9F0",
-                fontSize: "14px",
-                color: "#0A1D4D",
-                outline: "none",
-                backgroundColor: "#FFFFFF",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div style={{ maxHeight: "220px", overflowY: "auto" }}>
-            {filtered.length === 0 && (
-              <div style={{ padding: "12px 16px", fontSize: "14px", color: "#9CA3AF" }}>No vendors found</div>
-            )}
-            {filtered.map((v) => (
-              <div
-                key={v.name}
-                onClick={() => { onChange(v.name); setOpen(false); }}
-                style={{
-                  padding: "8px 16px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  backgroundColor: value === v.name ? "#F0FAF8" : "transparent",
-                }}
-                onMouseEnter={(e) => { if (value !== v.name) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = value === v.name ? "#F0FAF8" : "transparent"; }}
-              >
-                <span style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
-                <span style={{ color: "#0A1D4D" }}>{v.name}</span>
-                {value === v.name && <Check size={14} style={{ color: "#0F766E", marginLeft: "auto" }} />}
-              </div>
-            ))}
-          </div>
+
+      <PortalDropdown isOpen={open} onClose={() => setOpen(false)} triggerRef={triggerRef} align="left">
+        <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+          <input
+            autoFocus type="text" placeholder="Search vendors..." value={search}
+            onChange={(e) => setSearch(e.target.value)} onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", padding: "8px 12px", fontSize: "13px", border: "1px solid #E5E9F0",
+              borderRadius: "6px", outline: "none", color: "#12332B", backgroundColor: "#F9FAFB", boxSizing: "border-box",
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "#237F66"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+          />
         </div>
-      )}
+        {filtered.length === 0 && (
+          <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>No vendors found</div>
+        )}
+        {filtered.map((v, idx) => {
+          const selected = value === v.name;
+          const isLast = idx === filtered.length - 1;
+          return (
+            <div
+              key={v.name}
+              onClick={() => { onChange(v.name); setOpen(false); }}
+              style={{
+                padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
+                display: "flex", alignItems: "center", gap: "10px",
+                backgroundColor: selected ? "#E8F2EE" : "transparent",
+                borderBottom: isLast ? "none" : "1px solid #E5E9F0",
+                userSelect: "none",
+              }}
+              onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : "transparent"; }}
+            >
+              <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: v.hex, flexShrink: 0, display: "inline-block" }} />
+              <span style={{ flex: 1 }}>{v.name}</span>
+              {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
+            </div>
+          );
+        })}
+      </PortalDropdown>
     </div>
   );
 }
@@ -1445,37 +1418,282 @@ export function TruckingRecordDetails({
 
               {/* ── Conditional: Export vs Import trucking content ── */}
               {isExportBooking ? (
-                /* ── Export: Trucking Information Card ── */
+                <>
+                {/* ── Export Card 1: Trucking Information (Rate + Vendor + Driver + Contact + Plate + SOA) ── */}
                 <InfoCard title="Trucking Information">
+                  {isEditing ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <div>
+                          <EditLabel>Rate (₱)</EditLabel>
+                          <EditTextInput value={editForm.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <EditLabel>Trucking Company</EditLabel>
+                          <EditVendorDropdown value={editForm.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <div>
+                          <EditLabel>Driver</EditLabel>
+                          <EditTextInput value={(editForm as any).driverHelperName || ""} onChange={(v) => set("driverHelperName" as any, v)} placeholder="Enter driver name" />
+                        </div>
+                        <div>
+                          <EditLabel>Contact</EditLabel>
+                          <EditTextInput value={(editForm as any).contact || ""} onChange={(v) => set("contact" as any, v)} placeholder="Enter contact number" />
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <div>
+                          <EditLabel>Plate Number</EditLabel>
+                          <EditTextInput value={(editForm as any).plateNo || ""} onChange={(v) => set("plateNo" as any, v)} placeholder="Enter plate number" />
+                        </div>
+                        <div>
+                          <EditLabel>SOA Number</EditLabel>
+                          <EditTextInput value={editForm.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <ReadField label="Rate (₱)" value={r.truckingRate} />
+                        <div>
+                          <div style={LABEL_STYLE}>Trucking Company</div>
+                          <div style={{
+                            ...VALUE_BOX,
+                            background: (() => {
+                              const vi = TRUCKING_VENDORS.find((v) => v.name === r.truckingVendor);
+                              return vi ? hexToRgba(vi.hex, 0.10) : "#F9FAFB";
+                            })(),
+                          }}>{r.truckingVendor || "—"}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <ReadField label="Driver" value={(r as any).driverHelperName} />
+                        <ReadField label="Contact" value={(r as any).contact} />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <ReadField label="Plate Number" value={(r as any).plateNo} />
+                        <ReadField label="SOA Number" value={r.truckingSoa} />
+                      </div>
+                    </div>
+                  )}
+                </InfoCard>
+
+                {/* ── Export Card 2: Tabs Booking ── */}
+                <InfoCard title="Tabs Booking">
+                  {isEditing ? (
+                    <EditDateTimeRow
+                      dateValue={editForm.tabsBookingDate}
+                      timeValue={editForm.tabsBookingTime}
+                      onDateChange={(v) => set("tabsBookingDate", v)}
+                      onTimeChange={(v) => set("tabsBookingTime", v)}
+                      dateLabel="Date"
+                    />
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      <ReadField label="Date" value={formatISOToDisplay(r.tabsBookingDate)} />
+                      <ReadField label="Time" value={formatTimeAmPm(r.tabsBookingTime)} />
+                    </div>
+                  )}
+                </InfoCard>
+
+                {/* ── Export Card 3: Loading Schedule ── */}
+                <InfoCard title="Loading Schedule">
+                  {isEditing ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      {editForm.deliveryDrops.map((drop: any, di: number) => (
+                        <div
+                          key={di}
+                          style={{ border: "1px solid #E5E9F0", borderRadius: "8px", padding: "20px", backgroundColor: "#FFFFFF" }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em" }}>Load {di + 1}</span>
+                            {editForm.deliveryDrops.length > 1 && <RemoveBtn onClick={() => removeDrop(di)} />}
+                          </div>
+                          <div style={{ marginBottom: "16px" }}>
+                            <EditLabel>Loading Schedule Date</EditLabel>
+                            <NeuronDatePicker value={drop.deliveryScheduleDate} onChange={(v: string) => updateDrop(di, "deliveryScheduleDate", v)} />
+                          </div>
+                          <div style={{ marginBottom: "16px" }}>
+                            <EditLabel>Loading Time</EditLabel>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                              <div style={{ flex: 1 }}>
+                                <NeuronTimePicker value={drop.deliveryScheduleTime} onChange={(v: string) => updateDrop(di, "deliveryScheduleTime", v)} />
+                              </div>
+                              {drop.unloadingEnd ? (
+                                <>
+                                  <span style={{ fontSize: "14px", fontWeight: 500, color: "#667085" }}>to</span>
+                                  <div style={{ flex: 1 }}>
+                                    <NeuronTimePicker value={drop.unloadingEnd} onChange={(v: string) => updateDrop(di, "unloadingEnd", v)} />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateDrop(di, "unloadingEnd", "")}
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: "#EF4444", padding: "4px", display: "flex" }}
+                                  >
+                                    <X size={15} />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => updateDrop(di, "unloadingEnd", drop.deliveryScheduleTime || "00:00")}
+                                  style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "14px", fontWeight: 600, background: "none", border: "none", cursor: "pointer", color: "#0F766E", padding: 0 }}
+                                >
+                                  <Plus size={14} />
+                                  Add end time
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <EditLabel>Additional Note</EditLabel>
+                            <EditTextArea value={drop.additionalNote} onChange={(v) => updateDrop(di, "additionalNote", v)} placeholder="Enter any additional notes..." />
+                          </div>
+                        </div>
+                      ))}
+                      <AddLink onClick={addDrop}>Add Load</AddLink>
+                    </div>
+                  ) : (
+                    <>
+                      {r.deliveryDrops?.length > 0 ? r.deliveryDrops.map((drop: any, i: number) => (
+                        <div
+                          key={i}
+                          style={{ border: "1px solid #E5E9F0", borderRadius: "8px", padding: "20px", marginBottom: i < r.deliveryDrops.length - 1 ? "16px" : "0", backgroundColor: "#FFFFFF" }}
+                        >
+                          <p style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em", margin: "0 0 16px" }}>Load {i + 1}</p>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "16px" }}>
+                            <ReadField label="Loading Schedule Date" value={formatDateTime(drop.deliveryScheduleDate, "")} />
+                            <ReadField
+                              label="Loading Time"
+                              value={drop.deliveryScheduleTime
+                                ? drop.unloadingEnd
+                                  ? `${formatTimeAmPm(drop.deliveryScheduleTime)} – ${formatTimeAmPm(drop.unloadingEnd)}`
+                                  : formatTimeAmPm(drop.deliveryScheduleTime)
+                                : "—"}
+                            />
+                          </div>
+                          {drop.additionalNote && (
+                            <ReadField label="Additional Note" value={drop.additionalNote} />
+                          )}
+                        </div>
+                      )) : (
+                        <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No loading schedule</span>
+                      )}
+                    </>
+                  )}
+                </InfoCard>
+
+                {/* ── Export Card 4: Loading Address ── */}
+                <InfoCard title="Loading Address">
+                  {isEditing ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      {editForm.deliveryAddresses.map((addr: any, ai: number) => (
+                        <div
+                          key={ai}
+                          style={{ border: "1px solid #E5E9F0", borderRadius: "8px", padding: "20px", backgroundColor: "#FFFFFF" }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em" }}>Address {ai + 1}</span>
+                            {editForm.deliveryAddresses.length > 1 && <RemoveBtn onClick={() => removeAddress(ai)} />}
+                          </div>
+                          <div style={{ marginBottom: "16px" }}>
+                            <EditLabel>Full Address</EditLabel>
+                            <EditTextInput value={addr.address} onChange={(v) => updateAddress(ai, "address", v)} placeholder="Full address" />
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+                            <div>
+                              <EditLabel>Contact Person</EditLabel>
+                              <EditTextInput
+                                value={addr.contactPerson || ""}
+                                onChange={(v) => {
+                                  const updated = editForm.deliveryAddresses.map((a: any, i: number) => i === ai ? { ...a, contactPerson: v } : a);
+                                  set("deliveryAddresses", updated as any);
+                                }}
+                                placeholder="Full name"
+                              />
+                            </div>
+                            <div>
+                              <EditLabel>Contact</EditLabel>
+                              <EditTextInput
+                                value={addr.contact || ""}
+                                onChange={(v) => {
+                                  const updated = editForm.deliveryAddresses.map((a: any, i: number) => i === ai ? { ...a, contact: v } : a);
+                                  set("deliveryAddresses", updated as any);
+                                }}
+                                placeholder="Mobile number"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <EditLabel>Additional Note</EditLabel>
+                            <EditTextArea value={addr.additionalNote || ""} onChange={(v) => updateAddress(ai, "additionalNote", v)} placeholder="Enter any additional notes..." />
+                          </div>
+                        </div>
+                      ))}
+                      <AddLink onClick={addAddress}>Add Address</AddLink>
+                    </div>
+                  ) : (
+                    <>
+                      {r.deliveryAddresses?.length > 0 ? r.deliveryAddresses.map((addr: any, ai: number) => (
+                        <div
+                          key={ai}
+                          style={{ border: "1px solid #E5E9F0", borderRadius: "8px", padding: "20px", marginBottom: ai < r.deliveryAddresses.length - 1 ? "16px" : "0", backgroundColor: "#FFFFFF" }}
+                        >
+                          <p style={{ fontSize: "13px", fontWeight: 600, color: "#344054", letterSpacing: "0.02em", margin: "0 0 16px" }}>Address {ai + 1}</p>
+                          <div style={{ marginBottom: "16px" }}>
+                            <ReadField label="Full Address" value={addr.address} />
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "16px" }}>
+                            <ReadField label="Contact Person" value={addr.contactPerson} />
+                            <ReadField label="Contact" value={addr.contact} />
+                          </div>
+                          {addr.additionalNote && (
+                            <ReadField label="Additional Note" value={addr.additionalNote} />
+                          )}
+                        </div>
+                      )) : (
+                        <span style={{ fontSize: "14px", color: "#9CA3AF" }}>No loading addresses</span>
+                      )}
+                    </>
+                  )}
+                </InfoCard>
+
+                {/* ── Export Card 5: Port Arrival ── */}
+                <InfoCard title="Port Arrival">
+                  {isEditing ? (
+                    <EditDateTimeRow
+                      dateValue={warehouseArrivals[0]?.date || ""}
+                      timeValue={warehouseArrivals[0]?.time || ""}
+                      onDateChange={(v: string) => updateWarehouseArrival(0, "date", v)}
+                      onTimeChange={(v: string) => updateWarehouseArrival(0, "time", v)}
+                      dateLabel="Date"
+                    />
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                      {(() => {
+                        const arrivals = r.warehouseArrivals?.length ? r.warehouseArrivals : [{ date: r.warehouseArrivalDate, time: r.warehouseArrivalTime }];
+                        const wa = arrivals[0] || { date: "", time: "" };
+                        return (
+                          <>
+                            <ReadField label="Date" value={formatISOToDisplay(wa.date)} />
+                            <ReadField label="Time" value={formatTimeAmPm(wa.time)} />
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </InfoCard>
+
+                {/* ── Export Card 6: Additional Info ── */}
+                <InfoCard title="Additional Info">
                   {isEditing ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                       <div>
-                        <EditLabel>Date</EditLabel>
-                        <NeuronDatePicker value={editForm.truckingDate || ""} onChange={(v: string) => set("truckingDate", v)} />
-                      </div>
-                      <div>
-                        <EditLabel>Trucking</EditLabel>
-                        <EditVendorDropdown value={editForm.truckingVendor} onChange={(v) => set("truckingVendor", v)} />
-                      </div>
-                      <div>
-                        <EditLabel>Plate No.</EditLabel>
-                        <EditTextInput value={(editForm as any).plateNo || ""} onChange={(v) => set("plateNo" as any, v)} placeholder="Enter plate number" />
-                      </div>
-                      <div>
-                        <EditLabel>Contact</EditLabel>
-                        <EditTextInput value={(editForm as any).contact || ""} onChange={(v) => set("contact" as any, v)} placeholder="Enter contact number" />
-                      </div>
-                      <div>
-                        <EditLabel>Driver/Helper Name</EditLabel>
-                        <EditTextInput value={(editForm as any).driverHelperName || ""} onChange={(v) => set("driverHelperName" as any, v)} placeholder="Enter driver/helper name" />
-                      </div>
-                      <div>
-                        <EditLabel>Rate</EditLabel>
-                        <EditTextInput value={editForm.truckingRate} onChange={(v) => set("truckingRate", v)} placeholder="0.00" />
-                      </div>
-                      <div>
-                        <EditLabel>Stickers</EditLabel>
-                        <EditTextInput value={(editForm as any).stickers || ""} onChange={(v) => set("stickers" as any, v)} placeholder="Enter stickers" />
+                        <EditLabel>Sticker</EditLabel>
+                        <EditTextInput value={(editForm as any).stickers || ""} onChange={(v) => set("stickers" as any, v)} placeholder="Enter sticker details" />
                       </div>
                       <div>
                         <EditLabel>Weighing</EditLabel>
@@ -1486,49 +1704,20 @@ export function TruckingRecordDetails({
                         <EditTextInput value={(editForm as any).waitingFee || ""} onChange={(v) => set("waitingFee" as any, v)} placeholder="0.00" />
                       </div>
                       <div>
-                        <EditLabel>SOA Number</EditLabel>
-                        <EditTextInput value={editForm.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
-                      </div>
-                      <div>
-                        <EditLabel>Loading Date</EditLabel>
-                        <NeuronDatePicker value={(editForm as any).loadingDate || ""} onChange={(v: string) => set("loadingDate" as any, v)} />
-                      </div>
-                      <div>
-                        <EditLabel>Loading Address</EditLabel>
-                        <EditTextInput value={(editForm as any).truckingAddress || ""} onChange={(v) => set("truckingAddress" as any, v)} placeholder="Enter loading address" />
-                      </div>
-                      <div>
-                        <EditLabel>Inyard Status</EditLabel>
+                        <EditLabel>Done Inyard</EditLabel>
                         <NeuronDatePicker value={(editForm as any).inyardDate || ""} onChange={(v: string) => set("inyardDate" as any, v)} />
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-                      <ReadField label="Date" value={formatISOToDisplay(r.truckingDate || "")} />
-                      <div>
-                        <div style={LABEL_STYLE}>Trucking</div>
-                        <div style={{
-                          ...VALUE_BOX,
-                          background: (() => {
-                            const vi = TRUCKING_VENDORS.find((v) => v.name === r.truckingVendor);
-                            return vi ? hexToRgba(vi.hex, 0.10) : "#F9FAFB";
-                          })(),
-                        }}>{r.truckingVendor || "—"}</div>
-                      </div>
-                      <ReadField label="Plate No." value={(r as any).plateNo} />
-                      <ReadField label="Contact" value={(r as any).contact} />
-                      <ReadField label="Driver/Helper Name" value={(r as any).driverHelperName} />
-                      <ReadField label="Rate" value={r.truckingRate} />
-                      <ReadField label="Stickers" value={(r as any).stickers} />
+                      <ReadField label="Sticker" value={(r as any).stickers} />
                       <ReadField label="Weighing" value={(r as any).weighing} />
                       <ReadField label="Waiting Fee" value={(r as any).waitingFee} />
-                      <ReadField label="SOA Number" value={r.truckingSoa} />
-                      <ReadField label="Loading Date" value={formatISOToDisplay((r as any).loadingDate || "")} />
-                      <ReadField label="Loading Address" value={(r as any).truckingAddress} />
-                      <ReadField label="Inyard Status" value={(r as any).inyardDate ? `Done Inyard - ${formatISOToDisplay((r as any).inyardDate)}` : "—"} />
+                      <ReadField label="Done Inyard" value={(r as any).inyardDate ? formatISOToDisplay((r as any).inyardDate) : "—"} />
                     </div>
                   )}
                 </InfoCard>
+                </>
               ) : (
               <>
               {/* ── Date field ── */}
@@ -1776,16 +1965,10 @@ export function TruckingRecordDetails({
                               <EditLabel>Recipient Name</EditLabel>
                               <EditTextInput value={rec.name} onChange={(v) => updateRecipient(ai, ri, "name", v)} placeholder="Full name" />
                             </div>
-                            {rec.contacts?.map((contact: string, ci: number) => (
-                              <div key={ci} style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
-                                <div style={{ flex: 1 }}>
-                                  <EditLabel>Contact {ci + 1}</EditLabel>
-                                  <EditTextInput value={contact} onChange={(v) => updateContact(ai, ri, ci, v)} placeholder="Mobile number" />
-                                </div>
-                                {rec.contacts.length > 1 && <div style={{ paddingTop: "20px" }}><RemoveBtn onClick={() => removeContact(ai, ri, ci)} /></div>}
-                              </div>
-                            ))}
-                            <AddLink onClick={() => addContact(ai, ri)}>Add contact number</AddLink>
+                            <div>
+                              <EditLabel>Contact</EditLabel>
+                              <EditTextInput value={rec.contacts?.[0] ?? ""} onChange={(v) => updateContact(ai, ri, 0, v)} placeholder="Mobile number" />
+                            </div>
                           </div>
                         ))}
                         <AddLink onClick={() => addRecipient(ai)}>Add Recipient</AddLink>

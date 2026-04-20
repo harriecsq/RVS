@@ -6442,7 +6442,7 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async (c
     const docType = c.req.param("docType");
     const body = await c.req.json();
 
-    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration"];
+    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e"];
     if (!validTypes.includes(docType)) {
       return c.json({ success: false, error: `Invalid document type: ${docType}` }, 400);
     }
@@ -6454,6 +6454,7 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async (c
     const camelKey = docType === "sales-contract" ? "salesContract"
       : docType === "commercial-invoice" ? "commercialInvoice"
       : docType === "packing-list" ? "packingList"
+      : docType === "form-e" ? "formE"
       : "declaration";
 
     const now = new Date().toISOString();
@@ -6482,7 +6483,7 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async
     const id = decodeURIComponent(c.req.param("id"));
     const docType = c.req.param("docType");
 
-    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration"];
+    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e"];
     if (!validTypes.includes(docType)) {
       return c.json({ success: false, error: `Invalid document type: ${docType}` }, 400);
     }
@@ -6494,6 +6495,7 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async
     const camelKey = docType === "sales-contract" ? "salesContract"
       : docType === "commercial-invoice" ? "commercialInvoice"
       : docType === "packing-list" ? "packingList"
+      : docType === "form-e" ? "formE"
       : "declaration";
 
     delete docs[camelKey];

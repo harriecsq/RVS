@@ -6178,12 +6178,16 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
     const containerNos = typeof migrated.containerNo === "string"
       ? migrated.containerNo.split(",").map((s: string) => s.trim()).filter(Boolean)
       : Array.isArray(migrated.containerNo) ? migrated.containerNo : [];
+    const sealNos = typeof migrated.sealNo === "string"
+      ? migrated.sealNo.split(",").map((s: string) => s.trim()).filter(Boolean)
+      : [];
 
     const defaultSegment = {
       segmentId: `${id}-seg-1`,
       segmentLabel: "Main Voyage",
       legOrder: 1,
       containerNos,
+      sealNos,
       origin: migrated.origin || "",
       pod: migrated.pod || "",
       destination: migrated.destination || "",
@@ -6277,6 +6281,9 @@ function syncTopLevelFromSegment0(booking: any): any {
     bir: seg.bir,
     labor: seg.labor,
     otherCharges: seg.otherCharges,
+    containerNo: seg.containerNo,
+    sealNo: seg.sealNo,
+    containerNos: seg.containerNos,
   };
 }
 

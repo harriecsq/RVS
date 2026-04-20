@@ -7,8 +7,6 @@ import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildDeclarationDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { Declaration, DeclarationContainer, SalesContract } from "../../../types/export-documents";
-import { TemplatePickerView } from "./TemplatePickerView";
-import { useDocTemplates } from "../../../hooks/useDocTemplates";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -32,7 +30,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   );
 }
 
-function FieldView({ label, value }: { label: string; value: string }) {
+function FieldView({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
   const isEmpty = !value || value.trim() === "";
   return (
     <div>
@@ -41,33 +39,39 @@ function FieldView({ label, value }: { label: string; value: string }) {
         padding: "10px 14px", backgroundColor: isEmpty ? "white" : "#F9FAFB",
         border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0", borderRadius: "6px",
         fontSize: "14px", color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
-        minHeight: "42px", display: "flex", alignItems: "center",
+        minHeight: "42px", display: "flex", alignItems: "center", gap: "6px",
       }}>
         {isEmpty ? "—" : value}
+        {!isEmpty && suffix && <span style={{ color: "#667085", fontSize: "12px" }}>{suffix}</span>}
       </div>
     </div>
   );
 }
 
-function FieldInput({ label, value, onChange, readOnly, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; readOnly?: boolean; placeholder?: string;
+function FieldInput({ label, value, onChange, readOnly, placeholder, suffix }: {
+  label: string; value: string; onChange: (v: string) => void; readOnly?: boolean; placeholder?: string; suffix?: string;
 }) {
+  if (readOnly) return <FieldView label={label} value={value} suffix={suffix} />;
   return (
     <div>
       <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>{label}</label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        readOnly={readOnly}
-        placeholder={placeholder || "—"}
-        style={{
-          width: "100%", padding: "10px 14px",
-          border: `1px solid ${readOnly ? "#E5E9F0" : "#0F766E"}`, borderRadius: "6px",
-          fontSize: "14px", color: "var(--neuron-ink-primary)", background: readOnly ? "#F9FAFB" : "white",
-          outline: "none", boxSizing: "border-box",
-        }}
-      />
+      <div style={{ position: "relative" }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder || "—"}
+          style={{
+            width: "100%", padding: "10px 14px", paddingRight: suffix ? "48px" : "14px",
+            border: "1px solid #0F766E", borderRadius: "6px",
+            fontSize: "14px", color: "var(--neuron-ink-primary)", background: "white",
+            outline: "none", boxSizing: "border-box",
+          }}
+        />
+        {suffix && (
+          <span style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: "#667085", fontWeight: 500, pointerEvents: "none" }}>{suffix}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -89,9 +93,10 @@ interface DeclarationTabProps {
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
+  initialDraftData?: Partial<Declaration>;
 }
 
-export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: DeclarationTabProps) {
+export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: DeclarationTabProps) {
   const [doc, setDoc] = useState<Declaration | null>(null);
   const [sc, setSc] = useState<SalesContract | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -101,9 +106,6 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
   const [editData, setEditData] = useState<Partial<Declaration>>({});
   const editDataRef = useRef(editData);
   editDataRef.current = editData;
-  const { templates, fetchTemplateFields } = useDocTemplates("declaration", booking?.clientId);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
   const [refYear, setRefYear] = useState(String(new Date().getFullYear()));
@@ -157,23 +159,17 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
     return `${refCompanyCode} ${refYear}-${num}`;
   };
 
-  const handleCreateClick = () => {
-    setShowTemplatePicker(true);
-  };
+  const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
-    let merged = buildDeclarationDefaults(booking, sc || undefined);
+    const defaults = buildDeclarationDefaults(booking, sc || undefined);
+    let merged = { ...defaults };
+    if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "declaration"); }
+    merged.containers = defaults.containers;
     setEditData({ ...merged, refNo: buildRefNo() });
     setIsCreating(true);
     setIsEditing(true);
-  };
-
-  const handleTemplateSelect = async (templateId: string | null) => {
-    setShowTemplatePicker(false);
-    if (!templateId) { proceedWithCreate(null); return; }
-    const fields = await fetchTemplateFields(templateId);
-    proceedWithCreate(fields);
   };
 
   const handleEdit = () => {
@@ -229,9 +225,10 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
     onEditStateChange?.({
       isEditing, isSaving,
       refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
+      docData: (isEditing ? { ...editData, refNo: buildRefNo() } : doc) as any,
       handleEdit, handleCancel, handleSave,
     });
-  }, [isEditing, isSaving, doc?.refNo]);
+  }, [isEditing, isSaving, doc, editData]);
 
   const field = (key: keyof Declaration) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -258,9 +255,6 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
   }
 
   if (!doc && !isEditing) {
-    if (showTemplatePicker) {
-      return <TemplatePickerView onSelect={handleTemplateSelect} onCancel={() => setShowTemplatePicker(false)} templates={templates} docType="declaration" />;
-    }
     return (
       <div style={{ padding: "32px 48px" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
@@ -386,7 +380,12 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
             </button>
           )}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+          {isEditing ? (
+            <FieldInput label="Total Net Weight" value={field("totalNetWeight")} onChange={(v) => setField("totalNetWeight", v)} suffix="MT" />
+          ) : (
+            <FieldView label="Total Net Weight" value={field("totalNetWeight")} suffix="MT" />
+          )}
           {isEditing ? (
             <FieldInput label="Description (Commodity)" value={field("description")} onChange={(v) => setField("description", v)} />
           ) : (

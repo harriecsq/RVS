@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FileText, Plus, Edit3, Save, X } from "lucide-react";
+import { FileText, Plus, Edit3, Save, X, ArrowLeft, Search } from "lucide-react";
 import { NeuronDropdown } from "../../shared/NeuronDropdown";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
@@ -7,12 +7,13 @@ import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildSalesContractDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { SalesContract } from "../../../types/export-documents";
-import { TemplatePickerView } from "./TemplatePickerView";
-import { useDocTemplates } from "../../../hooks/useDocTemplates";
+import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
+import type { MasterTemplate } from "../../../types/master-template";
 
 // ── Constants ────────────────────────────────────────────────────────
 
 const COMPANY_CODE_OPTIONS = ["SCI", "RDS", "RVS", "SW"];
+const fmtNum = (v: string) => { const n = parseFloat(v.replace(/,/g, "")); return isNaN(n) ? v : n.toLocaleString("en-US"); };
 
 // ── NeuronDropdown (matches voucher/billing pattern) ─────────────────
 
@@ -88,6 +89,112 @@ function DateField({ label, value, onChange, readOnly }: { label: string; value:
   );
 }
 
+// ── Master template picker ───────────────────────────────────────────
+
+function MasterTemplatePicker({
+  templates,
+  onSelect,
+  onSkip,
+}: {
+  templates: MasterTemplate[];
+  onSelect: (t: MasterTemplate | null) => void;
+  onSkip: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = search.trim()
+    ? templates.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()) || (t.description || "").toLowerCase().includes(search.toLowerCase()))
+    : templates;
+
+  return (
+    <div style={{ padding: "32px 48px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+        <button
+          onClick={onSkip}
+          style={{ padding: "6px", border: "none", background: "transparent", cursor: "pointer", color: "#6B7A76" }}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 600, color: "#12332B" }}>Choose a Master Template</h3>
+      </div>
+      <p style={{ fontSize: "13px", color: "#6B7A76", margin: "0 0 24px 30px" }}>
+        Select a template to pre-fill all export documents, or start with a blank Sales Contract.
+      </p>
+
+      {/* Start Blank */}
+      <button
+        onClick={() => onSelect(null)}
+        style={{
+          display: "flex", alignItems: "center", gap: "14px", padding: "16px 20px",
+          border: "1px dashed #D1D5DB", borderRadius: "10px", background: "#FAFAFA",
+          cursor: "pointer", textAlign: "left", width: "100%", marginBottom: "16px",
+          transition: "border-color 0.15s, background 0.15s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#237F66"; e.currentTarget.style.background = "#F0FAF7"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#D1D5DB"; e.currentTarget.style.background = "#FAFAFA"; }}
+      >
+        <FileText size={20} style={{ color: "#D1D5DB", flexShrink: 0 }} />
+        <div style={{ fontSize: "14px", fontWeight: 500, color: "#6B7A76" }}>Start Blank</div>
+      </button>
+
+      {/* Search */}
+      {templates.length > 0 && (
+        <div style={{ position: "relative", marginBottom: "12px" }}>
+          <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF", pointerEvents: "none" }} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search templates..."
+            style={{
+              width: "100%", padding: "8px 10px 8px 30px", fontSize: "13px",
+              border: "1px solid #E5ECE9", borderRadius: "8px", outline: "none",
+              color: "#12332B", background: "#FFFFFF", boxSizing: "border-box",
+            }}
+          />
+        </div>
+      )}
+
+      {/* Template list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {templates.length === 0 && (
+          <div style={{ padding: "24px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>
+            No master templates yet. Create one in the Templates section.
+          </div>
+        )}
+        {filtered.length === 0 && templates.length > 0 && (
+          <div style={{ padding: "24px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>
+            No templates match your search.
+          </div>
+        )}
+        {filtered.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => onSelect(t)}
+            style={{
+              display: "flex", alignItems: "center", gap: "14px", padding: "16px 20px",
+              border: "1px solid #E5ECE9", borderRadius: "10px", background: "#FFFFFF",
+              cursor: "pointer", textAlign: "left", width: "100%",
+              transition: "border-color 0.15s, background 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#237F66"; e.currentTarget.style.background = "#F0FAF7"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E5ECE9"; e.currentTarget.style.background = "#FFFFFF"; }}
+          >
+            <FileText size={20} style={{ color: "#237F66", flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>{t.name}</div>
+              <div style={{ fontSize: "12px", color: "#6B7A76", marginTop: "2px", display: "flex", gap: "8px", alignItems: "center" }}>
+                {t.description && <span>{t.description}</span>}
+                <span style={{ color: "#9CA3AF" }}>· Updated {new Date(t.updatedAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</span>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Empty state ──────────────────────────────────────────────────────
 
 function EmptyDocumentState({ onCreateClick }: { onCreateClick: () => void }) {
@@ -114,6 +221,8 @@ export interface DocumentEditState {
   isEditing: boolean;
   isSaving: boolean;
   refNo: string;
+  docData?: SalesContract | null;
+  appliedMaster?: MasterTemplate | null;
   handleEdit: () => void;
   handleCancel: () => void;
   handleSave: () => void;
@@ -137,9 +246,10 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
   const editDataRef = useRef(editData);
   editDataRef.current = editData;
 
-  // Template state (prefetched on mount)
-  const { templates, fetchTemplateFields } = useDocTemplates("salesContract", booking?.clientId);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  // Master template state
+  const { templates: masterTemplates } = useMasterTemplates();
+  const [showMasterPicker, setShowMasterPicker] = useState(false);
+  const [appliedMaster, setAppliedMaster] = useState<MasterTemplate | null>(null);
 
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
@@ -196,7 +306,35 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
   };
 
   const handleCreateClick = () => {
-    setShowTemplatePicker(true);
+    if (masterTemplates.length > 0) {
+      setShowMasterPicker(true);
+    } else {
+      proceedWithCreate(null);
+    }
+  };
+
+  const handleMasterSelect = (master: MasterTemplate | null) => {
+    setShowMasterPicker(false);
+    setAppliedMaster(master);
+    if (master) {
+      const defaults = buildSalesContractDefaults(booking);
+      const merged: Partial<SalesContract> = {
+        ...defaults,
+        ...master.salesContract,
+        refNo: buildRefNo(),
+        date: new Date().toISOString().split("T")[0],
+        vesselVoyage: defaults.vesselVoyage || "",
+        shipmentDate: defaults.shipmentDate || "",
+        marksAndNos: defaults.marksAndNos || "",
+        portOfLoading: defaults.portOfLoading || master.salesContract.portOfLoading || "",
+        portOfDestination: defaults.portOfDestination || master.salesContract.portOfDestination || "",
+      };
+      setEditData(merged);
+      setIsCreating(true);
+      setIsEditing(true);
+    } else {
+      proceedWithCreate(null);
+    }
   };
 
   const proceedWithCreate = async (templateFields: Record<string, any> | null) => {
@@ -229,13 +367,6 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     setIsEditing(true);
   };
 
-  const handleTemplateSelect = async (templateId: string | null) => {
-    setShowTemplatePicker(false);
-    if (!templateId) { proceedWithCreate(null); return; }
-    const fields = await fetchTemplateFields(templateId);
-    proceedWithCreate(fields);
-  };
-
   const handleEdit = () => {
     if (!doc) return;
     setEditData({ ...doc });
@@ -254,6 +385,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     setIsEditing(false);
     setIsCreating(false);
     setEditData({});
+    setAppliedMaster(null);
   };
 
   const handleSave = useCallback(async () => {
@@ -272,6 +404,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
         setIsEditing(false);
         setIsCreating(false);
         setEditData({});
+        setAppliedMaster(null);
         toast.success(isCreating ? "Sales Contract created" : "Sales Contract updated");
         onDocumentUpdated?.();
       } else {
@@ -290,9 +423,11 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     onEditStateChange?.({
       isEditing, isSaving,
       refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
+      docData: doc,
+      appliedMaster,
       handleEdit, handleCancel, handleSave,
     });
-  }, [isEditing, isSaving, doc?.refNo]);
+  }, [isEditing, isSaving, doc?.refNo, appliedMaster]);
 
   const field = (key: keyof SalesContract) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -307,15 +442,8 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
   }
 
   if (!doc && !isEditing) {
-    if (showTemplatePicker) {
-      return (
-        <TemplatePickerView
-          onSelect={handleTemplateSelect}
-          onCancel={() => setShowTemplatePicker(false)}
-          templates={templates}
-          docType="salesContract"
-        />
-      );
+    if (showMasterPicker) {
+      return <MasterTemplatePicker templates={masterTemplates} onSelect={handleMasterSelect} onSkip={() => { setShowMasterPicker(false); proceedWithCreate(null); }} />;
     }
     return <EmptyDocumentState onCreateClick={handleCreateClick} />;
   }
@@ -424,31 +552,20 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
       {/* Goods */}
       <SectionCard title="Goods">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-          {(() => {
-            const containerNo = booking?.containerNo || "";
-            const containerCount = containerNo ? (Array.isArray(containerNo) ? containerNo : containerNo.split(',').map((s: string) => s.trim()).filter(Boolean)).length : 0;
-            const marksVal = field("marksAndNos");
-            const displayValue = marksVal ? `${containerCount}x${marksVal} CONTAINER` : "";
-            if (isEditing) {
-              return (
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Marks & Nos</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "14px", color: "var(--neuron-ink-primary)", whiteSpace: "nowrap" }}>{containerCount}x</span>
-                    <input
-                      type="text"
-                      value={marksVal}
-                      onChange={(e) => setField("marksAndNos", e.target.value)}
-                      placeholder="e.g. 40'HC"
-                      style={{ flex: 1, padding: "10px 14px", border: "1px solid #0F766E", borderRadius: "6px", fontSize: "14px", color: "var(--neuron-ink-primary)", background: "white", outline: "none", boxSizing: "border-box" }}
-                    />
-                    <span style={{ fontSize: "14px", color: "var(--neuron-ink-primary)", whiteSpace: "nowrap" }}>CONTAINER</span>
-                  </div>
-                </div>
-              );
-            }
-            return <FieldView label="Marks & Nos" value={displayValue} />;
-          })()}
+          {/* Marks & Nos — number input, fixed CONTAINER unit */}
+          <div>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Marks &amp; Nos</label>
+            {isEditing ? (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input value={field("marksAndNos")} onChange={(e) => setField("marksAndNos", e.target.value)} placeholder="e.g. 4" style={{ flex: 1, height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+                <span style={{ whiteSpace: "nowrap", fontSize: "13px", color: "#667085", padding: "0 10px", height: "42px", display: "flex", alignItems: "center", background: "#F3F4F6", borderRadius: "6px", border: "1px solid #E5E9F0" }}>CONTAINER</span>
+              </div>
+            ) : (
+              <div style={{ padding: "10px 14px", backgroundColor: field("marksAndNos") ? "#F9FAFB" : "white", border: field("marksAndNos") ? "1px solid #E5E9F0" : "2px dashed #E5E9F0", borderRadius: "6px", fontSize: "14px", color: field("marksAndNos") ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center", gap: "6px" }}>
+                {field("marksAndNos") ? <>{fmtNum(field("marksAndNos"))} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "—"}
+              </div>
+            )}
+          </div>
           {isEditing ? (
             <FieldInput label="Commodity Description" value={field("commodityDescription")} onChange={(v) => setField("commodityDescription", v)} />
           ) : (
@@ -463,7 +580,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
               setField("totalAmount", total ? total.toFixed(2) : "");
             }} suffix="MT" />
           ) : (
-            <FieldView label="Quantity" value={field("quantity")} suffix="MT" />
+            <FieldView label="Quantity" value={fmtNum(field("quantity"))} suffix="MT" />
           )}
           {isEditing ? (
             <FieldInput label="Unit Price" value={field("unitPrice")} onChange={(v) => {
@@ -472,12 +589,12 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
               setField("totalAmount", total ? total.toFixed(2) : "");
             }} suffix="USD" />
           ) : (
-            <FieldView label="Unit Price" value={field("unitPrice")} suffix="USD" />
+            <FieldView label="Unit Price" value={fmtNum(field("unitPrice"))} suffix="USD" />
           )}
           {isEditing ? (
             <FieldInput label="Total Amount" value={field("totalAmount")} onChange={(v) => setField("totalAmount", v)} suffix="USD" />
           ) : (
-            <FieldView label="Total Amount" value={field("totalAmount")} suffix="USD" />
+            <FieldView label="Total Amount" value={fmtNum(field("totalAmount"))} suffix="USD" />
           )}
         </div>
       </SectionCard>

@@ -6,7 +6,10 @@ import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
-import { StandardFilterDropdown } from "../design-system/StandardFilterDropdown";
+import { MultiSelectPortalDropdown } from '../shared/MultiSelectPortalDropdown';
+import { FilterSingleDropdown } from '../shared/FilterSingleDropdown';
+import { CompanyClientFilter } from '../shared/CompanyClientFilter';
+import { useClientsMasterList } from '../../hooks/useClientsMasterList';
 
 // --- Data Interfaces ---
 
@@ -87,6 +90,7 @@ interface FinalShipmentRow {
   referenceStatus: "PAID" | "UNPAID";
   date: string; // For filtering
   serviceType: string; // For filtering
+  port: string; // For filtering
   rawDepositDates: string[]; // ISO strings for filtering
   remarks: string;
 }
@@ -97,7 +101,9 @@ interface FilterState {
   dateStart: string;
   dateEnd: string;
   serviceType: string;
-  client: string;
+  port: string[];
+  client: string | null;
+  clientCompany: string | null;
   status: string;
   searchQuery: string;
 }
@@ -163,10 +169,13 @@ export function FinalShipmentCostReport() {
     dateStart: "",
     dateEnd: "",
     serviceType: "All",
-    client: "",
+    port: [],
+    client: null,
+    clientCompany: null,
     status: "All",
     searchQuery: ""
   });
+  const clientsMasterList = useClientsMasterList();
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<FinalShipmentRow[]>([]);
@@ -409,6 +418,13 @@ export function FinalShipmentCostReport() {
         // Remarks logic
         const remarks = booking.notes || ""; 
 
+        const serviceType = booking.mode || booking.shipmentType || "Import";
+        const isImport = serviceType.toLowerCase().includes("import");
+        const seg0 = (booking as any).segments?.[0];
+        const port = isImport
+          ? ((booking as any).pod || seg0?.pod || "")
+          : ((booking as any).origin || seg0?.origin || "");
+
         return {
             id: booking.id,
             shipmentNo: booking.bookingId || booking.id || "—",
@@ -427,7 +443,8 @@ export function FinalShipmentCostReport() {
             rawDepositDates,
             referenceStatus,
             date: booking.bookingDate || "",
-            serviceType: booking.mode || booking.shipmentType || "Import", // Default to Import if missing, or handle accordingly
+            serviceType,
+            port,
             status: booking.status || "Ongoing",
             remarks
         };
@@ -466,12 +483,18 @@ export function FinalShipmentCostReport() {
 
     // Service Type
     if (filters.serviceType !== "All") {
-        if (!item.serviceType.includes(filters.serviceType)) return false;
+        if (!item.serviceType.toLowerCase().includes(filters.serviceType.toLowerCase())) return false;
+    }
+
+    // Port (multi-select)
+    if (filters.port.length > 0) {
+        if (!filters.port.some(p => item.port.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
     // Client
-    if (filters.client) {
-        if (!item.clientName.toLowerCase().includes(filters.client.toLowerCase())) return false;
+    if (filters.clientCompany) {
+        if (item.clientName !== filters.clientCompany && item.clientName !== filters.client) return false;
+        if (filters.client && item.clientName !== filters.client) return false;
     }
 
     // Status (Payment Status)
@@ -670,8 +693,7 @@ export function FinalShipmentCostReport() {
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-             {/* Row 1 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "16px", marginBottom: "16px" }}>
             <div>
               <UnifiedDateRangeFilter
                 startDate={filters.dateStart}
@@ -682,46 +704,56 @@ export function FinalShipmentCostReport() {
               />
             </div>
 
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Service Type</label>
-              <StandardFilterDropdown
-                value={filters.serviceType}
-                onChange={(v) => setFilters({...filters, serviceType: v})}
-                options={[
-                  { value: "All", label: "All Types" },
-                  { value: "Import", label: "Import" },
-                  { value: "Export", label: "Export" },
-                  { value: "CDO Import", label: "CDO Import" },
-                  { value: "CDO Export", label: "CDO Export" },
-                ]}
-                style={{ width: "100%" }}
+            <FilterSingleDropdown
+              label="Service Type"
+              value={filters.serviceType}
+              options={[
+                { value: "All", label: "All Types" },
+                { value: "Import", label: "Import" },
+                { value: "Export", label: "Export" },
+              ]}
+              onChange={(v) => setFilters({...filters, serviceType: v, port: []})}
+            />
+
+            <MultiSelectPortalDropdown
+              label="Port"
+              value={filters.port}
+              options={[
+                { value: "Manila North", label: "Manila North" },
+                { value: "Manila South", label: "Manila South" },
+                { value: "CDO", label: "CDO" },
+                { value: "Iloilo", label: "Iloilo" },
+                { value: "Davao", label: "Davao" },
+              ]}
+              onChange={(selected) => setFilters({...filters, port: selected})}
+              placeholder="All Ports"
+            />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)" }}>Client</label>
+              <CompanyClientFilter
+                items={[]}
+                extraEntries={clientsMasterList}
+                getCompany={() => ""}
+                getClient={() => ""}
+                selectedCompany={filters.clientCompany}
+                selectedClient={filters.client}
+                onCompanyChange={(v) => setFilters({...filters, clientCompany: v, client: null})}
+                onClientChange={(v) => setFilters({...filters, client: v})}
+                placeholder="All Clients"
               />
             </div>
 
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Client</label>
-              <input 
-                  type="text"
-                  placeholder="Filter by client..."
-                  value={filters.client}
-                  onChange={(e) => setFilters({...filters, client: e.target.value})}
-                  style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", color: "var(--neuron-ink-primary)", backgroundColor: "var(--neuron-bg-page)", border: "1px solid var(--neuron-ui-border)", borderRadius: "8px", outline: "none" }} 
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Status</label>
-              <StandardFilterDropdown
-                value={filters.status}
-                onChange={(v) => setFilters({...filters, status: v})}
-                options={[
-                  { value: "All", label: "All Statuses" },
-                  { value: "Paid", label: "Paid" },
-                  { value: "Unpaid", label: "Unpaid" },
-                ]}
-                style={{ width: "100%" }}
-              />
-            </div>
+            <FilterSingleDropdown
+              label="Status"
+              value={filters.status}
+              options={[
+                { value: "All", label: "All Statuses" },
+                { value: "Paid", label: "Paid" },
+                { value: "Unpaid", label: "Unpaid" },
+              ]}
+              onChange={(v) => setFilters({...filters, status: v})}
+            />
           </div>
         </div>
 

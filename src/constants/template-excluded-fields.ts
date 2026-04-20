@@ -13,7 +13,7 @@ export const BOOKING_SPECIFIC_FIELDS: Record<TemplateDocType, string[]> = {
   ],
   commercialInvoice: [
     "invoiceNo", "date",
-    "totalNetWeight", "unitPrice", "totalInvoiceValue", "marksAndNos",
+    "marksAndNos", "description", "totalNetWeight", "unitPrice", "totalInvoiceValue",
     "createdAt", "updatedAt", "createdBy",
   ],
   packingList: [

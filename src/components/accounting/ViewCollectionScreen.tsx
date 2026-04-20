@@ -2,7 +2,8 @@ import { useState } from "react";
 import { ArrowLeft, Trash2, X, Check, FileText, Receipt, Plus, Paperclip } from "lucide-react";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
 import { TabRowActions } from "../shared/TabRowActions";
-import { StandardButton, StandardInput, StandardSelect, StandardTextarea, StandardTabs } from "../design-system";
+import { StandardButton, StandardInput, StandardTextarea, StandardTabs } from "../design-system";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { toast } from "sonner@2.0.3";
 import { formatAmount } from "../../utils/formatAmount";
 import { CollectionBillingsTab } from "./CollectionBillingsTab";
@@ -51,7 +52,7 @@ interface ViewCollectionScreenProps {
 }
 
 export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewCollectionScreenProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentCollection, setCurrentCollection] = useState(collection);
@@ -412,7 +413,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                     />
                   </div>
                   
-                  <StandardSelect
+                  <FilterSingleDropdown
                     label="Payment Method"
                     value={editedCollection.paymentMethod || ""}
                     options={[

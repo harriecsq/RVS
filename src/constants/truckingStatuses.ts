@@ -51,7 +51,8 @@ export const EXPORT_TRUCKING_STATUS_OPTIONS = [
   "In Transit to Port",
   "For Pre-Advise",
   "Awaiting for Pre-Advise Approval",
-  "In Yard",
+  "In-Yard",
+  "Done In-Yard",
 ] as const;
 
 export type ExportTruckingStatus = (typeof EXPORT_TRUCKING_STATUS_OPTIONS)[number];
@@ -69,7 +70,8 @@ export const EXPORT_TRUCKING_STATUS_COLORS: Record<string, string> = {
   "In Transit to Port": "#0F766E",
   "For Pre-Advise": "#9900FF",
   "Awaiting for Pre-Advise Approval": "#B45309",
-  "In Yard": "#16A34A",
+  "In-Yard": "#16A34A",
+  "Done In-Yard": "#059669",
 };
 
 export function isExportLinkedTrucking(linkedBookingType?: string): boolean {

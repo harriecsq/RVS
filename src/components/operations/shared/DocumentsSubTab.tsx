@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { FileText, Plus, CheckCircle, Settings } from "lucide-react";
+import { FileText, Plus, CheckCircle, Settings, Sparkles } from "lucide-react";
 import { TemplateManagementView } from "./TemplateManagementView";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
@@ -12,6 +12,14 @@ import { FormETab } from "./FormETab";
 import { FSITab } from "./FSITab";
 import { toast } from "../../ui/toast-utils";
 import type { DocumentEditState } from "./SalesContractTab";
+import type { MasterTemplate } from "../../../types/master-template";
+import { SalesContractDocTemplate } from "../../shared/document-preview/templates/SalesContractDocTemplate";
+import { CommercialInvoiceDocTemplate } from "../../shared/document-preview/templates/CommercialInvoiceDocTemplate";
+import { PackingListDocTemplate } from "../../shared/document-preview/templates/PackingListDocTemplate";
+import { DeclarationDocTemplate } from "../../shared/document-preview/templates/DeclarationDocTemplate";
+import { FormEDocTemplate } from "../../shared/document-preview/templates/FormEDocTemplate";
+import { FSIDocTemplate } from "../../shared/document-preview/templates/FSIDocTemplate";
+import type { DocumentSettings } from "../../../types/document-settings";
 
 // ── Document type registry ──────────────────────────────────────────
 
@@ -46,10 +54,23 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
   const [editState, setEditState] = useState<DocumentEditState | null>(null);
   const editStateRef = useRef<DocumentEditState | null>(null);
   const [fsiId, setFsiId] = useState<string | null>(null);
+  // In-memory draft pre-fill from a master template (never persisted)
+  const [draftDocs, setDraftDocs] = useState<Partial<Record<DocKey, any>>>({});
 
   const handleEditStateChange = useCallback((state: DocumentEditState) => {
     editStateRef.current = state;
     setEditState(state);
+    // When a master template is applied, populate in-memory drafts for the other 5 docs
+    if (state.appliedMaster) {
+      const m: MasterTemplate = state.appliedMaster;
+      setDraftDocs({
+        commercialInvoice: m.commercialInvoice,
+        packingList: m.packingList,
+        declaration: m.declaration,
+        formE: m.formE,
+        fsi: m.fsi,
+      });
+    }
   }, []);
 
   const fetchDocumentStatus = useCallback(async () => {
@@ -87,7 +108,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
 
   useEffect(() => { fetchDocumentStatus(); }, [fetchDocumentStatus]);
 
-  // Reset edit state when panel closes
+  // Reset edit state when panel closes (but keep draftDocs — master fill persists across panels)
   useEffect(() => {
     if (!activePanelKey) {
       setEditState(null);
@@ -146,6 +167,31 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
       : activeDoc.label
     : "";
 
+  // Build PDF preview renderer for the active document type
+  const buildPdfPreview = (docKey: DocKey) => (settings: DocumentSettings) => {
+    const bookingData = {
+      referenceNo: booking?.referenceNo || booking?.bookingNumber || bookingId,
+      date: booking?.bookingDate || "",
+      shipper: booking?.shipper || "",
+      consignee: booking?.consignee || "",
+      portOfLoading: booking?.portOfLoading || booking?.pol || "",
+      portOfDischarge: booking?.portOfDischarge || booking?.pod || "",
+      incoterm: booking?.incoterm || "",
+      commodity: booking?.commodity || "",
+    };
+    // Merge: booking fields < draft (master pre-fill) < editState (active form edits)
+    const draft = !docStatus[docKey] ? (draftDocs[docKey] || {}) : {};
+    const merged = { ...bookingData, ...draft, ...(editState?.docData || {}) };
+
+    if (docKey === "salesContract") return <SalesContractDocTemplate data={merged} settings={settings} />;
+    if (docKey === "commercialInvoice") return <CommercialInvoiceDocTemplate data={merged} settings={settings} />;
+    if (docKey === "packingList") return <PackingListDocTemplate data={merged} settings={settings} />;
+    if (docKey === "declaration") return <DeclarationDocTemplate data={merged} settings={settings} />;
+    if (docKey === "formE") return <FormEDocTemplate data={merged} settings={settings} />;
+    if (docKey === "fsi") return <FSIDocTemplate data={merged} settings={settings} />;
+    return null;
+  };
+
   // Show template management view
   if (showTemplateManager) {
     return <TemplateManagementView onBack={() => setShowTemplateManager(false)} currentUser={currentUser} />;
@@ -175,6 +221,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
           {DOCUMENT_TYPES.map((doc) => {
             const exists = docStatus[doc.key];
+            const hasDraft = !exists && doc.key !== "salesContract" && !!draftDocs[doc.key] && Object.keys(draftDocs[doc.key] || {}).length > 0;
             const isHovered = hoveredKey === doc.key;
             return (
               <button
@@ -206,6 +253,10 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
                   <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#237F66", fontWeight: 500 }}>
                     <CheckCircle size={14} /> Created
                   </span>
+                ) : hasDraft ? (
+                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#0369A1", fontWeight: 500 }}>
+                    <Sparkles size={14} /> Draft Ready
+                  </span>
                 ) : (
                   <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#6B7A76", fontWeight: 500 }}>
                     <Plus size={14} /> Create
@@ -218,7 +269,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
       )}
 
       {/* Side panel for the active document */}
-      {activeDoc && (
+      {activeDoc && activePanelKey && (
         <DocumentSidePanel
           isOpen={!!activePanelKey}
           onClose={() => setActivePanelKey(null)}
@@ -226,14 +277,35 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
           documentExists={activePanelKey ? docStatus[activePanelKey] : false}
           editState={editState}
           onDelete={handleDelete}
+          renderPdfPreview={buildPdfPreview(activePanelKey)}
+          overrideSettings={editState?.appliedMaster ? {
+            logoPng: editState.appliedMaster.letterhead,
+            stamps: editState.appliedMaster.stamps && Object.keys(editState.appliedMaster.stamps).length > 0
+              ? Object.fromEntries(Object.entries(editState.appliedMaster.stamps).map(([k, v]) => [k, { pngData: v }]))
+              : undefined,
+          } : undefined}
+          stampSlots={
+            activePanelKey === "salesContract" ? ["buyer", "seller", "supplier"] :
+            activePanelKey === "commercialInvoice" ? ["manager", "seller"] :
+            activePanelKey === "packingList" ? ["manager"] :
+            activePanelKey === "declaration" ? ["supplier"] :
+            activePanelKey === "formE" ? [] :
+            undefined
+          }
         >
-          <activeDoc.component
-            bookingId={bookingId}
-            booking={booking}
-            currentUser={currentUser}
-            onDocumentUpdated={handleDocumentUpdated}
-            onEditStateChange={handleEditStateChange}
-          />
+          {(() => {
+            const DocComponent = activeDoc.component as React.ComponentType<any>;
+            return (
+              <DocComponent
+                bookingId={bookingId}
+                booking={booking}
+                currentUser={currentUser}
+                onDocumentUpdated={handleDocumentUpdated}
+                onEditStateChange={handleEditStateChange}
+                initialDraftData={activePanelKey !== "salesContract" ? draftDocs[activePanelKey] : undefined}
+              />
+            );
+          })()}
         </DocumentSidePanel>
       )}
     </div>

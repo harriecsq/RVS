@@ -1,17 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Plus, Receipt } from "lucide-react";
 import { useLocation } from "react-router";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { publicAnonKey } from "../../utils/supabase/info";
+import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { formatAmount } from "../../utils/formatAmount";
 import { toast } from "sonner@2.0.3";
 import { CreateBillingSidePanel } from "./CreateBillingSidePanel";
 import { ViewBillingScreen } from "./ViewBillingScreen";
-import { StandardButton, StandardSearchInput, StandardFilterDropdown, StandardEmptyState, SkeletonTable, StandardTable } from "../design-system";
+import { StandardButton, StandardSearchInput, StandardEmptyState, SkeletonTable, StandardTable } from "../design-system";
 import type { ColumnDef } from "../design-system";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter } from "../shared/CompanyClientFilter";
 import { NeuronPageHeader } from "../NeuronPageHeader";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import { API_BASE_URL } from '@/utils/api-config';
 
 type BillingStatus = "Draft" | "Submitted" | "Approved" | "Paid" | "Completed" | "Cancelled";
@@ -39,20 +43,30 @@ interface Billing {
 
 export function BillingsScreen() {
   const location = useLocation();
-  const [billings, setBillings] = useState<Billing[]>([]);
+  const { data: billingsResult, isLoading: isLoadingBillings, refetch: refetchBillings } = useCachedFetch<{ success: boolean; data: any[] }>("/billings");
+  const { data: bookingsResult, isLoading: isLoadingBookings } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const isLoading = isLoadingBillings || isLoadingBookings;
+  const billings = useMemo<Billing[]>(() => {
+    if (!billingsResult?.success) return [];
+    const data = [...(billingsResult.data || [])];
+    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    return data;
+  }, [billingsResult]);
   const [filteredBillings, setFilteredBillings] = useState<Billing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
+  const [portFilter, setPortFilter] = useState<string[]>([]);
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string | null>(null);
   const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
+  const clientsMasterList = useClientsMasterList();
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchBillings();
     const state = location.state as { selectedBillingId?: string } | null;
     if (state?.selectedBillingId) {
       setSelectedBillingId(state.selectedBillingId);
@@ -61,30 +75,25 @@ export function BillingsScreen() {
   }, []);
 
   useEffect(() => {
-    filterBillings();
-  }, [searchQuery, statusFilter, dateFilterStart, dateFilterEnd, companyFilter, clientFilter, billings]);
+    if (!bookingsResult?.success) return;
+    const enrichMap = new Map<string, { serviceType: string; port: string }>();
+    (bookingsResult.data || []).forEach((b: any) => {
+      const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
+      const isImport = serviceType.toLowerCase().includes("import");
+      const seg0 = b.segments?.[0];
+      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      const enrich = { serviceType, port };
+      if (b.id) enrichMap.set(b.id, enrich);
+      if (b.bookingId) enrichMap.set(b.bookingId, enrich);
+    });
+    bookingEnrichMapRef.current = enrichMap;
+  }, [bookingsResult]);
 
-  const fetchBillings = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/billings`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await response.json();
-      if (result.success) {
-        const data = result.data || [];
-        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setBillings(data);
-      } else {
-        toast.error("Failed to load billings");
-      }
-    } catch (error) {
-      console.error("Error fetching billings:", error);
-      toast.error("Failed to load billings");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    filterBillings();
+  }, [searchQuery, statusFilter, serviceTypeFilter, portFilter, dateFilterStart, dateFilterEnd, companyFilter, clientFilter, billings]);
+
+  const fetchBillings = () => { invalidateCache("/billings"); refetchBillings(); };
 
   const filterBillings = () => {
     let filtered = billings;
@@ -98,6 +107,19 @@ export function BillingsScreen() {
     }
     if (statusFilter !== "all") {
       filtered = filtered.filter((b) => b.status === statusFilter);
+    }
+    if (serviceTypeFilter !== "all" || portFilter.length > 0) {
+      filtered = filtered.filter((b) => {
+        const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
+        const enrich = bId ? bookingEnrichMapRef.current.get(bId) : undefined;
+        if (serviceTypeFilter !== "all") {
+          if (!enrich?.serviceType.toLowerCase().includes(serviceTypeFilter.toLowerCase())) return false;
+        }
+        if (portFilter.length > 0) {
+          if (!portFilter.some(p => (enrich?.port || "").toLowerCase().includes(p.toLowerCase()))) return false;
+        }
+        return true;
+      });
     }
     if (dateFilterStart || dateFilterEnd) {
       filtered = filtered.filter((b) => {
@@ -203,7 +225,7 @@ export function BillingsScreen() {
                 compact
               />
             </div>
-            <StandardFilterDropdown
+            <FilterSingleDropdown
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
@@ -216,10 +238,30 @@ export function BillingsScreen() {
                 { value: "Cancelled", label: "Cancelled" },
               ]}
             />
+            <FilterSingleDropdown
+              value={serviceTypeFilter}
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "Import", label: "Import" },
+                { value: "Export", label: "Export" },
+              ]}
+              onChange={setServiceTypeFilter}
+              placeholder="All Types"
+            />
+            <MultiSelectPortalDropdown
+              value={portFilter}
+              options={[
+                { value: "Manila North", label: "Manila North" },
+                { value: "Manila South", label: "Manila South" },
+                { value: "CDO", label: "CDO" },
+                { value: "Iloilo", label: "Iloilo" },
+                { value: "Davao", label: "Davao" },
+              ]}
+              onChange={setPortFilter}
+              placeholder="All Ports"
+            />
             <CompanyClientFilter
-              items={billings}
-              getCompany={(b) => b.companyName || b.clientName || ""}
-              getClient={(b) => b.clientName || ""}
+              extraEntries={clientsMasterList}
               selectedCompany={companyFilter}
               selectedClient={clientFilter}
               onCompanyChange={setCompanyFilter}

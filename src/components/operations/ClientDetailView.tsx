@@ -8,7 +8,7 @@ import {
 } from "../ui/dropdown-menu";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { StandardInput } from "../design-system/StandardInput";
-import { StandardSelect } from "../design-system/StandardSelect";
+import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { StandardButton } from "../design-system/StandardButton";
 import { StandardEmptyState } from "../design-system/StandardEmptyState";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -281,7 +281,7 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
                 onChange={(v) => setEditData((p) => ({ ...p, email: v }))}
                 type="email"
               />
-              <StandardSelect
+              <FilterSingleDropdown
                 label="Status"
                 value={editData.status}
                 onChange={(v) => setEditData((p) => ({ ...p, status: v }))}
@@ -757,7 +757,7 @@ function ClientSidePanel({
                   type="tel"
                   placeholder="+63 9..."
                 />
-                <StandardSelect
+                <FilterSingleDropdown
                   label="Status"
                   value={form.status}
                   onChange={(v) => setForm((p) => ({ ...p, status: v }))}

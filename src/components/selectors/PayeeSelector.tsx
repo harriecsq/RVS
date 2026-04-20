@@ -1,6 +1,6 @@
 import { toast } from 'sonner@2.0.3';
 import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronsUpDown, Search, Plus } from 'lucide-react';
+import { Check, ChevronDown, Search, Plus } from 'lucide-react';
 import { PortalDropdown } from '../shared/PortalDropdown';
 import { projectId, publicAnonKey } from '../../utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
@@ -127,41 +127,23 @@ export function PayeeSelector({
     }
   };
 
-  const triggerStyles: React.CSSProperties = useInlineStyles
-    ? {
-        width: '100%',
-        height: '42px',
-        padding: '0 14px',
-        borderRadius: '6px',
-        border: '1px solid #E5E9F0',
-        background: disabled ? '#F9FAFB' : '#FFFFFF',
-        color: value ? '#0A1D4D' : '#667085',
-        fontWeight: value ? 500 : 400,
-        fontSize: '14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        outline: 'none',
-        transition: 'border-color 0.15s ease',
-      }
-    : {
-        width: '100%',
-        height: '40px',
-        padding: '0 12px',
-        borderRadius: '12px',
-        border: '1px solid #E5E9F0',
-        background: disabled ? '#F9FAFB' : '#FFFFFF',
-        color: value ? '#0A1D4D' : '#667085',
-        fontWeight: value ? 500 : 400,
-        fontSize: '14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        outline: 'none',
-        transition: 'border-color 0.15s ease',
-      };
+  const triggerStyles: React.CSSProperties = {
+    width: '100%',
+    height: '40px',
+    padding: '0 12px',
+    borderRadius: '8px',
+    border: '1px solid #E5E9F0',
+    background: disabled ? '#F9FAFB' : '#FFFFFF',
+    color: value ? '#12332B' : '#9CA3AF',
+    fontSize: '14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    outline: 'none',
+    gap: '8px',
+    opacity: disabled ? 0.7 : 1,
+  };
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
@@ -172,13 +154,11 @@ export function PayeeSelector({
         onClick={() => { if (!disabled) { setOpen(!open); setSearchQuery(''); } }}
         style={triggerStyles}
         className={className}
-        onMouseEnter={(e) => { if (!disabled) (e.currentTarget as HTMLButtonElement).style.borderColor = '#0F766E'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#E5E9F0'; }}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left' }}>
           {loading ? 'Loading...' : value || placeholder}
         </span>
-        <ChevronsUpDown size={16} style={{ flexShrink: 0, opacity: 0.5, marginLeft: '8px' }} />
+        <ChevronDown size={16} style={{ flexShrink: 0, color: '#9CA3AF', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }} />
       </button>
 
       <PortalDropdown
@@ -202,58 +182,54 @@ export function PayeeSelector({
           />
         </div>
 
-        <div style={{ maxHeight: '260px', overflowY: 'auto', padding: '4px' }}>
+        <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
           {canAddNew && (
             <div
               onClick={handleAddPayee}
               style={{
                 padding: '10px 12px', cursor: isAdding ? 'wait' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: '10px',
-                borderRadius: '8px', transition: 'background-color 0.15s ease',
-                background: 'transparent',
-                borderBottom: filteredPayees.length > 0 ? '1px solid #E5E9F0' : 'none',
-                marginBottom: filteredPayees.length > 0 ? '4px' : '0',
+                fontSize: '14px', color: '#237F66',
+                borderBottom: '1px solid #E5E9F0',
+                userSelect: 'none',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#F0FDF4'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8F2EE'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
-              <Plus size={16} style={{ flexShrink: 0, color: '#0F766E' }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, color: '#0F766E', fontSize: '14px' }}>
-                  {isAdding ? 'Adding...' : `Add "${searchQuery.trim()}"`}
-                </div>
-                <div style={{ fontSize: '12px', color: '#667085' }}>Save as new payee</div>
-              </div>
+              <Plus size={14} style={{ flexShrink: 0 }} />
+              <span>{isAdding ? 'Adding...' : `Add "${searchQuery.trim()}"`}</span>
             </div>
           )}
 
           {filteredPayees.length === 0 && !canAddNew ? (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#667085', fontSize: '14px' }}>
+            <div style={{ padding: '12px 14px', fontSize: '13px', color: '#9CA3AF', textAlign: 'center' }}>
               {loading ? 'Loading payees...' : 'No payees found. Type to add a new one.'}
             </div>
           ) : (
-            filteredPayees.map((payee) => {
+            filteredPayees.map((payee, idx) => {
               const isSelected = value === payee.name;
+              const isLast = idx === filteredPayees.length - 1;
               return (
                 <div
                   key={payee.id}
                   onClick={() => { onSelect(isSelected ? '' : payee.name); setOpen(false); setSearchQuery(''); }}
                   style={{
-                    padding: '10px 12px', cursor: 'pointer',
+                    padding: '10px 12px', cursor: 'pointer', fontSize: '14px', color: '#12332B',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    borderRadius: '8px', transition: 'background-color 0.15s ease',
-                    background: isSelected ? '#E8F5F3' : 'transparent',
+                    backgroundColor: isSelected ? '#E8F2EE' : 'transparent',
+                    borderBottom: isLast ? 'none' : '1px solid #E5E9F0',
+                    userSelect: 'none',
                   }}
-                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#F3F4F6'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? '#E8F5F3' : 'transparent'; }}
+                  onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#F3F4F6'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? '#E8F2EE' : 'transparent'; }}
                 >
-                  <Check size={16} style={{ flexShrink: 0, color: '#0F766E', opacity: isSelected ? 1 : 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: '#0A1D4D', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {payee.name}
                     </div>
-                    {payee.type && <div style={{ fontSize: '12px', color: '#667085' }}>{payee.type}</div>}
+                    {payee.type && <div style={{ fontSize: '12px', color: '#6B7A76' }}>{payee.type}</div>}
                   </div>
+                  {isSelected && <Check size={14} style={{ flexShrink: 0, color: '#237F66' }} />}
                 </div>
               );
             })
