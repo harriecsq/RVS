@@ -8,7 +8,7 @@ import { formatAmount } from "../../utils/formatAmount";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
@@ -25,7 +25,7 @@ interface ExpensesScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
 }
 
-type ExpenseStatus = "Draft" | "For Approval" | "Approved" | "Paid" | "Partially Paid" | "Rejected";
+type ExpenseStatus = "Draft" | "For Approval" | "Approved" | "Paid" | "Partially Paid" | "Cancelled";
 
 interface Expense {
   id: string;
@@ -52,22 +52,21 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const expenses = useMemo<Expense[]>(() => {
     if (!expensesResult?.success) return [];
     const data = [...(expensesResult.data || [])];
-    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    data.sort((a: any, b: any) => String(b.expenseNumber || "").localeCompare(String(a.expenseNumber || ""), undefined, { numeric: true }));
     return data;
   }, [expensesResult]);
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [showViewScreen, setShowViewScreen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
   const clientsMasterList = useClientsMasterList();
 
@@ -136,7 +135,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const uniqueCategories = Array.from(new Set(expenses.map(e => e.category).filter(Boolean)));
   const uniquePaymentMethods = Array.from(new Set(expenses.map(e => e.paymentMethod).filter(Boolean)));
 
-  const filteredExpenses = expenses.filter(expense => {
+  const filteredExpensesRaw = expenses.filter(expense => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       (expense.expenseNumber || "").toLowerCase().includes(term) ||
@@ -153,7 +152,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       if (dateFilterEnd && expenseISO > dateFilterEnd) return false;
     }
 
-    if (statusFilter !== "all" && expense.status !== statusFilter) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(expense.status)) return false;
     if (categoryFilter !== "all" && expense.category !== categoryFilter) return false;
     if (paymentMethodFilter !== "all" && expense.paymentMethod !== paymentMethodFilter) return false;
 
@@ -168,14 +167,21 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       }
     }
 
-    if (companyFilter) {
+    if (clientSelections.length > 0) {
       const expenseCompany = expense.companyName || expense.clientName || "";
-      if (expenseCompany !== companyFilter) return false;
-      if (clientFilter && (expense.clientName || "") !== clientFilter) return false;
+      if (!clientSelectionMatches(clientSelections, { company: expenseCompany, client: expense.clientName || "" })) return false;
     }
 
     return true;
   });
+
+  const filteredExpenses = statusFilter.length > 0
+    ? [...filteredExpensesRaw].sort((a, b) => {
+        const ai = statusFilter.indexOf(a.status);
+        const bi = statusFilter.indexOf(b.status);
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+      })
+    : filteredExpensesRaw;
 
   const columns: ColumnDef<Expense>[] = [
     {
@@ -276,18 +282,18 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             />
           </div>
 
-          <FilterSingleDropdown
+          <MultiSelectPortalDropdown
             value={statusFilter}
-            onChange={(v) => setStatusFilter(v as ExpenseStatus | "all")}
+            onChange={setStatusFilter}
             options={[
-              { value: "all", label: "All Statuses" },
               { value: "Draft", label: "Draft" },
               { value: "For Approval", label: "For Approval" },
               { value: "Approved", label: "Approved" },
               { value: "Paid", label: "Paid" },
               { value: "Partially Paid", label: "Partially Paid" },
-              { value: "Rejected", label: "Rejected" },
+              { value: "Cancelled", label: "Cancelled" },
             ]}
+            placeholder="All Statuses"
           />
 
           <FilterSingleDropdown
@@ -332,10 +338,8 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
           />
           <CompanyClientFilter
             extraEntries={clientsMasterList}
-            selectedCompany={companyFilter}
-            selectedClient={clientFilter}
-            onCompanyChange={setCompanyFilter}
-            onClientChange={setClientFilter}
+            selected={clientSelections}
+            onChange={setClientSelections}
             placeholder="All Companies"
           />
         </div>
@@ -348,8 +352,8 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
           rowKey={(e) => e.id}
           isLoading={isLoading}
           onRowClick={(e) => { setSelectedExpense(e); setShowViewScreen(true); }}
-          emptyTitle={searchTerm || statusFilter !== "all" ? "No expenses match your filters" : "No expenses yet"}
-          emptyDescription={searchTerm || statusFilter !== "all" ? undefined : "Record your first expense to get started"}
+          emptyTitle={searchTerm || statusFilter.length > 0 ? "No expenses match your filters" : "No expenses yet"}
+          emptyDescription={searchTerm || statusFilter.length > 0 ? undefined : "Record your first expense to get started"}
           emptyIcon={<CreditCard size={24} />}
         />
       </div>

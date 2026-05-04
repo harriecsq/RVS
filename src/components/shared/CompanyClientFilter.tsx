@@ -2,21 +2,34 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, ChevronRight, Search, Building2, User, X, Check } from "lucide-react";
 
+export type ClientSelection = { company: string; client: string | null };
+
 interface CompanyClientFilterProps {
   extraEntries?: Array<{ company: string; client: string }>;
-  selectedCompany: string | null;
-  selectedClient: string | null;
-  onCompanyChange: (company: string | null) => void;
-  onClientChange: (client: string | null) => void;
+  selected: ClientSelection[];
+  onChange: (selected: ClientSelection[]) => void;
   placeholder?: string;
+}
+
+export function clientSelectionMatches(
+  selected: ClientSelection[],
+  candidate: { company?: string | null; client?: string | null }
+): boolean {
+  if (selected.length === 0) return true;
+  const company = (candidate.company ?? "").trim();
+  const client = (candidate.client ?? "").trim();
+  return selected.some((s) => {
+    if (s.client === null) {
+      return company === s.company || (!!client && client === s.company);
+    }
+    return client === s.client || company === s.client;
+  });
 }
 
 export function CompanyClientFilter({
   extraEntries,
-  selectedCompany,
-  selectedClient,
-  onCompanyChange,
-  onClientChange,
+  selected,
+  onChange,
   placeholder = "All Companies",
 }: CompanyClientFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,7 +41,7 @@ export function CompanyClientFilter({
 
   const hierarchy = useMemo(() => {
     const map = new Map<string, Set<string>>();
-    for (const { company, client } of (extraEntries ?? [])) {
+    for (const { company, client } of extraEntries ?? []) {
       if (!company) continue;
       if (!map.has(company)) map.set(company, new Set());
       if (client && client !== company) map.get(company)!.add(client);
@@ -81,12 +94,21 @@ export function CompanyClientFilter({
       ) {
         setIsOpen(false);
         setSearch("");
-        setExpandedCompanies(new Set());
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen]);
+
+  // Auto-expand companies that have selected sub-clients when dropdown opens
+  useEffect(() => {
+    if (!isOpen) return;
+    const next = new Set<string>();
+    for (const s of selected) {
+      if (s.client !== null) next.add(s.company);
+    }
+    if (next.size > 0) setExpandedCompanies((prev) => new Set([...prev, ...next]));
+  }, [isOpen, selected]);
 
   const toggleExpand = (company: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -98,27 +120,46 @@ export function CompanyClientFilter({
     });
   };
 
-  const close = () => { setIsOpen(false); setSearch(""); setExpandedCompanies(new Set()); };
-  const selectCompany = (company: string) => { onCompanyChange(company); onClientChange(null); close(); };
-  const selectClient = (company: string, client: string) => { onCompanyChange(company); onClientChange(client); close(); };
-  const clearAll = () => { onCompanyChange(null); onClientChange(null); close(); };
+  const isCompanySelected = (company: string) =>
+    selected.some((s) => s.company === company && s.client === null);
+  const isClientSelected = (company: string, client: string) =>
+    selected.some((s) => s.company === company && s.client === client);
 
-  const displayLabel = selectedCompany
-    ? selectedClient ? `${selectedCompany} › ${selectedClient}` : selectedCompany
-    : placeholder;
-  const hasSelection = selectedCompany !== null;
+  const toggleCompany = (company: string) => {
+    const already = isCompanySelected(company);
+    if (already) {
+      onChange(selected.filter((s) => !(s.company === company && s.client === null)));
+    } else {
+      // Replace any sub-client selections of this company with a company-level selection
+      onChange([...selected.filter((s) => s.company !== company), { company, client: null }]);
+    }
+  };
 
-  // Flatten visible entries to determine which ones get a bottom border
-  const flatEntries: Array<{ type: "all" | "company" | "client"; company?: string; client?: string }> = [
-    { type: "all" },
-    ...Array.from(filteredHierarchy.entries()).flatMap(([company, clients]) => {
-      const isExpanded = expandedCompanies.has(company);
-      return [
-        { type: "company" as const, company },
-        ...(isExpanded ? clients.map((client) => ({ type: "client" as const, company, client })) : []),
-      ];
-    }),
-  ];
+  const toggleClient = (company: string, client: string) => {
+    const already = isClientSelected(company, client);
+    if (already) {
+      onChange(selected.filter((s) => !(s.company === company && s.client === client)));
+    } else {
+      // Drop any company-level selection for this company; add the client
+      onChange([
+        ...selected.filter((s) => !(s.company === company && s.client === null)),
+        { company, client },
+      ]);
+    }
+  };
+
+  const clearAll = () => onChange([]);
+
+  const selectionCount = selected.length;
+  const displayLabel =
+    selectionCount === 0
+      ? placeholder
+      : selectionCount === 1
+      ? selected[0].client
+        ? `${selected[0].company} › ${selected[0].client}`
+        : selected[0].company
+      : `${selectionCount} selected`;
+  const hasSelection = selectionCount > 0;
 
   return (
     <>
@@ -170,7 +211,7 @@ export function CompanyClientFilter({
               top: dropdownPos.top,
               left: dropdownPos.left,
               width: dropdownPos.width,
-              maxHeight: 320,
+              maxHeight: 360,
               backgroundColor: "#FFFFFF",
               border: "1px solid #E5E9F0",
               borderRadius: "8px",
@@ -206,6 +247,38 @@ export function CompanyClientFilter({
               </div>
             </div>
 
+            {/* Selection summary / clear */}
+            {hasSelection && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "6px 12px",
+                  borderBottom: "1px solid #E5E9F0",
+                  fontSize: "12px",
+                  color: "#6B7A76",
+                  backgroundColor: "#F9FAFB",
+                  flexShrink: 0,
+                }}
+              >
+                <span>{selectionCount} selected</span>
+                <button
+                  onClick={clearAll}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#237F66",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    padding: 0,
+                  }}
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
             {/* Options list */}
             <div style={{ flex: 1, overflowY: "auto" }}>
               {filteredHierarchy.size === 0 ? (
@@ -213,63 +286,29 @@ export function CompanyClientFilter({
                   No companies found
                 </div>
               ) : (
-                flatEntries.map((entry, idx) => {
-                  const isLast = idx === flatEntries.length - 1;
-                  const borderBottom = isLast ? "none" : "1px solid #E5E9F0";
+                Array.from(filteredHierarchy.entries()).map(([company, clients], companyIdx, arr) => {
+                  const isExpanded = expandedCompanies.has(company);
+                  const companyChecked = isCompanySelected(company);
+                  const hasClients = clients.length > 0;
+                  const isLastCompany = companyIdx === arr.length - 1;
 
-                  if (entry.type === "all") {
-                    const selected = !selectedCompany;
-                    return (
+                  return (
+                    <div key={`co:${company}`}>
+                      {/* Company row */}
                       <div
-                        key="__all__"
-                        onClick={clearAll}
-                        style={{
-                          padding: "10px 12px",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          color: "#12332B",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          backgroundColor: selected ? "#E8F2EE" : "transparent",
-                          borderBottom,
-                          userSelect: "none",
-                        }}
-                        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : "transparent"; }}
-                      >
-                        {placeholder}
-                        {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
-                      </div>
-                    );
-                  }
-
-                  if (entry.type === "company") {
-                    const company = entry.company!;
-                    const clients = filteredHierarchy.get(company) ?? [];
-                    const hasClients = clients.length > 0;
-                    const isExpanded = expandedCompanies.has(company);
-                    const selected = selectedCompany === company && selectedClient === null;
-                    const isParentOfSelected = selectedCompany === company;
-                    return (
-                      <div
-                        key={`co:${company}`}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           fontSize: "14px",
                           color: "#12332B",
-                          backgroundColor: selected ? "#E8F2EE" : isParentOfSelected ? "#F3F8F6" : "transparent",
-                          borderBottom,
+                          backgroundColor: companyChecked ? "#E8F2EE" : "transparent",
+                          borderBottom: !isExpanded && isLastCompany ? "none" : "1px solid #E5E9F0",
                           userSelect: "none",
                           cursor: "pointer",
                         }}
-                        onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : isParentOfSelected ? "#F3F8F6" : "transparent";
-                        }}
+                        onMouseEnter={(e) => { if (!companyChecked) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = companyChecked ? "#E8F2EE" : "transparent"; }}
                       >
-                        {/* Expand chevron */}
                         <button
                           onClick={(e) => hasClients && toggleExpand(company, e)}
                           style={{
@@ -282,56 +321,52 @@ export function CompanyClientFilter({
                           {hasClients && (isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />)}
                         </button>
 
-                        {/* Company name */}
                         <div
-                          onClick={() => selectCompany(company)}
-                          style={{ flex: 1, display: "flex", alignItems: "center", gap: "6px", padding: "10px 12px 10px 0", overflow: "hidden" }}
+                          onClick={() => toggleCompany(company)}
+                          style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", padding: "10px 12px 10px 0", overflow: "hidden" }}
                         >
+                          <Checkbox checked={companyChecked} />
                           <Building2 size={13} style={{ flexShrink: 0, color: "#9CA3AF" }} />
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: selected ? 500 : 400 }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: companyChecked ? 500 : 400 }}>
                             {company}
                           </span>
                           {hasClients && (
                             <span style={{ fontSize: "11px", color: "#9CA3AF", flexShrink: 0 }}>({clients.length})</span>
                           )}
                         </div>
-
-                        {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0, marginRight: 12 }} />}
                       </div>
-                    );
-                  }
 
-                  // type === "client"
-                  const company = entry.company!;
-                  const client = entry.client!;
-                  const selected = selectedCompany === company && selectedClient === client;
-                  return (
-                    <div
-                      key={`cl:${company}__${client}`}
-                      onClick={() => selectClient(company, client)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "6px",
-                        padding: "10px 12px 10px 44px",
-                        fontSize: "13px",
-                        color: "#12332B",
-                        backgroundColor: selected ? "#E8F2EE" : "transparent",
-                        borderBottom,
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = selected ? "#E8F2EE" : "transparent"; }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
-                        <User size={12} style={{ flexShrink: 0, color: "#9CA3AF" }} />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: selected ? 500 : 400 }}>
-                          {client}
-                        </span>
-                      </span>
-                      {selected && <Check size={14} style={{ color: "#237F66", flexShrink: 0 }} />}
+                      {/* Sub-client rows */}
+                      {isExpanded && clients.map((client, clientIdx) => {
+                        const checked = isClientSelected(company, client);
+                        const isLastClient = clientIdx === clients.length - 1;
+                        return (
+                          <div
+                            key={`cl:${company}__${client}`}
+                            onClick={() => toggleClient(company, client)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "10px 12px 10px 44px",
+                              fontSize: "13px",
+                              color: "#12332B",
+                              backgroundColor: checked ? "#E8F2EE" : "transparent",
+                              borderBottom: isLastClient && isLastCompany ? "none" : "1px solid #E5E9F0",
+                              cursor: "pointer",
+                              userSelect: "none",
+                            }}
+                            onMouseEnter={(e) => { if (!checked) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = checked ? "#E8F2EE" : "transparent"; }}
+                          >
+                            <Checkbox checked={checked} />
+                            <User size={12} style={{ flexShrink: 0, color: "#9CA3AF" }} />
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: checked ? 500 : 400 }}>
+                              {client}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })
@@ -341,5 +376,26 @@ export function CompanyClientFilter({
           document.body
         )}
     </>
+  );
+}
+
+function Checkbox({ checked }: { checked: boolean }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 16,
+        height: 16,
+        borderRadius: 4,
+        border: `1px solid ${checked ? "#237F66" : "#D1D5DB"}`,
+        backgroundColor: checked ? "#237F66" : "#FFFFFF",
+        flexShrink: 0,
+        transition: "background-color 0.1s ease, border-color 0.1s ease",
+      }}
+    >
+      {checked && <Check size={11} strokeWidth={3} style={{ color: "#FFFFFF" }} />}
+    </span>
   );
 }

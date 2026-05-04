@@ -559,6 +559,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                     value={formData.bookingId}
                     onSelect={handleBookingSelect}
                     placeholder="Search by Booking Ref, BL No, or Client..."
+                    excludeLinked="expense"
                   />
                 </div>
 

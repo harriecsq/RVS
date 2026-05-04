@@ -96,7 +96,7 @@ export function CompanyContactSelector({
       {/* Company Selector */}
       <div className="flex-1">
         {showLabels && (
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--neuron-ink-primary)" }}>
+          <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-primary)" }}>
             {companyLabel} <span style={{ color: "#EF4444" }}>*</span>
           </label>
         )}
@@ -172,7 +172,7 @@ export function CompanyContactSelector({
       {showContact && (
         <div className="flex-1" style={{ position: "relative" }}>
           {showLabels && (
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--neuron-ink-primary)" }}>
+            <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-primary)" }}>
               {contactLabel} {!contactRequired && <span style={{ color: "#667085", fontWeight: 400, fontSize: "12px" }}>(Optional)</span>}
             </label>
           )}

@@ -7,8 +7,9 @@ import type { TemplateDocType } from "../types/document-templates";
  */
 export const BOOKING_SPECIFIC_FIELDS: Record<TemplateDocType, string[]> = {
   salesContract: [
-    "refNo", "date", "vesselVoyage", "shipmentDate",
-    "quantity", "unitPrice", "totalAmount", "marksAndNos",
+    "refNo", "date",
+    "quantity", "unitPrice", "totalAmount",
+    "masterTemplateId",
     "createdAt", "updatedAt", "createdBy",
   ],
   commercialInvoice: [
@@ -25,14 +26,13 @@ export const BOOKING_SPECIFIC_FIELDS: Record<TemplateDocType, string[]> = {
     "createdAt", "updatedAt", "createdBy",
   ],
   formE: [
-    "departureDate", "vessel", "meansOfTransport",
+    "departureDate", "vessel",
     "invoiceNumber", "invoiceDated", "grossWeight",
-    "itemNumber", "marksAndNumbers",
     "createdAt", "updatedAt", "createdBy",
   ],
   fsi: [
     "id", "bookingId", "vesselVoyageNo", "containers",
-    "bookingNumber", "from", "grossWeight", "measurement",
+    "bookingNumber", "grossWeight", "measurement",
     "totalNumberOfContainers",
     "createdAt", "updatedAt", "createdBy",
   ],

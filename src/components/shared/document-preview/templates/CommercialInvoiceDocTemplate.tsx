@@ -19,9 +19,6 @@ function formatNumber(raw: string | number): string {
 }
 
 export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoiceDocTemplateProps) {
-  const stamps = settings.stamps || {};
-  const managerStamp = stamps["manager"]?.pngData;
-  const sellerStamp = stamps["seller"]?.pngData;
 
   // Field mappings — must match CommercialInvoice type keys from export-documents.ts
   const invoiceNo = data.invoiceNo || "";
@@ -45,21 +42,7 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
   const bankAddress = data.bankAddress || "";
 
   return (
-    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1.2" }}>
-
-      {/* Letterhead */}
-      {settings.logoPng ? (
-        <div style={{ marginBottom: "12px" }}>
-          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
-        </div>
-      ) : (
-        <div style={{
-          border: "1.5px dashed #CBD5E1", borderRadius: "4px", padding: "16px",
-          textAlign: "center", color: "#9CA3AF", fontSize: "11px", marginBottom: "12px",
-        }}>
-          Company letterhead PNG — upload via Document Settings
-        </div>
-      )}
+    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
 
       {/* Title */}
       <div style={{ textAlign: "center", fontSize: "15px", fontWeight: 700, textTransform: "uppercase", margin: "14px 0 10px", letterSpacing: "0.05em" }}>
@@ -75,13 +58,13 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
       </table>
 
       {/* Invoice No left, Date right — same line */}
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "10px", marginTop: "14px" }}>
         <div>INVOICE NO.: {invoiceNo}</div>
         <div>DATE: {date}</div>
       </div>
 
       {/* Consignee block — fully bordered table */}
-      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #000", marginBottom: "14px", fontSize: "11px" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #000", marginBottom: "0", fontSize: "11px" }}>
         <tbody>
           <BorderedRow label="CONSIGNEE" value={consigneeName} />
           <BorderedRow label="ADDRESS" value={consigneeAddress} />
@@ -92,7 +75,7 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
       </table>
 
       {/* Goods table — 5 columns matching image exactly */}
-      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #000", marginBottom: "18px", fontSize: "11px" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #000", borderTop: "none", marginBottom: "18px", fontSize: "11px" }}>
         <thead>
           <tr>
             <th style={{ ...th, width: "16%" }}>MARKS &amp; NOS</th>
@@ -114,7 +97,7 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
       </table>
 
       {/* Bank details — plain lines, no border */}
-      <div style={{ fontSize: "11px", lineHeight: "2", marginBottom: "36px" }}>
+      <div style={{ fontSize: "11px", lineHeight: "1.4", marginBottom: "36px" }}>
         <div>BANK : {bankName}</div>
         <div>SWIFT CODE : {swiftCode}</div>
         <div>ACCOUNT NO : {accountNo}</div>
@@ -124,16 +107,11 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
 
       {/* Signatures — Manager left, Seller right */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px" }}>
-        {([
-          { label: "MANAGER", stamp: managerStamp },
-          { label: "SELLER", stamp: sellerStamp },
-        ] as { label: string; stamp: string | undefined }[]).map(({ label, stamp }) => (
+        {(["MANAGER", "SELLER"]).map((label) => (
           <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {stamp ? (
-              <img src={stamp} alt={label} style={{ height: "64px", objectFit: "contain", marginBottom: "4px" }} />
-            ) : (
-              <div style={{ height: "64px", width: "80%", borderBottom: "1px solid #000" }} />
-            )}
+            <div style={{ position: "relative", height: "64px", width: "80%" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderBottom: "1px solid #000" }} />
+            </div>
             <div style={{ fontSize: "11px", marginTop: "6px" }}>{label}</div>
           </div>
         ))}
@@ -146,10 +124,10 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <tr>
-      <td style={{ whiteSpace: "nowrap", paddingRight: "12px", paddingBottom: "2px", verticalAlign: "top", width: "160px" }}>
+      <td style={{ whiteSpace: "nowrap", padding: "0 12px 0 0", verticalAlign: "top", width: "160px", lineHeight: "1.4" }}>
         {label} :
       </td>
-      <td style={{ paddingBottom: "2px", verticalAlign: "top" }}>{value}</td>
+      <td style={{ padding: "0", verticalAlign: "top", lineHeight: "1.4" }}>{value}</td>
     </tr>
   );
 }
@@ -157,17 +135,17 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function BorderedRow({ label, value }: { label: string; value: string }) {
   return (
     <tr>
-      <td style={{ border: "1px solid #000", padding: "4px 8px", whiteSpace: "nowrap", width: "130px", verticalAlign: "top" }}>
+      <td style={{ border: "1px solid #000", padding: "2px 8px", whiteSpace: "nowrap", width: "130px", verticalAlign: "top", lineHeight: "1.4" }}>
         {label} :
       </td>
-      <td style={{ border: "1px solid #000", padding: "4px 8px", verticalAlign: "top" }}>{value}</td>
+      <td style={{ border: "1px solid #000", padding: "2px 8px", verticalAlign: "top", lineHeight: "1.4" }}>{value}</td>
     </tr>
   );
 }
 
 const th: React.CSSProperties = {
   border: "1px solid #000",
-  padding: "6px 8px",
+  padding: "3px 6px",
   textAlign: "center",
   fontWeight: 700,
   fontSize: "10px",
@@ -177,7 +155,7 @@ const th: React.CSSProperties = {
 
 const td: React.CSSProperties = {
   border: "1px solid #000",
-  padding: "10px 8px",
+  padding: "3px 6px",
   verticalAlign: "middle",
   minHeight: "48px",
 };

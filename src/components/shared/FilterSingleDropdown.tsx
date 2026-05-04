@@ -16,6 +16,7 @@ interface FilterSingleDropdownProps {
   align?: "left" | "right";
   disabled?: boolean;
   style?: React.CSSProperties;
+  triggerStyle?: React.CSSProperties;
 }
 
 export function FilterSingleDropdown({
@@ -27,11 +28,14 @@ export function FilterSingleDropdown({
   align = "left",
   disabled = false,
   style,
+  triggerStyle,
 }: FilterSingleDropdownProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  const selectedLabel = options.find((o) => o.value === value)?.label ?? placeholder;
+  const matchedOption = options.find((o) => o.value === value);
+  const selectedLabel = matchedOption?.label ?? placeholder;
+  const isPlaceholder = !matchedOption;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px", ...style }}>
@@ -47,6 +51,7 @@ export function FilterSingleDropdown({
           style={{
             width: "100%",
             height: "40px",
+            boxSizing: "border-box",
             padding: "0 12px",
             borderRadius: "8px",
             border: "1px solid #E5E9F0",
@@ -59,9 +64,10 @@ export function FilterSingleDropdown({
             backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF",
             gap: "8px",
             opacity: disabled ? 0.7 : 1,
+            ...triggerStyle,
           }}
         >
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, color: isPlaceholder ? "#9CA3AF" : undefined }}>
             {selectedLabel}
           </span>
           <ChevronDown

@@ -19,30 +19,11 @@ function formatDateLetters(raw: string): string {
 }
 
 export function SalesContractDocTemplate({ data, settings }: SalesContractDocTemplateProps) {
-  const stamps = settings.stamps || {};
-  const buyerStamp = stamps["buyer"]?.pngData;
-  const sellerStamp = stamps["seller"]?.pngData;
-  const supplierStamp = stamps["supplier"]?.pngData;
-
   const refNo = data.refNo || data.referenceNo || "";
   const date = formatDateLetters(data.date || "");
 
   return (
-    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1.2" }}>
-
-      {/* Company letterhead — PNG uploaded via settings */}
-      {settings.logoPng ? (
-        <div style={{ marginBottom: "16px" }}>
-          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
-        </div>
-      ) : (
-        <div style={{
-          border: "1.5px dashed #CBD5E1", borderRadius: "4px", padding: "16px",
-          textAlign: "center", color: "#9CA3AF", fontSize: "11px", marginBottom: "16px",
-        }}>
-          Company letterhead PNG — upload via Document Settings
-        </div>
-      )}
+    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
 
       {/* Title */}
       <div style={{ textAlign: "center", fontSize: "18px", fontWeight: 700, textTransform: "uppercase", margin: "18px 0 8px", letterSpacing: "0.08em" }}>
@@ -91,8 +72,8 @@ export function SalesContractDocTemplate({ data, settings }: SalesContractDocTem
         <tbody>
           <tr>
             <td style={{ ...td, textAlign: "center", verticalAlign: "middle" }}>
-              {data.marksAndNos && <div>{data.marksAndNos} CONTAINER</div>}
-              <div>{data.commodityDescription || data.commodity || ""}</div>
+              {data.marksAndNos && <div style={{ lineHeight: "1.4" }}>{data.marksAndNos} CONTAINER</div>}
+              <div style={{ lineHeight: "1.4" }}>{data.commodityDescription || data.commodity || ""}</div>
             </td>
             <td style={{ ...td, textAlign: "center" }}>{data.quantity ? `${formatNumber(data.quantity)} MT` : ""}</td>
             <td style={{ ...td, textAlign: "center" }}>{data.unitPrice ? `USD ${formatNumber(data.unitPrice)}` : ""}</td>
@@ -113,7 +94,7 @@ export function SalesContractDocTemplate({ data, settings }: SalesContractDocTem
       </table>
 
       {/* Bank details */}
-      <div style={{ fontSize: "11px", lineHeight: "1.8", marginBottom: "24px" }}>
+      <div style={{ fontSize: "11px", lineHeight: "1.4", marginBottom: "24px" }}>
         <div>BANK : {data.bankName || ""}</div>
         <div>SWIFT CODE : {data.swiftCode || ""}</div>
         <div>ACCOUNT No : {data.accountNo || ""}</div>
@@ -130,17 +111,15 @@ export function SalesContractDocTemplate({ data, settings }: SalesContractDocTem
       {/* Signatures — Buyer / Seller / Supplier */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px", marginTop: "8px" }}>
         {[
-          { label: "THE BUYER", stamp: buyerStamp },
-          { label: "THE SELLER", stamp: sellerStamp },
-          { label: "THE SUPPLIER", stamp: supplierStamp },
-        ].map(({ label, stamp }) => (
+          { label: "THE BUYER" },
+          { label: "THE SELLER" },
+          { label: "THE SUPPLIER" },
+        ].map(({ label }) => (
           <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ fontSize: "11px", marginBottom: "8px" }}>{label}</div>
-            {stamp ? (
-              <img src={stamp} alt={label} style={{ height: "64px", objectFit: "contain", marginBottom: "4px" }} />
-            ) : (
-              <div style={{ height: "64px", width: "100%", borderBottom: "1px solid #000" }} />
-            )}
+            <div style={{ position: "relative", height: "64px", width: "100%" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderBottom: "1px solid #000" }} />
+            </div>
           </div>
         ))}
       </div>
@@ -153,10 +132,10 @@ function InfoRow({ label, value, bold }: { label: string; value: string; bold?: 
   const w = bold ? 700 : 400;
   return (
     <tr>
-      <td style={{ whiteSpace: "nowrap", paddingRight: "12px", paddingBottom: "2px", verticalAlign: "top", width: "180px", fontWeight: w }}>
+      <td style={{ whiteSpace: "nowrap", paddingRight: "12px", padding: "0 12px 0 0", verticalAlign: "top", width: "180px", fontWeight: w, lineHeight: "1.4" }}>
         {label} :
       </td>
-      <td style={{ paddingBottom: "2px", verticalAlign: "top", fontWeight: w }}>{value}</td>
+      <td style={{ padding: "0", verticalAlign: "top", fontWeight: w, lineHeight: "1.4" }}>{value}</td>
     </tr>
   );
 }

@@ -6,9 +6,7 @@ import { ActionsDropdown } from "../../shared/ActionsDropdown";
 import { toast } from "../../ui/toast-utils";
 import { DocumentViewToggle } from "../../shared/document-preview/DocumentViewToggle";
 import { DocumentPreviewShell } from "../../shared/document-preview/DocumentPreviewShell";
-import { DocumentSettingsPanel } from "../../shared/document-preview/DocumentSettingsPanel";
 import type { DocumentSettings } from "../../../types/document-settings";
-import { useDocumentSettings } from "../../../hooks/useDocumentSettings";
 import type { DocumentEditState } from "./SalesContractTab";
 
 interface DocumentSidePanelProps {
@@ -19,12 +17,12 @@ interface DocumentSidePanelProps {
   documentExists?: boolean;
   editState?: DocumentEditState | null;
   onDelete?: () => void;
-  /** Render the PDF preview canvas. Receives current settings. */
   renderPdfPreview?: (settings: DocumentSettings) => React.ReactNode;
-  /** Keys for per-document stamp/seal PNG upload slots shown in settings panel */
   stampSlots?: string[];
-  /** Master template asset overrides — merged on top of global settings */
   overrideSettings?: Partial<DocumentSettings>;
+  showShippingLineLetterhead?: boolean;
+  hideSupplierLetterhead?: boolean;
+  landscape?: boolean;
 }
 
 export function DocumentSidePanel({
@@ -36,17 +34,11 @@ export function DocumentSidePanel({
   editState,
   onDelete,
   renderPdfPreview,
-  stampSlots,
-  overrideSettings,
+  landscape,
 }: DocumentSidePanelProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [view, setView] = useState<"form" | "pdf">("form");
-  const { settings: docSettings, updateSettings: setDocSettings } = useDocumentSettings();
-  const effectiveSettings: DocumentSettings = overrideSettings
-    ? { ...docSettings, ...overrideSettings }
-    : docSettings;
 
-  // Reset view to form when panel closes or switches doc
   useEffect(() => {
     if (!isOpen) setView("form");
   }, [isOpen]);
@@ -73,6 +65,9 @@ export function DocumentSidePanel({
   const isEditing = editState?.isEditing ?? false;
   const isSaving = editState?.isSaving ?? false;
   const isPdfView = view === "pdf";
+
+  // Pass empty settings object — no PNG-based settings used
+  const emptySettings: DocumentSettings = {};
 
   return (
     <>
@@ -129,59 +124,56 @@ export function DocumentSidePanel({
             </h2>
           </div>
 
-          {/* Action buttons — hidden in PDF view */}
-          {!isPdfView && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <StandardButton
-                variant={showTimeline ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setShowTimeline(!showTimeline)}
-                icon={<Clock size={14} />}
-              >
-                Activity
-              </StandardButton>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <StandardButton
+              variant={showTimeline ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowTimeline(!showTimeline)}
+              icon={<Clock size={14} />}
+            >
+              Activity
+            </StandardButton>
 
-              {isEditing ? (
-                <>
-                  <StandardButton
-                    variant="secondary"
-                    size="sm"
-                    icon={<X size={14} />}
-                    onClick={() => editState?.handleCancel()}
-                  >
-                    Cancel
-                  </StandardButton>
-                  <StandardButton
-                    variant="primary"
-                    size="sm"
-                    icon={<Save size={14} />}
-                    onClick={() => editState?.handleSave()}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "Saving..." : "Save"}
-                  </StandardButton>
-                </>
-              ) : (
-                documentExists && (
-                  <StandardButton
-                    variant="secondary"
-                    size="sm"
-                    icon={<Edit3 size={14} />}
-                    onClick={() => editState?.handleEdit()}
-                  >
-                    Edit
-                  </StandardButton>
-                )
-              )}
+            {isEditing ? (
+              <>
+                <StandardButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<X size={14} />}
+                  onClick={() => editState?.handleCancel()}
+                >
+                  Cancel
+                </StandardButton>
+                <StandardButton
+                  variant="primary"
+                  size="sm"
+                  icon={<Save size={14} />}
+                  onClick={() => editState?.handleSave()}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </StandardButton>
+              </>
+            ) : (
+              documentExists && (
+                <StandardButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<Edit3 size={14} />}
+                  onClick={() => editState?.handleEdit()}
+                >
+                  Edit
+                </StandardButton>
+              )
+            )}
 
-              <ActionsDropdown
-                onDownloadPDF={() => toast.success("PDF download starting...")}
-                onDownloadWord={() => toast.success("Word download starting...")}
-                onDelete={() => onDelete?.()}
-                compact
-              />
-            </div>
-          )}
+            <ActionsDropdown
+              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadWord={() => toast.success("Word download starting...")}
+              onDelete={() => onDelete?.()}
+              compact
+            />
+          </div>
         </div>
 
         {/* View toggle — shown only if PDF preview is available */}
@@ -191,24 +183,14 @@ export function DocumentSidePanel({
 
         {/* Content */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {/* PDF view — only mounted when renderPdfPreview is available */}
           {renderPdfPreview && (
             <div style={{ flex: 1, overflow: "hidden", display: isPdfView ? "flex" : "none", flexDirection: "column" }}>
-              <DocumentPreviewShell
-                settings={stampSlots?.length === 0 ? null :
-                  <DocumentSettingsPanel
-                    settings={effectiveSettings}
-                    onChange={setDocSettings}
-                    stampSlots={stampSlots}
-                  />
-                }
-              >
-                {renderPdfPreview(effectiveSettings)}
+              <DocumentPreviewShell landscape={landscape}>
+                {renderPdfPreview(emptySettings)}
               </DocumentPreviewShell>
             </div>
           )}
 
-          {/* Form view — always mounted to preserve state */}
           <div style={{ flex: 1, overflow: "auto", display: isPdfView ? "none" : "flex" }}>
             <div
               style={{

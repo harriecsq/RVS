@@ -277,11 +277,17 @@ export function NeuronDatePicker({
   const yearOptions = yearRange().map((y) => ({ label: String(y), value: String(y) }));
 
   // Compute popover position anchored to input, updating on scroll/resize
+  // Flips upward if insufficient space below (calendar is ~380px tall)
   const updatePopoverPosition = useCallback(() => {
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
+      const popoverH = 380;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < popoverH && rect.top > spaceBelow;
       setPopoverPos({
-        top: rect.bottom + 6 + window.scrollY,
+        top: openUp
+          ? rect.top + window.scrollY - popoverH - 6
+          : rect.bottom + 6 + window.scrollY,
         left: rect.left + window.scrollX,
       });
     }

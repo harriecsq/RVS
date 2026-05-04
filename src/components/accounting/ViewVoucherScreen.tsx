@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Trash2, Plus, Link2, FileText, Paperclip } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Link2, FileText, Paperclip, Printer, ChevronDown } from "lucide-react";
 import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
@@ -16,6 +16,11 @@ import { BookingSelector } from "../selectors/BookingSelector";
 import { PayeeSelector } from "../selectors/PayeeSelector";
 import { formatAmount } from "../../utils/formatAmount";
 import { API_BASE_URL } from '@/utils/api-config';
+import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
+import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
+import { VoucherDocTemplate } from "../shared/document-preview/templates/VoucherDocTemplate";
+import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
+import type { DocumentSettings } from "../../types/document-settings";
 
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
@@ -174,7 +179,7 @@ const TableSection = ({
   onUpdateItem: (type: 'particulars' | 'distribution', id: string, field: keyof LineItem, value: any) => void,
   onSopUpdate: (id: string, field: 'sopType' | 'sopNumber', value: string) => void
 }) => (
-  <div className="border border-[#E5E9F0] rounded-lg overflow-hidden mb-6">
+  <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
       <div className="bg-[#FAFBFC] px-4 py-3 border-b border-[#E5E9F0] flex justify-between items-center">
           <h3 className="text-sm font-semibold text-[#0A1D4D]">{title}</h3>
           {isEditing && (
@@ -286,6 +291,8 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const [showTimeline, setShowTimeline] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<"voucher-info" | "attachments">("voucher-info");
+  const [voucherView, setVoucherView] = useState<"form" | "pdf">("form");
+  const [voucherDocSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [editVoucherCompanyCode, setEditVoucherCompanyCode] = useState("RVS");
   const [editVoucherType, setEditVoucherType] = useState("CV");
   const [editVoucherYear, setEditVoucherYear] = useState(String(new Date().getFullYear()));
@@ -298,10 +305,31 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
   const [manualDeliveryAddress, setManualDeliveryAddress] = useState("");
   const [manualLoadingAddress, setManualLoadingAddress] = useState("");
+  const [linkedBooking, setLinkedBooking] = useState<any | null>(null);
 
   useEffect(() => {
-    fetchVoucherDetails();
+    const controller = new AbortController();
+    fetchVoucherDetails(controller.signal);
+    return () => controller.abort();
   }, [voucherId]);
+
+  // Live-fetch the linked booking whenever the voucher's bookingId changes.
+  useEffect(() => {
+    const bid = voucher?.bookingId;
+    if (!bid) { setLinkedBooking(null); return; }
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/bookings/${bid}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then(r => r.json())
+      .then(result => {
+        if (cancelled) return;
+        if (result?.success && result.data) setLinkedBooking(result.data);
+        else setLinkedBooking(null);
+      })
+      .catch(() => { if (!cancelled) setLinkedBooking(null); });
+    return () => { cancelled = true; };
+  }, [voucher?.bookingId]);
 
   // Fetch trucking record data when voucher category is Trucking
   useEffect(() => {
@@ -318,6 +346,11 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   useEffect(() => {
     if (!isEditing || !voucher) return;
     const vn = voucher.voucherNumber || "";
+    const GENERAL_EXPENSE_CATS = ["Annual Expenses", "Expenses", "Transportation", "Salary", "Benefits", "Utilities"];
+    if (GENERAL_EXPENSE_CATS.includes(voucher.category || "")) {
+      setEditVoucherRefNumber(vn);
+      return;
+    }
     const parts = vn.split(" ");
     if (parts.length >= 3) {
       setEditVoucherCompanyCode(parts[0]);
@@ -386,43 +419,36 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
     }
   };
 
-  const fetchVoucherDetails = async () => {
+  const fetchVoucherDetails = async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
-        headers: {
-          Authorization: `Bearer ${publicAnonKey}`,
-        },
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        signal,
       });
       const result = await response.json();
-      
+
       if (result.success && result.data) {
         const v = result.data;
-        
-        // Ensure all line items have stable IDs
         if (v.lineItems) {
-            v.lineItems = v.lineItems.map((item: LineItem) => ({
-                ...item,
-                id: item.id || `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-            }));
+          v.lineItems = v.lineItems.map((item: LineItem) => ({
+            ...item,
+            id: item.id || `generated-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          }));
         }
-
         setVoucher(v);
         setEditedVoucher(v);
-
-        // Initialize editable address fields from voucher data
         setManualDeliveryAddress(v.deliveryAddress || "");
         setManualLoadingAddress(v.loadingAddress || "");
-
-        // Split line items
         if (v.lineItems) {
-            setParticulars(v.lineItems.filter((i: LineItem) => !i.type || i.type === 'particulars'));
-            setDistribution(v.lineItems.filter((i: LineItem) => i.type === 'distribution'));
+          setParticulars(v.lineItems.filter((i: LineItem) => !i.type || i.type === 'particulars'));
+          setDistribution(v.lineItems.filter((i: LineItem) => i.type === 'distribution'));
         }
       } else {
         toast.error("Failed to load voucher details");
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === "AbortError") return;
       console.error("Error fetching voucher:", error);
       toast.error("Failed to load voucher details");
     } finally {
@@ -477,8 +503,10 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           ...distribution.map(d => ({ ...d, type: 'distribution' as const }))
       ];
       
-      // Compose voucherNumber from dropdown fields
-      const composedVoucherNumber = `${editVoucherCompanyCode} ${editVoucherType} ${editVoucherYear}-${editVoucherRefNumber || (editNextVoucherNumber !== null ? String(editNextVoucherNumber) : "")}`;
+      // Compose voucherNumber — general expenses use free-text ref directly
+      const composedVoucherNumber = isGeneralExpense
+        ? editVoucherRefNumber
+        : `${editVoucherCompanyCode} ${editVoucherType} ${editVoucherYear}-${editVoucherRefNumber || (editNextVoucherNumber !== null ? String(editNextVoucherNumber) : "")}`;
 
       const payload = {
           ...editedVoucher,
@@ -599,19 +627,42 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   // Determine if the voucher's category requires booking fields
   const currentCategory = isEditing ? (editedVoucher?.category || voucher?.category) : voucher?.category;
   const isBookingCategory = currentCategory === "Shipping Line" || currentCategory === "Trucking";
+  const GENERAL_EXPENSE_CATEGORIES = ["Annual Expenses", "Expenses", "Transportation", "Salary", "Benefits", "Utilities"];
+  const isGeneralExpense = GENERAL_EXPENSE_CATEGORIES.includes(currentCategory || "");
 
   // Use editedVoucher for display when editing, otherwise use saved voucher
   const displayVoucher = isEditing ? editedVoucher : voucher;
 
-  // Determine Labels based on Import/Export
-  const isExport = (displayVoucher?.booking?.shipmentType || displayVoucher?.booking?.type || displayVoucher?.booking?.booking_type || "")
-    .toLowerCase().includes("export");
-  
+  // Live booking-derived shipment fields. Merge segments[0] over root for exports.
+  const bookingShipment = (() => {
+    const b: any = linkedBooking || {};
+    const seg: any = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : {};
+    const containerRaw = seg.containerNo ?? b.containerNo ?? b.containerNos ?? "";
+    const containers: string[] = Array.isArray(containerRaw)
+      ? containerRaw.filter(Boolean)
+      : (typeof containerRaw === "string" ? containerRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
+    return {
+      blNumber: seg.blNumber ?? b.blNumber ?? "",
+      vesselVoy: seg.vesselVoyage ?? b.vesselVoyage ?? seg.vessel ?? b.vessel ?? "",
+      origin: seg.origin ?? b.origin ?? b.pol ?? b.pickup ?? "",
+      destination: seg.destination ?? b.destination ?? seg.pod ?? b.pod ?? "",
+      shipper: seg.shipper ?? b.shipper ?? "",
+      consignee: seg.consignee ?? b.consignee ?? "",
+      volume: seg.volume ?? b.volume ?? "",
+      commodity: seg.commodity ?? b.commodity ?? "",
+      containers,
+    };
+  })();
+
+  // Determine Labels based on Import/Export (from live linked booking).
+  const bookingTypeRaw = (linkedBooking?.shipmentType || linkedBooking?.type || linkedBooking?.booking_type || "").toLowerCase();
+  const isExport = bookingTypeRaw.includes("export");
+
   const shipperLabel = isExport ? "Shipper" : "Consignee";
-  const shipperValue = isExport ? displayVoucher?.shipper : displayVoucher?.consignee;
-  
+  const shipperValue = isExport ? bookingShipment.shipper : bookingShipment.consignee;
+
   const originLabel = isExport ? "Destination" : "Origin";
-  const originValue = isExport ? displayVoucher?.destination : displayVoucher?.origin;
+  const originValue = isExport ? bookingShipment.destination : bookingShipment.origin;
 
   if (isLoading) {
     return (
@@ -644,49 +695,64 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
             <div>
               {isEditing ? (
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                    <span style={{ fontSize: "14px", color: "#667085", fontWeight: 500 }}>Ref:</span>
-                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>
-                      {editVoucherCompanyCode} {editVoucherType} {editVoucherYear}-{editVoucherRefNumber || (editNextVoucherNumber !== null ? editNextVoucherNumber : "")}
-                    </span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", width: "420px" }}>
-                    <div>
-                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Company</span>
-                      <NeuronDropdown
-                        value={editVoucherCompanyCode}
-                        onChange={setEditVoucherCompanyCode}
-                        options={["SCI", "RDS", "RVS", "SW"]}
-                        placeholder="Code"
-                      />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Type</span>
-                      <NeuronDropdown
-                        value={editVoucherType}
-                        onChange={setEditVoucherType}
-                        options={["ADV", "CV"]}
-                        placeholder="Type"
-                      />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
-                      <input
-                        value={editVoucherYear}
-                        onChange={e => setEditVoucherYear(e.target.value.replace(/\D/g, ""))}
-                        style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
-                      />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
-                      <input
+                  {isGeneralExpense ? (
+                    <div style={{ width: "420px" }}>
+                      <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "4px" }}>Voucher Reference</span>
+                      <Input
                         value={editVoucherRefNumber}
-                        onChange={e => setEditVoucherRefNumber(e.target.value.replace(/\D/g, ""))}
-                        placeholder={editNextVoucherNumber !== null ? String(editNextVoucherNumber) : "…"}
-                        style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                        onChange={e => setEditVoucherRefNumber(e.target.value)}
+                        placeholder="Enter reference number"
+                        style={{ height: '40px', borderRadius: '12px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                        className="focus-visible:ring-[#0F766E]"
                       />
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "14px", color: "#667085", fontWeight: 500 }}>Ref:</span>
+                        <span style={{ fontSize: "12px", color: "#9CA3AF" }}>
+                          {editVoucherCompanyCode} {editVoucherType} {editVoucherYear}-{editVoucherRefNumber || (editNextVoucherNumber !== null ? editNextVoucherNumber : "")}
+                        </span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", width: "420px" }}>
+                        <div>
+                          <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Company</span>
+                          <NeuronDropdown
+                            value={editVoucherCompanyCode}
+                            onChange={setEditVoucherCompanyCode}
+                            options={["SCI", "RDS", "RVS", "SW"]}
+                            placeholder="Code"
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Type</span>
+                          <NeuronDropdown
+                            value={editVoucherType}
+                            onChange={setEditVoucherType}
+                            options={["ADV", "CV"]}
+                            placeholder="Type"
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Year</span>
+                          <input
+                            value={editVoucherYear}
+                            onChange={e => setEditVoucherYear(e.target.value.replace(/\D/g, ""))}
+                            style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                          />
+                        </div>
+                        <div>
+                          <span style={{ fontSize: "10px", color: "#9CA3AF", fontWeight: 500, display: "block", marginBottom: "2px" }}>Number</span>
+                          <input
+                            value={editVoucherRefNumber}
+                            onChange={e => setEditVoucherRefNumber(e.target.value.replace(/\D/g, ""))}
+                            placeholder={editNextVoucherNumber !== null ? String(editNextVoucherNumber) : "…"}
+                            style={{ width: "100%", height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #E5E9F0", fontSize: "14px", outline: "none" }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <h1 style={{ fontSize: "20px", fontWeight: 600, color: "var(--neuron-ink-primary)", marginBottom: "0" }}>
@@ -708,12 +774,14 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
       </div>
 
       {/* Tabs */}
+      {voucherView === "form" && (
       <div style={{
-        padding: "0 48px",
+        padding: "0 24px",
         borderBottom: "1px solid #E5E9F0",
         backgroundColor: "white"
       }}>
         <StandardTabs
+          style={{ padding: "0 var(--ds-space-md)" }}
           tabs={[
             { id: "voucher-info", label: "Voucher Information", icon: <FileText size={18} /> },
             { id: "attachments", label: "Attachments", icon: <Paperclip size={18} /> },
@@ -738,9 +806,46 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           }
         />
       </div>
+      )}
+
+      {/* Form / PDF view toggle — only on Voucher Information tab (or in PDF mode) */}
+      {(voucherView === "pdf" || activeTab === "voucher-info") && (
+        <DocumentViewToggle value={voucherView} onChange={setVoucherView} />
+      )}
+
+      {/* PDF View */}
+      {voucherView === "pdf" && voucher && (
+        <DocumentPreviewShell settings={null}>
+          <VoucherDocTemplate
+            data={{
+              voucherNumber: voucher.voucherNumber,
+              voucherDate: voucher.voucherDate,
+              payee: voucher.payee,
+              currency: voucher.currency,
+              blNumber: bookingShipment.blNumber,
+              vesselVoy: bookingShipment.vesselVoy,
+              containerNumbers: bookingShipment.containers,
+              origin: bookingShipment.origin,
+              destination: bookingShipment.destination,
+              volume: bookingShipment.volume,
+              commodity: bookingShipment.commodity,
+              consignee: bookingShipment.consignee,
+              bank: voucher.bank,
+              checkNo: voucher.checkNo,
+              lineItems: particulars,
+              distribution: distribution,
+              totalAmount: voucher.amount,
+              preparedBy: voucher.preparedBy,
+              certifiedBy: voucher.checkedBy,
+              approvedBy: voucher.approvedBy,
+            }}
+            settings={voucherDocSettings}
+          />
+        </DocumentPreviewShell>
+      )}
 
       {/* Content Area */}
-      <div style={{ flex: 1, overflow: "auto" }}>
+      <div style={{ flex: 1, overflow: "auto", display: voucherView === "pdf" ? "none" : undefined }}>
         <div style={{ display: activeTab === "voucher-info" ? undefined : "none", padding: "32px 48px" }}>
         <div className="flex flex-col gap-6">
           
@@ -774,50 +879,12 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                       value={editedVoucher?.bookingId || ""}
                       onSelect={(booking) => {
                         if (!booking) {
-                          setEditedVoucher(prev => prev ? ({
-                            ...prev,
-                            bookingId: undefined,
-                            booking: undefined,
-                            vesselVoy: "",
-                            blNumber: "",
-                            origin: "",
-                            destination: "",
-                            shipper: "",
-                            consignee: "",
-                            volume: "",
-                            commodity: "",
-                            containerNumbers: [],
-                          }) : null);
+                          setEditedVoucher(prev => prev ? ({ ...prev, bookingId: undefined, booking: undefined }) : null);
                           return;
                         }
                         const bk = booking as any;
                         const uid = bk.bookingId || bk.bookingNumber || bk.booking_number || booking.id;
-                        // Parse container numbers
-                        let containers: string[] = [];
-                        if (bk.containerNumbers) {
-                          containers = Array.isArray(bk.containerNumbers) ? bk.containerNumbers : bk.containerNumbers.split(",").map((c: string) => c.trim()).filter(Boolean);
-                        } else if (bk.containerNo) {
-                          containers = bk.containerNo.includes(",") ? bk.containerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : [bk.containerNo];
-                        }
-                        // Destination logic
-                        let dest = bk.destination || bk.dropoff || "";
-                        if (bk.shipmentType?.toLowerCase() === "import") {
-                          dest = bk.pod || bk.port_of_destination || dest;
-                        }
-                        setEditedVoucher(prev => prev ? ({
-                          ...prev,
-                          bookingId: uid,
-                          booking: bk,
-                          vesselVoy: bk.vesselVoyage || bk.vessel_voyage || bk.vessel || "",
-                          blNumber: bk.blNumber || bk.bl_number || bk.awbBlNo || "",
-                          origin: bk.origin || bk.pol || bk.pickup || "",
-                          destination: dest,
-                          shipper: bk.shipper || "",
-                          consignee: bk.consignee || "",
-                          volume: bk.volume || "",
-                          commodity: bk.commodity || "",
-                          containerNumbers: containers,
-                        }) : null);
+                        setEditedVoucher(prev => prev ? ({ ...prev, bookingId: uid, booking: bk }) : null);
                       }}
                       placeholder="Search by Booking Ref, BL No, or Client..."
                     />
@@ -868,13 +935,13 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                     </div>
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel / Voyage</div>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.vesselVoy || "—"}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.vesselVoy || "—"}</div>
                     </div>
                     {/* Row 3: BL Number (non-Trucking) | Origin/Destination */}
                     {currentCategory !== "Trucking" && (
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.blNumber || "—"}</div>
                       </div>
                     )}
                     {/* Hide Destination for trucking vouchers linked to export bookings */}
@@ -891,18 +958,18 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                     {/* Row 4: Volume | Container No */}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(displayVoucher?.containerNumbers || [], displayVoucher?.volume || "")}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(bookingShipment.containers, bookingShipment.volume)}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
                       <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                        {(displayVoucher?.containerNumbers || []).filter(Boolean).join(", ") || "—"}
+                        {bookingShipment.containers.join(", ") || "—"}
                       </div>
                     </div>
                     {/* Row 5: Commodity | Trucking Rate (Trucking only) */}
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{displayVoucher?.commodity || "—"}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.commodity || "—"}</div>
                     </div>
                   </div>
                 </div>
@@ -1056,9 +1123,9 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           </div>
 
           {/* Tables Section */}
-          <div>
-              <TableSection 
-                  title="Voucher Entries" 
+          <div className="flex flex-col gap-6">
+              <TableSection
+                  title="Voucher Entries"
                   items={particulars} 
                   type="particulars" 
                   isEditing={isEditing}

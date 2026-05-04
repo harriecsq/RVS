@@ -18,7 +18,6 @@ export function NotesSection({
         borderRadius: "12px",
         border: "1px solid #E5E9F0",
         overflow: "hidden",
-        marginTop: "24px",
       }}
     >
       {/* Header */}

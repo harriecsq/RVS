@@ -2,8 +2,14 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, FileText, DollarSign, Receipt, Edit2, Save, XCircle, X, Plus, Trash2, Link2 } from "lucide-react";
 import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
 import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
-import { DocumentSettingsPanel } from "../shared/document-preview/DocumentSettingsPanel";
 import { BillingDocTemplate } from "../shared/document-preview/templates/BillingDocTemplate";
+import {
+  LetterheadGalleryPicker,
+  loadLetterheads,
+  getLastUsedLetterheadId,
+  setLastUsedLetterheadId,
+} from "../shared/document-preview/LetterheadGalleryPicker";
+import type { SavedLetterhead } from "../shared/document-preview/LetterheadGalleryPicker";
 import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
 import type { DocumentSettings } from "../../types/document-settings";
 import { NeuronDropdown } from "../shared/NeuronDropdown";
@@ -155,7 +161,13 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   const [activeTab, setActiveTab] = useState<"overview" | "collections" | "attachments">("overview");
   const [isEditing, setIsEditingInternal] = useState(false);
   const [billingView, setBillingView] = useState<"form" | "pdf">("form");
-  const [billingDocSettings, setBillingDocSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
+  const [billingDocSettings, setBillingDocSettings] = useState<DocumentSettings>(() => {
+    const lastId = getLastUsedLetterheadId();
+    if (!lastId) return DEFAULT_DOCUMENT_SETTINGS;
+    const found = loadLetterheads().find((lh) => lh.id === lastId);
+    return found ? { ...DEFAULT_DOCUMENT_SETTINGS, logoPng: found.dataUrl } : DEFAULT_DOCUMENT_SETTINGS;
+  });
+  const [letterheadPickerOpen, setLetterheadPickerOpen] = useState(false);
 
   // Sync with external edit control
   const setIsEditing = (editing: boolean) => {
@@ -200,15 +212,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   const [editedBookingIds, setEditedBookingIds] = useState<Set<string>>(new Set());
   const [editedExpenseIds, setEditedExpenseIds] = useState<Set<string>>(new Set());
   
-  // Shipment Details fields
-  const [editedVessel, setEditedVessel] = useState("");
-  const [editedBlNumber, setEditedBlNumber] = useState("");
-  const [editedDestination, setEditedDestination] = useState("");
-  const [editedOrigin, setEditedOrigin] = useState("");
-  const [editedShipper, setEditedShipper] = useState("");
-  const [editedConsignee, setEditedConsignee] = useState("");
-  const [editedVolume, setEditedVolume] = useState("");
-  const [editedCommodity, setEditedCommodity] = useState("");
+  // Billing-specific editable fields
   const [editedContractNumber, setEditedContractNumber] = useState("");
   const [editedExchangeRate, setEditedExchangeRate] = useState("");
   const [editedBillingNumber, setEditedBillingNumber] = useState("");
@@ -216,7 +220,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   const [editBillingYear, setEditBillingYear] = useState(String(new Date().getFullYear()));
   const [editBillingRefNumber, setEditBillingRefNumber] = useState("");
   const [editNextBillingNumber, setEditNextBillingNumber] = useState<number | null>(null);
-  const [editedContainerNumbers, setEditedContainerNumbers] = useState<string[]>([]);
   
   // Notes field
   const [editedNotes, setEditedNotes] = useState("");
@@ -283,10 +286,28 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   const isImport = shipmentType === "import";
   const isExport = shipmentType === "export";
 
-  // Fallback Logic for Shipment Data:
-  // Use billing data first, then fall back to the primary linked booking.
-  const displayOrigin = billing?.origin || billing?.pol || billing?.pickup || (primaryBooking as any)?.origin || (primaryBooking as any)?.pol || (primaryBooking as any)?.pickup || "—";
-  const displayConsignee = billing?.consignee || (primaryBooking as any)?.consignee || "—";
+  // Live booking-derived shipment fields. Merge segments[0] over root for exports.
+  const bookingShipment = (() => {
+    const b: any = primaryBooking || {};
+    const seg: any = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : {};
+    const containerRaw = seg.containerNo ?? b.containerNo ?? b.containerNos ?? "";
+    const containers: string[] = Array.isArray(containerRaw)
+      ? containerRaw.filter(Boolean)
+      : (typeof containerRaw === "string" ? containerRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
+    return {
+      blNumber: seg.blNumber ?? b.blNumber ?? "",
+      vessel: seg.vesselVoyage ?? b.vesselVoyage ?? seg.vessel ?? b.vessel ?? "",
+      origin: seg.origin ?? b.origin ?? b.pol ?? b.pickup ?? "",
+      destination: seg.destination ?? b.destination ?? seg.pod ?? b.pod ?? "",
+      shipper: seg.shipper ?? b.shipper ?? "",
+      consignee: seg.consignee ?? b.consignee ?? "",
+      volume: seg.volume ?? b.volume ?? "",
+      commodity: seg.commodity ?? b.commodity ?? "",
+      containers,
+      clientName: b.customerName ?? b.clientName ?? b.client_name ?? b.customer_name ?? "",
+      companyName: b.companyName ?? b.company_name ?? "",
+    };
+  })();
 
 
   useEffect(() => {
@@ -338,18 +359,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
       setEditedBookingIds(new Set(billing.bookingIds || []));
       setEditedExpenseIds(new Set(billing.expenseIds || []));
       
-      // Initialize Shipment Details fields
-      setEditedVessel(billing.vessel || "");
-      setEditedBlNumber(billing.blNumber || "");
-      setEditedDestination(billing.destination || "");
-      setEditedOrigin(billing.origin || billing.pol || billing.pickup || "");
-      setEditedShipper(billing.shipper || "");
-      setEditedConsignee(billing.consignee || "");
-      setEditedVolume(billing.volume || "");
-      setEditedCommodity(billing.commodity || "");
       setEditedContractNumber(billing.contractNumber || "");
       setEditedExchangeRate(billing.exchangeRate || "");
-      setEditedContainerNumbers(billing.containerNumbers || []);
       setEditedNotes((billing as any).notes || "");
       setEditedPreparedBy((billing as any).preparedBy || "");
       setEditedCheckedBy((billing as any).checkedBy || "");
@@ -631,17 +642,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         projectId: currentProjectId,
         bookingIds: Array.from(editedBookingIds), // Convert Set to Array
         expenseIds: Array.from(editedExpenseIds), // Convert Set to Array
-        vessel: editedVessel,
-        blNumber: editedBlNumber,
-        destination: editedDestination,
-        origin: editedOrigin,
-        shipper: editedShipper,
-        consignee: editedConsignee,
-        volume: editedVolume,
-        commodity: editedCommodity,
         contractNumber: editedContractNumber,
         exchangeRate: editedExchangeRate,
-        containerNumbers: editedContainerNumbers,
         notes: editedNotes,
         preparedBy: editedPreparedBy,
         checkedBy: editedCheckedBy,
@@ -704,112 +706,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
       toast.error("An error occurred while deleting the billing");
       setShowDeleteConfirm(false);
     }
-  };
-
-  // Helper for Container Numbers
-  const renderBillingContainerField = () => {
-    // Determine current value
-    const rawValue = isEditing 
-        ? editedContainerNumbers 
-        : billing?.containerNumbers;
-    
-    // Parse
-    const containers: string[] = Array.isArray(rawValue) ? rawValue : (typeof rawValue === 'string' ? (rawValue as string).split(',').map(s => s.trim()).filter(Boolean) : []);
-
-    const handleChange = (index: number, val: string) => {
-        const newContainers = [...containers];
-        newContainers[index] = val;
-        setEditedContainerNumbers(newContainers);
-    };
-
-    const addRow = () => {
-        setEditedContainerNumbers([...containers, ""]);
-    };
-
-    const removeRow = (index: number) => {
-        const newContainers = containers.filter((_, i) => i !== index);
-        setEditedContainerNumbers(newContainers);
-    };
-
-    if (!isEditing) {
-        return (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <div style={NEURON_STYLES.fieldLabel}>Container Numbers</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {containers.length > 0 ? containers.map((c, i) => (
-                    <div key={i} style={NEURON_STYLES.readOnlyField}>
-                      {c}
-                    </div>
-                )) : (
-                    <div style={{...NEURON_STYLES.readOnlyField, color: '#9CA3AF'}}>—</div>
-                )}
-            </div>
-          </div>
-        );
-    }
-
-    // Edit mode
-    const editableContainers = containers.length > 0 ? containers : [""];
-
-    return (
-        <div style={{ gridColumn: "1 / -1" }}>
-            <div style={NEURON_STYLES.fieldLabel}>Container Numbers</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {editableContainers.map((c, i) => (
-                    <div key={i} style={{ display: "flex", gap: "8px" }}>
-                        <input
-                            type="text"
-                            value={c}
-                            onChange={(e) => handleChange(i, e.target.value)}
-                            style={NEURON_STYLES.input}
-                            placeholder={`Container #${i + 1}`}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (editableContainers.length <= 1 && i === 0) {
-                                    setEditedContainerNumbers([]);
-                                } else {
-                                    removeRow(i);
-                                }
-                            }}
-                            disabled={editableContainers.length <= 1}
-                            style={{ 
-                                padding: "8px", 
-                                color: "#EF4444", 
-                                background: "transparent", 
-                                border: "none",
-                                cursor: editableContainers.length <= 1 ? "not-allowed" : "pointer",
-                                opacity: editableContainers.length <= 1 ? 0.5 : 1
-                            }}
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
-                ))}
-                <button
-                    type="button"
-                    onClick={addRow}
-                    style={{
-                        padding: "8px",
-                        border: "1px dashed #0F766E",
-                        borderRadius: "6px",
-                        background: "#F0FDFA",
-                        color: "#0F766E",
-                        fontSize: "13px",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px"
-                    }}
-                >
-                    <Plus size={14} /> Add Container
-                </button>
-            </div>
-        </div>
-    );
   };
 
   const handleStatusChange = async (newStatus: BillingStatus) => {
@@ -1011,9 +907,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         </div>
       </div>
 
-      {/* Form / PDF view toggle */}
-      <DocumentViewToggle value={billingView} onChange={setBillingView} />
-
       {/* Tab Navigation */}
       {!embedded && billingView === "form" && (
         <StandardTabs
@@ -1046,13 +939,19 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         />
       )}
 
+      {/* Form / PDF view toggle — only on Billings Overview tab (or in PDF mode) */}
+      {(billingView === "pdf" || activeTab === "overview") && (
+        <DocumentViewToggle value={billingView} onChange={setBillingView} />
+      )}
+
       {/* PDF View */}
       {billingView === "pdf" && billing && (
         <DocumentPreviewShell
           settings={
-            <DocumentSettingsPanel
-              settings={billingDocSettings}
-              onChange={setBillingDocSettings}
+            <BillingLetterheadPanel
+              currentDataUrl={billingDocSettings.logoPng}
+              onOpenPicker={() => setLetterheadPickerOpen(true)}
+              onClear={() => setBillingDocSettings({ ...billingDocSettings, logoPng: undefined })}
             />
           }
         >
@@ -1060,21 +959,38 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
             data={{
               billingNumber: billing.billingNumber,
               billingDate: billing.billingDate,
-              clientName: billing.clientName,
-              companyName: billing.companyName,
+              clientName: bookingShipment.clientName || billing.clientName,
+              companyName: bookingShipment.companyName || billing.companyName,
               currency: billing.currency,
               particulars: billing.particulars,
               totalAmount: billing.totalAmount,
-              vessel: billing.vessel,
-              blNumber: billing.blNumber,
-              containerNumbers: billing.containerNumbers,
-              origin: billing.origin,
-              destination: billing.destination,
+              vessel: bookingShipment.vessel,
+              blNumber: bookingShipment.blNumber,
+              containerNumbers: bookingShipment.containers,
+              origin: bookingShipment.origin,
+              destination: bookingShipment.destination,
+              volume: bookingShipment.volume,
+              commodity: bookingShipment.commodity,
+              exchangeRate: billing.exchangeRate,
+              preparedBy: (billing as any).preparedBy,
+              checkedBy: (billing as any).checkedBy,
+              approvedBy: (billing as any).approvedBy,
             }}
             settings={billingDocSettings}
           />
         </DocumentPreviewShell>
       )}
+
+      <LetterheadGalleryPicker
+        open={letterheadPickerOpen}
+        selectedDataUrl={billingDocSettings.logoPng}
+        onClose={() => setLetterheadPickerOpen(false)}
+        onSelect={(lh: SavedLetterhead) => {
+          setBillingDocSettings({ ...billingDocSettings, logoPng: lh.dataUrl });
+          setLastUsedLetterheadId(lh.id);
+          setLetterheadPickerOpen(false);
+        }}
+      />
 
       {/* Content */}
       <div style={{
@@ -1116,20 +1032,11 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>Link to Booking</div>
                       <BookingSelector
                         value={Array.from(editedBookingIds)[0] || ""}
+                        excludeLinked="billing"
                         onSelect={(booking) => {
                           if (!booking) {
                             setEditedBookingIds(new Set());
                             setLinkedBookings([]);
-                            // Clear booking-derived fields
-                            setEditedVessel("");
-                            setEditedBlNumber("");
-                            setEditedDestination("");
-                            setEditedOrigin("");
-                            setEditedShipper("");
-                            setEditedConsignee("");
-                            setEditedVolume("");
-                            setEditedCommodity("");
-                            setEditedContainerNumbers([]);
                             setEditedClientName("");
                             setEditedCompanyName("");
                             return;
@@ -1138,32 +1045,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                           const uid = bk.bookingId || bk.bookingNumber || bk.booking_number || booking.id;
                           setEditedBookingIds(new Set([uid]));
                           setLinkedBookings([bk]);
-
-                          // Auto-fill shipment detail fields from selected booking
-                          setEditedVessel(bk.vesselVoyage || bk.vessel_voyage || bk.vessel || "");
-                          setEditedBlNumber(bk.blNumber || bk.bl_number || bk.awbBlNo || "");
-                          // Destination logic: use POD for imports
-                          let dest = bk.destination || bk.dropoff || "";
-                          if (bk.shipmentType?.toLowerCase() === "import") {
-                            dest = bk.pod || bk.port_of_destination || dest;
-                          }
-                          setEditedDestination(dest);
-                          setEditedOrigin(bk.origin || bk.pol || bk.pickup || "");
-                          setEditedShipper(bk.shipper || "");
-                          setEditedConsignee(bk.consignee || "");
-                          setEditedVolume(bk.volume || "");
-                          setEditedCommodity(bk.commodity || "");
-                          setEditedClientName(bk.clientName || bk.client || bk.customerName || bk.customer_name || editedClientName);
+                          setEditedClientName(bk.customerName || bk.customer_name || bk.clientName || bk.client || editedClientName);
                           setEditedCompanyName(bk.companyName || bk.company_name || editedCompanyName);
-                          // Parse container numbers
-                          let containers: string[] = [];
-                          if (bk.containerNumbers) {
-                            containers = Array.isArray(bk.containerNumbers) ? bk.containerNumbers : bk.containerNumbers.split(",").map((c: string) => c.trim()).filter(Boolean);
-                          } else if (bk.containerNo) {
-                            containers = bk.containerNo.includes(",") ? bk.containerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : [bk.containerNo];
-                          }
-                          setEditedContainerNumbers(containers);
-                          // Fetch full booking data for enrichment
                           fetchLinkedBookings([uid]);
                         }}
                         placeholder="Search by Booking Ref, BL No, or Client..."
@@ -1190,21 +1073,19 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                     </div>
                   )}
 
-                  {/* Read-only summary fields — booking-derived data */}
+                  {/* Read-only summary fields — live booking-derived data */}
                   {(() => {
-                    // Use edited state when editing, otherwise fall back to saved billing data
-                    const dBlNumber = isEditing ? editedBlNumber : (billing.blNumber || "");
-                    const dVessel = isEditing ? editedVessel : (billing.vessel || "");
-                    const dOrigin = isEditing ? editedOrigin : (billing.origin || "");
-                    const dDestination = isEditing ? editedDestination : (billing.destination || "");
-                    const dShipper = isEditing ? editedShipper : (billing.shipper || "");
-                    const dConsignee = isEditing ? editedConsignee : (billing.consignee || "");
-                    const dVolume = isEditing ? editedVolume : (billing.volume || "");
-                    const dCommodity = isEditing ? editedCommodity : (billing.commodity || "");
-                    const dClientName = isEditing ? editedClientName : (billing.clientName || "");
-                    const dCompanyName = isEditing ? editedCompanyName : (billing.companyName || "");
-                    const dContainerRaw = isEditing ? editedContainerNumbers : (billing.containerNumbers || []);
-                    const dContainers: string[] = Array.isArray(dContainerRaw) ? dContainerRaw : (typeof dContainerRaw === 'string' ? (dContainerRaw as string).split(',').map(s => s.trim()).filter(Boolean) : []);
+                    const dBlNumber = bookingShipment.blNumber;
+                    const dVessel = bookingShipment.vessel;
+                    const dOrigin = bookingShipment.origin;
+                    const dDestination = bookingShipment.destination;
+                    const dShipper = bookingShipment.shipper;
+                    const dConsignee = bookingShipment.consignee;
+                    const dVolume = bookingShipment.volume;
+                    const dCommodity = bookingShipment.commodity;
+                    const dClientName = bookingShipment.clientName;
+                    const dCompanyName = bookingShipment.companyName;
+                    const dContainers = bookingShipment.containers;
 
                     return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -1261,13 +1142,11 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Volume</div>
                           <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{computeVolumeSummary(dContainers, dVolume)}</div>
                         </div>
-                        {/* Row 5: Commodity (conditional) */}
-                        {dCommodity && (
-                          <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dCommodity}</div>
-                          </div>
-                        )}
+                        {/* Row 5: Commodity */}
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dCommodity || "—"}</div>
+                        </div>
                       </div>
                     </div>
                     );
@@ -1475,7 +1354,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                             </td>
                             <td style={{ padding: "8px" }}>
                               {(() => {
-                                const volLabel = (isEditing ? editedVolume : billing?.volume) || "";
+                                const volLabel = bookingShipment.volume || "";
                                 return isEditing ? (
                                   <div style={{
                                     display: "flex",
@@ -1994,5 +1873,93 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         </div>
       )}
     </>
+  );
+}
+
+function BillingLetterheadPanel({
+  currentDataUrl, onOpenPicker, onClear,
+}: {
+  currentDataUrl?: string;
+  onOpenPicker: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+      <div style={{
+        fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
+        letterSpacing: "0.07em", color: "#0F766E",
+        padding: "12px 0 8px", borderBottom: "1px solid #E5ECE9", marginBottom: "12px",
+      }}>
+        Letterhead
+      </div>
+      {currentDataUrl ? (
+        <div style={{
+          border: "1px solid #E5ECE9",
+          borderRadius: "6px",
+          overflow: "hidden",
+          background: "#F9FAFB",
+          marginBottom: "12px",
+        }}>
+          <img
+            src={currentDataUrl}
+            alt="Letterhead"
+            style={{ display: "block", maxWidth: "100%", maxHeight: "80px", margin: "8px auto", objectFit: "contain" }}
+          />
+          <div style={{ display: "flex", borderTop: "1px solid #E5ECE9" }}>
+            <button
+              onClick={onOpenPicker}
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                padding: "8px",
+                fontSize: "11px",
+                fontWeight: 500,
+                color: "#0F766E",
+                cursor: "pointer",
+              }}
+            >
+              Change
+            </button>
+            <div style={{ width: "1px", background: "#E5ECE9" }} />
+            <button
+              onClick={onClear}
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                padding: "8px",
+                fontSize: "11px",
+                fontWeight: 500,
+                color: "#DC2626",
+                cursor: "pointer",
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={onOpenPicker}
+          style={{
+            width: "100%",
+            border: "1.5px dashed #CBD5E1",
+            borderRadius: "6px",
+            padding: "16px 8px",
+            background: "#FAFBFC",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "4px",
+            marginBottom: "12px",
+          }}
+        >
+          <span style={{ fontSize: "11px", color: "#0F766E", fontWeight: 600 }}>Choose letterhead</span>
+          <span style={{ fontSize: "10px", color: "#9CA3AF" }}>Browse saved or upload new</span>
+        </button>
+      )}
+    </div>
   );
 }

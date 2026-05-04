@@ -69,6 +69,7 @@ export function StatusTagBar({
         label: tag?.label || key,
         group: tag?.group || "operations",
         layer: "shipment" as const,
+        color: tag?.color,
       };
     });
     const operational = operationalTags.map((key) => {
@@ -78,6 +79,7 @@ export function StatusTagBar({
         label: tag?.label || key,
         group: tag?.group || "operations",
         layer: "operational" as const,
+        color: tag?.color,
       };
     });
     const groupOrder = new Map(TAG_GROUPS.map((g, index) => [g.id, index]));
@@ -194,6 +196,7 @@ export function StatusTagBar({
             key={`${pill.layer}:${pill.key}`}
             label={pill.label}
             layer={pill.layer}
+            color={pill.color}
             onRemove={
               pill.layer === "shipment"
                 ? shipmentTagsReadOnly || disabled
@@ -296,6 +299,7 @@ export function StatusTagBar({
                         label: tag.label,
                         active: shipmentTags.includes(tag.key),
                         disabled: shipmentTagsReadOnly,
+                        color: tag.color,
                         onClick: () => toggleShipment(tag.key),
                       }))}
                     />
@@ -372,6 +376,7 @@ function GroupedItems({
     label: string;
     active: boolean;
     disabled: boolean;
+    color?: "danger";
     onClick: () => void;
   }>;
 }) {
@@ -389,44 +394,49 @@ function GroupedItems({
       >
         {title}
       </div>
-      {tags.map((tag) => (
-        <div
-          key={tag.key}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (tag.disabled) return;
-            tag.onClick();
-          }}
-          style={{
-            padding: "8px 16px",
-            cursor: tag.disabled ? "not-allowed" : "pointer",
-            fontSize: "14px",
-            color: tag.disabled ? "#9CA3AF" : "#0A1D4D",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            backgroundColor: tag.active ? "#F0FAF8" : "transparent",
-            opacity: tag.disabled ? 0.6 : 1,
-          }}
-        >
+      {tags.map((tag) => {
+        const isDanger = tag.color === "danger";
+        const activeColor = isDanger ? "#DC2626" : "#0F766E";
+        const activeBg = isDanger ? "#FEF2F2" : "#F0FAF8";
+        return (
           <div
+            key={tag.key}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (tag.disabled) return;
+              tag.onClick();
+            }}
             style={{
-              width: 16,
-              height: 16,
-              borderRadius: 4,
-              flexShrink: 0,
-              border: `1.5px solid ${tag.active ? "#0F766E" : "#D1D5DB"}`,
-              backgroundColor: tag.active ? "#0F766E" : "transparent",
+              padding: "8px 16px",
+              cursor: tag.disabled ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              color: tag.disabled ? "#9CA3AF" : "#0A1D4D",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
+              gap: "10px",
+              backgroundColor: tag.active ? activeBg : "transparent",
+              opacity: tag.disabled ? 0.6 : 1,
             }}
           >
-            {tag.active && <Check size={10} color="white" />}
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: 4,
+                flexShrink: 0,
+                border: `1.5px solid ${tag.active ? activeColor : "#D1D5DB"}`,
+                backgroundColor: tag.active ? activeColor : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {tag.active && <Check size={10} color="white" />}
+            </div>
+            {tag.label}
           </div>
-          {tag.label}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

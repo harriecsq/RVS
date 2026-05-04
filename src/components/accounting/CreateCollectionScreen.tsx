@@ -3,7 +3,7 @@ import { X, Search, Plus, Minus } from "lucide-react";
 import { Button } from "../ui/button";
 import { formatAmount } from "../../utils/formatAmount";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -52,8 +52,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   const [isSaving, setIsSaving] = useState(false);
 
   // Filter states for invoice selector
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [billingSearch, setBillingSearch] = useState("");
   const [bookingSearch, setBookingSearch] = useState("");
   
@@ -99,13 +98,11 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   const filteredBillings = useMemo(() => {
     return billings.filter(b => {
       // Company filter
-      if (companyFilter) {
-        const billingCompany = b.companyName || b.clientName || "";
-        if (billingCompany !== companyFilter) return false;
-        if (clientFilter) {
-          const billingClient = b.clientName || "";
-          if (billingClient !== clientFilter) return false;
-        }
+      if (clientSelections.length > 0) {
+        if (!clientSelectionMatches(clientSelections, {
+          company: b.companyName || b.clientName || "",
+          client: b.clientName || "",
+        })) return false;
       }
 
       // Billing number search
@@ -127,7 +124,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
 
       return true;
     });
-  }, [billings, companyFilter, clientFilter, billingSearch, bookingSearch]);
+  }, [billings, clientSelections, billingSearch, bookingSearch]);
 
   // Auto-select billing if preSelectedBillingId provided
   useEffect(() => {
@@ -342,7 +339,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
     return "No Booking";
   };
 
-  const hasActiveFilters = !!companyFilter || !!billingSearch || !!bookingSearch;
+  const hasActiveFilters = clientSelections.length > 0 || !!billingSearch || !!bookingSearch;
 
   // Derive selected billing objects from the full billings list (filter-independent)
   const selectedBillings = useMemo(() => {
@@ -530,13 +527,12 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               {/* Consignee/Shipper + Client Filter */}
               <div style={{ minWidth: "180px" }}>
                 <CompanyClientFilter
-                  items={billings}
-                  getCompany={(b) => b.companyName || b.clientName || ""}
-                  getClient={(b) => b.clientName || ""}
-                  selectedCompany={companyFilter}
-                  selectedClient={clientFilter}
-                  onCompanyChange={setCompanyFilter}
-                  onClientChange={setClientFilter}
+                  extraEntries={billings.map(b => ({
+                    company: b.companyName || b.clientName || "",
+                    client: b.clientName || "",
+                  }))}
+                  selected={clientSelections}
+                  onChange={setClientSelections}
                   placeholder="All Companies"
                 />
               </div>

@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { Download, Filter, ChevronLeft, ChevronRight, Search, ArrowLeft } from "lucide-react";
+import { Filter, ChevronLeft, ChevronRight, Search, ArrowLeft, Printer } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { publicAnonKey } from "../../utils/supabase/info";
-import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
+import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
 import { MultiSelectPortalDropdown } from '../shared/MultiSelectPortalDropdown';
 import { FilterSingleDropdown } from '../shared/FilterSingleDropdown';
-import { CompanyClientFilter } from '../shared/CompanyClientFilter';
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from '../shared/CompanyClientFilter';
 import { useClientsMasterList } from '../../hooks/useClientsMasterList';
 import { StandardInput } from '../design-system/StandardInput';
 
@@ -31,7 +31,8 @@ interface Booking {
   booking_type?: string; // Server always injects "Import" or "Export"
   origin?: string; // POL for export
   pod?: string;    // POD for import
-  segments?: { origin?: string; pod?: string }[];
+  destination?: string;
+  segments?: { origin?: string; pod?: string; destination?: string }[];
 }
 
 interface Billing {
@@ -94,8 +95,7 @@ interface FilterState {
   dateEnd: string;
   serviceType: string;
   port: string[];
-  client: string | null;
-  clientCompany: string | null;
+  clientSelections: ClientSelection[];
   searchQuery: string;
 }
 
@@ -153,8 +153,7 @@ export function SOAPaymentMonitoringReport() {
     dateEnd: "",
     serviceType: "All",
     port: [],
-    client: null,
-    clientCompany: null,
+    clientSelections: [],
     searchQuery: ""
   });
   const clientsMasterList = useClientsMasterList();
@@ -162,6 +161,8 @@ export function SOAPaymentMonitoringReport() {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SOAPaymentRow[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [dateMode, setDateMode] = useState<"month" | "range">("month");
+  const [selectedMonth, setSelectedMonth] = useState("");
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -258,12 +259,17 @@ export function SOAPaymentMonitoringReport() {
           }
         }
 
-        const serviceType = booking?.shipmentType || booking?.booking_type || booking?.mode || "Import";
-        const isImport = serviceType.toLowerCase().includes("import");
+        const rawType = String(booking?.booking_type || booking?.shipmentType || booking?.mode || "").trim();
+        const rawLower = rawType.toLowerCase();
+        let serviceType: string;
+        if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
+        else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
+        else serviceType = rawType || "Import";
+        const isImport = serviceType === "Import";
         const seg0 = booking?.segments?.[0];
         const port = isImport
-          ? (booking?.pod || seg0?.pod || "—")
-          : (booking?.origin || seg0?.origin || "—");
+          ? (booking?.pod || booking?.destination || seg0?.pod || (seg0 as any)?.destination || "—")
+          : (booking?.origin || booking?.pod || booking?.destination || seg0?.origin || seg0?.pod || "—");
 
         const soaNumber = billing.billingNumber || billing.soaNumber || "—";
         const soaAmount = Number(billing.totalAmount) || 0;
@@ -339,9 +345,8 @@ export function SOAPaymentMonitoringReport() {
       if (!filters.port.some(p => item.port.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
-    if (filters.clientCompany) {
-      if (item.clientName !== filters.clientCompany && item.clientName !== filters.client) return false;
-      if (filters.client && item.clientName !== filters.client) return false;
+    if (filters.clientSelections.length > 0) {
+      if (!clientSelectionMatches(filters.clientSelections, { client: item.clientName })) return false;
     }
 
     if (filters.dateStart && item.billingDate < filters.dateStart) return false;
@@ -367,44 +372,138 @@ export function SOAPaymentMonitoringReport() {
 
   const formatCurrency = (val: number) => `₱${formatAmount(val)}`;
 
-  // --- CSV Export ---
-  const handleExport = () => {
+  const handlePrintPDF = () => {
     if (!filteredData.length) {
-      toast.error("No data to export");
+      toast.error("No data to print");
       return;
     }
 
-    const headers = [
-      "No.", "Client Name", "Commodity", "Container Number",
-      "SOA No.", "SOA Amount", "Name/Check", "Check Amount", "Date of Payment"
-    ];
+    const esc = (s: any) =>
+      String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const fmt = (n: number) =>
+      n === 0 ? "—" : n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtDates = (s: string) => {
+      if (!s || s === "—") return s;
+      const matches = [...s.matchAll(/([A-Z][a-z]{2})\s+(\d{1,2}),\s*\d{4}/g)];
+      if (!matches.length) return s;
+      return matches.map(m => `${m[2].padStart(2, "0")}-${m[1]}`).join(" / ");
+    };
+    const slashJoin = (s: string) => (!s || s === "—" ? s : s.split(/,\s*/).join(" / "));
 
-    const rows = filteredData.map((row, index) => [
-      (index + 1).toString(),
-      row.clientName,
-      row.commodity,
-      row.containerNumbers.join(", "),
-      row.soaNumber,
-      row.soaAmount.toString(),
-      row.nameCheck,
-      row.checkAmount.toString(),
-      row.dateOfPayment
-    ]);
+    // --- Period text ---
+    const MONTH_ABBRS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const MONTHS_FULL = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+    const periodText = (() => {
+      if (dateMode === "month") {
+        if (!selectedMonth) return "ALL TIME";
+        const [abbr, yearStr] = selectedMonth.split(" ");
+        const idx = MONTH_ABBRS.indexOf(abbr);
+        const year = parseInt(yearStr, 10);
+        if (idx < 0 || isNaN(year)) return "ALL TIME";
+        return `${MONTHS_FULL[idx]} ${year}`;
+      }
+      const s = filters.dateStart;
+      const e = filters.dateEnd;
+      if (!s && !e) return "ALL TIME";
+      const re = /^(\d{4})-(\d{2})-(\d{2})$/;
+      const ms = s ? re.exec(s) : null;
+      const me = e ? re.exec(e) : null;
+      if (ms && me) {
+        const fmt = (m: RegExpExecArray) =>
+          `${MONTHS_FULL[+m[2] - 1]} ${String(+m[3]).padStart(2, "0")}, ${+m[1]}`;
+        return `${fmt(ms)} - ${fmt(me)}`;
+      }
+      return "ALL TIME";
+    })();
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
+    // --- Subtitle text (SERVICE PORT - CLIENT) ---
+    const portShortMap: Record<string, string> = {
+      "Manila North": "NORTH",
+      "Manila South": "SOUTH",
+      "CDO": "CDO",
+      "Iloilo": "ILOILO",
+      "Davao": "DAVAO",
+    };
+    const servicePart =
+      filters.serviceType && filters.serviceType !== "All" ? filters.serviceType.toUpperCase() : "";
+    const portPart =
+      !filters.port || filters.port.length === 0 || filters.port.length === PORT_OPTIONS.length
+        ? ""
+        : filters.port.map(p => portShortMap[p] || p.toUpperCase()).join(" & ");
+    const clientPart = filters.clientSelections.length === 1
+      ? String(filters.clientSelections[0].client || filters.clientSelections[0].company).toUpperCase()
+      : filters.clientSelections.length > 1
+      ? `${filters.clientSelections.length} CLIENTS`
+      : "";
+    const leftPart = [servicePart, portPart].filter(Boolean).join(" ");
+    const subtitleText =
+      leftPart && clientPart ? `${leftPart} - ${clientPart}` : leftPart || clientPart || "";
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `SOAPaymentMonitoring_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Exporting to Excel...");
+    const soaTotal = filteredData.reduce((s, r) => s + (Number(r.soaAmount) || 0), 0);
+    const checkTotal = filteredData.reduce((s, r) => s + (Number(r.checkAmount) || 0), 0);
+    const totalsRowHtml = `
+      <tr class="totals">
+        <td></td><td></td><td></td><td></td><td></td>
+        <td class="amt">${fmt(soaTotal)}</td>
+        <td></td>
+        <td class="amt">${fmt(checkTotal)}</td>
+        <td></td>
+      </tr>`;
+
+    const rowsHtml = filteredData.map((row, i) => `
+      <tr>
+        <td class="num">${i + 1}</td>
+        <td>${esc(row.clientName)}</td>
+        <td>${esc(row.commodity)}</td>
+        <td>${esc(row.containerNumbers.join(" / "))}</td>
+        <td>${esc(row.soaNumber)}</td>
+        <td class="amt">${fmt(row.soaAmount)}</td>
+        <td>${esc(slashJoin(row.nameCheck))}</td>
+        <td class="amt">${fmt(row.checkAmount)}</td>
+        <td>${esc(fmtDates(row.dateOfPayment))}</td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>SOA Payment Monitoring</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 6.3pt; color: #000; }
+  h1 { font-size: 9.1pt; text-transform: uppercase; text-align: center; margin-bottom: 4px; }
+  h2 { font-size: 7.5pt; text-transform: uppercase; text-align: center; margin-bottom: 12px; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 1px solid #000; padding: 4px 6px; text-align: center; vertical-align: middle; word-break: break-word; font-weight: bold; }
+  th { background: #f0f0f0; text-transform: uppercase; font-size: 6pt; }
+  td.amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.num { font-weight: normal; }
+  tr.totals td { border: none; }
+</style></head><body>
+  <h1>SOA Payment Monitoring (${esc(periodText)})</h1>
+  ${subtitleText ? `<h2>${esc(subtitleText)}</h2>` : ""}
+  <table>
+    <colgroup>
+      <col style="width:29px" />
+      <col style="width:171px" />
+      <col />
+      <col style="width:90px" />
+      <col style="width:78px" />
+      <col style="width:107px" />
+      <col style="width:140px" />
+      <col style="width:107px" />
+      <col style="width:91px" />
+    </colgroup>
+    <thead><tr>
+      <th>No.</th><th>Client</th><th>Commodity</th><th>Container No.</th>
+      <th>SOA No.</th><th>SOA Amount</th><th>Name/Check</th><th>Check Amount</th><th>Date of Payment</th>
+    </tr></thead>
+    <tbody>${rowsHtml}${totalsRowHtml}</tbody>
+  </table>
+  <script>window.onload = () => { window.print(); };<\/script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+    else toast.error("Popup blocked. Please allow popups for this site.");
   };
 
   return (
@@ -446,15 +545,15 @@ export function SOAPaymentMonitoringReport() {
             </div>
           </div>
           <button
-            onClick={handleExport}
+            onClick={handlePrintPDF}
             style={{
               height: "40px",
               padding: "0 20px",
               fontSize: "14px",
               fontWeight: 600,
-              color: "var(--neuron-brand-green)",
-              backgroundColor: "var(--neuron-state-selected)",
-              border: "1px solid var(--neuron-brand-green)",
+              color: "white",
+              backgroundColor: "var(--neuron-brand-green)",
+              border: "none",
               borderRadius: "8px",
               cursor: "pointer",
               display: "flex",
@@ -462,8 +561,8 @@ export function SOAPaymentMonitoringReport() {
               gap: "8px"
             }}
           >
-            <Download size={16} />
-            Export Excel
+            <Printer size={16} />
+            Print PDF
           </button>
         </div>
 
@@ -493,12 +592,14 @@ export function SOAPaymentMonitoringReport() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px" }}>
             {/* Date Range */}
             <div>
-              <UnifiedDateRangeFilter
-                startDate={filters.dateStart}
-                endDate={filters.dateEnd}
-                onStartDateChange={(v) => setFilters({ ...filters, dateStart: v })}
-                onEndDateChange={(v) => setFilters({ ...filters, dateEnd: v })}
-                label="SOA Date Range (From - To)"
+              <MonthOrRangeDateFilter
+                label="SOA Date Range"
+                dateStart={filters.dateStart}
+                dateEnd={filters.dateEnd}
+                onStartDateChange={(v) => setFilters((prev) => ({ ...prev, dateStart: v }))}
+                onEndDateChange={(v) => setFilters((prev) => ({ ...prev, dateEnd: v }))}
+                onModeChange={(m) => setDateMode(m)}
+                onMonthChange={(m) => setSelectedMonth(m)}
               />
             </div>
 
@@ -523,14 +624,9 @@ export function SOAPaymentMonitoringReport() {
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <label style={{ fontSize: "14px", fontWeight: 500, color: "#344054" }}>Client</label>
               <CompanyClientFilter
-                items={[]}
                 extraEntries={clientsMasterList}
-                getCompany={() => ""}
-                getClient={() => ""}
-                selectedCompany={filters.clientCompany}
-                selectedClient={filters.client}
-                onCompanyChange={(v) => setFilters({ ...filters, clientCompany: v, client: null })}
-                onClientChange={(v) => setFilters({ ...filters, client: v })}
+                selected={filters.clientSelections}
+                onChange={(v) => setFilters((prev) => ({ ...prev, clientSelections: v }))}
                 placeholder="All Clients"
               />
             </div>

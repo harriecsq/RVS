@@ -2132,11 +2132,13 @@ app.get("/make-server-ce0d67b8/projects", async (c) => {
     let projects = await kv.getByPrefix("project:");
     
     // Get all billings, collections, expenses, and vouchers for aggregation
-    const allBillings = await kv.getByPrefix("billing:");
-    const allCollections = await kv.getByPrefix("collection:");
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allBillings, allCollections, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("collection:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     // Add financial data to each project
     projects = projects.map((project: any) => {
       // BILLINGS: Calculate outstanding
@@ -2252,11 +2254,13 @@ app.get("/make-server-ce0d67b8/projects/:id", async (c) => {
     }
     
     // Get all billings, collections, expenses, and vouchers for this project
-    const allBillings = await kv.getByPrefix("billing:");
-    const allCollections = await kv.getByPrefix("collection:");
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allBillings, allCollections, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("collection:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     // BILLINGS: Calculate outstanding
     const projectBillings = allBillings.filter((billing: any) => billing.projectId === id);
     const totalBilled = projectBillings.reduce((sum: number, billing: any) => sum + (billing.totalAmount || 0), 0);
@@ -2344,13 +2348,15 @@ app.get("/make-server-ce0d67b8/projects/:id/bookings", async (c) => {
     }
     
     // Fetch all bookings linked to this project (ALL booking types)
-    const allExportBookings = await kv.getByPrefix("export_booking:");
-    const allImportBookings = await kv.getByPrefix("import_booking:");
-    const allTruckingBookings = await kv.getByPrefix("trucking_booking:");
-    const allForwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const allBrokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const allMarineInsuranceBookings = await kv.getByPrefix("marine_insurance_booking:");
-    const allOthersBookings = await kv.getByPrefix("others_booking:");
+    const [allExportBookings, allImportBookings, allTruckingBookings, allForwardingBookings, allBrokerageBookings, allMarineInsuranceBookings, allOthersBookings] = await Promise.all([
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("marine_insurance_booking:"),
+      kv.getByPrefix("others_booking:"),
+    ]);
     
     const exportBookings = allExportBookings.filter((b: any) => b.project_id === id || b.projectId === id);
     const importBookings = allImportBookings.filter((b: any) => b.project_id === id || b.projectId === id);
@@ -2423,13 +2429,17 @@ app.get("/make-server-ce0d67b8/projects/:id/expenses", async (c) => {
     }
     
     // Fetch all bookings linked to this project
-    const allExportBookings = await kv.getByPrefix("export_booking:");
-    const allImportBookings = await kv.getByPrefix("import_booking:");
-    const allForwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const allTruckingBookings = await kv.getByPrefix("trucking_booking:");
-    const allBrokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const allOthersBookings = await kv.getByPrefix("others_booking:");
-    
+    const [allExportBookings, allImportBookings, allForwardingBookings, allTruckingBookings, allBrokerageBookings, allOthersBookings, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("others_booking:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     const projectBookingIds = [
       ...allExportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allImportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
@@ -2438,10 +2448,6 @@ app.get("/make-server-ce0d67b8/projects/:id/expenses", async (c) => {
       ...allBrokerageBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allOthersBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId)
     ];
-    
-    // Fetch all expenses and vouchers
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
     
     // Filter expenses that either:
     // 1. Belong to bookings in this project (via bookingIds array)
@@ -2573,13 +2579,17 @@ app.get("/make-server-c142e950/projects/:id/expenses", async (c) => {
     }
     
     // Fetch all bookings linked to this project
-    const allExportBookings = await kv.getByPrefix("export_booking:");
-    const allImportBookings = await kv.getByPrefix("import_booking:");
-    const allForwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const allTruckingBookings = await kv.getByPrefix("trucking_booking:");
-    const allBrokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const allOthersBookings = await kv.getByPrefix("others_booking:");
-    
+    const [allExportBookings, allImportBookings, allForwardingBookings, allTruckingBookings, allBrokerageBookings, allOthersBookings, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("others_booking:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     const projectBookingIds = [
       ...allExportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allImportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
@@ -2588,10 +2598,6 @@ app.get("/make-server-c142e950/projects/:id/expenses", async (c) => {
       ...allBrokerageBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allOthersBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId)
     ];
-    
-    // Fetch all expenses and vouchers
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
     
     // Filter expenses that either:
     // 1. Belong to bookings in this project (via bookingIds array)
@@ -3261,9 +3267,16 @@ app.get("/make-server-ce0d67b8/bookings", async (c) => {
     const ids = c.req.query("ids"); // NEW: Support for fetching specific bookings by IDs
     
     // Get all bookings from ALL prefixes (new workflow - comprehensive)
-    const bookings = await kv.getByPrefix("booking:");
-    const exportBookingsRaw = await kv.getByPrefix("export_booking:");
-    const importBookingsRaw = await kv.getByPrefix("import_booking:");
+    const [bookings, exportBookingsRaw, importBookingsRaw, forwardingBookings, truckingBookings, brokerageBookings, marineInsuranceBookings, othersBookings] = await Promise.all([
+      kv.getByPrefix("booking:"),
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("marine_insurance_booking:"),
+      kv.getByPrefix("others_booking:"),
+    ]);
     const exportBookings = await Promise.all(
       exportBookingsRaw.map((booking: any) =>
         migrateExportBookingIfNeeded(booking, booking.bookingId || booking.id),
@@ -3274,11 +3287,6 @@ app.get("/make-server-ce0d67b8/bookings", async (c) => {
         migrateImportBookingIfNeeded(booking, booking.bookingId || booking.id),
       ),
     );
-    const forwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const truckingBookings = await kv.getByPrefix("trucking_booking:");
-    const brokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const marineInsuranceBookings = await kv.getByPrefix("marine_insurance_booking:");
-    const othersBookings = await kv.getByPrefix("others_booking:");
     
     // Combine all bookings and add booking_type field
     const allBookings = [
@@ -4264,10 +4272,12 @@ app.delete("/make-server-ce0d67b8/expenses/:id", async (c) => {
 // Get all vouchers
 app.get("/make-server-ce0d67b8/vouchers", async (c) => {
   try {
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allVouchers, allExpenses] = await Promise.all([
+      kv.getByPrefix("voucher:"),
+      kv.getByPrefix("expense:"),
+    ]);
+
     // Enrich vouchers with expenseNumber from linked expenses
-    const allExpenses = await kv.getByPrefix("expense:");
     const expenseMap = new Map<string, string>();
     allExpenses.forEach((exp: any) => {
       if (exp.id && exp.expenseNumber) {
@@ -4693,8 +4703,11 @@ app.get("/make-server-ce0d67b8/bookings/:id/vouchers", async (c) => {
   try {
     const id = c.req.param("id");
     
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allVouchers, allExpenses] = await Promise.all([
+      kv.getByPrefix("voucher:"),
+      kv.getByPrefix("expense:"),
+    ]);
+
     const segmentId = c.req.query("segmentId");
 
     // 1. Direct booking-linked vouchers (standalone vouchers with bookingId)
@@ -4702,9 +4715,8 @@ app.get("/make-server-ce0d67b8/bookings/:id/vouchers", async (c) => {
     if (segmentId) {
       directVouchers = directVouchers.filter((v: any) => v.segmentId === segmentId);
     }
-    
+
     // 2. Expense-linked vouchers: find all expenses for this booking, then their vouchers
-    const allExpenses = await kv.getByPrefix("expense:");
     const bookingExpenses = allExpenses.filter((expense: any) => {
       if (expense.bookingIds && Array.isArray(expense.bookingIds)) {
         return expense.bookingIds.includes(id);
@@ -6097,6 +6109,39 @@ function dedupeTags(tags: string[]): string[] {
   return Array.from(new Set((tags || []).filter(Boolean)));
 }
 
+async function nextLogbookNumberForYear(year: string): Promise<number> {
+  // Numbering is per-year, continuous across months. Returns the next #N for `year`.
+  const imports = await kv.getByPrefix("import_booking:");
+  const exports = await kv.getByPrefix("export_booking:");
+  let max = 0;
+  for (const b of [...imports, ...exports]) {
+    if (typeof b.logbookMonth === "string"
+      && b.logbookMonth.startsWith(`${year}-`)
+      && typeof b.logbookNumber === "number"
+      && b.logbookNumber > max) {
+      max = b.logbookNumber;
+    }
+  }
+  return max + 1;
+}
+
+// Renumber every booking belonging to `year` by (logbookMonth asc, donePaymentAt asc) → #1..#N.
+// Mutates records in place. Caller is responsible for persisting.
+function renumberYearInPlace(year: string, allRecords: any[]): void {
+  const inYear = allRecords.filter((r: any) =>
+    typeof r.logbookMonth === "string" && r.logbookMonth.startsWith(`${year}-`)
+  );
+  inYear.sort((a: any, b: any) => {
+    if (a.logbookMonth !== b.logbookMonth) {
+      return a.logbookMonth < b.logbookMonth ? -1 : 1;
+    }
+    const ta = a.donePaymentAt ? new Date(a.donePaymentAt).getTime() : 0;
+    const tb = b.donePaymentAt ? new Date(b.donePaymentAt).getTime() : 0;
+    return ta - tb;
+  });
+  inYear.forEach((r: any, i: number) => { r.logbookNumber = i + 1; });
+}
+
 function getTagLabel(tagKey: string): string {
   return STATUS_TAG_LABELS[tagKey] || tagKey;
 }
@@ -6264,6 +6309,18 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
     dirty = true;
   }
 
+  // Step 3: Backfill volume onto existing segments that are missing it
+  if (Array.isArray(migrated.segments) && migrated.volume) {
+    const patched = migrated.segments.map((seg: any) => {
+      if (!seg.volume) {
+        dirty = true;
+        return { ...seg, volume: migrated.volume };
+      }
+      return seg;
+    });
+    if (dirty) migrated = { ...migrated, segments: patched };
+  }
+
   if (dirty) {
     await kv.set(`export_booking:${id}`, migrated);
   }
@@ -6313,6 +6370,8 @@ function syncTopLevelFromSegment0(booking: any): any {
     bir: seg.bir,
     labor: seg.labor,
     otherCharges: seg.otherCharges,
+    volume: seg.volume,
+    grossWeight: seg.grossWeight,
   };
 }
 
@@ -6442,7 +6501,7 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async (c
     const docType = c.req.param("docType");
     const body = await c.req.json();
 
-    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e"];
+    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e", "processing-fee", "heart-of-export"];
     if (!validTypes.includes(docType)) {
       return c.json({ success: false, error: `Invalid document type: ${docType}` }, 400);
     }
@@ -6455,6 +6514,8 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async (c
       : docType === "commercial-invoice" ? "commercialInvoice"
       : docType === "packing-list" ? "packingList"
       : docType === "form-e" ? "formE"
+      : docType === "processing-fee" ? "processingFee"
+      : docType === "heart-of-export" ? "heartOfExport"
       : "declaration";
 
     const now = new Date().toISOString();
@@ -6483,7 +6544,7 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async
     const id = decodeURIComponent(c.req.param("id"));
     const docType = c.req.param("docType");
 
-    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e"];
+    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e", "processing-fee", "heart-of-export"];
     if (!validTypes.includes(docType)) {
       return c.json({ success: false, error: `Invalid document type: ${docType}` }, 400);
     }
@@ -6496,6 +6557,8 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async
       : docType === "commercial-invoice" ? "commercialInvoice"
       : docType === "packing-list" ? "packingList"
       : docType === "form-e" ? "formE"
+      : docType === "processing-fee" ? "processingFee"
+      : docType === "heart-of-export" ? "heartOfExport"
       : "declaration";
 
     delete docs[camelKey];
@@ -6597,6 +6660,21 @@ app.put("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
       if (duplicate) {
         return c.json({ success: false, error: `Reference number ${newBookingId} is already in use by another active record.` }, 409);
       }
+    }
+
+    // Logbook entry on first Done Payment flip. Never unset once set (toggle protection).
+    // Export bookings store shippingLineStatus inside segments[0]; check there too.
+    const incomingSlsTop = updates.shippingLineStatus;
+    const incomingSlsSeg = Array.isArray(updates.segments) ? updates.segments?.[0]?.shippingLineStatus : undefined;
+    const existingSlsSeg = Array.isArray(existing.segments) ? existing.segments?.[0]?.shippingLineStatus : undefined;
+    const effectiveSls = incomingSlsTop ?? incomingSlsSeg ?? existing.shippingLineStatus ?? existingSlsSeg;
+    if (effectiveSls === "Done Payment" && !existing.donePaymentAt) {
+      const now = new Date().toISOString();
+      const month = now.slice(0, 7);
+      updates.donePaymentAt = now;
+      updates.logbookMonth = month;
+      updates.originalLogbookMonth = month;
+      updates.logbookNumber = await nextLogbookNumberForYear(month.slice(0, 4));
     }
 
     const updated = {
@@ -6809,8 +6887,10 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
     await kv.del(`export_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7004,6 +7084,16 @@ app.put("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
       }
     }
 
+    // Logbook entry on first Done Payment flip. Never unset once set (toggle protection).
+    if (updates.shippingLineStatus === "Done Payment" && !existing.donePaymentAt) {
+      const now = new Date().toISOString();
+      const month = now.slice(0, 7);
+      updates.donePaymentAt = now;
+      updates.logbookMonth = month;
+      updates.originalLogbookMonth = month;
+      updates.logbookNumber = await nextLogbookNumberForYear(month.slice(0, 4));
+    }
+
     const updated = {
       ...existing,
       ...updates,
@@ -7125,8 +7215,10 @@ app.delete("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
     await kv.del(`import_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7141,10 +7233,268 @@ app.delete("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
     }
     
     console.log(`Deleted import booking ${id} and associated records`);
-    
+
     return c.json({ success: true });
   } catch (error) {
     console.error("Error deleting import booking:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ==================== LOGBOOK ====================
+
+app.get("/make-server-ce0d67b8/logbook/:month", async (c) => {
+  try {
+    const month = c.req.param("month");
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return c.json({ success: false, error: "Invalid month format" }, 400);
+    }
+
+    const imports = await kv.getByPrefix("import_booking:");
+    const exports = await kv.getByPrefix("export_booking:");
+    const allRelevant = [...imports, ...exports];
+    const inMonth = allRelevant.filter((b: any) => b.logbookMonth === month);
+    inMonth.sort((a: any, b: any) => (a.logbookNumber ?? 0) - (b.logbookNumber ?? 0));
+
+    const bookings = inMonth.map((b: any) => ({
+      bookingRowId: b.bookingId,
+      bookingId: b.bookingId,
+      logbookNumber: b.logbookNumber,
+      client: b.consignee || b.shipper || "—",
+      shippingLine: b.shippingLine || "—",
+      donePaymentAt: b.donePaymentAt,
+      deliveredAt: b.deliveredAt ?? null,
+      status: (Array.isArray(b.shipmentTags) && b.shipmentTags.includes("delivered")) ? "green" : "yellow",
+      movedIn: b.originalLogbookMonth !== month,
+    }));
+
+    let green = 0, yellow = 0;
+    for (const b of bookings) {
+      if (b.status === "green") green++;
+      else yellow++;
+    }
+
+    // "thisMonth" = originated in this month (still here + moved out), so the math reads
+    // total = thisMonth − movedOut + movedIn.
+    let stayed = 0, movedIn = 0, movedOut = 0;
+    for (const b of allRelevant) {
+      const bInMonth = b.logbookMonth === month;
+      const originInMonth = b.originalLogbookMonth === month;
+      if (bInMonth && originInMonth) stayed++;
+      else if (bInMonth && !originInMonth) movedIn++;
+      else if (!bInMonth && originInMonth) movedOut++;
+    }
+    const thisMonth = stayed + movedOut;
+
+    return c.json({
+      success: true,
+      data: {
+        bookings,
+        counts: { green, yellow },
+        movement: { thisMonth, movedIn, movedOut, total: stayed + movedIn },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching logbook:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.post("/make-server-ce0d67b8/logbook/adjust", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { bookingIds, targetMonth, userName } = body;
+
+    if (!/^\d{4}-\d{2}$/.test(targetMonth)) {
+      return c.json({ success: false, error: "Invalid targetMonth" }, 400);
+    }
+    if (!Array.isArray(bookingIds) || bookingIds.length === 0) {
+      return c.json({ success: false, error: "No bookings selected" }, 400);
+    }
+
+    const imports = await kv.getByPrefix("import_booking:");
+    const exports = await kv.getByPrefix("export_booking:");
+    const byBookingId = new Map<string, { record: any; kvKey: string }>();
+    for (const b of imports) byBookingId.set(b.bookingId, { record: b, kvKey: `import_booking:${b.bookingId}` });
+    for (const b of exports) byBookingId.set(b.bookingId, { record: b, kvKey: `export_booking:${b.bookingId}` });
+
+    const movedSet = new Set<string>(bookingIds);
+    const movedRecords: Array<{ record: any; kvKey: string; fromMonth: string; fromNumber: number }> = [];
+    for (const id of bookingIds) {
+      const entry = byBookingId.get(id);
+      if (!entry) return c.json({ success: false, error: `Booking ${id} not found` }, 404);
+      if (!entry.record.logbookMonth) {
+        return c.json({ success: false, error: `Booking ${id} not in logbook` }, 400);
+      }
+      movedRecords.push({
+        record: entry.record,
+        kvKey: entry.kvKey,
+        fromMonth: entry.record.logbookMonth,
+        fromNumber: entry.record.logbookNumber,
+      });
+      entry.record.logbookMonth = targetMonth;
+      entry.record.logbookNumber = null;
+    }
+
+    // Numbering is per-year, continuous across months. Renumber every affected year.
+    const yearsToRenumber = new Set<string>([targetMonth.slice(0, 4)]);
+    for (const m of movedRecords) yearsToRenumber.add(m.fromMonth.slice(0, 4));
+
+    const allRecords = Array.from(byBookingId.values()).map((e) => e.record);
+    const movedSourceNumberByBookingId = new Map<string, number>();
+    for (const m of movedRecords) movedSourceNumberByBookingId.set(m.record.bookingId, m.fromNumber);
+
+    for (const year of yearsToRenumber) {
+      const inYear = allRecords.filter((r: any) =>
+        typeof r.logbookMonth === "string" && r.logbookMonth.startsWith(`${year}-`)
+      );
+      // Group by month, then within each month: existing (not moved-into-this-month) first
+      // by donePaymentAt asc, then items moved INTO this month in source-number asc.
+      const byMonth = new Map<string, any[]>();
+      for (const r of inYear) {
+        const arr = byMonth.get(r.logbookMonth) ?? [];
+        arr.push(r);
+        byMonth.set(r.logbookMonth, arr);
+      }
+      const sortedMonths = Array.from(byMonth.keys()).sort();
+      let counter = 1;
+      for (const month of sortedMonths) {
+        const records = byMonth.get(month)!;
+        const isTargetMonth = month === targetMonth;
+        const movedInto = isTargetMonth
+          ? records.filter((r: any) => movedSet.has(r.bookingId))
+          : [];
+        const existing = isTargetMonth
+          ? records.filter((r: any) => !movedSet.has(r.bookingId))
+          : records;
+        existing.sort((a: any, b: any) => {
+          const ta = a.donePaymentAt ? new Date(a.donePaymentAt).getTime() : 0;
+          const tb = b.donePaymentAt ? new Date(b.donePaymentAt).getTime() : 0;
+          return ta - tb;
+        });
+        movedInto.sort((a: any, b: any) =>
+          (movedSourceNumberByBookingId.get(a.bookingId) ?? 0) -
+          (movedSourceNumberByBookingId.get(b.bookingId) ?? 0)
+        );
+        for (const r of [...existing, ...movedInto]) {
+          r.logbookNumber = counter++;
+        }
+      }
+    }
+
+    const now = new Date().toISOString();
+    const keys: string[] = [];
+    const values: any[] = [];
+    for (const entry of byBookingId.values()) {
+      keys.push(entry.kvKey);
+      values.push(entry.record);
+    }
+    const adjustmentEntries: any[] = [];
+    for (const m of movedRecords) {
+      const adj = {
+        id: crypto.randomUUID(),
+        bookingId: m.record.bookingId,
+        fromMonth: m.fromMonth,
+        fromNumber: m.fromNumber,
+        toMonth: targetMonth,
+        toNumber: m.record.logbookNumber,
+        userName: userName || "Unknown",
+        timestamp: now,
+      };
+      adjustmentEntries.push(adj);
+      keys.push(`logbook_adjustment:${adj.id}`);
+      values.push(adj);
+    }
+
+    await kv.mset(keys, values);
+
+    return c.json({ success: true, adjustments: adjustmentEntries });
+  } catch (error) {
+    console.error("Error adjusting logbook:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// One-shot backfill: scan import + export bookings, assign logbook fields to any
+// that already had shippingLineStatus="Done Payment" before the hook existed.
+// Uses updatedAt (or createdAt) for the bucket month.
+app.post("/make-server-ce0d67b8/logbook/backfill", async (c) => {
+  try {
+    const imports = await kv.getByPrefix("import_booking:");
+    const exports = await kv.getByPrefix("export_booking:");
+    type Pending = { record: any; kvKey: string; bucketIso: string };
+    const pending: Pending[] = [];
+
+    const collect = (records: any[], prefix: string) => {
+      for (const b of records) {
+        if (b.donePaymentAt) continue;
+        const sls = b.shippingLineStatus
+          || (Array.isArray(b.segments) ? b.segments?.[0]?.shippingLineStatus : undefined);
+        if (sls !== "Done Payment") continue;
+        const bucketIso = b.updatedAt || b.createdAt || new Date().toISOString();
+        pending.push({ record: b, kvKey: `${prefix}${b.bookingId}`, bucketIso });
+      }
+    };
+    collect(imports, "import_booking:");
+    collect(exports, "export_booking:");
+
+    // Stable order: oldest first so numbering reflects entry order
+    pending.sort((a, b) => new Date(a.bucketIso).getTime() - new Date(b.bucketIso).getTime());
+
+    // Apply pending logbook fields (number assigned via renumber pass below)
+    for (const p of pending) {
+      const month = p.bucketIso.slice(0, 7);
+      p.record.donePaymentAt = p.bucketIso;
+      p.record.logbookMonth = month;
+      p.record.originalLogbookMonth = month;
+      p.record.logbookNumber = null;
+    }
+
+    // Renumber every year that has any logbook entries (yearly continuous numbering)
+    const allRecords = [...imports, ...exports];
+    const years = new Set<string>();
+    for (const b of allRecords) {
+      if (typeof b.logbookMonth === "string") years.add(b.logbookMonth.slice(0, 4));
+    }
+    for (const y of years) renumberYearInPlace(y, allRecords);
+
+    // Persist every booking that has logbook fields (we may have changed numbers on records
+    // that weren't in `pending`)
+    const keys: string[] = [];
+    const values: any[] = [];
+    for (const b of imports) {
+      if (typeof b.logbookMonth === "string") {
+        keys.push(`import_booking:${b.bookingId}`);
+        values.push(b);
+      }
+    }
+    for (const b of exports) {
+      if (typeof b.logbookMonth === "string") {
+        keys.push(`export_booking:${b.bookingId}`);
+        values.push(b);
+      }
+    }
+    if (keys.length) await kv.mset(keys, values);
+    return c.json({ success: true, backfilled: pending.length, persisted: keys.length });
+  } catch (error) {
+    console.error("Error in logbook backfill:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.get("/make-server-ce0d67b8/logbook/history/:month", async (c) => {
+  try {
+    const month = c.req.param("month");
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return c.json({ success: false, error: "Invalid month format" }, 400);
+    }
+    const entries = await kv.getByPrefix("logbook_adjustment:");
+    const filtered = entries
+      .filter((e: any) => e.fromMonth === month || e.toMonth === month)
+      .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return c.json({ success: true, data: filtered });
+  } catch (error) {
+    console.error("Error fetching logbook history:", error);
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
@@ -7290,8 +7640,10 @@ app.delete("/make-server-ce0d67b8/trucking-bookings/:id", async (c) => {
     await kv.del(`trucking_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7594,8 +7946,10 @@ app.delete("/make-server-ce0d67b8/marine-insurance-bookings/:id", async (c) => {
     await kv.del(`marine_insurance_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7759,8 +8113,10 @@ app.delete("/make-server-ce0d67b8/others-bookings/:id", async (c) => {
     await kv.del(`others_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7792,68 +8148,65 @@ app.get("/make-server-ce0d67b8/billings", async (c) => {
     const projectId = c.req.query("projectId");
     const bookingNumber = c.req.query("bookingNumber");
     
-    const allBillings = await kv.getByPrefix("billing:");
-    const allCollections = await kv.getByPrefix("collection:");
-    
-    // Fetch all bookings to resolve booking numbers for display
-    const [
-      genBookings,
-      expBookings,
-      impBookings,
-      fwdBookings,
-      trkBookings,
-      brkBookings,
-      marBookings,
-      othBookings
-    ] = await Promise.all([
-      kv.getByPrefix("booking:"),
-      kv.getByPrefix("export_booking:"),
-      kv.getByPrefix("import_booking:"),
-      kv.getByPrefix("forwarding_booking:"),
-      kv.getByPrefix("trucking_booking:"),
-      kv.getByPrefix("brokerage_booking:"),
-      kv.getByPrefix("marine_insurance_booking:"),
-      kv.getByPrefix("others_booking:")
+    const [allBillings, allCollections] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("collection:"),
     ]);
 
+    // Booking-number resolution is only needed for list views (no bookingId filter).
+    // When called from a booking page (?bookingId=X), the caller already knows the
+    // booking number — skip the 8 KV prefix scans entirely.
+    const needsBookingNumberResolution = !bookingId;
     const allBookingsMap = new Map();
-    const addToMap = (list: any[]) => {
-      list.forEach(b => {
-        const display = b.trackingNumber || b.tracking_number || b.bookingNumber || b.booking_number || b.id;
-        if (b.id) allBookingsMap.set(b.id, display);
-        if (b.bookingId) allBookingsMap.set(b.bookingId, display);
-      });
-    };
-    
-    addToMap(genBookings);
-    addToMap(expBookings);
-    addToMap(impBookings);
-    addToMap(fwdBookings);
-    addToMap(trkBookings);
-    addToMap(brkBookings);
-    addToMap(marBookings);
-    addToMap(othBookings);
+
+    if (needsBookingNumberResolution) {
+      const [
+        genBookings,
+        expBookings,
+        impBookings,
+        fwdBookings,
+        trkBookings,
+        brkBookings,
+        marBookings,
+        othBookings
+      ] = await Promise.all([
+        kv.getByPrefix("booking:"),
+        kv.getByPrefix("export_booking:"),
+        kv.getByPrefix("import_booking:"),
+        kv.getByPrefix("forwarding_booking:"),
+        kv.getByPrefix("trucking_booking:"),
+        kv.getByPrefix("brokerage_booking:"),
+        kv.getByPrefix("marine_insurance_booking:"),
+        kv.getByPrefix("others_booking:")
+      ]);
+
+      const addToMap = (list: any[]) => {
+        list.forEach(b => {
+          const display = b.trackingNumber || b.tracking_number || b.bookingNumber || b.booking_number || b.id;
+          if (b.id) allBookingsMap.set(b.id, display);
+          if (b.bookingId) allBookingsMap.set(b.bookingId, display);
+        });
+      };
+
+      addToMap(genBookings);
+      addToMap(expBookings);
+      addToMap(impBookings);
+      addToMap(fwdBookings);
+      addToMap(trkBookings);
+      addToMap(brkBookings);
+      addToMap(marBookings);
+      addToMap(othBookings);
+    }
     
     let filteredBillings = allBillings;
     
     // Filter by bookingId if provided (legacy support)
     if (bookingId) {
-      console.log(`🔍 Filtering billings by bookingId: ${bookingId}`);
-      console.log(`📊 Total billings before filter: ${allBillings.length}`);
-      
       filteredBillings = allBillings.filter((b: any) => {
         const hasInArray = b.bookingIds && Array.isArray(b.bookingIds) && b.bookingIds.includes(bookingId);
         const hasLegacy = b.bookingId === bookingId;
-        const matches = hasInArray || hasLegacy;
-        
-        if (matches) {
-          console.log(`✅ Billing ${b.billingNumber} matches - bookingIds: ${JSON.stringify(b.bookingIds)}, bookingId: ${b.bookingId}`);
-        }
-        
-        return matches;
+        return hasInArray || hasLegacy;
       });
-      
-      console.log(`📊 Billings after filter: ${filteredBillings.length}`);
     }
     
     // Filter by bookingNumber if provided
@@ -10600,6 +10953,86 @@ app.delete("/make-server-ce0d67b8/attachments/:entityType/:entityId/:attachmentI
     return c.json({ success: true });
   } catch (error) {
     console.error("Error deleting attachment:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Master Templates ──────────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/master-templates", async (c) => {
+  try {
+    const templates = await kvRetry(() => kv.get("master_templates")) || [];
+    return c.json({ success: true, data: Array.isArray(templates) ? templates : [] });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/master-templates", async (c) => {
+  try {
+    const templates = await c.req.json();
+    await kvRetry(() => kv.set("master_templates", templates));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Document Settings ─────────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/document-settings", async (c) => {
+  try {
+    const settings = await kvRetry(() => kv.get("document_settings")) || null;
+    return c.json({ success: true, data: settings });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/document-settings", async (c) => {
+  try {
+    const settings = await c.req.json();
+    await kvRetry(() => kv.set("document_settings", settings));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Custom POD Options ────────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/custom-pod-options", async (c) => {
+  try {
+    const options = await kvRetry(() => kv.get("custom_pod_options")) || [];
+    return c.json({ success: true, data: Array.isArray(options) ? options : [] });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/custom-pod-options", async (c) => {
+  try {
+    const options = await c.req.json();
+    await kvRetry(() => kv.set("custom_pod_options", options));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Packing List Metrics ──────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/packing-list-metrics", async (c) => {
+  try {
+    const metrics = await kvRetry(() => kv.get("packing_list_metrics")) || null;
+    return c.json({ success: true, data: metrics });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/packing-list-metrics", async (c) => {
+  try {
+    const metrics = await c.req.json();
+    await kvRetry(() => kv.set("packing_list_metrics", metrics));
+    return c.json({ success: true });
+  } catch (error) {
     return c.json({ success: false, error: String(error) }, 500);
   }
 });

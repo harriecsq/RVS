@@ -1,24 +1,33 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DEFAULT_DOCUMENT_SETTINGS } from "../types/document-settings";
 import type { DocumentSettings } from "../types/document-settings";
+import { API_BASE_URL } from "../utils/api-config";
+import { publicAnonKey } from "../utils/supabase/info";
 
-const STORAGE_KEY = "neuron:documentSettings";
-
-function loadSettings(): DocumentSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_DOCUMENT_SETTINGS, ...JSON.parse(raw) };
-  } catch {}
-  return DEFAULT_DOCUMENT_SETTINGS;
-}
+const HEADERS = { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` };
 
 export function useDocumentSettings() {
-  const [settings, setSettings] = useState<DocumentSettings>(loadSettings);
+  const [settings, setSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/document-settings`, { headers: HEADERS })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setSettings({ ...DEFAULT_DOCUMENT_SETTINGS, ...json.data });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const updateSettings = useCallback((patch: Partial<DocumentSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch {}
+      fetch(`${API_BASE_URL}/document-settings`, {
+        method: "PUT",
+        headers: HEADERS,
+        body: JSON.stringify(next),
+      }).catch(() => {});
       return next;
     });
   }, []);

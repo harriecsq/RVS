@@ -11,7 +11,7 @@ import { ViewBillingScreen } from "./ViewBillingScreen";
 import { StandardButton, StandardSearchInput, StandardEmptyState, SkeletonTable, StandardTable } from "../design-system";
 import type { ColumnDef } from "../design-system";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
 import { NeuronPageHeader } from "../NeuronPageHeader";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
@@ -49,18 +49,17 @@ export function BillingsScreen() {
   const billings = useMemo<Billing[]>(() => {
     if (!billingsResult?.success) return [];
     const data = [...(billingsResult.data || [])];
-    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    data.sort((a: any, b: any) => String(b.billingNumber || "").localeCompare(String(a.billingNumber || ""), undefined, { numeric: true }));
     return data;
   }, [billingsResult]);
   const [filteredBillings, setFilteredBillings] = useState<Billing[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
   const clientsMasterList = useClientsMasterList();
   const [showCreateScreen, setShowCreateScreen] = useState(false);
@@ -78,8 +77,13 @@ export function BillingsScreen() {
     if (!bookingsResult?.success) return;
     const enrichMap = new Map<string, { serviceType: string; port: string }>();
     (bookingsResult.data || []).forEach((b: any) => {
-      const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
-      const isImport = serviceType.toLowerCase().includes("import");
+      const rawType = String(b.booking_type || b.shipmentType || b.mode || "").trim();
+      const rawLower = rawType.toLowerCase();
+      let serviceType: string;
+      if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
+      else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
+      else serviceType = rawType || "Import";
+      const isImport = serviceType === "Import";
       const seg0 = b.segments?.[0];
       const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
       const enrich = { serviceType, port };
@@ -91,7 +95,7 @@ export function BillingsScreen() {
 
   useEffect(() => {
     filterBillings();
-  }, [searchQuery, statusFilter, serviceTypeFilter, portFilter, dateFilterStart, dateFilterEnd, companyFilter, clientFilter, billings]);
+  }, [searchQuery, statusFilter, serviceTypeFilter, portFilter, dateFilterStart, dateFilterEnd, clientSelections, billings]);
 
   const fetchBillings = () => { invalidateCache("/billings"); refetchBillings(); };
 
@@ -105,8 +109,8 @@ export function BillingsScreen() {
           b.clientName.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((b) => b.status === statusFilter);
+    if (statusFilter.length > 0) {
+      filtered = filtered.filter((b) => statusFilter.includes(b.status));
     }
     if (serviceTypeFilter !== "all" || portFilter.length > 0) {
       filtered = filtered.filter((b) => {
@@ -129,12 +133,19 @@ export function BillingsScreen() {
         return true;
       });
     }
-    if (companyFilter) {
-      filtered = filtered.filter((b) => {
-        const billingCompany = b.companyName || b.clientName || "";
-        if (billingCompany !== companyFilter) return false;
-        if (clientFilter && (b.clientName || "") !== clientFilter) return false;
-        return true;
+    if (clientSelections.length > 0) {
+      filtered = filtered.filter((b) =>
+        clientSelectionMatches(clientSelections, {
+          company: b.companyName || b.clientName || "",
+          client: b.clientName || "",
+        })
+      );
+    }
+    if (statusFilter.length > 0) {
+      filtered = [...filtered].sort((a, b) => {
+        const ai = statusFilter.indexOf(a.status);
+        const bi = statusFilter.indexOf(b.status);
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
       });
     }
     setFilteredBillings(filtered);
@@ -225,11 +236,10 @@ export function BillingsScreen() {
                 compact
               />
             </div>
-            <FilterSingleDropdown
+            <MultiSelectPortalDropdown
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
-                { value: "all", label: "All Statuses" },
                 { value: "Draft", label: "Draft" },
                 { value: "For Approval", label: "For Approval" },
                 { value: "Approved", label: "Approved" },
@@ -237,6 +247,7 @@ export function BillingsScreen() {
                 { value: "Partially Collected", label: "Partially Collected" },
                 { value: "Cancelled", label: "Cancelled" },
               ]}
+              placeholder="All Statuses"
             />
             <FilterSingleDropdown
               value={serviceTypeFilter}
@@ -262,10 +273,8 @@ export function BillingsScreen() {
             />
             <CompanyClientFilter
               extraEntries={clientsMasterList}
-              selectedCompany={companyFilter}
-              selectedClient={clientFilter}
-              onCompanyChange={setCompanyFilter}
-              onClientChange={setClientFilter}
+              selected={clientSelections}
+              onChange={setClientSelections}
               placeholder="All Companies"
             />
           </div>
@@ -280,8 +289,8 @@ export function BillingsScreen() {
           rowKey={(b) => b.id}
           isLoading={isLoading}
           emptyIcon={<Receipt size={48} />}
-          emptyTitle={searchQuery || statusFilter !== "all" ? "No billings found matching your filters" : "No billings yet"}
-          emptyDescription={searchQuery || statusFilter !== "all" ? "Try adjusting your search criteria or filters" : "Create your first billing to get started"}
+          emptyTitle={searchQuery || statusFilter.length > 0 ? "No billings found matching your filters" : "No billings yet"}
+          emptyDescription={searchQuery || statusFilter.length > 0 ? "Try adjusting your search criteria or filters" : "Create your first billing to get started"}
           onRowClick={(b) => setSelectedBillingId(b.id)}
         />
       </div>

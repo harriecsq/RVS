@@ -565,10 +565,10 @@ export function CreateExportBookingPanel({
             </div>
 
             {/* Row 2: Containers (No. + Seal) + Volume */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               {/* Container Number + Seal Number — repeatable paired rows */}
               <div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px", marginBottom: "8px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "8px" }}>
                   <label style={labelStyle}>Container No.</label>
                   <label style={labelStyle}>Seal No.</label>
                   <div style={{ width: "34px" }} />
@@ -658,6 +658,8 @@ export function CreateExportBookingPanel({
                       options={CONTAINER_SIZE_OPTIONS.map((o) => ({ value: o, label: o }))}
                       onChange={setContainerSize}
                       placeholder="Size"
+                      style={{ flex: 1 }}
+                      triggerStyle={{ height: "auto", minHeight: "40px", borderRadius: "6px", color: "#0A1D4D", padding: "10px 12px", border: "1px solid #E5E9F0" }}
                     />
                   )}
                   <FilterSingleDropdown
@@ -665,6 +667,8 @@ export function CreateExportBookingPanel({
                     options={CONTAINER_TYPE_OPTIONS.map((o) => ({ value: o, label: o }))}
                     onChange={setContainerType}
                     placeholder="Type"
+                    style={{ flex: 1 }}
+                    triggerStyle={{ height: "40px", borderRadius: "6px", color: "#0A1D4D", padding: "0 12px" }}
                   />
                 </div>
               </div>

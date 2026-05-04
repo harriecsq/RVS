@@ -5,23 +5,18 @@ interface StatusTagPillProps {
   label: string;
   onRemove?: () => void;
   layer?: "shipment" | "operational";
+  color?: "danger";
 }
 
-export function StatusTagPill({ label, onRemove, layer = "shipment" }: StatusTagPillProps) {
+export function StatusTagPill({ label, onRemove, layer = "shipment", color }: StatusTagPillProps) {
   const [hovered, setHovered] = useState(false);
 
   const palette =
-    layer === "shipment"
-      ? {
-          backgroundColor: "#E8F5F3",
-          color: "#12332B",
-          border: "1px solid #C1D9CC",
-        }
-      : {
-          backgroundColor: "#EFF6FF",
-          color: "#1E40AF",
-          border: "1px solid #BFDBFE",
-        };
+    color === "danger"
+      ? { backgroundColor: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA" }
+      : layer === "shipment"
+        ? { backgroundColor: "#E8F5F3", color: "#12332B", border: "1px solid #C1D9CC" }
+        : { backgroundColor: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE" };
 
   return (
     <span

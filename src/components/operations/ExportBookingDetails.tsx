@@ -289,11 +289,12 @@ export function ExportBookingDetails({
   const [subTabEditing, setSubTabEditing] = useState(false);
   const [subTabEditRequest, setSubTabEditRequest] = useState(false);
   const [subTabSaveCounter, setSubTabSaveCounter] = useState(0);
+  const [bookingInfoSubTab, setBookingInfoSubTab] = useState<"booking-details" | "documents">("booking-details");
 
   // Get context-aware edit label based on active tab
   const getEditLabel = (): string | null => {
     switch (activeTab) {
-      case "booking-info": return "Edit Booking";
+      case "booking-info": return bookingInfoSubTab === "documents" ? null : "Edit Booking";
       case "trucking": return subTabHasRecord["trucking"] ? "Edit Trucking" : null;
       case "billings": return subTabHasRecord["billings"] ? "Edit Billing" : null;
       case "expenses": return subTabHasRecord["expenses"] ? "Edit Expense" : null;
@@ -440,6 +441,7 @@ export function ExportBookingDetails({
     "Awaiting Billing and Signed BL": "#D97706",
     "Request for Telex": "#2563EB",
     "Form E Ongoing Process": "#16A34A",
+    "Cancelled": "#EF4444",
   };
 
   const EXPORT_STATUS_OPTIONS = [
@@ -454,6 +456,7 @@ export function ExportBookingDetails({
     "Awaiting Billing and Signed BL",
     "Request for Telex",
     "Form E Ongoing Process",
+    "Cancelled",
   ];
 
 
@@ -850,7 +853,7 @@ export function ExportBookingDetails({
       </div>
 
       {/* Content with Timeline Sidebar */}
-      <div style={{ 
+      <div style={{
         flex: 1,
         overflow: "hidden",
         display: "flex"
@@ -871,8 +874,9 @@ export function ExportBookingDetails({
               onAddSegment={handleAddSegment}
               onDeleteSegment={handleDeleteSegment}
               isEditing={isEditing}
-              booking={currentBooking}
+              booking={activeSegment ? { ...currentBooking, ...activeSegment } : currentBooking}
               onDocumentUpdated={fetchBookingDetails}
+              onSubTabChange={setBookingInfoSubTab}
             >
               <BookingInformationTab
                 booking={editedBooking}
@@ -927,7 +931,10 @@ export function ExportBookingDetails({
               currentUser={currentUser}
               segmentId={activeSegmentId}
               externalEdit={activeTab === "expenses" ? subTabEditRequest : undefined}
-              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onEditStateChange={(editing: boolean) => {
+                setSubTabEditing(editing);
+                if (!editing) setSubTabEditRequest(false);
+              }}
               onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, expenses: has }))}
               externalSaveCounter={activeTab === "expenses" ? subTabSaveCounter : undefined}
             />
@@ -1487,7 +1494,7 @@ function PolEditableField({
           <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
         </div>
         {open && (
-          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "white", border: "1px solid #E5E9F0", borderRadius: "8px", zIndex: 9999, maxHeight: "300px", overflowY: "auto" }}>
+          <div onMouseDown={(e) => e.preventDefault()} style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "white", border: "1px solid #E5E9F0", borderRadius: "8px", zIndex: 9999, maxHeight: "300px", overflowY: "auto" }}>
             {PORT_OPTIONS.map((option, index) => (
               <div
                 key={option}
@@ -2167,7 +2174,6 @@ function SectionCard({ title, children, lastUpdated }: { title: string; children
       background: "white",
       borderRadius: "12px",
       border: "1px solid #E5E9F0",
-      overflow: "hidden",
       marginBottom: "24px"
     }}>
       <div style={{
@@ -2290,6 +2296,7 @@ function BookingInformationTab({
 
   // Dropdown visibility states
   const [showShippingLineDD, setShowShippingLineDD] = useState(false);
+  const [showShippingLineStatusDD, setShowShippingLineStatusDD] = useState(false);
   const [showContainerSizeDD, setShowContainerSizeDD] = useState(false);
   const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
   const [showSelectivityDD, setShowSelectivityDD] = useState(false);
@@ -2568,7 +2575,9 @@ function BookingInformationTab({
             <ChevronDown size={16} color="#667085" style={{ transform: isOpenState ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
           </div>
           {isOpenState && (
-            <div style={{
+            <div
+              onMouseDown={(e) => e.preventDefault()}
+              style={{
               position: "absolute",
               top: "calc(100% + 4px)",
               left: 0,
@@ -2587,7 +2596,6 @@ function BookingInformationTab({
                     value={searchValue || ""}
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder="Search..."
-                    autoFocus
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       width: "100%",
@@ -2794,8 +2802,8 @@ function BookingInformationTab({
 
   // Volume view display (computed summary)
   const renderVolumeView = () => {
-    const vol = getFieldVal("volume");
-    const containerNo = getFieldVal("containerNo");
+    const vol = getFieldValue("volume");
+    const containerNo = getFieldValue("containerNo");
     const summary = computeVolumeSummary(containerNo, vol);
     const isEmpty = summary === "\u2014";
     return (
@@ -2961,7 +2969,7 @@ function BookingInformationTab({
     }}>
       
       {/* ═══════════════ SHIPMENT DETAILS ═══════════════ */}
-      <SectionCard title="Shipment Details" lastUpdated={`Last updated by System, ${new Date(mergedBooking.updatedAt).toLocaleString()}`}>
+      <SectionCard title="Shipment Details">
         {/* Row 1: Date + Company/Contact */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}>
           <EditableField
@@ -3068,7 +3076,8 @@ function BookingInformationTab({
         {/* Row 4: Shipping Line */}
         <div style={twoCol}>
           {renderEditDropdown("shippingLine", "Shipping Line", SHIPPING_LINE_OPTIONS, showShippingLineDD, setShowShippingLineDD, undefined, true, shippingLineSearch, setShippingLineSearch)}
-          <div />
+          {/* TEMPORARY: logbook module requires this on Export until export-specific workflow is confirmed */}
+          {renderEditDropdown("shippingLineStatus", "Shipping Line Status", ["No Billing Yet", "With Billing", "Done Payment"], showShippingLineStatusDD, setShowShippingLineStatusDD)}
         </div>
 
         {/* Row 4b: Booking Numbers */}

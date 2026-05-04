@@ -600,6 +600,7 @@ export function CreateBillingScreen({
                     value={selectedBookingId}
                     onSelect={handleBookingSelect}
                     placeholder="Search by Booking Ref, BL No, or Client..."
+                    excludeLinked="billing"
                   />
                 </div>
 

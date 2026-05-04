@@ -8,17 +8,14 @@ import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { applyTemplate } from "../../../utils/export-document-autofill";
 import type { FormE } from "../../../types/export-documents";
 import { TemplatableFieldOverlay } from "./TemplatableFieldOverlay";
+import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
+import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
 
 // ── MetricDropdown ──────────────────────────────────────────────────
 
-const DEFAULT_METRICS = ["Sacks", "Bags", "Boxes", "Cartons", "Drums", "Pallets"];
-
 function MetricDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { options, addMetric } = usePackingMetrics();
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<string[]>(() => {
-    try { const s = localStorage.getItem("packing-list-metrics"); return s ? JSON.parse(s) : DEFAULT_METRICS; }
-    catch { return DEFAULT_METRICS; }
-  });
   const [searchQuery, setSearchQuery] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -26,12 +23,10 @@ function MetricDropdown({ value, onChange }: { value: string; onChange: (v: stri
   const filtered = options.filter((o) => o.toLowerCase().includes(searchQuery.toLowerCase()));
   const exactMatch = options.some((o) => o.toLowerCase() === searchQuery.trim().toLowerCase());
   const canAdd = searchQuery.trim().length > 0 && !exactMatch;
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const name = searchQuery.trim();
     if (!name) return;
-    const updated = [...options, name];
-    setOptions(updated);
-    localStorage.setItem("packing-list-metrics", JSON.stringify(updated));
+    await addMetric(name);
     onChange(name); setOpen(false); setSearchQuery("");
   };
   return (
@@ -173,6 +168,8 @@ const emptyFormE: Omit<FormE, "createdAt" | "updatedAt" | "createdBy"> = {
   authorizedSignatory: "",
 };
 
+// ── Master Template Picker ──────────────────────────────────────────
+
 // ── Main component ──────────────────────────────────────────────────
 
 interface FormETabProps {
@@ -187,6 +184,8 @@ interface FormETabProps {
 
 export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, onTemplateSaveConfig, initialDraftData }: FormETabProps) {
   const [doc, setDoc] = useState<FormE | null>(null);
+  const [sc, setSc] = useState<import("../../../types/export-documents").SalesContract | null>(null);
+  const [pl, setPl] = useState<import("../../../types/export-documents").PackingList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -194,6 +193,7 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
   const [editData, setEditData] = useState<Partial<FormE>>({});
   const editDataRef = useRef(editData);
   editDataRef.current = editData;
+  const { getById: getMasterTemplate, isLoading: templatesLoading, templates: masterTemplates } = useMasterTemplates();
   const fetchDocuments = async () => {
     try {
       const id = encodeURIComponent(bookingId);
@@ -203,6 +203,8 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
       const result = await res.json();
       if (result.success && result.data) {
         setDoc(result.data.formE || result.data["form-e"] || null);
+        setSc(result.data.salesContract || null);
+        setPl(result.data.packingList || null);
       }
     } catch (err) {
       console.error("Error fetching Form E:", err);
@@ -216,8 +218,43 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
   const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
-    let merged: Partial<FormE> = { ...emptyFormE };
-    if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
+    // Packing list totals
+    const plContainers = pl?.containers || [];
+    const plGrossWeight = plContainers.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0);
+    const plTotalAmount = plContainers.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+    const plAmountMetric = plContainers[0]?.amountMetric || "Sacks";
+
+    const autofill: Partial<FormE> = {
+      exporterName: sc?.supplierName || "",
+      exporterAddress: sc?.supplierAddress || "",
+      exporterContactNumber: sc?.supplierPhone || (sc as any)?.supplierContact || "",
+      exporterEmail: sc?.supplierEmail || "",
+      consigneeName: sc?.buyerName || booking?.consignee || "",
+      consigneeAddress: sc?.buyerAddress || "",
+      consigneeContactNumber: sc?.buyerPhone || "",
+      consigneeContactEmail: sc?.buyerEmail || "",
+      consigneeContactPerson: sc?.buyerContact || "",
+      vessel: sc?.vesselVoyage || booking?.vesselVoyage || "",
+      portOfDischarge: sc?.portOfDestination || booking?.pod || "",
+      departureDate: sc?.shipmentDate || booking?.etd || "",
+      packagesCommodity: sc?.commodityDescription || booking?.commodity || "",
+      packagesNetWeight: sc?.quantity || "",
+      packagesVolume: sc?.marksAndNos || "",
+      packagesAmount: plTotalAmount ? String(plTotalAmount) : "",
+      packagesAmountMetric: plAmountMetric,
+      grossWeight: plGrossWeight ? String(plGrossWeight) : "",
+      invoiceNumber: sc?.refNo || "",
+      invoiceDated: sc?.date || "",
+    };
+
+    let merged: Partial<FormE> = { ...emptyFormE, ...autofill };
+    // initialDraftData = in-session draft from SC master template picker
+    // fallback: look up the master template saved on the SC document
+    const masterTemplate = sc?.masterTemplateId
+      ? getMasterTemplate(sc.masterTemplateId)
+      : masterTemplates.length === 1 ? masterTemplates[0] : null;
+    const formETemplateFields = initialDraftData || masterTemplate?.formE || null;
+    if (formETemplateFields) { merged = applyTemplate(merged, formETemplateFields, "formE"); }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "formE"); }
     setEditData(merged);
     setIsCreating(true);
@@ -297,7 +334,7 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
     setEditData((prev) => ({ ...prev, [key]: value }));
   };
 
-  if (isLoading) {
+  if (isLoading || templatesLoading) {
     return <div style={{ padding: "48px", textAlign: "center", color: "#667085" }}>Loading...</div>;
   }
 

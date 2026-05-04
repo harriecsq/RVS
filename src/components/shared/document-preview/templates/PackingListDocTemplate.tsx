@@ -19,8 +19,6 @@ function formatNumber(raw: string | number): string {
 }
 
 export function PackingListDocTemplate({ data, settings }: PackingListDocTemplateProps) {
-  const stamps = settings.stamps || {};
-  const managerStamp = stamps["manager"]?.pngData;
 
   const refNo = data.refNo || "";
   const date = formatDateLetters(data.date || "");
@@ -44,21 +42,7 @@ export function PackingListDocTemplate({ data, settings }: PackingListDocTemplat
   const metricLabel = (containers.find((c) => c.amountMetric)?.amountMetric || "").toUpperCase() || "QTY";
 
   return (
-    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1.2" }}>
-
-      {/* Letterhead */}
-      {settings.logoPng ? (
-        <div style={{ marginBottom: "12px" }}>
-          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
-        </div>
-      ) : (
-        <div style={{
-          border: "1.5px dashed #CBD5E1", borderRadius: "4px", padding: "16px",
-          textAlign: "center", color: "#9CA3AF", fontSize: "11px", marginBottom: "12px",
-        }}>
-          Company letterhead PNG — upload via Document Settings
-        </div>
-      )}
+    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
 
       {/* Title */}
       <div style={{ textAlign: "center", fontSize: "15px", fontWeight: 700, textTransform: "uppercase", margin: "14px 0 16px", letterSpacing: "0.05em" }}>
@@ -66,35 +50,31 @@ export function PackingListDocTemplate({ data, settings }: PackingListDocTemplat
       </div>
 
       {/* NO. and DATE — right aligned */}
-      <div style={{ textAlign: "right", fontSize: "11px", marginBottom: "14px", lineHeight: "1.8" }}>
+      <div style={{ textAlign: "right", fontSize: "11px", marginBottom: "6px" }}>
         <div>NO.: {refNo}</div>
         <div>DATE: {date}</div>
       </div>
 
-      {/* Shipped To block — borderless rows */}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px", fontSize: "11px" }}>
+      {/* All info rows in one table */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "6px", fontSize: "11px" }}>
         <tbody>
           <InfoRow label="SHIPPED TO" value={shippedToName} />
           <InfoRow label="ADDRESS" value={shippedToAddress} />
           <InfoRow label="CONTACT" value={shippedToContact} />
           <InfoRow label="PHONE" value={shippedToPhone} />
           <InfoRow label="EMAIL" value={shippedToEmail} />
-        </tbody>
-      </table>
-
-      {/* Shipping info — borderless rows */}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "14px", fontSize: "11px" }}>
-        <tbody>
+          <tr><td colSpan={2} style={{ height: "28px", padding: 0 }} /></tr>
           <InfoRow label="VESSEL/VOY" value={vesselVoyage} />
           <InfoRow label="PLACE OF ORIGIN" value={placeOfOrigin} />
           <InfoRow label="PORT OF DISCHARGE" value={portOfDischarge} />
           <InfoRow label="SHIPMENT DATE" value={shipmentDate} />
+          <tr><td colSpan={2} style={{ height: "14px", padding: 0 }} /></tr>
         </tbody>
       </table>
 
       {/* Description of goods */}
       {(volume || commodity) && (
-        <div style={{ fontSize: "11px", marginBottom: "10px", lineHeight: "1.8" }}>
+        <div style={{ fontSize: "11px", marginBottom: "6px" }}>
           <div>DESCRIPTION OF GOODS</div>
           {volume && <div>{volume}</div>}
           {commodity && <div>{commodity}</div>}
@@ -146,11 +126,9 @@ export function PackingListDocTemplate({ data, settings }: PackingListDocTemplat
 
       {/* Signature — manager with stamp */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "200px" }}>
-        {managerStamp ? (
-          <img src={managerStamp} alt="Manager stamp" style={{ height: "80px", objectFit: "contain", marginBottom: "4px" }} />
-        ) : (
-          <div style={{ height: "64px", width: "160px", borderBottom: "1px solid #000" }} />
-        )}
+        <div style={{ position: "relative", height: "80px", width: "160px" }}>
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderBottom: "1px solid #000" }} />
+        </div>
         <div style={{ fontSize: "11px", marginTop: "6px" }}>MANAGER</div>
       </div>
 
@@ -161,10 +139,10 @@ export function PackingListDocTemplate({ data, settings }: PackingListDocTemplat
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <tr>
-      <td style={{ whiteSpace: "nowrap", paddingRight: "12px", paddingBottom: "2px", verticalAlign: "top", width: "160px" }}>
-        {label}:
+      <td style={{ whiteSpace: "nowrap", paddingRight: "12px", padding: "0 12px 0 0", verticalAlign: "top", width: "160px", lineHeight: "1.4" }}>
+        {label}{label ? ":" : ""}
       </td>
-      <td style={{ paddingBottom: "2px", verticalAlign: "top" }}>{value}</td>
+      <td style={{ padding: "0", verticalAlign: "top", lineHeight: "1.4" }}>{value}</td>
     </tr>
   );
 }
@@ -182,7 +160,7 @@ function BorderedRow({ label, value }: { label: string; value: string }) {
 
 const th: React.CSSProperties = {
   border: "1px solid #000",
-  padding: "6px 8px",
+  padding: "3px 6px",
   textAlign: "center",
   fontWeight: 400,
   fontSize: "10px",
@@ -192,7 +170,7 @@ const th: React.CSSProperties = {
 
 const td: React.CSSProperties = {
   border: "1px solid #000",
-  padding: "8px",
+  padding: "3px 6px",
   textAlign: "center",
   verticalAlign: "middle",
 };

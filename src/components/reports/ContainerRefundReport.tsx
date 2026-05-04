@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, Download, Filter, ChevronLeft, ChevronRight as ChevronRightIcon, Search, ArrowLeft } from "lucide-react";
+import { ChevronRight, Filter, ChevronLeft, ChevronRight as ChevronRightIcon, Search, ArrowLeft, Printer } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
-import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
+import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 
 // --- Data Interfaces ---
 
@@ -62,7 +63,7 @@ interface FilterState {
   refundDateStart: string;
   refundDateEnd: string;
   shippingLine: string;
-  refundStatus: string;
+  refundStatus: string[];
   searchQuery: string;
 }
 
@@ -140,13 +141,15 @@ export function ContainerRefundReport() {
     refundDateStart: "",
     refundDateEnd: "",
     shippingLine: "All",
-    refundStatus: "All",
+    refundStatus: [],
     searchQuery: ""
   });
 
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<ContainerRefundRow[]>([]);
-  
+  const [dateMode, setDateMode] = useState<"month" | "range">("month");
+  const [selectedMonth, setSelectedMonth] = useState("");
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -313,7 +316,7 @@ export function ContainerRefundReport() {
   };
 
   // Filter Logic
-  const filteredData = data.filter(item => {
+  const filteredDataRaw = data.filter(item => {
     // Search Query Logic
     if (filters.searchQuery) {
         const q = filters.searchQuery.toLowerCase();
@@ -330,14 +333,13 @@ export function ContainerRefundReport() {
     }
 
     if (filters.shippingLine !== "All" && item.shippingLine !== filters.shippingLine) return false;
-    if (filters.refundStatus !== "All") {
-        if (filters.refundStatus === "Refunded") {
-             if (!item.refundStatus.startsWith("REFUNDED")) return false;
-        } else if (filters.refundStatus === "Waiting") {
-             if (item.refundStatus !== "Waiting for Approval of CONDEP Refund") return false;
-        } else {
-             if (item.refundStatus !== filters.refundStatus) return false;
-        }
+    if (filters.refundStatus.length > 0) {
+        const matchesAny = filters.refundStatus.some((sel) => {
+            if (sel === "Refunded") return item.refundStatus.startsWith("REFUNDED");
+            if (sel === "Waiting") return item.refundStatus === "Waiting for Approval of CONDEP Refund";
+            return item.refundStatus === sel;
+        });
+        if (!matchesAny) return false;
     }
     
     // Date Logic
@@ -361,13 +363,106 @@ export function ContainerRefundReport() {
     return true;
   });
 
+  const refundStatusBucket = (s: string): string => {
+    if (s.startsWith("REFUNDED")) return "Refunded";
+    if (s === "Waiting for Approval of CONDEP Refund") return "Waiting";
+    return s;
+  };
+
+  const filteredData = filters.refundStatus.length > 0
+    ? [...filteredDataRaw].sort((a, b) => {
+        const ai = filters.refundStatus.indexOf(refundStatusBucket(a.refundStatus));
+        const bi = filters.refundStatus.indexOf(refundStatusBucket(b.refundStatus));
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+      })
+    : filteredDataRaw;
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
 
-  const handleExport = () => {
-    toast.success("Exporting to Excel...");
+  const handlePrintPDF = () => {
+    if (!filteredData.length) {
+      toast.error("No data to print");
+      return;
+    }
+    const esc = (s: any) =>
+      String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const fmt = (n: number) =>
+      n === 0 ? "—" : n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // --- Period text ---
+    const MONTH_ABBRS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const MONTHS_FULL = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+    const periodText = (() => {
+      if (dateMode === "month") {
+        if (!selectedMonth) return "ALL TIME";
+        const [abbr, yearStr] = selectedMonth.split(" ");
+        const idx = MONTH_ABBRS.indexOf(abbr);
+        const year = parseInt(yearStr, 10);
+        if (idx < 0 || isNaN(year)) return "ALL TIME";
+        return `${MONTHS_FULL[idx]} ${year}`;
+      }
+      const s = filters.dateIssuedStart;
+      const e = filters.dateIssuedEnd;
+      if (!s && !e) return "ALL TIME";
+      const re = /^(\d{4})-(\d{2})-(\d{2})$/;
+      const ms = s ? re.exec(s) : null;
+      const me = e ? re.exec(e) : null;
+      if (ms && me) {
+        const fmtDate = (m: RegExpExecArray) =>
+          `${MONTHS_FULL[+m[2] - 1]} ${String(+m[3]).padStart(2, "0")}, ${+m[1]}`;
+        return `${fmtDate(ms)} - ${fmtDate(me)}`;
+      }
+      return "ALL TIME";
+    })();
+
+    const rowsHtml = filteredData.map((row, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${esc(row.voucherNo)}</td>
+        <td>${esc(row.shippingLine)}</td>
+        <td>${esc(row.vesselVoy)}</td>
+        <td>${esc(row.blNo)}</td>
+        <td>${esc(row.containerNos.join(", "))}</td>
+        <td class="amt">${fmt(row.depositAmount)}</td>
+        <td>${esc(row.checkNoIssued)}</td>
+        <td>${esc(row.dateIssued)}</td>
+        <td>${esc(row.refundStatus)}</td>
+        <td>${esc(row.refundCheckNo)}</td>
+        <td class="amt">${fmt(row.refundAmount)}</td>
+        <td>${esc(row.refundDate)}</td>
+        <td class="amt">${row.deduction == null ? "—" : fmt(row.deduction)}</td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/><title>Container Refund Monitoring</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 5.6pt; color: #000; }
+  h1 { font-size: 8.4pt; text-transform: uppercase; text-align: center; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: bold; text-transform: uppercase; font-size: 5.3pt; }
+  td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+</style></head><body>
+  <h1>Container Refund Monitoring (${esc(periodText)})</h1>
+  <table>
+    <thead><tr>
+      <th>No.</th><th>Voucher</th><th>Shipping Line</th><th>Vessel/Voy</th><th>BL No.</th>
+      <th>Container No.</th><th>Deposit</th><th>Check Issued</th><th>Date Issued</th>
+      <th>Status</th><th>Refund Check</th><th>Refund Amt</th><th>Refund Date</th><th>Deduction</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+  <script>window.onload = () => { window.print(); };<\/script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+    else toast.error("Popup blocked. Please allow popups for this site.");
   };
 
   const formatCurrency = (val: number) => 
@@ -434,25 +529,25 @@ export function ContainerRefundReport() {
               </p>
             </div>
           </div>
-          <button 
-            onClick={handleExport}
-            style={{ 
-              height: "40px", 
-              padding: "0 20px", 
-              fontSize: "14px", 
-              fontWeight: 600, 
-              color: "var(--neuron-brand-green)", 
-              backgroundColor: "var(--neuron-state-selected)", 
-              border: "1px solid var(--neuron-brand-green)", 
-              borderRadius: "8px", 
-              cursor: "pointer", 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "8px" 
+          <button
+            onClick={handlePrintPDF}
+            style={{
+              height: "40px",
+              padding: "0 20px",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "white",
+              backgroundColor: "var(--neuron-brand-green)",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
             }}
           >
-            <Download size={16} />
-            Export Excel
+            <Printer size={16} />
+            Print PDF
           </button>
         </div>
 
@@ -504,20 +599,22 @@ export function ContainerRefundReport() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px", marginBottom: "16px" }}>
              {/* Row 1 */}
             <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Date Issued (From - To)</label>
-              <UnifiedDateRangeFilter
-                startDate={filters.dateIssuedStart}
-                endDate={filters.dateIssuedEnd}
-                onStartDateChange={(v) => setFilters({...filters, dateIssuedStart: v})}
-                onEndDateChange={(v) => setFilters({...filters, dateIssuedEnd: v})}
+              <MonthOrRangeDateFilter
+                label="Date Issued"
+                dateStart={filters.dateIssuedStart}
+                dateEnd={filters.dateIssuedEnd}
+                onStartDateChange={(v) => setFilters((prev) => ({ ...prev, dateIssuedStart: v }))}
+                onEndDateChange={(v) => setFilters((prev) => ({ ...prev, dateIssuedEnd: v }))}
+                onModeChange={(m) => setDateMode(m)}
+                onMonthChange={(m) => setSelectedMonth(m)}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Refund Date (From - To)</label>
-              <UnifiedDateRangeFilter
-                startDate={filters.refundDateStart}
-                endDate={filters.refundDateEnd}
+              <MonthOrRangeDateFilter
+                label="Refund Date"
+                dateStart={filters.refundDateStart}
+                dateEnd={filters.refundDateEnd}
                 onStartDateChange={(v) => setFilters({...filters, refundDateStart: v})}
                 onEndDateChange={(v) => setFilters({...filters, refundDateEnd: v})}
               />
@@ -538,16 +635,15 @@ export function ContainerRefundReport() {
 
             <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)", marginBottom: "6px" }}>Refund Status</label>
-              <FilterSingleDropdown
+              <MultiSelectPortalDropdown
                 value={filters.refundStatus}
                 onChange={(v) => setFilters({...filters, refundStatus: v})}
                 options={[
-                  { value: "All", label: "All Statuses" },
                   { value: "Waiting", label: "Waiting for Approval" },
                   { value: "Refunded", label: "Refunded" },
                   { value: "Not Refunded", label: "Not Refunded" },
                 ]}
-                style={{ width: "100%" }}
+                placeholder="All Statuses"
               />
             </div>
           </div>

@@ -139,25 +139,27 @@ export function BillingsTab({ bookingId, bookingNumber, projectId: bookingProjec
               Manage client billings and invoices for this booking
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "white",
-              backgroundColor: "#0F766E",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={18} />
-            Add Billing
-          </button>
+          {billings.length === 0 && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 20px",
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "white",
+                backgroundColor: "#0F766E",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+              }}
+            >
+              <Plus size={18} />
+              Add Billing
+            </button>
+          )}
         </div>
 
         {/* Summary Cards */}

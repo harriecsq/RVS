@@ -9,6 +9,8 @@ export interface SalesContract {
   // Supplier
   supplierName: string;
   supplierAddress: string;
+  supplierPhone: string;
+  supplierEmail: string;
 
   // Seller
   sellerName: string;
@@ -41,6 +43,8 @@ export interface SalesContract {
   accountNo: string;
   accountName: string;
   bankAddress: string;
+
+  masterTemplateId?: string;
 
   createdAt: string;
   updatedAt: string;
@@ -258,10 +262,65 @@ export interface FormE {
   createdBy?: string;
 }
 
+export interface ProcessingFee {
+  billingStatementNo: string;
+  date: string;
+  address: string;
+  tinNo: string;
+  vesselVoy: string;
+  loadedAt: string;
+  volume: string;
+  containerSize: string;
+  containerNo: string;
+  commodity: string;
+  blNumber: string;
+  destination: string;
+  price: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
+export interface HeartOfExportExpenseRow {
+  referenceNo: string;
+  amount: string;
+}
+
+export interface HeartOfExport {
+  bookingRef: string;
+  date: string;
+  blNumber: string;
+  client: string;
+  shipper: string;
+  consignee: string;
+  commodity: string;
+  volume: string;
+  shippingLine: string;
+  vesselVoy: string;
+  destination: string;
+  trucker: string;
+  loadingAddress: string;
+  loadingSchedule: string;
+  referenceNo: string;
+  containerNumber: string;
+  expShippingLine: HeartOfExportExpenseRow;
+  expTrucking: HeartOfExportExpenseRow;
+  expPettyCash: HeartOfExportExpenseRow;
+  expCommission: HeartOfExportExpenseRow;
+  expOthers: HeartOfExportExpenseRow;
+  expSOA: HeartOfExportExpenseRow;
+  expProfitSharing: HeartOfExportExpenseRow;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
 export interface ExportDocuments {
   salesContract?: SalesContract;
   commercialInvoice?: CommercialInvoice;
   packingList?: PackingList;
   declaration?: Declaration;
   formE?: FormE;
+  processingFee?: ProcessingFee;
+  heartOfExport?: HeartOfExport;
 }

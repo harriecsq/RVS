@@ -685,12 +685,6 @@ function BookingInformationTab({
           }}>
             General Information
           </h2>
-          <span style={{
-            fontSize: "12px",
-            color: "var(--neuron-ink-muted)"
-          }}>
-            Last updated by {booking.accountHandler || "System"}, {new Date(booking.updatedAt).toLocaleString()}
-          </span>
         </div>
 
         <div style={{ display: "grid", gap: "20px" }}>

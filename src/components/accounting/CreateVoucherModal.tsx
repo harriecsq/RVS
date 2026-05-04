@@ -624,6 +624,9 @@ export function CreateVoucherModal({
     }));
   };
 
+  const GENERAL_EXPENSE_CATEGORIES = ["Annual Expenses", "Expenses", "Transportation", "Salary", "Benefits", "Utilities"];
+  const isGeneralExpense = GENERAL_EXPENSE_CATEGORIES.includes(category);
+
   const getCategoryOptions = () => {
     return [
       // Booking Costing Categories
@@ -779,10 +782,12 @@ export function CreateVoucherModal({
       const formattedDate = voucherDate;
       
       // 1. Create Voucher
-      // Build voucherNumber from compound fields if user provided a number
-      const fullVoucherNumber = voucherRefNumber.trim()
-        ? `${voucherCompanyCode} ${voucherTypeCode} ${voucherYear}-${voucherRefNumber.trim()}`
-        : undefined; // Let server auto-generate
+      // Build voucherNumber — general expenses use free-text ref directly
+      const fullVoucherNumber = isGeneralExpense
+        ? (voucherRefNumber.trim() || undefined)
+        : (voucherRefNumber.trim()
+            ? `${voucherCompanyCode} ${voucherTypeCode} ${voucherYear}-${voucherRefNumber.trim()}`
+            : undefined); // Let server auto-generate
 
       const voucherPayload = {
         voucherNumber: fullVoucherNumber,
@@ -886,49 +891,61 @@ export function CreateVoucherModal({
             {/* 0. Reference Number */}
             <div>
               <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Voucher Reference</Label>
-              <div className="grid grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Company</Label>
-                  <NeuronDropdown
-                    value={voucherCompanyCode}
-                    onChange={setVoucherCompanyCode}
-                    options={["SCI", "RDS", "RVS", "SW"]}
-                    placeholder="Code"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Type</Label>
-                  <NeuronDropdown
-                    value={voucherTypeCode}
-                    onChange={setVoucherTypeCode}
-                    options={["ADV", "CV"]}
-                    placeholder="Type"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Year</Label>
-                  <Input
-                    value={voucherYear}
-                    onChange={e => setVoucherYear(e.target.value.replace(/\D/g, ""))}
-                    placeholder={String(new Date().getFullYear())}
-                    style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
-                    className="focus-visible:ring-[#237F66]"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Number</Label>
-                  <Input
-                    value={voucherRefNumber}
-                    onChange={e => setVoucherRefNumber(e.target.value.replace(/\D/g, ""))}
-                    placeholder={nextVoucherNumber !== null ? String(nextVoucherNumber) : "…"}
-                    style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
-                    className="focus-visible:ring-[#237F66]"
-                  />
-                </div>
-              </div>
-              <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
-                {voucherCompanyCode} {voucherTypeCode} {voucherYear}-{voucherRefNumber || (nextVoucherNumber !== null ? nextVoucherNumber : "")}
-              </p>
+              {isGeneralExpense ? (
+                <Input
+                  value={voucherRefNumber}
+                  onChange={e => setVoucherRefNumber(e.target.value)}
+                  placeholder="Enter reference number"
+                  style={{ height: '40px', borderRadius: '12px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                  className="focus-visible:ring-[#0F766E]"
+                />
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div>
+                      <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Company</Label>
+                      <NeuronDropdown
+                        value={voucherCompanyCode}
+                        onChange={setVoucherCompanyCode}
+                        options={["SCI", "RDS", "RVS", "SW"]}
+                        placeholder="Code"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Type</Label>
+                      <NeuronDropdown
+                        value={voucherTypeCode}
+                        onChange={setVoucherTypeCode}
+                        options={["ADV", "CV"]}
+                        placeholder="Type"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Year</Label>
+                      <Input
+                        value={voucherYear}
+                        onChange={e => setVoucherYear(e.target.value.replace(/\D/g, ""))}
+                        placeholder={String(new Date().getFullYear())}
+                        style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                        className="focus-visible:ring-[#237F66]"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-medium text-[#9CA3AF] mb-1 block">Number</Label>
+                      <Input
+                        value={voucherRefNumber}
+                        onChange={e => setVoucherRefNumber(e.target.value.replace(/\D/g, ""))}
+                        placeholder={nextVoucherNumber !== null ? String(nextVoucherNumber) : "…"}
+                        style={{ height: '40px', borderRadius: '8px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                        className="focus-visible:ring-[#237F66]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
+                    {voucherCompanyCode} {voucherTypeCode} {voucherYear}-{voucherRefNumber || (nextVoucherNumber !== null ? nextVoucherNumber : "")}
+                  </p>
+                </>
+              )}
             </div>
 
             {/* 1. Primary Header Info */}

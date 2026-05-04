@@ -31,6 +31,7 @@ import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png"
 
 import { projectId, publicAnonKey } from './utils/supabase/info';
 import { API_BASE_URL } from '@/utils/api-config';
+import { prefetch as prefetchPath } from './hooks/useCachedFetch';
 
 // Lazy-loaded route components — split into separate chunks for faster initial load
 const ExecutiveDashboard = lazy(() => import("./components/ExecutiveDashboard").then(m => ({ default: m.ExecutiveDashboard })));
@@ -39,6 +40,7 @@ const VouchersScreen = lazy(() => import("./components/accounting/VouchersScreen
 const BillingsScreen = lazy(() => import("./components/accounting/BillingsScreen").then(m => ({ default: m.BillingsScreen })));
 const CollectionsScreen = lazy(() => import("./components/accounting/CollectionsScreen").then(m => ({ default: m.CollectionsScreen })));
 const ExpensesScreen = lazy(() => import("./components/accounting/ExpensesScreen").then(m => ({ default: m.ExpensesScreen })));
+const LogbookScreen = lazy(() => import("./components/accounting/LogbookScreen").then(m => ({ default: m.LogbookScreen })));
 const HR = lazy(() => import("./components/HR").then(m => ({ default: m.HR })));
 const Reports = lazy(() => import("./components/Reports").then(m => ({ default: m.Reports })));
 const ContainerRefundReport = lazy(() => import("./components/reports/ContainerRefundReport").then(m => ({ default: m.ContainerRefundReport })));
@@ -46,7 +48,6 @@ const FinalShipmentCostReport = lazy(() => import("./components/reports/FinalShi
 const ExpenseSummaryReport = lazy(() => import("./components/reports/ExpenseSummaryReport").then(m => ({ default: m.ExpenseSummaryReport })));
 const InDepthProfitLossReport = lazy(() => import("./components/reports/InDepthProfitLossReport").then(m => ({ default: m.InDepthProfitLossReport })));
 const ProfitLossPeriodReport = lazy(() => import("./components/reports/ProfitLossPeriodReport").then(m => ({ default: m.ProfitLossPeriodReport })));
-const VatReturnsReport = lazy(() => import("./components/reports/VatReturnsReport").then(m => ({ default: m.VatReturnsReport })));
 const SOAPaymentMonitoringReport = lazy(() => import("./components/reports/SOAPaymentMonitoringReport").then(m => ({ default: m.SOAPaymentMonitoringReport })));
 const ActivityLogPage = lazy(() => import("./components/ActivityLogPage").then(m => ({ default: m.ActivityLogPage })));
 const EmployeeProfile = lazy(() => import("./components/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
@@ -262,6 +263,7 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
     if (path.startsWith("/accounting/billings")) return "acct-billings";
     if (path.startsWith("/accounting/collections")) return "acct-collections";
     if (path.startsWith("/accounting/expenses")) return "acct-expenses";
+    if (path.startsWith("/accounting/logbook")) return "acct-logbook";
     if (path.startsWith("/hr")) return "hr";
     if (path.startsWith("/calendar")) return "calendar";
     if (path.startsWith("/activity-log")) return "activity-log";
@@ -284,6 +286,7 @@ function RouteWrapper({ children, page }: { children: React.ReactNode; page: str
       "acct-billings": "/accounting/billings",
       "acct-collections": "/accounting/collections",
       "acct-expenses": "/accounting/expenses",
+      "acct-logbook": "/accounting/logbook",
       "hr": "/hr",
       "calendar": "/calendar",
       "activity-log": "/activity-log",
@@ -355,13 +358,6 @@ function ProfitLossPeriodReportPage() {
   );
 }
 
-function VatReturnsReportPage() {
-  return (
-    <RouteWrapper page="reports">
-      <VatReturnsReport />
-    </RouteWrapper>
-  );
-}
 
 function SOAPaymentMonitoringReportPage() {
   return (
@@ -551,6 +547,14 @@ function AccountingExpensesPage() {
   );
 }
 
+function AccountingLogbookPage() {
+  return (
+    <RouteWrapper page="acct-logbook">
+      <LogbookScreen />
+    </RouteWrapper>
+  );
+}
+
 /*
 function AccountingProjectsPage() {
   return (
@@ -652,16 +656,7 @@ function AppContent() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const headers = { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" };
-    const prefetch = (path: string) =>
-      fetch(`${API_BASE_URL}${path}`, { headers })
-        .then((r) => r.json())
-        .then((data) => {
-          (window as any).__neuronCache = (window as any).__neuronCache || new Map();
-          (window as any).__neuronCache.set(path, { data, timestamp: Date.now() });
-        })
-        .catch(() => {});
-    ["/bookings", "/clients", "/contacts", "/vouchers", "/billings", "/collections", "/expenses", "/trucking-records"].forEach(prefetch);
+    ["/bookings", "/clients", "/contacts", "/vouchers", "/billings", "/collections", "/expenses", "/trucking-records"].forEach(prefetchPath);
   }, [isAuthenticated]);
 
   // Show loading state while checking auth
@@ -710,7 +705,6 @@ function AppContent() {
         <Route path="/reports/expenses-summary" element={<ExpenseSummaryReportPage />} />
         <Route path="/reports/profit-loss" element={<InDepthProfitLossReportPage />} />
         <Route path="/reports/profit-loss-period" element={<ProfitLossPeriodReportPage />} />
-        <Route path="/reports/vat-returns" element={<VatReturnsReportPage />} />
         <Route path="/reports/soa-payment-monitoring" element={<SOAPaymentMonitoringReportPage />} />
 
 
@@ -732,6 +726,7 @@ function AppContent() {
         <Route path="/accounting/billings" element={<AccountingBillingsPage />} />
         <Route path="/accounting/collections" element={<AccountingCollectionsPage />} />
         <Route path="/accounting/expenses" element={<AccountingExpensesPage />} />
+        <Route path="/accounting/logbook" element={<AccountingLogbookPage />} />
         
         {/* Other */}
         <Route path="/hr" element={<HRPage />} />

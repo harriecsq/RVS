@@ -2132,11 +2132,13 @@ app.get("/make-server-ce0d67b8/projects", async (c) => {
     let projects = await kv.getByPrefix("project:");
     
     // Get all billings, collections, expenses, and vouchers for aggregation
-    const allBillings = await kv.getByPrefix("billing:");
-    const allCollections = await kv.getByPrefix("collection:");
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allBillings, allCollections, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("collection:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     // Add financial data to each project
     projects = projects.map((project: any) => {
       // BILLINGS: Calculate outstanding
@@ -2252,11 +2254,13 @@ app.get("/make-server-ce0d67b8/projects/:id", async (c) => {
     }
     
     // Get all billings, collections, expenses, and vouchers for this project
-    const allBillings = await kv.getByPrefix("billing:");
-    const allCollections = await kv.getByPrefix("collection:");
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allBillings, allCollections, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("collection:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     // BILLINGS: Calculate outstanding
     const projectBillings = allBillings.filter((billing: any) => billing.projectId === id);
     const totalBilled = projectBillings.reduce((sum: number, billing: any) => sum + (billing.totalAmount || 0), 0);
@@ -2344,13 +2348,15 @@ app.get("/make-server-ce0d67b8/projects/:id/bookings", async (c) => {
     }
     
     // Fetch all bookings linked to this project (ALL booking types)
-    const allExportBookings = await kv.getByPrefix("export_booking:");
-    const allImportBookings = await kv.getByPrefix("import_booking:");
-    const allTruckingBookings = await kv.getByPrefix("trucking_booking:");
-    const allForwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const allBrokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const allMarineInsuranceBookings = await kv.getByPrefix("marine_insurance_booking:");
-    const allOthersBookings = await kv.getByPrefix("others_booking:");
+    const [allExportBookings, allImportBookings, allTruckingBookings, allForwardingBookings, allBrokerageBookings, allMarineInsuranceBookings, allOthersBookings] = await Promise.all([
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("marine_insurance_booking:"),
+      kv.getByPrefix("others_booking:"),
+    ]);
     
     const exportBookings = allExportBookings.filter((b: any) => b.project_id === id || b.projectId === id);
     const importBookings = allImportBookings.filter((b: any) => b.project_id === id || b.projectId === id);
@@ -2423,13 +2429,17 @@ app.get("/make-server-ce0d67b8/projects/:id/expenses", async (c) => {
     }
     
     // Fetch all bookings linked to this project
-    const allExportBookings = await kv.getByPrefix("export_booking:");
-    const allImportBookings = await kv.getByPrefix("import_booking:");
-    const allForwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const allTruckingBookings = await kv.getByPrefix("trucking_booking:");
-    const allBrokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const allOthersBookings = await kv.getByPrefix("others_booking:");
-    
+    const [allExportBookings, allImportBookings, allForwardingBookings, allTruckingBookings, allBrokerageBookings, allOthersBookings, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("others_booking:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     const projectBookingIds = [
       ...allExportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allImportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
@@ -2438,10 +2448,6 @@ app.get("/make-server-ce0d67b8/projects/:id/expenses", async (c) => {
       ...allBrokerageBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allOthersBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId)
     ];
-    
-    // Fetch all expenses and vouchers
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
     
     // Filter expenses that either:
     // 1. Belong to bookings in this project (via bookingIds array)
@@ -2573,13 +2579,17 @@ app.get("/make-server-c142e950/projects/:id/expenses", async (c) => {
     }
     
     // Fetch all bookings linked to this project
-    const allExportBookings = await kv.getByPrefix("export_booking:");
-    const allImportBookings = await kv.getByPrefix("import_booking:");
-    const allForwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const allTruckingBookings = await kv.getByPrefix("trucking_booking:");
-    const allBrokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const allOthersBookings = await kv.getByPrefix("others_booking:");
-    
+    const [allExportBookings, allImportBookings, allForwardingBookings, allTruckingBookings, allBrokerageBookings, allOthersBookings, allExpenses, allVouchers] = await Promise.all([
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("others_booking:"),
+      kv.getByPrefix("expense:"),
+      kv.getByPrefix("voucher:"),
+    ]);
+
     const projectBookingIds = [
       ...allExportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allImportBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
@@ -2588,10 +2598,6 @@ app.get("/make-server-c142e950/projects/:id/expenses", async (c) => {
       ...allBrokerageBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId),
       ...allOthersBookings.filter((b: any) => b.project_id === id || b.projectId === id).map((b: any) => b.bookingId)
     ];
-    
-    // Fetch all expenses and vouchers
-    const allExpenses = await kv.getByPrefix("expense:");
-    const allVouchers = await kv.getByPrefix("voucher:");
     
     // Filter expenses that either:
     // 1. Belong to bookings in this project (via bookingIds array)
@@ -3261,9 +3267,16 @@ app.get("/make-server-ce0d67b8/bookings", async (c) => {
     const ids = c.req.query("ids"); // NEW: Support for fetching specific bookings by IDs
     
     // Get all bookings from ALL prefixes (new workflow - comprehensive)
-    const bookings = await kv.getByPrefix("booking:");
-    const exportBookingsRaw = await kv.getByPrefix("export_booking:");
-    const importBookingsRaw = await kv.getByPrefix("import_booking:");
+    const [bookings, exportBookingsRaw, importBookingsRaw, forwardingBookings, truckingBookings, brokerageBookings, marineInsuranceBookings, othersBookings] = await Promise.all([
+      kv.getByPrefix("booking:"),
+      kv.getByPrefix("export_booking:"),
+      kv.getByPrefix("import_booking:"),
+      kv.getByPrefix("forwarding_booking:"),
+      kv.getByPrefix("trucking_booking:"),
+      kv.getByPrefix("brokerage_booking:"),
+      kv.getByPrefix("marine_insurance_booking:"),
+      kv.getByPrefix("others_booking:"),
+    ]);
     const exportBookings = await Promise.all(
       exportBookingsRaw.map((booking: any) =>
         migrateExportBookingIfNeeded(booking, booking.bookingId || booking.id),
@@ -3274,11 +3287,6 @@ app.get("/make-server-ce0d67b8/bookings", async (c) => {
         migrateImportBookingIfNeeded(booking, booking.bookingId || booking.id),
       ),
     );
-    const forwardingBookings = await kv.getByPrefix("forwarding_booking:");
-    const truckingBookings = await kv.getByPrefix("trucking_booking:");
-    const brokerageBookings = await kv.getByPrefix("brokerage_booking:");
-    const marineInsuranceBookings = await kv.getByPrefix("marine_insurance_booking:");
-    const othersBookings = await kv.getByPrefix("others_booking:");
     
     // Combine all bookings and add booking_type field
     const allBookings = [
@@ -4264,10 +4272,12 @@ app.delete("/make-server-ce0d67b8/expenses/:id", async (c) => {
 // Get all vouchers
 app.get("/make-server-ce0d67b8/vouchers", async (c) => {
   try {
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allVouchers, allExpenses] = await Promise.all([
+      kv.getByPrefix("voucher:"),
+      kv.getByPrefix("expense:"),
+    ]);
+
     // Enrich vouchers with expenseNumber from linked expenses
-    const allExpenses = await kv.getByPrefix("expense:");
     const expenseMap = new Map<string, string>();
     allExpenses.forEach((exp: any) => {
       if (exp.id && exp.expenseNumber) {
@@ -4692,8 +4702,11 @@ app.get("/make-server-ce0d67b8/bookings/:id/vouchers", async (c) => {
   try {
     const id = c.req.param("id");
     
-    const allVouchers = await kv.getByPrefix("voucher:");
-    
+    const [allVouchers, allExpenses] = await Promise.all([
+      kv.getByPrefix("voucher:"),
+      kv.getByPrefix("expense:"),
+    ]);
+
     const segmentId = c.req.query("segmentId");
 
     // 1. Direct booking-linked vouchers (standalone vouchers with bookingId)
@@ -4701,9 +4714,8 @@ app.get("/make-server-ce0d67b8/bookings/:id/vouchers", async (c) => {
     if (segmentId) {
       directVouchers = directVouchers.filter((v: any) => v.segmentId === segmentId);
     }
-    
+
     // 2. Expense-linked vouchers: find all expenses for this booking, then their vouchers
-    const allExpenses = await kv.getByPrefix("expense:");
     const bookingExpenses = allExpenses.filter((expense: any) => {
       if (expense.bookingIds && Array.isArray(expense.bookingIds)) {
         return expense.bookingIds.includes(id);
@@ -6188,6 +6200,10 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
       legOrder: 1,
       containerNos,
       sealNos,
+      volume: migrated.volume || "",
+      containerNo: migrated.containerNo || "",
+      sealNo: migrated.sealNo || "",
+      grossWeight: migrated.grossWeight || "",
       origin: migrated.origin || "",
       pod: migrated.pod || "",
       destination: migrated.destination || "",
@@ -6230,6 +6246,18 @@ async function migrateExportBookingIfNeeded(booking: any, id: string): Promise<a
     };
     migrated = { ...migrated, segments: [defaultSegment] };
     dirty = true;
+  }
+
+  // Step 3: Backfill volume onto existing segments that are missing it
+  if (Array.isArray(migrated.segments) && migrated.volume) {
+    const patched = migrated.segments.map((seg: any) => {
+      if (!seg.volume) {
+        dirty = true;
+        return { ...seg, volume: migrated.volume };
+      }
+      return seg;
+    });
+    if (dirty) migrated = { ...migrated, segments: patched };
   }
 
   if (dirty) {
@@ -6284,6 +6312,8 @@ function syncTopLevelFromSegment0(booking: any): any {
     containerNo: seg.containerNo,
     sealNo: seg.sealNo,
     containerNos: seg.containerNos,
+    volume: seg.volume,
+    grossWeight: seg.grossWeight,
   };
 }
 
@@ -6480,7 +6510,7 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async (c
     const docType = c.req.param("docType");
     const body = await c.req.json();
 
-    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e"];
+    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e", "processing-fee", "heart-of-export"];
     if (!validTypes.includes(docType)) {
       return c.json({ success: false, error: `Invalid document type: ${docType}` }, 400);
     }
@@ -6493,6 +6523,8 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async (c
       : docType === "commercial-invoice" ? "commercialInvoice"
       : docType === "packing-list" ? "packingList"
       : docType === "form-e" ? "formE"
+      : docType === "processing-fee" ? "processingFee"
+      : docType === "heart-of-export" ? "heartOfExport"
       : "declaration";
 
     const now = new Date().toISOString();
@@ -6532,7 +6564,7 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async
     const id = decodeURIComponent(c.req.param("id"));
     const docType = c.req.param("docType");
 
-    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e"];
+    const validTypes = ["sales-contract", "commercial-invoice", "packing-list", "declaration", "form-e", "processing-fee", "heart-of-export"];
     if (!validTypes.includes(docType)) {
       return c.json({ success: false, error: `Invalid document type: ${docType}` }, 400);
     }
@@ -6545,6 +6577,8 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id/documents/:docType", async
       : docType === "commercial-invoice" ? "commercialInvoice"
       : docType === "packing-list" ? "packingList"
       : docType === "form-e" ? "formE"
+      : docType === "processing-fee" ? "processingFee"
+      : docType === "heart-of-export" ? "heartOfExport"
       : "declaration";
 
     delete docs[camelKey];
@@ -6792,8 +6826,10 @@ app.delete("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
     await kv.del(`export_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7108,8 +7144,10 @@ app.delete("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
     await kv.del(`import_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7273,8 +7311,10 @@ app.delete("/make-server-ce0d67b8/trucking-bookings/:id", async (c) => {
     await kv.del(`trucking_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7577,8 +7617,10 @@ app.delete("/make-server-ce0d67b8/marine-insurance-bookings/:id", async (c) => {
     await kv.del(`marine_insurance_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7742,8 +7784,10 @@ app.delete("/make-server-ce0d67b8/others-bookings/:id", async (c) => {
     await kv.del(`others_booking:${id}`);
     
     // Also delete associated billings and expenses
-    const billings = await kv.getByPrefix(`billing:`);
-    const expenses = await kv.getByPrefix(`expense:`);
+    const [billings, expenses] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("expense:"),
+    ]);
     
     for (const billing of billings) {
       if (billing.bookingId === id) {
@@ -7775,9 +7819,11 @@ app.get("/make-server-ce0d67b8/billings", async (c) => {
     const projectId = c.req.query("projectId");
     const bookingNumber = c.req.query("bookingNumber");
     
-    const allBillings = await kv.getByPrefix("billing:");
-    const allCollections = await kv.getByPrefix("collection:");
-    
+    const [allBillings, allCollections] = await Promise.all([
+      kv.getByPrefix("billing:"),
+      kv.getByPrefix("collection:"),
+    ]);
+
     // Fetch all bookings to resolve booking numbers for display
     const [
       genBookings,
@@ -10455,6 +10501,86 @@ app.delete("/make-server-ce0d67b8/attachments/:entityType/:entityId/:attachmentI
     return c.json({ success: true });
   } catch (error) {
     console.error("Error deleting attachment:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Master Templates ──────────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/master-templates", async (c) => {
+  try {
+    const templates = await kvRetry(() => kv.get("master_templates")) || [];
+    return c.json({ success: true, data: Array.isArray(templates) ? templates : [] });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/master-templates", async (c) => {
+  try {
+    const templates = await c.req.json();
+    await kvRetry(() => kv.set("master_templates", templates));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Document Settings ─────────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/document-settings", async (c) => {
+  try {
+    const settings = await kvRetry(() => kv.get("document_settings")) || null;
+    return c.json({ success: true, data: settings });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/document-settings", async (c) => {
+  try {
+    const settings = await c.req.json();
+    await kvRetry(() => kv.set("document_settings", settings));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Custom POD Options ────────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/custom-pod-options", async (c) => {
+  try {
+    const options = await kvRetry(() => kv.get("custom_pod_options")) || [];
+    return c.json({ success: true, data: Array.isArray(options) ? options : [] });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/custom-pod-options", async (c) => {
+  try {
+    const options = await c.req.json();
+    await kvRetry(() => kv.set("custom_pod_options", options));
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+// ── Packing List Metrics ──────────────────────────────────────────────────────
+app.get("/make-server-ce0d67b8/packing-list-metrics", async (c) => {
+  try {
+    const metrics = await kvRetry(() => kv.get("packing_list_metrics")) || null;
+    return c.json({ success: true, data: metrics });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+app.put("/make-server-ce0d67b8/packing-list-metrics", async (c) => {
+  try {
+    const metrics = await c.req.json();
+    await kvRetry(() => kv.set("packing_list_metrics", metrics));
+    return c.json({ success: true });
+  } catch (error) {
     return c.json({ success: false, error: String(error) }, 500);
   }
 });

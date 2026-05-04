@@ -131,25 +131,27 @@ export function ExpensesTab({ bookingId, bookingNumber, projectId: bookingProjec
             Record and categorize business expenses for this booking
           </p>
         </div>
-        <button
-          onClick={() => setShowCreatePanel(true)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 20px",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "white",
-            backgroundColor: "#0F766E",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-          }}
-        >
-          <Plus size={18} />
-          Add Expense
-        </button>
+        {expenses.length === 0 && (
+          <button
+            onClick={() => setShowCreatePanel(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 20px",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "white",
+              backgroundColor: "#0F766E",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          >
+            <Plus size={18} />
+            Add Expense
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}

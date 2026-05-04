@@ -25,6 +25,8 @@ interface BookingSelectorProps {
   placeholder?: string;
   disabled?: boolean;
   bookingTypeFilter?: "import" | "export";
+  /** When set, hides bookings that already have a linked billing or expense (except the currently-selected one) */
+  excludeLinked?: "billing" | "expense";
 }
 
 export function BookingSelector({
@@ -34,35 +36,68 @@ export function BookingSelector({
   placeholder = "Select booking...",
   disabled = false,
   bookingTypeFilter,
+  excludeLinked,
 }: BookingSelectorProps) {
   const [open, setOpen] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [linkedBookingIds, setLinkedBookingIds] = useState<Set<string>>(new Set());
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
       try {
         setIsLoading(true);
-        let response: Response | null = null;
-        let lastError: any = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            response = await fetch(`${API_BASE_URL}/bookings`, {
-              headers: { 'Authorization': `Bearer ${publicAnonKey}` }
-            });
-            break;
-          } catch (fetchErr) {
-            lastError = fetchErr;
-            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+
+        const headers = { Authorization: `Bearer ${publicAnonKey}` };
+
+        // Fetch bookings (with retry) and linked records in parallel
+        const fetchWithRetry = async () => {
+          let response: Response | null = null;
+          let lastError: any = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              response = await fetch(`${API_BASE_URL}/bookings`, { headers });
+              break;
+            } catch (err) {
+              lastError = err;
+              if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+            }
           }
-        }
-        if (!response) throw lastError || new Error("Failed to fetch bookings after retries");
-        if (!response.ok) throw new Error("Failed to fetch bookings");
-        const result = await response.json();
-        if (result.success) {
-          const mapped = result.data.map((b: any) => ({
+          if (!response) throw lastError || new Error("Failed to fetch bookings after retries");
+          if (!response.ok) throw new Error("Failed to fetch bookings");
+          return response.json();
+        };
+
+        const fetchLinked = async (): Promise<Set<string>> => {
+          if (!excludeLinked) return new Set();
+          try {
+            const endpoint = excludeLinked === "billing" ? "/billings" : "/expenses";
+            const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+            if (!res.ok) return new Set();
+            const result = await res.json();
+            if (!result.success || !Array.isArray(result.data)) return new Set();
+            const ids = new Set<string>();
+            for (const record of result.data) {
+              // Each record may link to bookings via bookingIds array or single bookingId
+              if (Array.isArray(record.bookingIds)) {
+                record.bookingIds.forEach((id: string) => ids.add(id));
+              } else if (record.bookingId) {
+                ids.add(record.bookingId);
+              }
+            }
+            return ids;
+          } catch {
+            return new Set();
+          }
+        };
+
+        const [bookingResult, linked] = await Promise.all([fetchWithRetry(), fetchLinked()]);
+        setLinkedBookingIds(linked);
+
+        if (bookingResult.success) {
+          const mapped = bookingResult.data.map((b: any) => ({
             ...b,
             id: b.id || b.bookingId,
             trackingNo: b.trackingNumber || b.trackingNo || b.booking_number || b.id || b.bookingId,
@@ -95,6 +130,9 @@ export function BookingSelector({
   const selectedBooking = bookings.find((b) => b.id === value) || null;
 
   const filteredBookings = bookings.filter((booking) => {
+    // Hide bookings already linked to a billing/expense — but always show the current selection
+    if (excludeLinked && linkedBookingIds.has(booking.id) && booking.id !== value) return false;
+
     if (bookingTypeFilter) {
       const type = (booking.shipmentType || "").toLowerCase();
       if (!type.includes(bookingTypeFilter)) return false;

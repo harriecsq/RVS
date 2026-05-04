@@ -27,13 +27,25 @@ export const ShipmentMilestonesTab = forwardRef<
 
   const buildMap = (events: ShipmentEvent[]) => {
     const map: Record<string, { date: string; time: string; note: string }> = {};
+    if (!Array.isArray(events)) return map;
     for (const ev of events) {
-      const dt = ev.dateTime ? new Date(ev.dateTime) : null;
-      map[ev.event] = {
-        date: dt ? dt.toISOString().slice(0, 10) : "",
-        time: dt ? dt.toISOString().slice(11, 16) : "",
-        note: ev.note || "",
-      };
+      if (!ev?.event) continue;
+      let date = "";
+      let time = "";
+      const raw = typeof ev.dateTime === "string" ? ev.dateTime : "";
+      const match = raw.match(/^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?/);
+      if (match) {
+        date = match[1];
+        time = match[2] || "";
+      } else if (raw) {
+        const dt = new Date(raw);
+        if (!isNaN(dt.getTime())) {
+          const pad = (n: number) => String(n).padStart(2, "0");
+          date = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+          time = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+        }
+      }
+      map[ev.event] = { date, time, note: ev.note || "" };
     }
     return map;
   };

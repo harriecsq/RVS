@@ -197,7 +197,7 @@ function MasterTemplatePicker({
 
 // ── Empty state ──────────────────────────────────────────────────────
 
-function EmptyDocumentState({ onCreateClick }: { onCreateClick: () => void }) {
+function EmptyDocumentState({ onCreateClick, isPending }: { onCreateClick: () => void; isPending?: boolean }) {
   return (
     <div style={{ padding: "32px 48px" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "280px" }}>
@@ -206,9 +206,10 @@ function EmptyDocumentState({ onCreateClick }: { onCreateClick: () => void }) {
         <p style={{ fontSize: "13px", color: "#667085", margin: "0 0 16px" }}>Create a Sales Contract for this booking.</p>
         <button
           onClick={onCreateClick}
-          style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "#FFFFFF", cursor: "pointer" }}
+          disabled={isPending}
+          style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, border: "none", borderRadius: "8px", background: "#0F766E", color: "#FFFFFF", cursor: isPending ? "wait" : "pointer", opacity: isPending ? 0.7 : 1 }}
         >
-          <Plus size={15} /> Create Sales Contract
+          <Plus size={15} /> {isPending ? "Loading templates…" : "Create Sales Contract"}
         </button>
       </div>
     </div>
@@ -247,9 +248,10 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
   editDataRef.current = editData;
 
   // Master template state
-  const { templates: masterTemplates } = useMasterTemplates();
+  const { templates: masterTemplates, isLoading: templatesLoading } = useMasterTemplates();
   const [showMasterPicker, setShowMasterPicker] = useState(false);
   const [appliedMaster, setAppliedMaster] = useState<MasterTemplate | null>(null);
+  const [pendingCreate, setPendingCreate] = useState(false);
 
   // Compound ref number fields (editable like voucher/billing)
   const [refCompanyCode, setRefCompanyCode] = useState("RVS");
@@ -306,6 +308,10 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
   };
 
   const handleCreateClick = () => {
+    if (templatesLoading) {
+      setPendingCreate(true);
+      return;
+    }
     if (masterTemplates.length > 0) {
       setShowMasterPicker(true);
     } else {
@@ -313,21 +319,37 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     }
   };
 
+  // If user clicked Create while templates were still loading, fire it now
+  useEffect(() => {
+    if (pendingCreate && !templatesLoading) {
+      setPendingCreate(false);
+      if (masterTemplates.length > 0) {
+        setShowMasterPicker(true);
+      } else {
+        proceedWithCreate(null);
+      }
+    }
+  }, [pendingCreate, templatesLoading, masterTemplates.length]);
+
   const handleMasterSelect = (master: MasterTemplate | null) => {
     setShowMasterPicker(false);
     setAppliedMaster(master);
     if (master) {
       const defaults = buildSalesContractDefaults(booking);
+      const sc = master.salesContract || {};
       const merged: Partial<SalesContract> = {
         ...defaults,
-        ...master.salesContract,
+        ...sc,
+        // Only booking can set these — never from template
         refNo: buildRefNo(),
         date: new Date().toISOString().split("T")[0],
-        vesselVoyage: defaults.vesselVoyage || "",
-        shipmentDate: defaults.shipmentDate || "",
-        marksAndNos: defaults.marksAndNos || "",
-        portOfLoading: defaults.portOfLoading || master.salesContract.portOfLoading || "",
-        portOfDestination: defaults.portOfDestination || master.salesContract.portOfDestination || "",
+        // Template wins; fall back to booking if template field is empty
+        vesselVoyage: sc.vesselVoyage || defaults.vesselVoyage || "",
+        shipmentDate: sc.shipmentDate || defaults.shipmentDate || "",
+        marksAndNos: sc.marksAndNos || defaults.marksAndNos || "",
+        portOfLoading: sc.portOfLoading || defaults.portOfLoading || "",
+        portOfDestination: sc.portOfDestination || defaults.portOfDestination || "",
+        masterTemplateId: master.id,
       };
       setEditData(merged);
       setIsCreating(true);
@@ -343,7 +365,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
       ...defaults,
       refNo: buildRefNo(),
       date: new Date().toISOString().split("T")[0],
-      supplierName: "", supplierAddress: "",
+      supplierName: "", supplierAddress: "", supplierPhone: "", supplierEmail: "",
       sellerName: defaults.sellerName || "", sellerAddress: "",
       buyerName: defaults.buyerName || "", buyerAddress: "", buyerContact: "", buyerPhone: "", buyerEmail: "",
       marksAndNos: defaults.marksAndNos || "", commodityDescription: defaults.commodityDescription || "", quantity: "", unitPrice: "", totalAmount: "",
@@ -353,13 +375,11 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     };
 
     if (templateFields) {
+      // Template wins for all fields; booking fills gaps where template is empty
       merged = applyTemplate(merged, templateFields, "salesContract");
-      // Re-apply booking-specific fields that must always come from the booking
+      // Only refNo and date are strictly booking-only
       merged.refNo = buildRefNo();
       merged.date = new Date().toISOString().split("T")[0];
-      merged.vesselVoyage = defaults.vesselVoyage || "";
-      merged.shipmentDate = defaults.shipmentDate || "";
-      merged.marksAndNos = defaults.marksAndNos || "";
     }
 
     setEditData(merged);
@@ -423,11 +443,11 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     onEditStateChange?.({
       isEditing, isSaving,
       refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
-      docData: doc,
+      docData: isEditing ? { ...editData, refNo: buildRefNo() } : doc,
       appliedMaster,
       handleEdit, handleCancel, handleSave,
     });
-  }, [isEditing, isSaving, doc?.refNo, appliedMaster]);
+  }, [isEditing, isSaving, doc?.refNo, appliedMaster, editData]);
 
   const field = (key: keyof SalesContract) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -445,7 +465,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     if (showMasterPicker) {
       return <MasterTemplatePicker templates={masterTemplates} onSelect={handleMasterSelect} onSkip={() => { setShowMasterPicker(false); proceedWithCreate(null); }} />;
     }
-    return <EmptyDocumentState onCreateClick={handleCreateClick} />;
+    return <EmptyDocumentState onCreateClick={handleCreateClick} isPending={pendingCreate && templatesLoading} />;
   }
 
   return (
@@ -552,17 +572,13 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
       {/* Goods */}
       <SectionCard title="Goods">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-          {/* Marks & Nos — number input, fixed CONTAINER unit */}
           <div>
             <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Marks &amp; Nos</label>
             {isEditing ? (
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <input value={field("marksAndNos")} onChange={(e) => setField("marksAndNos", e.target.value)} placeholder="e.g. 4" style={{ flex: 1, height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
-                <span style={{ whiteSpace: "nowrap", fontSize: "13px", color: "#667085", padding: "0 10px", height: "42px", display: "flex", alignItems: "center", background: "#F3F4F6", borderRadius: "6px", border: "1px solid #E5E9F0" }}>CONTAINER</span>
-              </div>
+              <input value={field("marksAndNos")} onChange={(e) => setField("marksAndNos", e.target.value)} placeholder="e.g. 2x40'HC" style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
             ) : (
               <div style={{ padding: "10px 14px", backgroundColor: field("marksAndNos") ? "#F9FAFB" : "white", border: field("marksAndNos") ? "1px solid #E5E9F0" : "2px dashed #E5E9F0", borderRadius: "6px", fontSize: "14px", color: field("marksAndNos") ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center", gap: "6px" }}>
-                {field("marksAndNos") ? <>{fmtNum(field("marksAndNos"))} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "—"}
+                {field("marksAndNos") ? <>{field("marksAndNos")} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "e.g. 2x40'HC"}
               </div>
             )}
           </div>

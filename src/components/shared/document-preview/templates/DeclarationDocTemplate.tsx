@@ -13,7 +13,6 @@ function formatDateLetters(raw: string): string {
 }
 
 export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplateProps) {
-  const supplierStamp = settings.stamps?.["supplier"]?.pngData;
 
   const containers: { containerNo: string; sealNo: string }[] = data.containers || [];
   const containerNos = containers.map((c) => [c.containerNo, c.sealNo].filter(Boolean).join("/")).filter(Boolean).join("\n");
@@ -23,21 +22,7 @@ export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplat
   const shipmentText = [weight, commodity].filter(Boolean).join(" ");
 
   return (
-    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1.2" }}>
-
-      {/* Company letterhead */}
-      {settings.logoPng ? (
-        <div style={{ marginBottom: "20px" }}>
-          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
-        </div>
-      ) : (
-        <div style={{
-          border: "1.5px dashed #CBD5E1", borderRadius: "4px", padding: "16px",
-          textAlign: "center", color: "#9CA3AF", fontSize: "11px", marginBottom: "20px",
-        }}>
-          Company letterhead PNG — upload via Document Settings
-        </div>
-      )}
+    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
 
       {/* Title block */}
       <div style={{ textAlign: "center", marginBottom: "20px" }}>
@@ -50,7 +35,7 @@ export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplat
       </div>
 
       {/* Body paragraph */}
-      <div style={{ textAlign: "center", margin: "0 0 28px", fontSize: "12px", lineHeight: "1.8" }}>
+      <div style={{ textAlign: "center", margin: "0 0 28px", fontSize: "12px" }}>
         It is declared that this shipment of{" "}
         {shipmentText || "_______________"}
         <br />
@@ -82,11 +67,8 @@ export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplat
               <div style={{ marginTop: "4px" }}>DATE:</div>
             </td>
             <td style={{ paddingBottom: "4px", verticalAlign: "top" }}>
-              {supplierStamp ? (
-                <img src={supplierStamp} alt="Supplier Stamp" style={{ height: "80px", objectFit: "contain", display: "block" }} />
-              ) : (
-                <div style={{ height: "80px" }} />
-              )}
+              <div style={{ position: "relative", height: "80px" }}>
+              </div>
               <div>{formatDateLetters(data.date || "")}</div>
             </td>
           </tr>
@@ -100,10 +82,10 @@ export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplat
 function InfoRow({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
   return (
     <tr>
-      <td style={{ whiteSpace: "nowrap", paddingRight: "16px", paddingBottom: "6px", verticalAlign: "top", width: "160px" }}>
+      <td style={{ whiteSpace: "nowrap", padding: "0 16px 0 0", verticalAlign: "top", width: "160px", lineHeight: "1.4" }}>
         {label} :
       </td>
-      <td style={{ paddingBottom: "6px", verticalAlign: "top", whiteSpace: multiline ? "pre-line" : "normal" }}>
+      <td style={{ padding: "0", verticalAlign: "top", whiteSpace: multiline ? "pre-line" : "normal", lineHeight: "1.4" }}>
         {value}
       </td>
     </tr>

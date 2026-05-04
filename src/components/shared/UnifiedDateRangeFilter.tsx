@@ -22,6 +22,7 @@ interface UnifiedDateRangeFilterProps {
   compact?: boolean;                    // true = shorter height for list filter bars
   startPlaceholder?: string;
   endPlaceholder?: string;
+  onSwitchToMonth?: () => void;         // when set, popover shows Month/Custom Range toggle instead of Today
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -148,12 +149,13 @@ function InlineDropdown({
 // ─── SingleDateInput ──────────────────────────────────────────────────────────
 
 export function SingleDateInput({
-  value, onChange, placeholder, compact,
+  value, onChange, placeholder, compact, onSwitchToMonth,
 }: {
   value: string;
   onChange: (iso: string) => void;
   placeholder: string;
   compact?: boolean;
+  onSwitchToMonth?: () => void;
 }) {
   const [display, setDisplay] = useState(parseISOToDisplay(value));
   const [open, setOpen] = useState(false);
@@ -356,30 +358,71 @@ export function SingleDateInput({
             })}
           </div>
 
-          {/* Footer: Clear + Today */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E9F0" }}>
-            <button
-              type="button"
-              onClick={() => { onChange(""); setDisplay(""); setOpen(false); }}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "#667085", padding: "4px 0" }}
-              onMouseEnter={e => { (e.currentTarget).style.color = "#EF4444"; }}
-              onMouseLeave={e => { (e.currentTarget).style.color = "#667085"; }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={() => { onChange(todayISO); setOpen(false); }}
-              style={{
-                backgroundColor: "#0F766E", color: "#FFFFFF", border: "none", cursor: "pointer",
-                fontSize: "13px", fontWeight: 600, padding: "6px 16px", borderRadius: "8px",
-              }}
-              onMouseEnter={e => { (e.currentTarget).style.backgroundColor = "#0D655E"; }}
-              onMouseLeave={e => { (e.currentTarget).style.backgroundColor = "#0F766E"; }}
-            >
-              Today
-            </button>
-          </div>
+          {/* Footer: Clear + (Today | Month/Custom Range toggle) */}
+          {onSwitchToMonth ? (
+            <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E9F0", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(""); setDisplay(""); setOpen(false); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "#667085", padding: "4px 0" }}
+                  onMouseEnter={e => { (e.currentTarget).style.color = "#EF4444"; }}
+                  onMouseLeave={e => { (e.currentTarget).style.color = "#667085"; }}
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onChange(todayISO); setOpen(false); }}
+                  style={{
+                    backgroundColor: "#0F766E", color: "#FFFFFF", border: "none", cursor: "pointer",
+                    fontSize: "13px", fontWeight: 600, padding: "6px 16px", borderRadius: "8px",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget).style.backgroundColor = "#0D655E"; }}
+                  onMouseLeave={e => { (e.currentTarget).style.backgroundColor = "#0F766E"; }}
+                >
+                  Today
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button type="button"
+                  onClick={() => { setOpen(false); onSwitchToMonth(); }}
+                  style={{ flex: 1, padding: "7px", fontSize: "12px", fontWeight: 600, backgroundColor: "transparent", color: "#667085", border: "1px solid #E5E9F0", borderRadius: "8px", cursor: "pointer" }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#0A1D4D"; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#667085"; }}>
+                  Month
+                </button>
+                <button type="button"
+                  style={{ flex: 1, padding: "7px", fontSize: "12px", fontWeight: 600, backgroundColor: "#0F766E", color: "#fff", border: "1px solid #0F766E", borderRadius: "8px", cursor: "default" }}>
+                  Custom Range
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E9F0" }}>
+              <button
+                type="button"
+                onClick={() => { onChange(""); setDisplay(""); setOpen(false); }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", fontWeight: 500, color: "#667085", padding: "4px 0" }}
+                onMouseEnter={e => { (e.currentTarget).style.color = "#EF4444"; }}
+                onMouseLeave={e => { (e.currentTarget).style.color = "#667085"; }}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => { onChange(todayISO); setOpen(false); }}
+                style={{
+                  backgroundColor: "#0F766E", color: "#FFFFFF", border: "none", cursor: "pointer",
+                  fontSize: "13px", fontWeight: 600, padding: "6px 16px", borderRadius: "8px",
+                }}
+                onMouseEnter={e => { (e.currentTarget).style.backgroundColor = "#0D655E"; }}
+                onMouseLeave={e => { (e.currentTarget).style.backgroundColor = "#0F766E"; }}
+              >
+                Today
+              </button>
+            </div>
+          )}
         </div>,
         document.body
       )}
@@ -398,6 +441,7 @@ export function UnifiedDateRangeFilter({
   compact = false,
   startPlaceholder = "From",
   endPlaceholder = "To",
+  onSwitchToMonth,
 }: UnifiedDateRangeFilterProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: label ? "6px" : "0px" }}>
@@ -412,6 +456,7 @@ export function UnifiedDateRangeFilter({
           onChange={onStartDateChange}
           placeholder={startPlaceholder}
           compact={compact}
+          onSwitchToMonth={onSwitchToMonth}
         />
         <span style={{ color: "#9CA3AF", fontSize: "13px", flexShrink: 0 }}>—</span>
         <SingleDateInput
@@ -419,6 +464,7 @@ export function UnifiedDateRangeFilter({
           onChange={onEndDateChange}
           placeholder={endPlaceholder}
           compact={compact}
+          onSwitchToMonth={onSwitchToMonth}
         />
       </div>
     </div>

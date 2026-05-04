@@ -71,6 +71,7 @@ export function StandardTabs({ tabs, activeTab, onChange, onTabChange, style, ac
               cursor: "pointer",
               transition: "all var(--ds-transition-fast)",
               marginBottom: "-1px",
+              whiteSpace: "nowrap",
             }}
             onMouseEnter={(e) => {
               if (!isActive) {

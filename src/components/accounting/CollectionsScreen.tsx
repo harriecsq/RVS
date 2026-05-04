@@ -7,7 +7,7 @@ import { ViewCollectionScreen } from "./ViewCollectionScreen";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
@@ -17,6 +17,7 @@ import {
   StandardTable,
 } from "../design-system";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import type { ColumnDef } from "../design-system";
 
 interface CollectionsScreenProps {
@@ -48,19 +49,18 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const collections = useMemo<Collection[]>(() => {
     if (!collectionsResult?.success || !Array.isArray(collectionsResult.data)) return [];
     const data = [...collectionsResult.data];
-    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    data.sort((a: any, b: any) => String(b.collectionNumber || "").localeCompare(String(a.collectionNumber || ""), undefined, { numeric: true }));
     return data;
   }, [collectionsResult]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CollectionStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "collected" | "partial">("all");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const clientsMasterList = useClientsMasterList();
 
   const fetchCollections = () => { invalidateCache("/collections"); refetch(); };
@@ -93,7 +93,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   };
 
   // Apply all filters
-  const filteredCollections = getFilteredByTab().filter(collection => {
+  const filteredCollectionsRaw = getFilteredByTab().filter(collection => {
     // Search filter
     const matchesSearch =
       (collection.collectionNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -112,21 +112,27 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     }
 
     // Status filter
-    const matchesStatus = statusFilter === "all" || collection.status === statusFilter;
-    if (!matchesStatus) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(collection.status)) return false;
 
     // Payment method filter
     if (paymentMethodFilter !== "all" && collection.paymentMethod !== paymentMethodFilter) return false;
 
     // Company / client filter
-    if (companyFilter) {
+    if (clientSelections.length > 0) {
       const collCompany = (collection as any).companyName || collection.customerName || "";
-      if (collCompany !== companyFilter) return false;
-      if (clientFilter && (collection.customerName || "") !== clientFilter) return false;
+      if (!clientSelectionMatches(clientSelections, { company: collCompany, client: collection.customerName || "" })) return false;
     }
 
     return true;
   });
+
+  const filteredCollections = statusFilter.length > 0
+    ? [...filteredCollectionsRaw].sort((a, b) => {
+        const ai = statusFilter.indexOf(a.status);
+        const bi = statusFilter.indexOf(b.status);
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+      })
+    : filteredCollectionsRaw;
 
   // Calculate counts for tabs
   const allCount = collections.length;
@@ -148,7 +154,6 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   }
 
   const statusOptions = [
-    { value: "all", label: "All Statuses" },
     { value: "Draft", label: "Draft" },
     { value: "For Approval", label: "For Approval" },
     { value: "Approved", label: "Approved" },
@@ -296,10 +301,11 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           </div>
 
           {/* Status Filter */}
-          <FilterSingleDropdown
+          <MultiSelectPortalDropdown
             value={statusFilter}
-            onChange={(v) => setStatusFilter(v as CollectionStatus | "all")}
+            onChange={setStatusFilter}
             options={statusOptions}
+            placeholder="All Statuses"
           />
 
           {/* Payment Method Filter */}
@@ -312,10 +318,8 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           {/* Company / Client Filter */}
           <CompanyClientFilter
             extraEntries={clientsMasterList}
-            selectedCompany={companyFilter}
-            selectedClient={clientFilter}
-            onCompanyChange={setCompanyFilter}
-            onClientChange={setClientFilter}
+            selected={clientSelections}
+            onChange={setClientSelections}
             placeholder="All Companies"
           />
         </div>
@@ -329,8 +333,8 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           rowKey={(c) => c.id}
           isLoading={isLoading}
           onRowClick={(c) => handleViewCollection(c.id)}
-          emptyTitle={searchTerm || statusFilter !== "all" ? "No collections match your filters" : "No collections yet"}
-          emptyDescription={searchTerm || statusFilter !== "all" ? undefined : "Record your first collection to get started"}
+          emptyTitle={searchTerm || statusFilter.length > 0 ? "No collections match your filters" : "No collections yet"}
+          emptyDescription={searchTerm || statusFilter.length > 0 ? undefined : "Record your first collection to get started"}
           emptyIcon={<DollarSign size={24} />}
         />
       </div>

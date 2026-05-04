@@ -3,42 +3,41 @@ import { ChevronDown, Plus, Search } from "lucide-react";
 import { useDropdownPosition } from "../../hooks/useDropdownPortal";
 import { PortalDropdown } from "./PortalDropdown";
 import { POD_OPTIONS } from "../../utils/truckingTags";
+import { API_BASE_URL } from "../../utils/api-config";
+import { publicAnonKey } from "../../utils/supabase/info";
 
-const CUSTOM_POD_KEY = "neuron_custom_pod_options";
+const HEADERS = { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` };
 
-function loadCustomPodOptions(): string[] {
+async function fetchCustomOptions(): Promise<string[]> {
   try {
-    const raw = localStorage.getItem(CUSTOM_POD_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+    const res = await fetch(`${API_BASE_URL}/custom-pod-options`, { headers: HEADERS });
+    const json = await res.json();
+    return json.success && Array.isArray(json.data) ? json.data : [];
   } catch {
     return [];
   }
 }
 
-function saveCustomPodOption(option: string) {
-  const existing = loadCustomPodOptions();
-  if (existing.some((o) => o.toLowerCase() === option.toLowerCase())) return;
-  try {
-    localStorage.setItem(CUSTOM_POD_KEY, JSON.stringify([...existing, option]));
-  } catch {
-    /* ignore quota errors */
-  }
+async function persistCustomOptions(options: string[]): Promise<void> {
+  await fetch(`${API_BASE_URL}/custom-pod-options`, {
+    method: "PUT",
+    headers: HEADERS,
+    body: JSON.stringify(options),
+  });
 }
 
-export function getAllPodOptions(): string[] {
-  const custom = loadCustomPodOptions();
+function mergeOptions(custom: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const v of [...POD_OPTIONS, ...custom]) {
     const key = v.toUpperCase();
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push(v);
-    }
+    if (!seen.has(key)) { seen.add(key); out.push(v); }
   }
   return out;
+}
+
+export function getAllPodOptions(): string[] {
+  return POD_OPTIONS;
 }
 
 interface PodDropdownProps {
@@ -51,11 +50,24 @@ interface PodDropdownProps {
 export function PodDropdown({ value, onChange, placeholder = "Select POD", disabled = false }: PodDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [options, setOptions] = useState<string[]>(() => getAllPodOptions());
+  const [customOptions, setCustomOptions] = useState<string[]>([]);
+  const [options, setOptions] = useState<string[]>(POD_OPTIONS);
   const triggerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) setOptions(getAllPodOptions());
+    fetchCustomOptions().then((custom) => {
+      setCustomOptions(custom);
+      setOptions(mergeOptions(custom));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchCustomOptions().then((custom) => {
+        setCustomOptions(custom);
+        setOptions(mergeOptions(custom));
+      });
+    }
   }, [open]);
 
   const trimmed = search.trim();
@@ -67,11 +79,15 @@ export function PodDropdown({ value, onChange, placeholder = "Select POD", disab
     trimmed.length > 0 &&
     !options.some((o) => o.toLowerCase() === trimmed.toLowerCase());
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!canAdd) return;
     const newOption = trimmed.toUpperCase();
-    saveCustomPodOption(newOption);
-    setOptions(getAllPodOptions());
+    const updated = customOptions.some((o) => o.toLowerCase() === newOption.toLowerCase())
+      ? customOptions
+      : [...customOptions, newOption];
+    await persistCustomOptions(updated);
+    setCustomOptions(updated);
+    setOptions(mergeOptions(updated));
     onChange(newOption);
     setSearch("");
     setOpen(false);

@@ -629,8 +629,8 @@ export function CreateBrokerageBookingPanel({
       <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
         {label}
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "8px" }}>
-        <div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: "6px" }}>
+        <div style={{ minWidth: 0 }}>
           <SingleDateInput
             value={mmddToISO(dateVal)}
             onChange={onDateChange}
@@ -638,7 +638,7 @@ export function CreateBrokerageBookingPanel({
           />
           {dateError && <p style={{ fontSize: "12px", color: "#EF4444", marginTop: "4px" }}>{dateError}</p>}
         </div>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <NeuronTimePicker value={timeVal} onChange={onTimeChange} />
         </div>
       </div>
@@ -884,6 +884,8 @@ export function CreateBrokerageBookingPanel({
                       options={CONTAINER_SIZE_OPTIONS.map((o) => ({ value: o, label: o }))}
                       onChange={setContainerSize}
                       placeholder="Size"
+                      style={{ flex: 1 }}
+                      triggerStyle={{ height: "auto", minHeight: "40px", borderRadius: "6px", color: "#0A1D4D", padding: "10px 12px", border: "1px solid #E5E9F0" }}
                     />
                   )}
                   <FilterSingleDropdown
@@ -891,6 +893,8 @@ export function CreateBrokerageBookingPanel({
                     options={CONTAINER_TYPE_OPTIONS.map((o) => ({ value: o, label: o }))}
                     onChange={setContainerType}
                     placeholder="Type"
+                    style={{ flex: 1 }}
+                    triggerStyle={{ height: "42px", borderRadius: "6px", color: "#0A1D4D", padding: "0 16px" }}
                   />
                 </div>
               </div>
@@ -1298,8 +1302,8 @@ export function CreateBrokerageBookingPanel({
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Gatepass
                 </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "8px" }}>
-                  <div style={{ position: "relative" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: "6px" }}>
+                  <div style={{ position: "relative", minWidth: 0 }}>
                     <SingleDateInput
                       value={mmddToISO(gatepassDate)}
                       onChange={(iso) => { setGatepassDate(isoToMMDD(iso)); setGatepassDateError(""); }}
@@ -1307,7 +1311,7 @@ export function CreateBrokerageBookingPanel({
                     />
                     {gatepassDateError && <p className="text-red-500 text-sm mt-1">{gatepassDateError}</p>}
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <NeuronTimePicker value={gatepassTime} onChange={(v) => setGatepassTime(v)} />
                   </div>
                 </div>

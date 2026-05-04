@@ -1,4 +1,4 @@
-import { LayoutGrid, FileText } from "lucide-react";
+import { LayoutGrid, FileText, Printer } from "lucide-react";
 
 interface DocumentViewToggleProps {
   value: "form" | "pdf";
@@ -13,6 +13,7 @@ export function DocumentViewToggle({ value, onChange }: DocumentViewToggleProps)
       style={{
         display: "flex",
         alignItems: "center",
+        justifyContent: "space-between",
         padding: "10px 24px",
         borderBottom: "1px solid #E5ECE9",
         background: "#FAFBFC",
@@ -99,6 +100,29 @@ export function DocumentViewToggle({ value, onChange }: DocumentViewToggleProps)
           PDF View
         </button>
       </div>
+
+      {/* Print PDF button — only visible in PDF view */}
+      {isPdf && (
+        <button
+          onClick={() => window.print()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 14px",
+            background: "#0F766E",
+            color: "#FFFFFF",
+            border: "none",
+            borderRadius: "7px",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <Printer size={14} />
+          Print PDF
+        </button>
+      )}
     </div>
   );
 }

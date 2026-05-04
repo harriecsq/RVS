@@ -19,12 +19,6 @@ const accountingReports: ReportItem[] = [
     path: "/reports/container-refund"
   },
   {
-    id: "vat-returns",
-    name: "VAT Returns",
-    description: "Generate VAT reporting data for tax compliance.",
-    path: "/reports/vat-returns"
-  },
-  {
     id: "expenses-summary",
     name: "Expenses Summary",
     description: "View summarized operational expense data.",

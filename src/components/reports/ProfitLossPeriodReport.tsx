@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Download, Filter, Search, ArrowLeft } from "lucide-react";
+import { Filter, Search, ArrowLeft, Printer } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
-import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
+import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
@@ -374,46 +374,113 @@ export function ProfitLossPeriodReport() {
     }
   };
 
-  const handleExport = () => {
+  const handlePrintPDF = () => {
     if (!reportData) return;
-    
-    const revTotal = reportData.revenue.luzonImport + reportData.revenue.luzonExport + reportData.revenue.cdoImport + reportData.revenue.cdoExport;
-    const expTotal = Object.values(reportData.expenses).reduce((a, b) => a + b, 0);
-    const netProfit = revTotal - expTotal;
 
-    const csvContent = [
-      ["PROFIT/LOSS PER PERIOD REPORT"],
-      [`Date Range: ${filters.dateStart || "Start"} to ${filters.dateEnd || "End"}`],
-      [],
-      ["REVENUE (Shipment Profit)"],
-      ["Category", "Amount"],
-      ["Luzon Import", reportData.revenue.luzonImport],
-      ["Luzon Export", reportData.revenue.luzonExport],
-      ["CDO Import", reportData.revenue.cdoImport],
-      ["CDO Export", reportData.revenue.cdoExport],
-      ["TOTAL REVENUE", revTotal],
-      [],
-      ["OPERATING EXPENSES"],
-      ["Category", "Amount"],
-      ["Annual Expenses", reportData.expenses.annual],
-      ["Expenses", reportData.expenses.expenses],
-      ["Salary", reportData.expenses.salary],
-      ["Benefits", reportData.expenses.benefits],
-      ["Transportation", reportData.expenses.transportation],
-      ["Utilities", reportData.expenses.utilities],
-      ["TOTAL EXPENSES", expTotal],
-      [],
-      ["NET PROFIT FOR PERIOD", netProfit]
-    ].map(row => row.join(",")).join("\n");
+    const fmt = (n: number) =>
+      n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const signed = (n: number) => `${n < 0 ? "-" : ""}${fmt(Math.abs(n))}`;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `ProfitLoss_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const revTotal = revenueTotal;
+    const expTotal = expensesTotal;
+    const net = netProfit;
+    const formatPeriod = (s: string) => {
+      if (!s) return "";
+      const [y, m, d] = s.split("-");
+      return `${m}/${d}/${y}`;
+    };
+    const isFullMonth = (start: string, end: string): string | null => {
+      if (!start || !end) return null;
+      const [sy, sm, sd] = start.split("-").map(Number);
+      const [ey, em, ed] = end.split("-").map(Number);
+      if (sy !== ey || sm !== em) return null;
+      if (sd !== 1) return null;
+      const lastDay = new Date(sy, sm, 0).getDate();
+      if (ed !== lastDay) return null;
+      const monthName = new Date(sy, sm - 1, 1).toLocaleString("en-US", { month: "long" });
+      return `${monthName.toUpperCase()} ${sy}`;
+    };
+    const monthLabel = isFullMonth(filters.dateStart, filters.dateEnd);
+    const period = monthLabel
+      ? monthLabel
+      : (filters.dateStart || filters.dateEnd)
+        ? `${formatPeriod(filters.dateStart) || "—"} to ${formatPeriod(filters.dateEnd) || "—"}`
+        : "All Periods";
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Profit / Loss per Period</title>
+<style>
+  @page { size: A4 portrait; margin: 18mm 16mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 7.7pt; color: #000; }
+  h1 { font-size: 9.8pt; text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-bottom: 4px; }
+  .period { text-align: center; font-size: 7pt; margin-bottom: 24px; color: #333; }
+  .columns { display: flex; gap: 48px; justify-content: space-between; align-items: flex-start; margin-top: 12px; }
+  .col { flex: 1; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 4px 0; font-size: 7.7pt; vertical-align: top; }
+  td.lbl { text-transform: capitalize; }
+  td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 24px; }
+  tr.total td { border-top: 1px solid #000; padding-top: 6px; margin-top: 6px; font-weight: bold; text-transform: uppercase; }
+  .net {
+    margin-top: 40px;
+    padding-top: 12px;
+    border-top: 2px solid #000;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.1pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .net .amt { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <h1>Profit / Loss per Period</h1>
+  <div class="period">Period: ${period}</div>
+
+  <div class="columns">
+    <div class="col">
+      <table>
+        <tr><td class="lbl">Annual</td><td class="amt">${fmt(reportData.expenses.annual)}</td></tr>
+        <tr><td class="lbl">Expenses</td><td class="amt">${fmt(reportData.expenses.expenses)}</td></tr>
+        <tr><td class="lbl">Salary</td><td class="amt">${fmt(reportData.expenses.salary)}</td></tr>
+        <tr><td class="lbl">Benefits</td><td class="amt">${fmt(reportData.expenses.benefits)}</td></tr>
+        <tr><td class="lbl">Transpo</td><td class="amt">${fmt(reportData.expenses.transportation)}</td></tr>
+        <tr><td class="lbl">Utilities</td><td class="amt">${fmt(reportData.expenses.utilities)}</td></tr>
+        <tr class="total"><td class="lbl">Total</td><td class="amt">${fmt(expTotal)}</td></tr>
+      </table>
+    </div>
+    <div class="col">
+      <table>
+        <tr><td class="lbl" style="text-transform:uppercase;">Luzon Import</td><td class="amt">${signed(reportData.revenue.luzonImport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">Luzon Export</td><td class="amt">${signed(reportData.revenue.luzonExport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">CDO Import</td><td class="amt">${signed(reportData.revenue.cdoImport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">CDO Export</td><td class="amt">${signed(reportData.revenue.cdoExport)}</td></tr>
+        <tr class="total"><td class="lbl">Total</td><td class="amt">${signed(revTotal)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="net">
+    <div>Net ${net >= 0 ? "Profit" : "Loss"} for Period</div>
+    <div class="amt">${net < 0 ? "-" : ""}₱${fmt(Math.abs(net))}</div>
+  </div>
+
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    } else {
+      toast.error("Popup blocked. Please allow popups for this site.");
+    }
   };
 
   // Auto-fetch when dates change
@@ -483,39 +550,39 @@ export function ProfitLossPeriodReport() {
               </p>
             </div>
           </div>
-          <button 
-            onClick={handleExport}
+          <button
+            onClick={handlePrintPDF}
             disabled={!reportData}
-            style={{ 
-              height: "40px", 
-              padding: "0 20px", 
-              fontSize: "14px", 
-              fontWeight: 600, 
-              color: "#0F766E", 
-              backgroundColor: "white", 
-              border: "1px solid #0F766E", 
-              borderRadius: "8px", 
-              cursor: "pointer", 
-              display: "flex", 
-              alignItems: "center", 
+            style={{
+              height: "40px",
+              padding: "0 20px",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "white",
+              backgroundColor: "var(--neuron-brand-green)",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
               gap: "8px",
               opacity: !reportData ? 0.5 : 1
             }}
           >
-            <Download size={16} />
-            Export Excel
+            <Printer size={16} />
+            Print PDF
           </button>
         </div>
 
         {/* Toolbar */}
         <div style={{ display: "flex", gap: "16px", alignItems: "flex-end" }}>
           <div style={{ width: "400px" }}>
-            <UnifiedDateRangeFilter
-              startDate={filters.dateStart}
-              endDate={filters.dateEnd}
+            <MonthOrRangeDateFilter
+              label="Date Range"
+              dateStart={filters.dateStart}
+              dateEnd={filters.dateEnd}
               onStartDateChange={(v) => setFilters(prev => ({ ...prev, dateStart: v }))}
               onEndDateChange={(v) => setFilters(prev => ({ ...prev, dateEnd: v }))}
-              label="Date Range"
             />
           </div>
           {isLoading && (

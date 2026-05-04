@@ -13,6 +13,7 @@ export const TRUCKING_STATUS_OPTIONS = [
   "Unloading End",
   "Delivered",
   "Client Will Handle",
+  "Cancelled",
 ] as const;
 
 export type TruckingStatus = (typeof TRUCKING_STATUS_OPTIONS)[number];
@@ -38,6 +39,7 @@ export const TRUCKING_STATUS_COLORS: Record<string, string> = {
   "Unloading End": "#16A34A",
   Delivered: "#059669",
   "Client Will Handle": "#64748B",
+  Cancelled: "#EF4444",
 };
 
 export const EXPORT_TRUCKING_STATUS_OPTIONS = [
@@ -53,6 +55,7 @@ export const EXPORT_TRUCKING_STATUS_OPTIONS = [
   "Awaiting for Pre-Advise Approval",
   "In-Yard",
   "Done In-Yard",
+  "Cancelled",
 ] as const;
 
 export type ExportTruckingStatus = (typeof EXPORT_TRUCKING_STATUS_OPTIONS)[number];
@@ -72,6 +75,7 @@ export const EXPORT_TRUCKING_STATUS_COLORS: Record<string, string> = {
   "Awaiting for Pre-Advise Approval": "#B45309",
   "In-Yard": "#16A34A",
   "Done In-Yard": "#059669",
+  Cancelled: "#EF4444",
 };
 
 export function isExportLinkedTrucking(linkedBookingType?: string): boolean {

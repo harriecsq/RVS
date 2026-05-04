@@ -12,6 +12,8 @@ interface FieldDef {
 const SALES_CONTRACT_FIELDS: FieldDef[] = [
   { key: "supplierName", label: "Supplier", section: "Supplier & Seller" },
   { key: "supplierAddress", label: "Supplier Address", section: "Supplier & Seller" },
+  { key: "supplierPhone", label: "Supplier Phone", section: "Supplier & Seller" },
+  { key: "supplierEmail", label: "Supplier Email", section: "Supplier & Seller" },
   { key: "sellerName", label: "Seller", section: "Supplier & Seller" },
   { key: "sellerAddress", label: "Seller Address", section: "Supplier & Seller" },
   { key: "buyerName", label: "Buyer", section: "Buyer" },
@@ -72,9 +74,14 @@ const FORM_E_FIELDS: FieldDef[] = [
   { key: "consigneeContactPerson", label: "Contact Person", section: "Consignee" },
   { key: "consigneeContactNumber", label: "Contact Number", section: "Consignee" },
   { key: "consigneeContactEmail", label: "Email", section: "Consignee" },
+  { key: "meansOfTransport", label: "Means of Transport", section: "Shipping" },
   { key: "portOfDischarge", label: "Port of Discharge", section: "Shipping" },
   { key: "exporterCountry", label: "Exporter Country", section: "Countries" },
   { key: "importingCountry", label: "Importing Country", section: "Countries" },
+  { key: "itemNumber", label: "Item Number", section: "Goods" },
+  { key: "packagesHsCode", label: "HS Code", section: "Goods" },
+  { key: "packagesNotifyParty", label: "Notify Party", section: "Goods" },
+  { key: "packagesNotifyAddress", label: "Notify Address", section: "Goods" },
   { key: "originCriteria", label: "Origin Criteria", section: "Goods" },
   { key: "packagesDescription", label: "Packages Description", section: "Goods" },
 ];

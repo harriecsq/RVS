@@ -131,20 +131,6 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
           throw new Error(result.error);
         }
       } catch (fetchError: any) {
-        if (fetchError.message === 'Failed to fetch' || fetchError.message.includes('fetch')) {
-          const localClients = localStorage.getItem('neuron_clients');
-          let clientsList: Client[] = [];
-          if (localClients) {
-            try { clientsList = JSON.parse(localClients); } catch (e) { clientsList = []; }
-          }
-          clientsList = clientsList.filter(c => c.id !== clientToDelete.id);
-          localStorage.setItem('neuron_clients', JSON.stringify(clientsList));
-          toast.success(`Client "${clientToDelete.name || clientToDelete.company_name}" deleted successfully (offline mode)`);
-          setClients(clientsList);
-          setShowDeleteModal(false);
-          setClientToDelete(null);
-          return;
-        }
         throw fetchError;
       }
     } catch (error: any) {
@@ -187,25 +173,6 @@ export function ClientsListWithFilters({ onViewClient }: ClientsListWithFiltersP
           throw new Error(result.error);
         }
       } catch (fetchError: any) {
-        if (fetchError.message === 'Failed to fetch' || fetchError.message.includes('fetch')) {
-          const newClient: Client = {
-            ...clientData as Client,
-            id: clientData.id || `client-${Date.now()}`,
-            created_at: clientData.created_at || new Date().toISOString(),
-            updated_at: clientData.updated_at || new Date().toISOString(),
-          };
-          const localClients = localStorage.getItem('neuron_clients');
-          let clientsList: Client[] = [];
-          if (localClients) {
-            try { clientsList = JSON.parse(localClients); } catch (e) { clientsList = []; }
-          }
-          clientsList.push(newClient);
-          localStorage.setItem('neuron_clients', JSON.stringify(clientsList));
-          toast.success(`Client "${clientData.name}" created successfully (offline mode)`);
-          setClients(clientsList);
-          setIsAddClientOpen(false);
-          return;
-        }
         throw fetchError;
       }
     } catch (error: any) {

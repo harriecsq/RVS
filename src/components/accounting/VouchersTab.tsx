@@ -37,16 +37,18 @@ interface VouchersTabProps {
 
 export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, vouchers: providedVouchers, onUpdate }: VouchersTabProps) {
   const [localVouchers, setLocalVouchers] = useState<Voucher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!providedVouchers);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
-  
+
   // Use provided vouchers if available, otherwise use local state
   const vouchers = providedVouchers || localVouchers;
 
   useEffect(() => {
     if (!providedVouchers) {
       fetchVouchers();
+    } else {
+      setIsLoading(false);
     }
   }, [expenseId, providedVouchers]);
 

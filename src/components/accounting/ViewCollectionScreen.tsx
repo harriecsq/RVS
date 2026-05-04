@@ -52,7 +52,7 @@ interface ViewCollectionScreenProps {
 }
 
 export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewCollectionScreenProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentCollection, setCurrentCollection] = useState(collection);

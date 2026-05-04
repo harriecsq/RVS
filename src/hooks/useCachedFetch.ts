@@ -18,6 +18,13 @@ export function invalidateCache(path?: string) {
   }
 }
 
+function isSuccessPayload(result: any): boolean {
+  if (!result || typeof result !== "object") return false;
+  if (result.success === false) return false;
+  if (result.error) return false;
+  return true;
+}
+
 async function fetchJSON(path: string): Promise<any> {
   const existing = inflight.get(path);
   if (existing) return existing;
@@ -25,9 +32,11 @@ async function fetchJSON(path: string): Promise<any> {
   const promise = fetch(`${API_BASE_URL}${path}`, {
     headers: { Authorization: `Bearer ${publicAnonKey}`, "Content-Type": "application/json" },
   })
-    .then((r) => r.json())
-    .then((result) => {
-      cache.set(path, { data: result, timestamp: Date.now() });
+    .then(async (r) => {
+      const result = await r.json();
+      if (r.ok && isSuccessPayload(result)) {
+        cache.set(path, { data: result, timestamp: Date.now() });
+      }
       inflight.delete(path);
       return result;
     })
@@ -38,6 +47,10 @@ async function fetchJSON(path: string): Promise<any> {
 
   inflight.set(path, promise);
   return promise;
+}
+
+export function prefetch(path: string): Promise<any> {
+  return fetchJSON(path).catch(() => undefined);
 }
 
 export function useCachedFetch<T = any>(path: string) {

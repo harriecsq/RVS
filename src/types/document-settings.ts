@@ -12,7 +12,8 @@ export interface StampSlot {
 }
 
 export interface DocumentSettings {
-  logoPng?: string; // base64 PNG — company letterhead/logo image shown at top of all templates
+  logoPng?: string; // base64 PNG — supplier letterhead shown at top of trade documents
+  shippingLinePng?: string; // base64 PNG — shipping line letterhead shown in FSI
   signatories: {
     preparedBy?: SignatorySlot;
     approvedBy?: SignatorySlot;

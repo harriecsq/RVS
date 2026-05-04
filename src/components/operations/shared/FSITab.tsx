@@ -5,22 +5,20 @@ import { PortalDropdown } from "../../shared/PortalDropdown";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
-import type { FSI, FSIContainer } from "../../../types/export-documents";
+import type { FSI, FSIContainer, SalesContract, PackingList } from "../../../types/export-documents";
 import { applyTemplate } from "../../../utils/export-document-autofill";
+import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
+import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
 
 // ── Constants ────────────────────────────────────────────────────────
 
 const FREIGHT_TERM_OPTIONS = ["Prepaid", "Collect"];
-const DEFAULT_METRICS = ["Sacks", "Bags", "Boxes", "Cartons", "Drums", "Pallets"];
 
 // ── MetricDropdown ──────────────────────────────────────────────────
 
 function MetricDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { options, addMetric } = usePackingMetrics();
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<string[]>(() => {
-    try { const s = localStorage.getItem("packing-list-metrics"); return s ? JSON.parse(s) : DEFAULT_METRICS; }
-    catch { return DEFAULT_METRICS; }
-  });
   const [searchQuery, setSearchQuery] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -28,12 +26,10 @@ function MetricDropdown({ value, onChange }: { value: string; onChange: (v: stri
   const filtered = options.filter((o) => o.toLowerCase().includes(searchQuery.toLowerCase()));
   const exactMatch = options.some((o) => o.toLowerCase() === searchQuery.trim().toLowerCase());
   const canAdd = searchQuery.trim().length > 0 && !exactMatch;
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const name = searchQuery.trim();
     if (!name) return;
-    const updated = [...options, name];
-    setOptions(updated);
-    localStorage.setItem("packing-list-metrics", JSON.stringify(updated));
+    await addMetric(name);
     onChange(name); setOpen(false); setSearchQuery("");
   };
   return (
@@ -293,6 +289,8 @@ interface FSITabProps {
 
 export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: FSITabProps) {
   const [doc, setDoc] = useState<FSI | null>(null);
+  const [sc, setSc] = useState<SalesContract | null>(null);
+  const [pl, setPl] = useState<PackingList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -300,19 +298,22 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
   const [editData, setEditData] = useState<Partial<FSI>>({});
   const editDataRef = useRef(editData);
   editDataRef.current = editData;
-
+  const { getById: getMasterTemplate, isLoading: templatesLoading, templates: masterTemplates } = useMasterTemplates();
 
   const fetchDocument = async () => {
     try {
-      const params = new URLSearchParams({ bookingId });
-      const res = await fetch(`${API_BASE_URL}/fsi?${params}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await res.json();
-      if (result.success && result.data) {
-        setDoc(result.data);
-      } else {
-        setDoc(null);
+      const id = encodeURIComponent(bookingId);
+      const [fsiRes, docsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/fsi?${new URLSearchParams({ bookingId })}`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        fetch(`${API_BASE_URL}/export-bookings/${id}/documents`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+      ]);
+      const fsiResult = await fsiRes.json();
+      const docsResult = await docsRes.json();
+      if (fsiResult.success && fsiResult.data) setDoc(fsiResult.data);
+      else setDoc(null);
+      if (docsResult.success && docsResult.data) {
+        setSc(docsResult.data.salesContract || null);
+        setPl(docsResult.data.packingList || null);
       }
     } catch (err) {
       console.error("Error fetching FSI:", err);
@@ -324,18 +325,50 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
   useEffect(() => { fetchDocument(); }, [bookingId]);
 
   const buildDefaults = (): Partial<FSI> => {
+    // Containers from booking containerNo/sealNo (comma-separated) + volume as volumeType
+    const containerNos = booking?.containerNo ? booking.containerNo.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+    const sealNos = booking?.sealNo ? booking.sealNo.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+    const maxLen = Math.max(containerNos.length, sealNos.length);
+    const containers: FSIContainer[] = maxLen > 0
+      ? Array.from({ length: maxLen }, (_, i) => ({ containerNo: containerNos[i] || "", sealNo: sealNos[i] || "", volumeType: booking?.volume || "" }))
+      : [{ containerNo: "", sealNo: "", volumeType: "" }];
+
+    // Gross weight, amount, amountMetric from packing list container totals
+    const plGrossWeight = pl?.containers?.length
+      ? pl.containers.reduce((sum, c) => sum + (parseFloat(c.grossWeight) || 0), 0)
+      : null;
+    const grossWeight = plGrossWeight ? String(plGrossWeight) : (booking?.grossWeight || "");
+    const plTotalAmount = pl?.containers?.length
+      ? pl.containers.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0)
+      : null;
+    const plAmountMetric = pl?.containers?.[0]?.amountMetric || "Sacks";
+
+    // Booking number from bookingNumbers array or legacy field
+    const bookingNumber = booking?.bookingNumbers?.[0]?.bookingNumber || booking?.bookingNumber || "";
+
+    const portOfDischarge = sc?.portOfDestination || booking?.pod || "";
+
     return {
       bookingId,
-      shipperName: "", shipperAddress: "", shipperContactNumber: "", shipperEmail: "",
-      consigneeName: booking?.consignee || "", consigneeAddress: "", consigneeContactPerson: "", consigneeContactNumber: "", consigneeEmail: "",
+      shipperName: sc?.supplierName || "", shipperAddress: sc?.supplierAddress || "",
+      shipperContactNumber: sc?.supplierPhone || (sc as any)?.supplierContact || "", shipperEmail: sc?.supplierEmail || "",
+      consigneeName: sc?.buyerName || booking?.consignee || "", consigneeAddress: sc?.buyerAddress || "",
+      consigneeContactPerson: sc?.buyerContact || "", consigneeContactNumber: sc?.buyerPhone || "", consigneeEmail: sc?.buyerEmail || "",
       notifyParty: "",
       preCarriageBy: "", placeOfReceipt: "",
-      vesselVoyageNo: booking?.vesselVoyage || "", portOfLoading: booking?.pol || "", portOfDischarge: booking?.pod || "", placeOfDelivery: booking?.destination || "",
+      vesselVoyageNo: sc?.vesselVoyage || booking?.vesselVoyage || "",
+      portOfLoading: sc?.portOfLoading || booking?.pol || "",
+      portOfDischarge,
+      placeOfDelivery: portOfDischarge,
       freightTerm: "", lss: "",
-      to: "", attn: "", from: "", bookingNumber: "", billedTo: "",
-      containers: [{ containerNo: "", sealNo: "", volumeType: "" }],
-      volume: "", amount: "", amountMetric: "Sacks", commodity: "", netWeight: "",
-      grossWeight: booking?.grossWeight || "",
+      to: "", attn: "", from: "", bookingNumber, billedTo: "",
+      containers,
+      volume: sc?.marksAndNos || "",
+      amount: plTotalAmount ? String(plTotalAmount) : "",
+      amountMetric: plAmountMetric,
+      commodity: sc?.commodityDescription || booking?.commodity || "",
+      netWeight: sc?.quantity || "",
+      grossWeight,
       measurement: booking?.containerQty ? String(Number(booking.containerQty) * 50) : "",
       totalNumberOfContainers: booking?.containerQty ? String(booking.containerQty) : "",
       hsCode: "", usciCode: "",
@@ -346,7 +379,11 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
     let merged = buildDefaults();
-    if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
+    const masterTemplate = sc?.masterTemplateId
+      ? getMasterTemplate(sc.masterTemplateId)
+      : masterTemplates.length === 1 ? masterTemplates[0] : null;
+    const fsiTemplateFields = initialDraftData || masterTemplate?.fsi || null;
+    if (fsiTemplateFields) { merged = applyTemplate(merged, fsiTemplateFields, "fsi"); }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "fsi"); }
     setEditData(merged);
     setIsCreating(true);
@@ -403,7 +440,7 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
     } finally {
       setIsSaving(false);
     }
-  }, [bookingId, currentUser?.name]);
+  }, [bookingId, currentUser?.name, isCreating, doc]);
 
   useEffect(() => {
     const docData = isEditing ? editData : (doc || {});
@@ -413,7 +450,7 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
       docData,
       handleEdit, handleCancel, handleSave,
     });
-  }, [isEditing, isSaving, doc, editData]);
+  }, [isEditing, isSaving, doc, editData, handleSave]);
 
   const field = (key: keyof FSI) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");
@@ -427,7 +464,7 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
     ? (editData.containers || []) as FSIContainer[]
     : (doc?.containers || []) as FSIContainer[];
 
-  if (isLoading) {
+  if (isLoading || templatesLoading) {
     return <div style={{ padding: "48px", textAlign: "center", color: "#667085" }}>Loading...</div>;
   }
 

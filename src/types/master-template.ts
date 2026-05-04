@@ -11,7 +11,8 @@ export interface MasterTemplate {
   id: string;
   name: string;
   description?: string;
-  letterhead?: string; // base64 PNG
+  letterhead?: string; // base64 PNG — supplier letterhead
+  shippingLineLetterhead?: string; // base64 PNG — shipping line letterhead (used in FSI)
   stamps?: Record<string, string>; // slot -> base64 PNG
   salesContract: Partial<SalesContract>;
   commercialInvoice: Partial<CommercialInvoice>;

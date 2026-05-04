@@ -32,7 +32,7 @@ import {
 import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png";
 import { useUser } from "../hooks/useUser";
 
-export type Page = "dashboard" | "export-bookings" | "export-trucking" | "import-bookings" | "import-trucking" | "clients" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
+export type Page = "dashboard" | "export-bookings" | "export-trucking" | "import-bookings" | "import-trucking" | "clients" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "acct-logbook" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
 
 // SVG for Philippine Peso icon
 const Vector = () => (
@@ -148,6 +148,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
     { id: "acct-collections" as Page, label: "Collections", icon: Coins },
     { id: "acct-expenses" as Page, label: "Expenses", icon: CreditCard },
     { id: "acct-vouchers" as Page, label: "Vouchers", icon: FileText },
+    { id: "acct-logbook" as Page, label: "Logbook", icon: BookOpen },
   ];
   
   // Check if any Export page is active

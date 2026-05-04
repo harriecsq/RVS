@@ -227,11 +227,17 @@ export function NeuronTimePicker({
   };
 
   // Compute popover position anchored to input, updating on scroll/resize
+  // Flips upward if insufficient space below
   const updatePopoverPosition = useCallback(() => {
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
+      const popoverH = 320; // approximate height: header + 200px columns + footer
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUp = spaceBelow < popoverH && rect.top > spaceBelow;
       setPopoverPos({
-        top: rect.bottom + 6 + window.scrollY,
+        top: openUp
+          ? rect.top + window.scrollY - popoverH - 6
+          : rect.bottom + 6 + window.scrollY,
         left: rect.left + window.scrollX,
       });
     }

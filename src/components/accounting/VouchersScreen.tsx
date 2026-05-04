@@ -9,7 +9,7 @@ import { ViewVoucherScreen } from "./ViewVoucherScreen";
 import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
@@ -142,17 +142,16 @@ export function VouchersScreen() {
   const vouchers = useMemo<Voucher[]>(() => {
     if (!vouchersResult?.success) return [];
     const data = [...(vouchersResult.data || [])];
-    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    data.sort((a: any, b: any) => String(b.voucherNumber || "").localeCompare(String(a.voucherNumber || ""), undefined, { numeric: true }));
     return data;
   }, [vouchersResult]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [payeeFilter, setPayeeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
@@ -186,7 +185,7 @@ export function VouchersScreen() {
     );
   }
 
-  const filteredVouchers = vouchers.filter(voucher => {
+  const filteredVouchersRaw = vouchers.filter(voucher => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       voucher.voucherNumber.toLowerCase().includes(searchLower) ||
@@ -201,7 +200,7 @@ export function VouchersScreen() {
       if (dateFilterEnd && voucherISO > dateFilterEnd) return false;
     }
 
-    if (statusFilter !== "all" && voucher.status !== statusFilter) return false;
+    if (statusFilter.length > 0 && !statusFilter.includes(voucher.status)) return false;
     if (payeeFilter !== "all" && (voucher.payee || "") !== payeeFilter) return false;
     if (categoryFilter !== "all" && (voucher.category || "") !== categoryFilter) return false;
 
@@ -215,13 +214,20 @@ export function VouchersScreen() {
       }
     }
 
-    if (companyFilter) {
-      if ((voucher.consignee || "") !== companyFilter) return false;
-      if (clientFilter && (voucher.shipper || "") !== clientFilter) return false;
+    if (clientSelections.length > 0) {
+      if (!clientSelectionMatches(clientSelections, { company: voucher.consignee || "", client: voucher.shipper || "" })) return false;
     }
 
     return true;
   });
+
+  const filteredVouchers = statusFilter.length > 0
+    ? [...filteredVouchersRaw].sort((a, b) => {
+        const ai = statusFilter.indexOf(a.status);
+        const bi = statusFilter.indexOf(b.status);
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+      })
+    : filteredVouchersRaw;
 
   const uniqueCategories = Array.from(new Set(vouchers.map(v => v.category).filter(Boolean))).sort() as string[];
 
@@ -329,17 +335,17 @@ export function VouchersScreen() {
             />
           </div>
 
-          <FilterSingleDropdown
+          <MultiSelectPortalDropdown
             value={statusFilter}
             onChange={setStatusFilter}
             options={[
-              { value: "all", label: "All Statuses" },
               { value: "Draft", label: "Draft" },
               { value: "For Approval", label: "For Approval" },
               { value: "Approved", label: "Approved" },
               { value: "Paid", label: "Paid" },
               { value: "Cancelled", label: "Cancelled" },
             ]}
+            placeholder="All Statuses"
           />
 
           <PayeeFilterDropdown
@@ -382,10 +388,8 @@ export function VouchersScreen() {
           />
           <CompanyClientFilter
             extraEntries={clientsMasterList}
-            selectedCompany={companyFilter}
-            selectedClient={clientFilter}
-            onCompanyChange={setCompanyFilter}
-            onClientChange={setClientFilter}
+            selected={clientSelections}
+            onChange={setClientSelections}
             placeholder="All Companies"
           />
         </div>
@@ -398,8 +402,8 @@ export function VouchersScreen() {
           rowKey={(v) => v.id}
           isLoading={isLoading}
           onRowClick={(v) => setSelectedVoucherId(v.id)}
-          emptyTitle={searchTerm || statusFilter !== "all" ? "No vouchers match your filters" : "No vouchers yet"}
-          emptyDescription={searchTerm || statusFilter !== "all" ? undefined : "Create your first voucher to get started"}
+          emptyTitle={searchTerm || statusFilter.length > 0 ? "No vouchers match your filters" : "No vouchers yet"}
+          emptyDescription={searchTerm || statusFilter.length > 0 ? undefined : "Create your first voucher to get started"}
           emptyIcon={<Receipt size={24} />}
         />
       </div>

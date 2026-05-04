@@ -2,7 +2,7 @@
  * TruckingModule — Operations > Trucking list screen.
  * Identical layout pattern to ImportBookings / ExportBookings.
  */
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, Truck } from "lucide-react";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
@@ -25,6 +25,10 @@ import {
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
+import { CombinationTagFilter } from "../shared/CombinationTagFilter";
+import { GroupedBookingsTable } from "../shared/GroupedBookingsTable";
+import { deriveCombos, getCombinationKey, getTagByKey } from "../../utils/statusTags";
+import type { ColumnDef } from "../design-system";
 import { API_BASE_URL } from '@/utils/api-config';
 
 
@@ -85,7 +89,7 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
   const records = useMemo<TruckingRecord[]>(() => {
     if (!truckingResult?.success) return [];
     const data = [...(truckingResult.data || [])];
-    data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    data.sort((a: any, b: any) => String(b.truckingRefNo || "").localeCompare(String(a.truckingRefNo || ""), undefined, { numeric: true }));
     return data;
   }, [truckingResult]);
   const [showCreate, setShowCreate] = useState(false);
@@ -95,22 +99,25 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
   const [search, setSearch] = useState("");
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
-  const [selectedTruckingStatus, setSelectedTruckingStatus] = useState<string>("");
+  const [selectedTruckingStatus, setSelectedTruckingStatus] = useState<string[]>([]);
   const [vendorFilter, setVendorFilter] = useState("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
-  const bookingPortMapRef = useRef<Map<string, string>>(new Map());
+  const [selectedComboKeys, setSelectedComboKeys] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (!bookingsResult?.success) return;
+  const { bookingPortMap, bookingTagMap } = useMemo(() => {
     const portMap = new Map<string, string>();
-    (bookingsResult.data || []).forEach((b: any) => {
-      const isImport = (b.shipmentType || b.booking_type || b.mode || "Import").toLowerCase().includes("import");
-      const seg0 = b.segments?.[0];
-      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
-      if (b.id) portMap.set(b.id, port);
-      if (b.bookingId) portMap.set(b.bookingId, port);
-    });
-    bookingPortMapRef.current = portMap;
+    const tagMap = new Map<string, string[]>();
+    if (bookingsResult?.success) {
+      (bookingsResult.data || []).forEach((b: any) => {
+        const isImport = (b.shipmentType || b.booking_type || b.mode || "Import").toLowerCase().includes("import");
+        const seg0 = b.segments?.[0];
+        const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+        const tags: string[] = Array.isArray(b.shipmentTags) ? b.shipmentTags : [];
+        const ids = [b.id, b.bookingId].filter(Boolean);
+        ids.forEach((id: string) => { portMap.set(id, port); tagMap.set(id, tags); });
+      });
+    }
+    return { bookingPortMap: portMap, bookingTagMap: tagMap };
   }, [bookingsResult]);
 
   const fetchRecords = () => { invalidateCache("/trucking-records"); refetchTrucking(); };
@@ -126,8 +133,10 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
   const statusOptions = isExport ? EXPORT_TRUCKING_STATUS_OPTIONS : TRUCKING_STATUS_OPTIONS;
 
   // ---- Filtering ----
-  const filtered = records.filter((r) => {
-    // Filter by booking type when provided
+  const recordStatusOf = (r: any) => r.truckingStatus || (isExport ? "For Pullout" : "Awaiting Trucking");
+  const recordTags = (r: any): string[] => bookingTagMap.get(r.linkedBookingId || "") ?? [];
+
+  const baseFiltered = useMemo(() => records.filter((r) => {
     if (bookingType) {
       const recordType = (r.linkedBookingType || "").toLowerCase();
       if (bookingType === "export" && !recordType.includes("export")) return false;
@@ -139,32 +148,57 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
       const matchesSearch =
         r.truckingRefNo?.toLowerCase().includes(s) ||
         r.linkedBookingId?.toLowerCase().includes(s) ||
-        (r.blNumber || r.blNumber)?.toLowerCase().includes(s) ||
+        r.blNumber?.toLowerCase().includes(s) ||
         r.containerNo?.toLowerCase().includes(s) ||
-        r.deliveryAddresses?.some((a) => a.address.toLowerCase().includes(s));
+        r.deliveryAddresses?.some((a: any) => a.address.toLowerCase().includes(s));
       if (!matchesSearch) return false;
     }
 
     if (vendorFilter !== "all" && r.truckingVendor !== vendorFilter) return false;
 
     if (dateFilterStart || dateFilterEnd) {
-      const updated = new Date(r.updatedAt);
-      const updatedISO = updated.toISOString().split("T")[0];
+      const updatedISO = new Date(r.updatedAt).toISOString().split("T")[0];
       if (dateFilterStart && updatedISO < dateFilterStart) return false;
       if (dateFilterEnd && updatedISO > dateFilterEnd) return false;
     }
 
-    if (selectedTruckingStatus) {
-      if ((r.truckingStatus || (isExport ? "For Pullout" : "Awaiting Trucking")) !== selectedTruckingStatus) return false;
+    if (selectedTruckingStatus.length > 0) {
+      if (!selectedTruckingStatus.includes(recordStatusOf(r))) return false;
     }
 
     if (portFilter.length > 0) {
-      const port = bookingPortMapRef.current.get(r.linkedBookingId || "") || "";
+      const port = bookingPortMap.get(r.linkedBookingId || "") || "";
       if (!portFilter.some(p => port.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
     return true;
-  });
+  }), [records, bookingType, search, vendorFilter, dateFilterStart, dateFilterEnd, selectedTruckingStatus, portFilter, bookingPortMap]);
+
+  // Enrich records with shipmentTags from linked booking for combo filter
+  const enrichedBaseFiltered = useMemo(() =>
+    baseFiltered.map((r) => ({ ...r, shipmentTags: bookingTagMap.get(r.linkedBookingId || "") ?? [] })),
+  [baseFiltered, bookingTagMap]);
+
+  const availableCombos = useMemo(() => deriveCombos(enrichedBaseFiltered), [enrichedBaseFiltered]);
+
+  useEffect(() => {
+    const validKeys = new Set(availableCombos.map((c) => c.key));
+    const pruned = selectedComboKeys.filter((k) => validKeys.has(k));
+    if (pruned.length !== selectedComboKeys.length) setSelectedComboKeys(pruned);
+  }, [availableCombos]);
+
+  const filtered = useMemo(() => {
+    const sorted = selectedTruckingStatus.length > 0
+      ? [...enrichedBaseFiltered].sort((a, b) => {
+          const ai = selectedTruckingStatus.indexOf(recordStatusOf(a));
+          const bi = selectedTruckingStatus.indexOf(recordStatusOf(b));
+          return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+        })
+      : enrichedBaseFiltered;
+    return selectedComboKeys.length > 0
+      ? sorted.filter((r) => selectedComboKeys.includes(getCombinationKey(r.shipmentTags ?? [])))
+      : sorted;
+  }, [enrichedBaseFiltered, selectedTruckingStatus, selectedComboKeys]);
 
   // Filter options
   const vendorOptions = [
@@ -179,6 +213,7 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
         onBack={() => setSelectedRecord(null)}
         onUpdate={fetchRecords}
         currentUser={currentUser}
+        initialShipmentTags={bookingTagMap.get(selectedRecord.linkedBookingId || "") ?? []}
       />
     );
   }
@@ -265,13 +300,16 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
               compact
             />
           </div>
-          <FilterSingleDropdown
+          <MultiSelectPortalDropdown
             value={selectedTruckingStatus}
             onChange={setSelectedTruckingStatus}
-            options={[
-              { value: "", label: "All Statuses" },
-              ...statusOptions.map((status) => ({ value: status, label: status })),
-            ]}
+            options={statusOptions.map((status) => ({ value: status, label: status }))}
+            placeholder="All Statuses"
+          />
+          <CombinationTagFilter
+            combos={availableCombos}
+            selectedKeys={selectedComboKeys}
+            onChange={setSelectedComboKeys}
           />
           <FilterSingleDropdown
             value={vendorFilter}
@@ -296,136 +334,94 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
 
       {/* ── Table ── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 48px 48px 48px" }}>
-        {isLoading ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "300px" }}>
-            <p style={{ color: "#667085", fontSize: "14px" }}>Loading trucking records...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "300px" }}>
-            <Truck size={48} style={{ color: "#D1D5DB", marginBottom: "16px" }} />
-            <p style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: "0 0 6px" }}>
-              {records.length === 0 ? "No trucking records yet" : "No results found"}
-            </p>
-            <p style={{ fontSize: "14px", color: "#667085", margin: 0 }}>
-              {records.length === 0 ? "Click \"+ New Trucking\" to get started." : "Try adjusting your search or filters."}
-            </p>
-          </div>
-        ) : (
-          <div style={{ border: "1px solid #E5E9F0", borderRadius: "12px", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <colgroup>
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "11%" }} />
-              <col style={{ width: "12%" }} />
-              <col style={{ width: "7%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "10%" }} />
-              <col style={{ width: "37%" }} />
-            </colgroup>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #E5E9F0", backgroundColor: "#F9FAFB" }}>
-                {[
-                  "Trucking Ref #",
-                  "BL Number",
-                  "Container #",
-                  "Size",
-                  "Trucking Vendor",
-                  "Created",
-                  "Status",
-                ].map((col) => (
-                  <th
-                    key={col}
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      color: "#667085",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => {
-                const containerDisplay = r.containerNo || (r as any).containers?.[0]?.containerNo || "—";
-                const sizeDisplay = r.containerSize || (r as any).containers?.[0]?.size || "—";
-
-                const createdDate = (r as any).truckingDate ? fmtUpdated((r as any).truckingDate) : r.createdAt ? fmtUpdated(r.createdAt) : "—";
-
-                const truncCell: React.CSSProperties = {
-                  padding: "16px 16px",
-                  verticalAlign: "middle",
-                  fontSize: "13px",
-                  color: "#0A1D4D",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                };
-
-                const refDisplay = r.truckingRefNo || r.id?.slice(0, 12) || "—";
-                const blDisplay = r.blNumber || "—";
-
+        <GroupedBookingsTable
+          data={filtered}
+          columns={[
+            {
+              header: "Trucking Ref #",
+              width: "13%",
+              cell: (r) => <div style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.truckingRefNo || r.id?.slice(0, 12) || "—"}</div>,
+            },
+            {
+              header: "BL Number",
+              width: "11%",
+              cell: (r) => <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.blNumber || "—"}</div>,
+            },
+            {
+              header: "Container #",
+              width: "12%",
+              cell: (r) => <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.containerNo || (r as any).containers?.[0]?.containerNo || "—"}</div>,
+            },
+            {
+              header: "Container Status",
+              width: "17%",
+              cell: (r) => {
+                const tags: string[] = (r as any).shipmentTags ?? [];
+                if (tags.length === 0) return <span style={{ fontSize: "13px", color: "#9CA3AF" }}>—</span>;
                 return (
-                  <tr
-                    key={r.id}
-                    onClick={() => setSelectedRecord(r)}
-                    style={{
-                      borderBottom: "1px solid #E5E9F0",
-                      cursor: "pointer",
-                      transition: "background-color 120ms",
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "#F8F9FB"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "transparent"; }}
-                  >
-                    <td style={{ ...truncCell, fontWeight: 600 }} title={refDisplay !== "—" ? refDisplay : undefined}>
-                      {refDisplay}
-                    </td>
-                    <td style={truncCell} title={blDisplay !== "—" ? blDisplay : undefined}>
-                      {blDisplay}
-                    </td>
-                    <td style={truncCell} title={containerDisplay !== "—" ? containerDisplay : undefined}>
-                      {containerDisplay}
-                    </td>
-                    <td style={truncCell}>
-                      {sizeDisplay}
-                    </td>
-                    <td style={{ ...truncCell, overflow: "visible" }}>
-                      <VendorPill vendor={r.truckingVendor} />
-                    </td>
-                    <td style={truncCell}>{createdDate}</td>
-                    <td style={{ padding: "12px 16px", verticalAlign: "middle" }}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          padding: "2px 10px",
-                          borderRadius: "8px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          background: "#E8F5F3",
-                          color: getTruckingStatusColors(r.linkedBookingType)[r.truckingStatus || "Awaiting Trucking"] || "#6B7A76",
-                          border: "1px solid #C1D9CC",
-                        }}
-                      >
-                        {(DROP_CYCLE_STATUSES as readonly string[]).includes(r.truckingStatus || "")
-                          ? `${r.truckingStatus} - Drop ${r.currentDrop || 1} of ${r.deliveryDrops?.length || 1}`
-                          : r.truckingStatus || "Awaiting Trucking"}
-                      </span>
-                    </td>
-                  </tr>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                    {tags.map((t) => {
+                      const tag = getTagByKey(t);
+                      const isDanger = tag?.color === "danger";
+                      return (
+                        <span key={t} style={{
+                          display: "inline-flex", alignItems: "center",
+                          padding: "1px 7px", borderRadius: "6px",
+                          fontSize: "11px", fontWeight: 600, whiteSpace: "nowrap",
+                          backgroundColor: isDanger ? "#FEE2E2" : "#E8F5F3",
+                          color: isDanger ? "#991B1B" : "#12332B",
+                          border: isDanger ? "1px solid #FECACA" : "1px solid #C1D9CC",
+                        }}>
+                          {tag?.label ?? t}
+                        </span>
+                      );
+                    })}
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
-          </div>
-        )}
+              },
+            },
+            {
+              header: "Size",
+              width: "7%",
+              cell: (r) => <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{r.containerSize || (r as any).containers?.[0]?.size || "—"}</div>,
+            },
+            {
+              header: "Trucking Vendor",
+              width: "10%",
+              cell: (r) => <VendorPill vendor={r.truckingVendor} />,
+            },
+            {
+              header: "Created",
+              width: "9%",
+              cell: (r) => <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{(r as any).truckingDate ? fmtUpdated((r as any).truckingDate) : r.createdAt ? fmtUpdated(r.createdAt) : "—"}</div>,
+            },
+            {
+              header: "Status",
+              width: "20%",
+              cell: (r) => (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", padding: "2px 10px",
+                  borderRadius: "8px", fontSize: "12px", fontWeight: 600,
+                  background: "#E8F5F3",
+                  color: getTruckingStatusColors(r.linkedBookingType)[r.truckingStatus || "Awaiting Trucking"] || "#6B7A76",
+                  border: "1px solid #C1D9CC",
+                }}>
+                  {(DROP_CYCLE_STATUSES as readonly string[]).includes(r.truckingStatus || "")
+                    ? `${r.truckingStatus} - Drop ${r.currentDrop || 1} of ${r.deliveryDrops?.length || 1}`
+                    : r.truckingStatus || "Awaiting Trucking"}
+                </span>
+              ),
+            },
+          ] as ColumnDef<typeof filtered[0]>[]}
+          rowKey={(r) => r.id}
+          isLoading={isLoading}
+          onRowClick={(r) => setSelectedRecord(r as TruckingRecord)}
+          selectedComboKeys={selectedComboKeys}
+          availableCombos={availableCombos}
+          emptyTitle={records.length === 0 ? "No trucking records yet" : "No results found"}
+          emptyDescription={records.length === 0 ? "Click \"+ New Trucking\" to get started." : "Try adjusting your search or filters."}
+          emptyIcon={<Truck size={24} />}
+        />
       </div>
 
       {/* ── Create Modal ── */}

@@ -78,6 +78,8 @@ interface TruckingRecordDetailsProps {
   onEditStateChange?: (editing: boolean) => void;
   /** Increment to trigger save from parent. */
   externalSaveCounter?: number;
+  /** Pre-loaded shipment tags from parent — avoids fetch delay on open. */
+  initialShipmentTags?: string[];
 }
 
 // ─── Display helpers (matching ViewExpenseScreen) ────────────────────────────
@@ -658,13 +660,14 @@ export function TruckingRecordDetails({
   externalEdit,
   onEditStateChange,
   externalSaveCounter,
+  initialShipmentTags,
 }: TruckingRecordDetailsProps) {
   const [activeTab, setActiveTab] = useState<"trucking-info" | "attachments">("trucking-info");
   const [showActivity, setShowActivity] = useState(false);
   const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(normalizeRecord(record) as TruckingRecord);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [linkedShipmentTags, setLinkedShipmentTags] = useState<string[]>(
-    ((record as any).linkedBookingShipmentTags || []) as string[],
+    initialShipmentTags ?? ((record as any).linkedBookingShipmentTags || []) as string[],
   );
   const [linkedShipmentEvents, setLinkedShipmentEvents] = useState<ShipmentEvent[]>(
     ((record as any).linkedBookingShipmentEvents || []) as ShipmentEvent[],
@@ -716,7 +719,7 @@ export function TruckingRecordDetails({
   useEffect(() => {
     setCurrentRecord(record);
     setEditForm({ ...record });
-    setLinkedShipmentTags(((record as any).linkedBookingShipmentTags || []) as string[]);
+    setLinkedShipmentTags(initialShipmentTags ?? ((record as any).linkedBookingShipmentTags || []) as string[]);
     setLinkedShipmentEvents(((record as any).linkedBookingShipmentEvents || []) as ShipmentEvent[]);
     setLinkedTagHistory(((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[]);
   }, [record]);
@@ -875,51 +878,59 @@ export function TruckingRecordDetails({
     [currentRecord, isEditing, onUpdate, totalDrops],
   );
 
+  const pendingLinkedTagsRef = useRef<string[]>(linkedShipmentTags);
+  const linkedTagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const linkedTagSaveBaseRef = useRef<string[]>(linkedShipmentTags);
+
   const handleLinkedShipmentTagsChange = useCallback(
-    async (newTags: string[]) => {
+    (newTags: string[]) => {
       if (!currentRecord.linkedBookingId) {
         toast.error("No linked booking to update");
         return;
       }
-
-      const previousTags = linkedShipmentTags;
+      pendingLinkedTagsRef.current = newTags;
       setLinkedShipmentTags(newTags);
-      setIsShipmentTagsSaving(true);
-
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/trucking-records/${currentRecord.id}/update-booking-tags`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${publicAnonKey}`,
+      const revertTags = linkedTagSaveBaseRef.current;
+      const revertHistory = linkedTagHistory;
+      if (linkedTagDebounceRef.current) clearTimeout(linkedTagDebounceRef.current);
+      linkedTagDebounceRef.current = setTimeout(async () => {
+        setIsShipmentTagsSaving(true);
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/trucking-records/${currentRecord.id}/update-booking-tags`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
+              body: JSON.stringify({ shipmentTags: pendingLinkedTagsRef.current, user: currentUser?.name || "Unknown" }),
             },
-            body: JSON.stringify({
-              shipmentTags: newTags,
-              user: currentUser?.name || "Unknown",
-            }),
-          },
-        );
-        const result = await response.json();
-        if (result.success) {
-          setLinkedShipmentTags((result.data?.shipmentTags || []) as string[]);
-          setLinkedTagHistory((result.data?.tagHistory || []) as TagHistoryEntry[]);
-          onUpdate();
-          onBookingTagsUpdated?.();
-        } else {
-          setLinkedShipmentTags(previousTags);
-          toast.error(`Failed to update shipment tags: ${result.error || "Unknown error"}`);
+          );
+          const result = await response.json();
+          if (result.success) {
+            const saved = (result.data?.shipmentTags || []) as string[];
+            setLinkedShipmentTags(saved);
+            linkedTagSaveBaseRef.current = saved;
+            pendingLinkedTagsRef.current = saved;
+            setLinkedTagHistory((result.data?.tagHistory || []) as TagHistoryEntry[]);
+            onUpdate();
+            onBookingTagsUpdated?.();
+          } else {
+            setLinkedShipmentTags(revertTags);
+            pendingLinkedTagsRef.current = revertTags;
+            setLinkedTagHistory(revertHistory);
+            toast.error(`Failed to update shipment tags: ${result.error || "Unknown error"}`);
+          }
+        } catch (error) {
+          console.error("Error updating linked shipment tags:", error);
+          setLinkedShipmentTags(revertTags);
+          pendingLinkedTagsRef.current = revertTags;
+          setLinkedTagHistory(revertHistory);
+          toast.error("Unable to update shipment tags");
+        } finally {
+          setIsShipmentTagsSaving(false);
         }
-      } catch (error) {
-        console.error("Error updating linked shipment tags:", error);
-        setLinkedShipmentTags(previousTags);
-        toast.error("Unable to update shipment tags");
-      } finally {
-        setIsShipmentTagsSaving(false);
-      }
+      }, 400);
     },
-    [currentRecord.id, currentRecord.linkedBookingId, currentUser?.name, linkedShipmentTags, onBookingTagsUpdated, onUpdate],
+    [currentRecord.id, currentRecord.linkedBookingId, currentUser?.name, linkedTagHistory, onBookingTagsUpdated, onUpdate],
   );
 
   const handleSaveLinkedShipmentEvents = useCallback(

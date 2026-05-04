@@ -22,6 +22,8 @@ interface BookingInfoSubTabsProps {
   booking?: any;
   /** Called after a document is created/updated so parent can refresh */
   onDocumentUpdated?: () => void;
+  /** Called when the sub-tab changes so parent can react */
+  onSubTabChange?: (tab: BookingInfoSubTab) => void;
 }
 
 const subTabs = [
@@ -41,8 +43,14 @@ export function BookingInfoSubTabs({
   isEditing,
   booking,
   onDocumentUpdated,
+  onSubTabChange,
 }: BookingInfoSubTabsProps) {
   const [activeSubTab, setActiveSubTab] = useState<BookingInfoSubTab>("booking-details");
+
+  const handleSubTabChange = (id: BookingInfoSubTab) => {
+    setActiveSubTab(id);
+    onSubTabChange?.(id);
+  };
 
   const showSegments = segments && segments.length > 0 && onSegmentChange && onAddSegment;
 
@@ -52,7 +60,7 @@ export function BookingInfoSubTabs({
       <SubTabRow
         tabs={subTabs}
         activeTab={activeSubTab}
-        onTabChange={(id) => setActiveSubTab(id as BookingInfoSubTab)}
+        onTabChange={(id) => handleSubTabChange(id as BookingInfoSubTab)}
       />
 
       {/* Segment selector — shown under sub-tabs when segments exist */}

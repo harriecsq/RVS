@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
-import { ChevronRight, Download, Filter, ChevronLeft, ChevronRight as ChevronRightIcon, Search, ArrowLeft } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ChevronRight, ChevronLeft, Filter, Search, ArrowLeft, Printer } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
-import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
+import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
 import { MultiSelectPortalDropdown } from '../shared/MultiSelectPortalDropdown';
 import { FilterSingleDropdown } from '../shared/FilterSingleDropdown';
-import { CompanyClientFilter } from '../shared/CompanyClientFilter';
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from '../shared/CompanyClientFilter';
 import { useClientsMasterList } from '../../hooks/useClientsMasterList';
 
 // --- Data Interfaces ---
@@ -102,9 +102,8 @@ interface FilterState {
   dateEnd: string;
   serviceType: string;
   port: string[];
-  client: string | null;
-  clientCompany: string | null;
-  status: string;
+  clientSelections: ClientSelection[];
+  status: string[];
   searchQuery: string;
 }
 
@@ -170,16 +169,17 @@ export function FinalShipmentCostReport() {
     dateEnd: "",
     serviceType: "All",
     port: [],
-    client: null,
-    clientCompany: null,
-    status: "All",
+    clientSelections: [],
+    status: [],
     searchQuery: ""
   });
-  const clientsMasterList = useClientsMasterList();
-
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<FinalShipmentRow[]>([]);
-  
+  const [dateMode, setDateMode] = useState<"month" | "range">("month");
+  const [selectedMonth, setSelectedMonth] = useState("");
+
+  const clientsMasterList = useClientsMasterList();
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -418,8 +418,13 @@ export function FinalShipmentCostReport() {
         // Remarks logic
         const remarks = booking.notes || ""; 
 
-        const serviceType = booking.mode || booking.shipmentType || "Import";
-        const isImport = serviceType.toLowerCase().includes("import");
+        const rawType = String((booking as any).booking_type || booking.shipmentType || booking.mode || "").trim();
+        const rawLower = rawType.toLowerCase();
+        let serviceType: string;
+        if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
+        else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
+        else serviceType = rawType || "Import";
+        const isImport = serviceType === "Import";
         const seg0 = (booking as any).segments?.[0];
         const port = isImport
           ? ((booking as any).pod || seg0?.pod || "")
@@ -464,7 +469,7 @@ export function FinalShipmentCostReport() {
   };
 
   // Filter Logic
-  const filteredData = data.filter(item => {
+  const filteredDataRaw = data.filter(item => {
     // Search Query
     if (filters.searchQuery) {
         const q = filters.searchQuery.toLowerCase();
@@ -492,15 +497,14 @@ export function FinalShipmentCostReport() {
     }
 
     // Client
-    if (filters.clientCompany) {
-        if (item.clientName !== filters.clientCompany && item.clientName !== filters.client) return false;
-        if (filters.client && item.clientName !== filters.client) return false;
+    if (filters.clientSelections.length > 0) {
+        if (!clientSelectionMatches(filters.clientSelections, { client: item.clientName })) return false;
     }
 
     // Status (Payment Status)
-    if (filters.status !== "All") {
-        const targetStatus = filters.status.toUpperCase(); // "PAID" or "UNPAID"
-        if (item.referenceStatus !== targetStatus) return false;
+    if (filters.status.length > 0) {
+        const targets = filters.status.map(s => s.toUpperCase());
+        if (!targets.includes(item.referenceStatus)) return false;
     }
     
     // Date Range (Deposit Date)
@@ -521,6 +525,15 @@ export function FinalShipmentCostReport() {
     return true;
   });
 
+  const filteredData = filters.status.length > 0
+    ? [...filteredDataRaw].sort((a, b) => {
+        const targets = filters.status.map(s => s.toUpperCase());
+        const ai = targets.indexOf(a.referenceStatus);
+        const bi = targets.indexOf(b.referenceStatus);
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+      })
+    : filteredDataRaw;
+
   // Pagination Logic
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -531,52 +544,7 @@ export function FinalShipmentCostReport() {
     setCurrentPage(1);
   }, [filters]);
 
-  const handleExport = () => {
-    if (!filteredData.length) {
-        toast.error("No data to export");
-        return;
-    }
-
-    const headers = [
-        "Shipment No", "Client", "Commodity", "Containers", "No. of Containers",
-        "SOA No", "Billing", "Costing", "Profit", "Container Deposit",
-        "Bank/Check", "Check Amount", "Deposit Date", "Status"
-    ];
-
-    const rows = filteredData.map(row => [
-        row.shipmentNo,
-        row.clientName,
-        row.commodity,
-        row.containerNumbers.join(", "),
-        row.numberOfContainers.toString(),
-        row.soaNumber,
-        row.billingAmount.toString(),
-        row.costingAmount.toString(),
-        row.profit.toString(),
-        row.containerDeposit.toString(),
-        row.bankDetails,
-        row.checkAmount.toString(),
-        row.depositDate,
-        row.referenceStatus
-    ]);
-
-    const csvContent = [
-        headers.join(","),
-        ...rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `FinalShipmentCost_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Exporting to Excel...");
-  };
-
-  const formatCurrency = (val: number) => 
+  const formatCurrency = (val: number) =>
     `₱${formatAmount(val)}`;
 
   // Summary Logic
@@ -584,6 +552,216 @@ export function FinalShipmentCostReport() {
   const totalBilling = filteredData.reduce((acc, curr) => acc + curr.billingAmount, 0);
   const totalCosting = filteredData.reduce((acc, curr) => acc + curr.costingAmount, 0);
   const totalProfit = filteredData.reduce((acc, curr) => acc + curr.profit, 0);
+  const totalContainers = filteredData.reduce((acc, curr) => acc + curr.numberOfContainers, 0);
+  const totalDeposit = filteredData.reduce((acc, curr) => acc + curr.containerDeposit, 0);
+  const totalCheckAmount = filteredData.reduce((acc, curr) => acc + curr.checkAmount, 0);
+
+  const handlePrintPDF = () => {
+    if (!filteredData.length) {
+      toast.error("No data to export");
+      return;
+    }
+
+    const fmt = (val: number) =>
+      val === 0 ? "—" : val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const esc = (s: any) =>
+      String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // --- Period text ---
+    const MONTH_ABBRS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const MONTHS_FULL = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+    const periodText = (() => {
+      if (dateMode === "month") {
+        if (!selectedMonth) return "ALL TIME";
+        const [abbr, yearStr] = selectedMonth.split(" ");
+        const idx = MONTH_ABBRS.indexOf(abbr);
+        const year = parseInt(yearStr, 10);
+        if (idx < 0 || isNaN(year)) return "ALL TIME";
+        return `${MONTHS_FULL[idx]} ${year}`;
+      }
+      const s = filters.dateStart;
+      const e = filters.dateEnd;
+      if (!s && !e) return "ALL TIME";
+      const re = /^(\d{4})-(\d{2})-(\d{2})$/;
+      const ms = s ? re.exec(s) : null;
+      const me = e ? re.exec(e) : null;
+      if (ms && me) {
+        const fmtDate = (m: RegExpExecArray) =>
+          `${MONTHS_FULL[+m[2] - 1]} ${String(+m[3]).padStart(2, "0")}, ${+m[1]}`;
+        return `${fmtDate(ms)} - ${fmtDate(me)}`;
+      }
+      return "ALL TIME";
+    })();
+
+    // --- Subtitle text (SERVICE PORT - CLIENT) ---
+    const PORT_OPTIONS = [
+      { value: "Manila North", label: "Manila North" },
+      { value: "Manila South", label: "Manila South" },
+      { value: "CDO", label: "CDO" },
+      { value: "Iloilo", label: "Iloilo" },
+      { value: "Davao", label: "Davao" },
+    ];
+    const portShortMap: Record<string, string> = {
+      "Manila North": "NORTH",
+      "Manila South": "SOUTH",
+      "CDO": "CDO",
+      "Iloilo": "ILOILO",
+      "Davao": "DAVAO",
+    };
+    const servicePart =
+      filters.serviceType && filters.serviceType !== "All" ? filters.serviceType.toUpperCase() : "";
+    const portPart =
+      !filters.port || filters.port.length === 0 || filters.port.length === PORT_OPTIONS.length
+        ? ""
+        : filters.port.map(p => portShortMap[p] || p.toUpperCase()).join(" & ");
+    const clientPart = filters.clientSelections.length === 1
+      ? String(filters.clientSelections[0].client || filters.clientSelections[0].company).toUpperCase()
+      : filters.clientSelections.length > 1
+      ? `${filters.clientSelections.length} CLIENTS`
+      : "";
+    const leftPart = [servicePart, portPart].filter(Boolean).join(" ");
+    const subtitleText =
+      leftPart && clientPart ? `${leftPart} - ${clientPart}` : leftPart || clientPart || "";
+
+    const rowsHtml = filteredData.map((row, i) => `
+      <tr>
+        <td class="c">${i + 1}</td>
+        <td>${row.shipmentNo}</td>
+        <td>${row.clientName}</td>
+        <td>${row.commodity}</td>
+        <td>${row.containerNumbers.join("<br>") || "—"}</td>
+        <td class="c">${row.numberOfContainers}</td>
+        <td>${row.soaNumber}</td>
+        <td class="r">${fmt(row.billingAmount)}</td>
+        <td class="r">${fmt(row.costingAmount)}</td>
+        <td class="r">${fmt(row.profit)}</td>
+        <td class="r">${row.containerDeposit > 0 ? fmt(row.containerDeposit) : "—"}</td>
+        <td>${row.bankDetails === "—" ? "" : row.bankDetails}</td>
+        <td class="r">${row.checkAmount > 0 ? fmt(row.checkAmount) : "—"}</td>
+        <td class="c">${row.depositDate === "—" ? "" : row.depositDate}</td>
+        <td class="c status-${row.referenceStatus.toLowerCase()}">${row.referenceStatus}</td>
+      </tr>
+    `).join("");
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Final Shipment Cost Report</title>
+<style>
+  @page { size: A3 landscape; margin: 10mm 8mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 5.3pt; color: #000; }
+  .month { font-size: 5.6pt; font-weight: bold; margin-bottom: 4px; letter-spacing: 0.5px; text-align: center; }
+  .subtitle { font-size: 5.6pt; font-weight: bold; margin-bottom: 6px; letter-spacing: 0.5px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: #d9d9d9;
+    border: 0.5px solid #555;
+    padding: 3px 4px;
+    font-size: 4.9pt;
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  td {
+    border: 0.5px solid #888;
+    padding: 2.5px 4px;
+    vertical-align: middle;
+    text-align: center;
+    line-height: 1.3;
+    word-break: break-word;
+    text-transform: uppercase;
+  }
+  tr:nth-child(even) td { background: #f7f7f7; }
+  .c { text-align: center; }
+  .r { text-align: center; font-variant-numeric: tabular-nums; }
+  .status-paid { color: #03543f; font-weight: bold; }
+  .status-unpaid { color: #9b1c1c; font-weight: bold; }
+  .totals-row td {
+    background: #e8e8e8 !important;
+    font-weight: bold;
+    border: none !important;
+  }
+  /* Column widths */
+  .col-no    { width: 2.5%; }
+  .col-ship  { width: 5%; }
+  .col-cli   { width: 8%; }
+  .col-com   { width: 13%; }
+  .col-cont  { width: 8%; }
+  .col-num   { width: 4%; }
+  .col-soa   { width: 5%; }
+  .col-bill  { width: 7%; }
+  .col-cost  { width: 7%; }
+  .col-prof  { width: 6%; }
+  .col-dep   { width: 6%; }
+  .col-bank  { width: 10%; }
+  .col-chk   { width: 7%; }
+  .col-date  { width: 5%; }
+  .col-rem   { width: 5%; }
+</style>
+</head>
+<body>
+<div class="month">${esc(periodText)}</div>
+${subtitleText ? `<div class="subtitle">${esc(subtitleText)}</div>` : ""}
+<table>
+  <colgroup>
+    <col class="col-no"/><col class="col-ship"/><col class="col-cli"/>
+    <col class="col-com"/><col class="col-cont"/><col class="col-num"/>
+    <col class="col-soa"/><col class="col-bill"/><col class="col-cost"/>
+    <col class="col-prof"/><col class="col-dep"/><col class="col-bank"/>
+    <col class="col-chk"/><col class="col-date"/><col class="col-rem"/>
+  </colgroup>
+  <thead>
+    <tr>
+      <th>NO.</th>
+      <th>SHIPMENT NUMBER</th>
+      <th>CLIENT NAME</th>
+      <th>COMMODITY</th>
+      <th>CONTAINER NUMBER</th>
+      <th>NUMBER OF CONTAIN</th>
+      <th>SOA NUMBER</th>
+      <th>BILLING</th>
+      <th>COSTING</th>
+      <th>PROFIT</th>
+      <th>CONTAINER DEPOSIT</th>
+      <th>BANK NAME / CHECK NUMBER</th>
+      <th>CHECK AMOUNT</th>
+      <th>DEPOSIT DATE</th>
+      <th>REMARKS</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rowsHtml}
+    <tr class="totals-row">
+      <td colspan="5" class="c">TOTALS</td>
+      <td class="c">${totalContainers}</td>
+      <td></td>
+      <td class="r">${fmt(totalBilling)}</td>
+      <td class="r">${fmt(totalCosting)}</td>
+      <td class="r">${fmt(totalProfit)}</td>
+      <td class="r">${totalDeposit > 0 ? fmt(totalDeposit) : "—"}</td>
+      <td></td>
+      <td class="r">${fmt(totalCheckAmount)}</td>
+      <td></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+<script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    } else {
+      toast.error("Popup blocked. Please allow popups for this site.");
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#FFFFFF", paddingBottom: "48px" }}>
@@ -626,25 +804,25 @@ export function FinalShipmentCostReport() {
               </p>
             </div>
           </div>
-          <button 
-            onClick={handleExport}
-            style={{ 
-              height: "40px", 
-              padding: "0 20px", 
-              fontSize: "14px", 
-              fontWeight: 600, 
-              color: "var(--neuron-brand-green)", 
-              backgroundColor: "var(--neuron-state-selected)", 
-              border: "1px solid var(--neuron-brand-green)", 
-              borderRadius: "8px", 
-              cursor: "pointer", 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "8px" 
+          <button
+            onClick={handlePrintPDF}
+            style={{
+              height: "40px",
+              padding: "0 20px",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "white",
+              backgroundColor: "var(--neuron-brand-green)",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
             }}
           >
-            <Download size={16} />
-            Export Excel
+            <Printer size={16} />
+            Print PDF
           </button>
         </div>
 
@@ -694,15 +872,15 @@ export function FinalShipmentCostReport() {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-            <div>
-              <UnifiedDateRangeFilter
-                startDate={filters.dateStart}
-                endDate={filters.dateEnd}
-                onStartDateChange={(v) => setFilters({...filters, dateStart: v})}
-                onEndDateChange={(v) => setFilters({...filters, dateEnd: v})}
-                label="Date Range (From - To)"
-              />
-            </div>
+            <MonthOrRangeDateFilter
+              label="Date Range"
+              dateStart={filters.dateStart}
+              dateEnd={filters.dateEnd}
+              onStartDateChange={(v) => setFilters(f => ({ ...f, dateStart: v }))}
+              onEndDateChange={(v) => setFilters(f => ({ ...f, dateEnd: v }))}
+              onModeChange={(m) => setDateMode(m)}
+              onMonthChange={(m) => setSelectedMonth(m)}
+            />
 
             <FilterSingleDropdown
               label="Service Type"
@@ -732,27 +910,22 @@ export function FinalShipmentCostReport() {
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "var(--neuron-ink-muted)" }}>Client</label>
               <CompanyClientFilter
-                items={[]}
                 extraEntries={clientsMasterList}
-                getCompany={() => ""}
-                getClient={() => ""}
-                selectedCompany={filters.clientCompany}
-                selectedClient={filters.client}
-                onCompanyChange={(v) => setFilters({...filters, clientCompany: v, client: null})}
-                onClientChange={(v) => setFilters({...filters, client: v})}
+                selected={filters.clientSelections}
+                onChange={(v) => setFilters((prev) => ({...prev, clientSelections: v}))}
                 placeholder="All Clients"
               />
             </div>
 
-            <FilterSingleDropdown
+            <MultiSelectPortalDropdown
               label="Status"
               value={filters.status}
               options={[
-                { value: "All", label: "All Statuses" },
                 { value: "Paid", label: "Paid" },
                 { value: "Unpaid", label: "Unpaid" },
               ]}
-              onChange={(v) => setFilters({...filters, status: v})}
+              onChange={(selected) => setFilters({...filters, status: selected})}
+              placeholder="All Statuses"
             />
           </div>
         </div>
@@ -892,7 +1065,7 @@ export function FinalShipmentCostReport() {
                 }}
               >
                 Next
-                <ChevronRightIcon size={16} style={{ marginLeft: "4px" }} />
+                <ChevronRight size={16} style={{ marginLeft: "4px" }} />
               </button>
             </div>
           </div>

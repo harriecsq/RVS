@@ -20,9 +20,10 @@ const HDR: React.CSSProperties = {
 
 const C: React.CSSProperties = {
   border: "1px solid #000",
-  padding: "5px 7px",
+  padding: "3px 7px",
   verticalAlign: "top",
   fontSize: "11px",
+  lineHeight: "1.4",
 };
 
 /*
@@ -46,20 +47,11 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
     Array.isArray(data.containers) ? data.containers : [];
 
   return (
-    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1.2" }}>
+    <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
 
-      {/* Letterhead row — logo left (60%) + FSI title right (40%) */}
-      <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "10px" }}>
-        {settings.logoPng ? (
-          <div style={{ width: "60%", flexShrink: 0 }}>
-            <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
-          </div>
-        ) : (
-          <div style={{ border: "1.5px dashed #CBD5E1", borderRadius: "4px", padding: "14px", textAlign: "center", color: "#9CA3AF", fontSize: "11px", width: "60%", flexShrink: 0, boxSizing: "border-box" }}>
-            Company letterhead PNG — upload via Document Settings
-          </div>
-        )}
-        <div style={{ flex: 1, textAlign: "center", paddingLeft: "10px" }}>
+      {/* Letterhead row — title centered */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
+        <div style={{ flex: 1, textAlign: "center" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "#000" }}>FINAL SHIPPING INSTRUCTION</div>
         </div>
       </div>
@@ -86,7 +78,7 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
               </div>
             </td>
             {/* Right panel — spans rows 1–2, TO/ATTN + FROM/BOOKING NO only */}
-            <td rowSpan={2} style={{ border: "none", padding: "5px 7px", verticalAlign: "top", fontSize: "11px", lineHeight: "1.2" }}>
+            <td rowSpan={2} style={{ border: "none", padding: "3px 7px", verticalAlign: "top", fontSize: "11px", lineHeight: "1.4" }}>
               <div style={{ display: "flex", gap: "4px" }}>
                 <span style={{ fontWeight: 700, fontSize: "10px", whiteSpace: "nowrap" }}>TO :</span>
                 <span style={{ fontWeight: 700 }}>{d("to")}</span>
@@ -122,7 +114,7 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
                 ].filter(Boolean).join("\n")}
               </div>
             </td>
-            <td style={{ border: "none", padding: "5px 7px", verticalAlign: "top", fontSize: "11px" }}>
+            <td style={{ border: "none", padding: "3px 7px", verticalAlign: "top", fontSize: "11px", lineHeight: "1.4" }}>
               <span style={{ fontWeight: 700, fontSize: "10px" }}>BILLED TO: </span>
               <span style={{ fontWeight: 700 }}>{d("billedTo")}</span>
             </td>
@@ -196,16 +188,16 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
                 </colgroup>
                 <tbody>
                   <tr>
-                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle", lineHeight: "1.2" }}>
+                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle" }}>
                       CONTAINER NO./SEAL No.<br />Marks and Numbers
                     </td>
-                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle", lineHeight: "1.2" }}>
+                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle" }}>
                       NUMBER AND KINDS OF PACKAGES: DESCRIPTION OF GOODS
                     </td>
-                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle", lineHeight: "1.2" }}>
+                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle" }}>
                       GROSS WEIGHT (KGS)
                     </td>
-                    <td style={{ border: "none", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle", lineHeight: "1.2" }}>
+                    <td style={{ border: "none", padding: "3px 5px", fontWeight: 700, fontSize: "10px", textAlign: "center", verticalAlign: "middle" }}>
                       MEASUREMENT (CBM)
                     </td>
                   </tr>
@@ -226,14 +218,14 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
                 </colgroup>
                 <tbody>
                   <tr>
-                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "6px 8px", verticalAlign: "top" }}>
+                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 7px", verticalAlign: "top" }}>
                       {containers.length > 0 ? containers.map((c, i) => (
-                        <div key={i} style={{ fontSize: "11px", marginBottom: "2px" }}>
+                        <div key={i} style={{ fontSize: "11px", lineHeight: "1.4" }}>
                           {[c.containerNo, c.sealNo, c.volumeType].filter(Boolean).join("/")}
                         </div>
                       )) : <span style={{ color: "#9CA3AF" }}>&mdash;</span>}
                     </td>
-                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "6px 8px", verticalAlign: "top" }}>
+                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 7px", verticalAlign: "top" }}>
                       <div style={{ fontSize: "11px", whiteSpace: "pre-wrap" }}>
                         {[
                           d("volume") ? `${d("volume")} CONTAINER SAID TO CONTAIN:` : "",
@@ -242,10 +234,10 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
                         ].filter(Boolean).join("\n")}
                       </div>
                     </td>
-                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "6px 8px", textAlign: "center", verticalAlign: "top", fontVariantNumeric: "tabular-nums", fontSize: "11px" }}>
+                    <td style={{ border: "none", borderRight: "1px solid #000", padding: "3px 7px", textAlign: "center", verticalAlign: "top", fontVariantNumeric: "tabular-nums", fontSize: "11px" }}>
                       {d("grossWeight") ? `${fmt(d("grossWeight"))} KGS` : ""}
                     </td>
-                    <td style={{ border: "none", padding: "6px 8px", textAlign: "center", verticalAlign: "top", fontVariantNumeric: "tabular-nums", fontSize: "11px" }}>
+                    <td style={{ border: "none", padding: "3px 7px", textAlign: "center", verticalAlign: "top", fontVariantNumeric: "tabular-nums", fontSize: "11px" }}>
                       {d("measurement") ? `${fmt(d("measurement"))} CBM` : ""}
                     </td>
                   </tr>

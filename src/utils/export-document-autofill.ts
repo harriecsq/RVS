@@ -13,9 +13,15 @@ interface BookingForAutoFill {
   consignee?: string;
   shipper?: string;
   etd?: string;
+  grossWeight?: string;
   blNumber?: string;
   containerNo?: string;   // comma-separated container numbers from Booking Information
   sealNo?: string;        // comma-separated seal numbers from Booking Information
+  bookingId?: string;
+  bookingNumber?: string;
+  bookingNumbers?: { id: string; bookingNumber: string; containerNos: string[] }[];
+  containerQty?: string | number;
+  pol?: string;
   segments?: {
     containerNos: string[];
     sealNos?: string[];
@@ -26,15 +32,16 @@ interface BookingForAutoFill {
 
 /** Build default Sales Contract fields from the export booking. */
 export function buildSalesContractDefaults(booking: BookingForAutoFill): Partial<SalesContract> {
+  const seg0 = booking.segments?.[0];
   return {
-    portOfLoading: booking.origin || "",
-    portOfDestination: booking.pod || booking.destination || "",
-    vesselVoyage: booking.vesselVoyage || booking.segments?.[0]?.vesselVoyage || "",
-    marksAndNos: booking.volume || "",
-    commodityDescription: booking.commodity || "",
-    buyerName: booking.consignee || "",
-    sellerName: booking.shipper || "",
-    shipmentDate: booking.etd || "",
+    portOfLoading: booking.pol || booking.origin || seg0?.origin || "",
+    portOfDestination: booking.pod || booking.destination || seg0?.pod || "",
+    vesselVoyage: booking.vesselVoyage || seg0?.vesselVoyage || "",
+    marksAndNos: booking.volume || seg0?.volume || "",
+    commodityDescription: booking.commodity || seg0?.commodity || "",
+    buyerName: booking.consignee || seg0?.consignee || "",
+    sellerName: booking.shipper || seg0?.shipper || "",
+    shipmentDate: booking.etd || seg0?.etd || "",
   };
 }
 
@@ -46,7 +53,7 @@ export function buildCommercialInvoiceDefaults(
   return {
     invoiceNo: sc?.refNo || "",
     date: sc?.date || "",
-    portOfLoading: sc?.portOfLoading || booking.origin || "",
+    portOfLoading: sc?.portOfLoading || booking.pol || booking.origin || "",
     portOfDischarge: sc?.portOfDestination || booking.pod || "",
     consigneeName: sc?.buyerName || booking.consignee || "",
     consigneeAddress: sc?.buyerAddress || "",
@@ -117,12 +124,12 @@ export function buildPackingListDefaults(
     shippedToPhone: sc?.buyerPhone || "",
     shippedToEmail: sc?.buyerEmail || "",
     vesselVoyage: booking.vesselVoyage || booking.segments?.[0]?.vesselVoyage || "",
-    placeOfOrigin: booking.origin || "",
-    portOfDischarge: booking.pod || "",
+    placeOfOrigin: sc?.portOfLoading || booking.pol || booking.origin || "",
+    portOfDischarge: sc?.portOfDestination || booking.pod || "",
     shipmentDate: sc?.shipmentDate || booking.etd || "",
     descriptionOfGoods: sc?.commodityDescription || booking.commodity || "",
-    volume: booking.volume || "",
-    commodity: booking.commodity || "",
+    volume: sc?.marksAndNos || "",
+    commodity: sc?.commodityDescription || booking.commodity || "",
     containers,
   };
 }
@@ -185,6 +192,6 @@ export function buildDeclarationDefaults(
     blNumber: booking.blNumber || booking.segments?.[0]?.blNumber || "",
     containers,
     totalNetWeight: sc?.quantity || "",
-    description: booking.commodity || "",
+    description: sc?.commodityDescription || booking.commodity || "",
   };
 }

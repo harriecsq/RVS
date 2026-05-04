@@ -6,21 +6,35 @@ interface DocumentSettingsPanelProps {
   settings: DocumentSettings;
   onChange: (settings: DocumentSettings) => void;
   stampSlots?: string[];
+  showShippingLineLetterhead?: boolean;
+  hideSupplierLetterhead?: boolean;
+  supplierLetterheadLabel?: string;
 }
 
-export function DocumentSettingsPanel({ settings, onChange, stampSlots }: DocumentSettingsPanelProps) {
+export function DocumentSettingsPanel({ settings, onChange, stampSlots, showShippingLineLetterhead, hideSupplierLetterhead, supplierLetterheadLabel }: DocumentSettingsPanelProps) {
   const updateStampSlot = (slotKey: string, value: string | undefined) => {
     onChange({ ...settings, stamps: { ...(settings.stamps || {}), [slotKey]: { pngData: value } } });
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-      <Section label="Company Letterhead">
-        <LogoUploadSlot
-          value={settings.logoPng}
-          onChange={(v) => onChange({ ...settings, logoPng: v })}
-        />
-      </Section>
+      {!hideSupplierLetterhead && (
+        <Section label={supplierLetterheadLabel ?? "Supplier Letterhead"}>
+          <LogoUploadSlot
+            value={settings.logoPng}
+            onChange={(v) => onChange({ ...settings, logoPng: v })}
+          />
+        </Section>
+      )}
+
+      {showShippingLineLetterhead && (
+        <Section label="Shipping Line Letterhead">
+          <LogoUploadSlot
+            value={settings.shippingLinePng}
+            onChange={(v) => onChange({ ...settings, shippingLinePng: v })}
+          />
+        </Section>
+      )}
 
       {stampSlots && stampSlots.length > 0 && (
         <Section label="Stamps / Seals">

@@ -9,7 +9,15 @@ import { PngUploadSlot } from "../shared/document-preview/PngUploadSlot";
 
 // ── Simple field helpers ────────────────────────────────────────────
 
-function FieldInput({ label, value, onChange, placeholder, autofilled }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; autofilled?: boolean }) {
+function FieldInput({ label, value, onChange, placeholder, autofilled, readOnly }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; autofilled?: boolean; readOnly?: boolean }) {
+  if (readOnly) {
+    return (
+      <div>
+        <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: autofilled ? "#237F66" : "#6B7A76", marginBottom: "6px" }}>{label}</label>
+        <p style={{ margin: 0, fontSize: "14px", color: "#12332B" }}>{value || "—"}</p>
+      </div>
+    );
+  }
   return (
     <div>
       <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: autofilled ? "#237F66" : "#12332B", marginBottom: "6px" }}>
@@ -26,7 +34,15 @@ function FieldInput({ label, value, onChange, placeholder, autofilled }: { label
   );
 }
 
-function FieldSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+function FieldSelect({ label, value, onChange, options, readOnly }: { label: string; value: string; onChange: (v: string) => void; options: string[]; readOnly?: boolean }) {
+  if (readOnly) {
+    return (
+      <div>
+        <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#6B7A76", marginBottom: "6px" }}>{label}</label>
+        <p style={{ margin: 0, fontSize: "14px", color: "#12332B" }}>{value || "—"}</p>
+      </div>
+    );
+  }
   return (
     <div>
       <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "#12332B", marginBottom: "6px" }}>{label}</label>
@@ -67,133 +83,135 @@ function s(setFn: (fn: (d: any) => any) => void, key: string) {
   return (v: string) => setFn((d) => ({ ...d, [key]: v }));
 }
 
-function SalesContractForm({ data, setData }: { data: any; setData: any; autofilled?: Set<string> }) {
+function SalesContractForm({ data, setData, readOnly }: { data: any; setData: any; autofilled?: Set<string>; readOnly?: boolean }) {
   return (
     <>
       <SectionCard title="Supplier & Seller">
         <Grid2>
-          <FieldInput label="Supplier" value={f(data, "supplierName")} onChange={s(setData, "supplierName")} />
-          <FieldInput label="Supplier Address" value={f(data, "supplierAddress")} onChange={s(setData, "supplierAddress")} />
-          <FieldInput label="Supplier Phone" value={f(data, "supplierContact")} onChange={s(setData, "supplierContact")} />
-          <FieldInput label="Supplier Email" value={f(data, "supplierEmail")} onChange={s(setData, "supplierEmail")} />
-          <FieldInput label="Seller" value={f(data, "sellerName")} onChange={s(setData, "sellerName")} />
-          <FieldInput label="Seller Address" value={f(data, "sellerAddress")} onChange={s(setData, "sellerAddress")} />
+          <FieldInput readOnly={readOnly} label="Supplier" value={f(data, "supplierName")} onChange={s(setData, "supplierName")} />
+          <FieldInput readOnly={readOnly} label="Supplier Address" value={f(data, "supplierAddress")} onChange={s(setData, "supplierAddress")} />
+          <FieldInput readOnly={readOnly} label="Supplier Phone" value={f(data, "supplierPhone")} onChange={s(setData, "supplierPhone")} />
+          <FieldInput readOnly={readOnly} label="Supplier Email" value={f(data, "supplierEmail")} onChange={s(setData, "supplierEmail")} />
+          <FieldInput readOnly={readOnly} label="Seller" value={f(data, "sellerName")} onChange={s(setData, "sellerName")} />
+          <FieldInput readOnly={readOnly} label="Seller Address" value={f(data, "sellerAddress")} onChange={s(setData, "sellerAddress")} />
         </Grid2>
       </SectionCard>
       <SectionCard title="Buyer">
         <Grid2>
-          <FieldInput label="Buyer Name" value={f(data, "buyerName")} onChange={s(setData, "buyerName")} />
-          <FieldInput label="Buyer Address" value={f(data, "buyerAddress")} onChange={s(setData, "buyerAddress")} />
-          <FieldInput label="Contact" value={f(data, "buyerContact")} onChange={s(setData, "buyerContact")} />
-          <FieldInput label="Phone" value={f(data, "buyerPhone")} onChange={s(setData, "buyerPhone")} />
-          <FieldInput label="Email" value={f(data, "buyerEmail")} onChange={s(setData, "buyerEmail")} />
+          <FieldInput readOnly={readOnly} label="Buyer Name" value={f(data, "buyerName")} onChange={s(setData, "buyerName")} />
+          <FieldInput readOnly={readOnly} label="Buyer Address" value={f(data, "buyerAddress")} onChange={s(setData, "buyerAddress")} />
+          <FieldInput readOnly={readOnly} label="Contact" value={f(data, "buyerContact")} onChange={s(setData, "buyerContact")} />
+          <FieldInput readOnly={readOnly} label="Phone" value={f(data, "buyerPhone")} onChange={s(setData, "buyerPhone")} />
+          <FieldInput readOnly={readOnly} label="Email" value={f(data, "buyerEmail")} onChange={s(setData, "buyerEmail")} />
         </Grid2>
       </SectionCard>
       <SectionCard title="Goods">
         <Grid2>
-          <FieldInput label="Commodity Description" value={f(data, "commodityDescription")} onChange={s(setData, "commodityDescription")} />
-          <FieldInput label="Terms of Payment" value={f(data, "termsOfPayment")} onChange={s(setData, "termsOfPayment")} />
+          <FieldInput readOnly={readOnly} label="Commodity Description" value={f(data, "commodityDescription")} onChange={s(setData, "commodityDescription")} />
+          <FieldInput readOnly={readOnly} label="Terms of Payment" value={f(data, "termsOfPayment")} onChange={s(setData, "termsOfPayment")} />
         </Grid2>
       </SectionCard>
       <SectionCard title="Bank Details">
         <Grid2>
-          <FieldInput label="Bank Name" value={f(data, "bankName")} onChange={s(setData, "bankName")} />
-          <FieldInput label="Swift Code" value={f(data, "swiftCode")} onChange={s(setData, "swiftCode")} />
-          <FieldInput label="Account No." value={f(data, "accountNo")} onChange={s(setData, "accountNo")} />
-          <FieldInput label="Account Name" value={f(data, "accountName")} onChange={s(setData, "accountName")} />
-          <FieldInput label="Bank Address" value={f(data, "bankAddress")} onChange={s(setData, "bankAddress")} />
+          <FieldInput readOnly={readOnly} label="Bank Name" value={f(data, "bankName")} onChange={s(setData, "bankName")} />
+          <FieldInput readOnly={readOnly} label="Swift Code" value={f(data, "swiftCode")} onChange={s(setData, "swiftCode")} />
+          <FieldInput readOnly={readOnly} label="Account No." value={f(data, "accountNo")} onChange={s(setData, "accountNo")} />
+          <FieldInput readOnly={readOnly} label="Account Name" value={f(data, "accountName")} onChange={s(setData, "accountName")} />
+          <FieldInput readOnly={readOnly} label="Bank Address" value={f(data, "bankAddress")} onChange={s(setData, "bankAddress")} />
         </Grid2>
       </SectionCard>
     </>
   );
 }
 
-function CommercialInvoiceForm({ data, setData, autofilled }: { data: any; setData: any; autofilled?: Set<string> }) {
+function CommercialInvoiceForm({ data, setData, autofilled, readOnly }: { data: any; setData: any; autofilled?: Set<string>; readOnly?: boolean }) {
   const af = (k: string) => autofilled?.has(k);
   return (
     <>
       <SectionCard title="Consignee">
         <Grid2>
-          <FieldInput label="Consignee Name" value={f(data, "consigneeName")} onChange={s(setData, "consigneeName")} autofilled={af("consigneeName")} />
-          <FieldInput label="Consignee Address" value={f(data, "consigneeAddress")} onChange={s(setData, "consigneeAddress")} autofilled={af("consigneeAddress")} />
-          <FieldInput label="Contact" value={f(data, "consigneeContact")} onChange={s(setData, "consigneeContact")} autofilled={af("consigneeContact")} />
-          <FieldInput label="Phone" value={f(data, "consigneePhone")} onChange={s(setData, "consigneePhone")} autofilled={af("consigneePhone")} />
-          <FieldInput label="Email" value={f(data, "consigneeEmail")} onChange={s(setData, "consigneeEmail")} autofilled={af("consigneeEmail")} />
+          <FieldInput readOnly={readOnly} label="Consignee Name" value={f(data, "consigneeName")} onChange={s(setData, "consigneeName")} autofilled={af("consigneeName")} />
+          <FieldInput readOnly={readOnly} label="Consignee Address" value={f(data, "consigneeAddress")} onChange={s(setData, "consigneeAddress")} autofilled={af("consigneeAddress")} />
+          <FieldInput readOnly={readOnly} label="Contact" value={f(data, "consigneeContact")} onChange={s(setData, "consigneeContact")} autofilled={af("consigneeContact")} />
+          <FieldInput readOnly={readOnly} label="Phone" value={f(data, "consigneePhone")} onChange={s(setData, "consigneePhone")} autofilled={af("consigneePhone")} />
+          <FieldInput readOnly={readOnly} label="Email" value={f(data, "consigneeEmail")} onChange={s(setData, "consigneeEmail")} autofilled={af("consigneeEmail")} />
         </Grid2>
       </SectionCard>
       <SectionCard title="Bank Details">
         <Grid2>
-          <FieldInput label="Bank Name" value={f(data, "bankName")} onChange={s(setData, "bankName")} autofilled={af("bankName")} />
-          <FieldInput label="Swift Code" value={f(data, "swiftCode")} onChange={s(setData, "swiftCode")} autofilled={af("swiftCode")} />
-          <FieldInput label="Account No." value={f(data, "accountNo")} onChange={s(setData, "accountNo")} autofilled={af("accountNo")} />
-          <FieldInput label="Account Name" value={f(data, "accountName")} onChange={s(setData, "accountName")} autofilled={af("accountName")} />
-          <FieldInput label="Bank Address" value={f(data, "bankAddress")} onChange={s(setData, "bankAddress")} autofilled={af("bankAddress")} />
+          <FieldInput readOnly={readOnly} label="Bank Name" value={f(data, "bankName")} onChange={s(setData, "bankName")} autofilled={af("bankName")} />
+          <FieldInput readOnly={readOnly} label="Swift Code" value={f(data, "swiftCode")} onChange={s(setData, "swiftCode")} autofilled={af("swiftCode")} />
+          <FieldInput readOnly={readOnly} label="Account No." value={f(data, "accountNo")} onChange={s(setData, "accountNo")} autofilled={af("accountNo")} />
+          <FieldInput readOnly={readOnly} label="Account Name" value={f(data, "accountName")} onChange={s(setData, "accountName")} autofilled={af("accountName")} />
+          <FieldInput readOnly={readOnly} label="Bank Address" value={f(data, "bankAddress")} onChange={s(setData, "bankAddress")} autofilled={af("bankAddress")} />
         </Grid2>
       </SectionCard>
     </>
   );
 }
 
-function PackingListForm({ data, setData, autofilled }: { data: any; setData: any; autofilled?: Set<string> }) {
+function PackingListForm({ data, setData, autofilled, readOnly }: { data: any; setData: any; autofilled?: Set<string>; readOnly?: boolean }) {
   const af = (k: string) => autofilled?.has(k);
   return (
     <SectionCard title="Shipped To">
       <Grid2>
-        <FieldInput label="Name" value={f(data, "shippedToName")} onChange={s(setData, "shippedToName")} autofilled={af("shippedToName")} />
-        <FieldInput label="Address" value={f(data, "shippedToAddress")} onChange={s(setData, "shippedToAddress")} autofilled={af("shippedToAddress")} />
-        <FieldInput label="Contact" value={f(data, "shippedToContact")} onChange={s(setData, "shippedToContact")} autofilled={af("shippedToContact")} />
-        <FieldInput label="Phone" value={f(data, "shippedToPhone")} onChange={s(setData, "shippedToPhone")} autofilled={af("shippedToPhone")} />
-        <FieldInput label="Email" value={f(data, "shippedToEmail")} onChange={s(setData, "shippedToEmail")} autofilled={af("shippedToEmail")} />
-        <FieldInput label="Description of Goods" value={f(data, "descriptionOfGoods")} onChange={s(setData, "descriptionOfGoods")} autofilled={af("descriptionOfGoods")} />
+        <FieldInput readOnly={readOnly} label="Name" value={f(data, "shippedToName")} onChange={s(setData, "shippedToName")} autofilled={af("shippedToName")} />
+        <FieldInput readOnly={readOnly} label="Address" value={f(data, "shippedToAddress")} onChange={s(setData, "shippedToAddress")} autofilled={af("shippedToAddress")} />
+        <FieldInput readOnly={readOnly} label="Contact" value={f(data, "shippedToContact")} onChange={s(setData, "shippedToContact")} autofilled={af("shippedToContact")} />
+        <FieldInput readOnly={readOnly} label="Phone" value={f(data, "shippedToPhone")} onChange={s(setData, "shippedToPhone")} autofilled={af("shippedToPhone")} />
+        <FieldInput readOnly={readOnly} label="Email" value={f(data, "shippedToEmail")} onChange={s(setData, "shippedToEmail")} autofilled={af("shippedToEmail")} />
+        <FieldInput readOnly={readOnly} label="Description of Goods" value={f(data, "descriptionOfGoods")} onChange={s(setData, "descriptionOfGoods")} autofilled={af("descriptionOfGoods")} />
       </Grid2>
     </SectionCard>
   );
 }
 
-function DeclarationForm({ data, setData, autofilled }: { data: any; setData: any; autofilled?: Set<string> }) {
+function DeclarationForm({ data, setData, autofilled, readOnly }: { data: any; setData: any; autofilled?: Set<string>; readOnly?: boolean }) {
   const af = (k: string) => autofilled?.has(k);
   return (
     <SectionCard title="Declaration">
-      <FieldInput label="Description" value={f(data, "description")} onChange={s(setData, "description")} autofilled={af("description")} />
+      <FieldInput readOnly={readOnly} label="Description" value={f(data, "description")} onChange={s(setData, "description")} autofilled={af("description")} />
     </SectionCard>
   );
 }
 
-function FormEForm({ data, setData }: { data: any; setData: any; autofilled?: Set<string> }) {
+function FormEForm({ data, setData, readOnly }: { data: any; setData: any; autofilled?: Set<string>; readOnly?: boolean }) {
   return (
     <>
       <SectionCard title="Exporter">
         <Grid2>
-          <FieldInput label="Exporter Country" value={f(data, "exporterCountry")} onChange={s(setData, "exporterCountry")} />
-          <FieldInput label="Importing Country" value={f(data, "importingCountry")} onChange={s(setData, "importingCountry")} />
+          <FieldInput readOnly={readOnly} label="Exporter Country" value={f(data, "exporterCountry")} onChange={s(setData, "exporterCountry")} />
+          <FieldInput readOnly={readOnly} label="Importing Country" value={f(data, "importingCountry")} onChange={s(setData, "importingCountry")} />
         </Grid2>
       </SectionCard>
       <SectionCard title="Goods">
         <Grid2>
-          <FieldInput label="Means of Transport" value={f(data, "meansOfTransport")} onChange={s(setData, "meansOfTransport")} />
-          <FieldInput label="Item Number" value={f(data, "itemNumber")} onChange={s(setData, "itemNumber")} />
-          <FieldInput label="Marks and Numbers on Packages" value={f(data, "marksAndNumbers")} onChange={s(setData, "marksAndNumbers")} />
-          <FieldInput label="Notify Party" value={f(data, "packagesNotifyParty")} onChange={s(setData, "packagesNotifyParty")} />
-          <FieldInput label="Notify Address" value={f(data, "packagesNotifyAddress")} onChange={s(setData, "packagesNotifyAddress")} />
-          <FieldInput label="Origin Criteria" value={f(data, "originCriteria")} onChange={s(setData, "originCriteria")} />
-          <FieldInput label="HS Code" value={f(data, "packagesHsCode")} onChange={s(setData, "packagesHsCode")} />
+          <FieldInput readOnly={readOnly} label="Means of Transport" value={f(data, "meansOfTransport")} onChange={s(setData, "meansOfTransport")} />
+          <FieldInput readOnly={readOnly} label="Item Number" value={f(data, "itemNumber")} onChange={s(setData, "itemNumber")} />
+          <FieldInput readOnly={readOnly} label="Marks and Numbers on Packages" value={f(data, "marksAndNumbers")} onChange={s(setData, "marksAndNumbers")} />
+          <FieldInput readOnly={readOnly} label="Notify Party" value={f(data, "packagesNotifyParty")} onChange={s(setData, "packagesNotifyParty")} />
+          <FieldInput readOnly={readOnly} label="Notify Address" value={f(data, "packagesNotifyAddress")} onChange={s(setData, "packagesNotifyAddress")} />
+          <FieldInput readOnly={readOnly} label="Origin Criteria" value={f(data, "originCriteria")} onChange={s(setData, "originCriteria")} />
+          <FieldInput readOnly={readOnly} label="HS Code" value={f(data, "packagesHsCode")} onChange={s(setData, "packagesHsCode")} />
         </Grid2>
       </SectionCard>
     </>
   );
 }
 
-function FSIForm({ data, setData }: { data: any; setData: any; autofilled?: Set<string> }) {
+function FSIForm({ data, setData, readOnly }: { data: any; setData: any; autofilled?: Set<string>; readOnly?: boolean }) {
   return (
     <SectionCard title="Shipping">
       <Grid2>
-        <FieldInput label="To" value={f(data, "to")} onChange={s(setData, "to")} />
-        <FieldInput label="Attn" value={f(data, "attn")} onChange={s(setData, "attn")} />
-        <FieldInput label="Notify Party" value={f(data, "notifyParty")} onChange={s(setData, "notifyParty")} />
-        <FieldSelect label="Freight Term" value={f(data, "freightTerm")} onChange={s(setData, "freightTerm")} options={["Prepaid", "Collect"]} />
-        <FieldSelect label="LSS" value={f(data, "lss")} onChange={s(setData, "lss")} options={["Prepaid", "Collect"]} />
-        <FieldInput label="HS Code" value={f(data, "hsCode")} onChange={s(setData, "hsCode")} />
-        <FieldInput label="USCI Code" value={f(data, "usciCode")} onChange={s(setData, "usciCode")} />
+        <FieldInput readOnly={readOnly} label="To" value={f(data, "to")} onChange={s(setData, "to")} />
+        <FieldInput readOnly={readOnly} label="Attn" value={f(data, "attn")} onChange={s(setData, "attn")} />
+        <FieldInput readOnly={readOnly} label="From" value={f(data, "from")} onChange={s(setData, "from")} />
+        <FieldInput readOnly={readOnly} label="Billed To" value={f(data, "billedTo")} onChange={s(setData, "billedTo")} />
+        <FieldInput readOnly={readOnly} label="Notify Party" value={f(data, "notifyParty")} onChange={s(setData, "notifyParty")} />
+        <FieldSelect readOnly={readOnly} label="Freight Term" value={f(data, "freightTerm")} onChange={s(setData, "freightTerm")} options={["Prepaid", "Collect"]} />
+        <FieldSelect readOnly={readOnly} label="LSS" value={f(data, "lss")} onChange={s(setData, "lss")} options={["Prepaid", "Collect"]} />
+        <FieldInput readOnly={readOnly} label="HS Code" value={f(data, "hsCode")} onChange={s(setData, "hsCode")} />
+        <FieldInput readOnly={readOnly} label="USCI Code" value={f(data, "usciCode")} onChange={s(setData, "usciCode")} />
       </Grid2>
     </SectionCard>
   );
@@ -283,6 +301,7 @@ function emptyTemplate(): Omit<MasterTemplate, "id" | "createdAt" | "updatedAt">
     name: "",
     description: "",
     letterhead: undefined,
+    shippingLineLetterhead: undefined,
     stamps: {},
     salesContract: {},
     commercialInvoice: {},
@@ -302,9 +321,12 @@ function TemplateEditor({ initial, onSave, onCancel }: {
   onSave: (t: typeof initial) => void;
   onCancel: () => void;
 }) {
+  const isNew = !initial.id;
+  const [isEditing, setIsEditing] = useState(isNew);
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description || "");
   const [letterhead, setLetterhead] = useState<string | undefined>(initial.letterhead);
+  const [shippingLineLetterhead, setShippingLineLetterhead] = useState<string | undefined>(initial.shippingLineLetterhead);
   const [stamps, setStamps] = useState<Record<string, string>>(initial.stamps || {});
   const [activeTab, setActiveTab] = useState<EditorTab>("salesContract");
   const [docs, setDocs] = useState({
@@ -320,11 +342,46 @@ function TemplateEditor({ initial, onSave, onCancel }: {
     setDocs((prev) => ({ ...prev, [key]: fn(prev[key]) }));
   };
 
+  const autoSaveAsset = (patch: { letterhead?: string | undefined; shippingLineLetterhead?: string | undefined; stamps?: Record<string, string> }) => {
+    if (!initial.id) return; // only auto-save existing templates
+    const cleanStamps: Record<string, string> = {};
+    const mergedStamps = { ...stamps, ...(patch.stamps || {}) };
+    for (const [k, v] of Object.entries(mergedStamps)) { if (v) cleanStamps[k] = v; }
+    onSave({
+      ...initial,
+      name: name.trim() || initial.name,
+      description,
+      letterhead: "letterhead" in patch ? patch.letterhead : letterhead,
+      shippingLineLetterhead: "shippingLineLetterhead" in patch ? patch.shippingLineLetterhead : shippingLineLetterhead,
+      stamps: cleanStamps,
+      ...docs,
+    });
+  };
+
   const handleSave = () => {
     if (!name.trim()) { toast.error("Template name is required"); return; }
     const cleanStamps: Record<string, string> = {};
     for (const [k, v] of Object.entries(stamps)) { if (v) cleanStamps[k] = v; }
-    onSave({ ...initial, name: name.trim(), description, letterhead, stamps: cleanStamps, ...docs });
+    onSave({ ...initial, name: name.trim(), description, letterhead, shippingLineLetterhead, stamps: cleanStamps, ...docs });
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    // Reset fields to original values
+    setName(initial.name);
+    setDescription(initial.description || "");
+    setLetterhead(initial.letterhead);
+    setShippingLineLetterhead(initial.shippingLineLetterhead);
+    setStamps(initial.stamps || {});
+    setDocs({
+      salesContract: initial.salesContract || {},
+      commercialInvoice: initial.commercialInvoice || {},
+      packingList: initial.packingList || {},
+      declaration: initial.declaration || {},
+      formE: initial.formE || {},
+      fsi: initial.fsi || {},
+    });
+    setIsEditing(false);
   };
 
   const ALL_EDITOR_TABS: { key: EditorTab; label: string }[] = [
@@ -340,20 +397,48 @@ function TemplateEditor({ initial, onSave, onCancel }: {
           <ArrowLeft size={16} />
         </button>
         <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#12332B", margin: 0 }}>
-          {initial.id ? "Edit Template" : "New Master Template"}
+          {initial.name || "New Master Template"}
         </h1>
         <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
-          <button onClick={handleSave} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 500, border: "none", borderRadius: "8px", background: "#237F66", color: "#FFFFFF", cursor: "pointer" }}>
-            <Save size={14} /> Save Template
-          </button>
+          {isEditing ? (
+            <>
+              {!isNew && (
+                <button onClick={handleCancelEdit} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 500, border: "1px solid #E5ECE9", borderRadius: "8px", background: "#FFFFFF", color: "#6B7A76", cursor: "pointer" }}>
+                  Cancel
+                </button>
+              )}
+              <button onClick={handleSave} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 500, border: "none", borderRadius: "8px", background: "#237F66", color: "#FFFFFF", cursor: "pointer" }}>
+                <Save size={14} /> Save Template
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setIsEditing(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", fontSize: "13px", fontWeight: 500, border: "1px solid #E5ECE9", borderRadius: "8px", background: "#FFFFFF", color: "#12332B", cursor: "pointer" }}>
+              <Edit3 size={14} /> Edit Template
+            </button>
+          )}
         </div>
       </div>
 
       {/* Name + description */}
       <div style={{ background: "white", borderRadius: "10px", border: "1px solid #E5ECE9", padding: "24px", marginBottom: "24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <FieldInput label="Template Name *" value={name} onChange={setName} placeholder="e.g. ABC Trading — Hamburg Route" />
-          <FieldInput label="Description (optional)" value={description} onChange={setDescription} placeholder="Short note about this template" />
+          {isEditing ? (
+            <>
+              <FieldInput label="Template Name *" value={name} onChange={setName} placeholder="e.g. ABC Trading — Hamburg Route" />
+              <FieldInput label="Description (optional)" value={description} onChange={setDescription} placeholder="Short note about this template" />
+            </>
+          ) : (
+            <>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "#6B7A76", marginBottom: "6px" }}>Template Name</label>
+                <p style={{ margin: 0, fontSize: "14px", color: "#12332B" }}>{name || "—"}</p>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "#6B7A76", marginBottom: "6px" }}>Description</label>
+                <p style={{ margin: 0, fontSize: "14px", color: "#12332B" }}>{description || "—"}</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -380,10 +465,16 @@ function TemplateEditor({ initial, onSave, onCancel }: {
 
       {activeTab === "branding" ? (
         <>
-          <SectionCard title="Letterhead">
-            <LogoUploadSlot value={letterhead} onChange={setLetterhead} />
+          <SectionCard title="Supplier Letterhead">
+            <LogoUploadSlot value={letterhead} onChange={(v) => { setLetterhead(v); autoSaveAsset({ letterhead: v }); }} />
             <p style={{ fontSize: "12px", color: "#6B7A76", margin: "4px 0 0" }}>
-              Displayed at the top of every document generated from this template.
+              Displayed at the top of trade documents (Sales Contract, Commercial Invoice, Packing List, etc.).
+            </p>
+          </SectionCard>
+          <SectionCard title="Shipping Line Letterhead">
+            <LogoUploadSlot value={shippingLineLetterhead} onChange={(v) => { setShippingLineLetterhead(v); autoSaveAsset({ shippingLineLetterhead: v }); }} />
+            <p style={{ fontSize: "12px", color: "#6B7A76", margin: "4px 0 0" }}>
+              Displayed at the top of FSI documents.
             </p>
           </SectionCard>
           <SectionCard title="Stamps &amp; Seals">
@@ -393,14 +484,18 @@ function TemplateEditor({ initial, onSave, onCancel }: {
                   key={slot}
                   label={slot === "supplier" ? "Supplier / Manager" : slot.charAt(0).toUpperCase() + slot.slice(1)}
                   value={stamps[slot]}
-                  onChange={(v) => setStamps((prev) => ({ ...prev, [slot]: v || "" }))}
+                  onChange={(v) => {
+                    const updated = { ...stamps, [slot]: v || "" };
+                    setStamps(updated);
+                    autoSaveAsset({ stamps: updated });
+                  }}
                 />
               ))}
             </div>
           </SectionCard>
         </>
       ) : (
-        (() => { const DocForm = DOC_FORMS[activeTab as TabKey]; return <DocForm data={docs[activeTab as TabKey]} setData={setDoc(activeTab as TabKey)} />; })()
+        (() => { const DocForm = DOC_FORMS[activeTab as TabKey]; return <DocForm data={docs[activeTab as TabKey]} setData={setDoc(activeTab as TabKey)} readOnly={!isEditing} />; })()
       )}
     </div>
   );
@@ -430,6 +525,7 @@ export function MasterTemplatesPage() {
       name: data.name,
       description: data.description,
       letterhead: data.letterhead,
+      shippingLineLetterhead: data.shippingLineLetterhead,
       stamps: data.stamps || {},
       salesContract: data.salesContract || {},
       commercialInvoice: data.commercialInvoice || {},
@@ -442,7 +538,7 @@ export function MasterTemplatesPage() {
     };
     save(template);
     toast.success(data.id ? "Template updated" : "Template created");
-    setEditing(null);
+    setEditing(template);
   };
 
   if (editing !== null) {

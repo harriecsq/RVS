@@ -52,7 +52,7 @@ export function MultiSelectPortalDropdown({
       <div style={{ position: "relative" }}>
         <div
           ref={triggerRef}
-          onClick={() => setOpen(!open)}
+          onMouseDown={(e) => { e.preventDefault(); setOpen(!open); }}
           style={{
             width: "100%",
             height: "40px",
@@ -90,7 +90,7 @@ export function MultiSelectPortalDropdown({
             return (
               <div
                 key={opt.value}
-                onClick={() => toggle(opt.value)}
+                onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); toggle(opt.value); }}
                 style={{
                   padding: "10px 12px",
                   cursor: "pointer",

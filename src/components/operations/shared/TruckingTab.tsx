@@ -297,24 +297,26 @@ export function TruckingTab({
                       ({segRecords.length} record{segRecords.length !== 1 ? "s" : ""})
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleOpenCreate(seg.segmentId)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      border: "1px solid #D1D5DB",
-                      borderRadius: "6px",
-                      background: "#FFFFFF",
-                      color: "#374151",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Plus size={12} /> Add
-                  </button>
+                  {bookingType !== "export" && (
+                    <button
+                      onClick={() => handleOpenCreate(seg.segmentId)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "6px 12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        border: "1px solid #D1D5DB",
+                        borderRadius: "6px",
+                        background: "#FFFFFF",
+                        color: "#374151",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                  )}
                 </div>
                 {segRecords.length === 0 ? (
                   <div style={{

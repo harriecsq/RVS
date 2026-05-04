@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { useNavigate } from "react-router";
 import { BookingSelector } from "../selectors/BookingSelector";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
@@ -47,16 +47,28 @@ interface BookingDetails {
   createdAt?: string;
   created_at?: string;
   shipper?: string;
+  shipperName?: string;
   consignee?: string;
+  consigneeName?: string;
+  customerName?: string;
+  clientName?: string;
+  client?: string;
   vesselVoyage?: string;
   vessel_voyage?: string;
+  vessel?: string;
+  voyage?: string;
   volume?: string;
+  commodity?: string;
   origin?: string;
   pol?: string;
+  portOfLoading?: string;
   destination?: string;
   pod?: string;
+  portOfDischarge?: string;
   blNumber?: string;
   bl_number?: string;
+  awbBlNo?: string;
+  awb_bl_no?: string;
   containerNumbers?: string[];
   container_numbers?: string[];
   containers?: Container[];
@@ -69,6 +81,8 @@ interface BookingDetails {
   discharged_date?: string;
   eta?: string;
   mode?: string;
+  shipmentType?: string;
+  segments?: any[];
 }
 
 export function InDepthProfitLossReport() {
@@ -79,75 +93,30 @@ export function InDepthProfitLossReport() {
   const [billings, setBillings] = useState<Billing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchBookingDetails = async (bookingId: string) => {
-    const endpoints = [
-      `${API_BASE_URL}/export-bookings/${bookingId}`,
-      `${API_BASE_URL}/import-bookings/${bookingId}`,
-      `${API_BASE_URL}/forwarding-bookings/${bookingId}`,
-      `${API_BASE_URL}/trucking-bookings/${bookingId}`,
-      `${API_BASE_URL}/brokerage-bookings/${bookingId}`,
-      `${API_BASE_URL}/marine-insurance-bookings/${bookingId}`,
-      `${API_BASE_URL}/others-bookings/${bookingId}`,
-    ];
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await fetch(endpoint, {
-          headers: { "Authorization": `Bearer ${publicAnonKey}` },
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            return { ...result.data, id: result.data.id || bookingId };
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to fetch from ${endpoint}`, error);
-      }
-    }
-    return null;
+  const collectBookingIdentifiers = (booking: any, fallbackId: string): Set<string> => {
+    const ids = new Set<string>();
+    if (fallbackId) ids.add(fallbackId);
+    if (booking?.id) ids.add(booking.id);
+    if (booking?.bookingId) ids.add(booking.bookingId);
+    if (booking?.bookingNumber) ids.add(booking.bookingNumber);
+    if (booking?.booking_number) ids.add(booking.booking_number);
+    if (booking?.tracking_number) ids.add(booking.tracking_number);
+    if (booking?.trackingNumber) ids.add(booking.trackingNumber);
+    return ids;
   };
 
-  const fetchExpenses = async (bookingId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
-        headers: { "Authorization": `Bearer ${publicAnonKey}` },
-      });
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && Array.isArray(result.data)) {
-            return result.data.filter((e: any) => 
-                (e.bookingIds && e.bookingIds.includes(bookingId)) || 
-                (e.linkedBookingIds && e.linkedBookingIds.includes(bookingId)) ||
-                e.bookingId === bookingId
-            );
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
+  const matchesAnyIdentifier = (record: any, identifiers: Set<string>): boolean => {
+    // Single-id fields
+    if (record.bookingId && identifiers.has(record.bookingId)) return true;
+    if (record.booking_id && identifiers.has(record.booking_id)) return true;
+    if (record.bookingNumber && identifiers.has(record.bookingNumber)) return true;
+    if (record.booking_number && identifiers.has(record.booking_number)) return true;
+    // Array fields
+    const arrays = [record.bookingIds, record.linkedBookingIds, record.linked_booking_ids];
+    for (const arr of arrays) {
+      if (Array.isArray(arr) && arr.some((id: string) => identifiers.has(id))) return true;
     }
-    return [];
-  };
-
-  const fetchBillings = async (bookingId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/billings?bookingId=${bookingId}`, {
-        headers: { "Authorization": `Bearer ${publicAnonKey}` },
-      });
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && Array.isArray(result.data)) {
-             return result.data.filter((b: any) => 
-                (b.bookingIds && b.bookingIds.includes(bookingId)) || 
-                b.bookingId === bookingId
-            );
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching billings:", error);
-    }
-    return [];
+    return false;
   };
 
   useEffect(() => {
@@ -161,20 +130,35 @@ export function InDepthProfitLossReport() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [booking, expensesData, billingsData] = await Promise.all([
-          fetchBookingDetails(selectedBookingId),
-          fetchExpenses(selectedBookingId),
-          fetchBillings(selectedBookingId)
+        const headers = { "Authorization": `Bearer ${publicAnonKey}` };
+        const [bookingsRes, expensesRes, billingsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/bookings`, { headers }),
+          fetch(`${API_BASE_URL}/expenses`, { headers }),
+          fetch(`${API_BASE_URL}/billings`, { headers }),
         ]);
 
-        if (booking) {
-            setBookingDetails(booking);
-        } else {
-            toast.error("Could not find full booking details");
-        }
-        
-        setExpenses(expensesData);
-        setBillings(billingsData);
+        const bookingsJson = bookingsRes.ok ? await bookingsRes.json() : { data: [] };
+        const expensesJson = expensesRes.ok ? await expensesRes.json() : { data: [] };
+        const billingsJson = billingsRes.ok ? await billingsRes.json() : { data: [] };
+
+        const allBookings = Array.isArray(bookingsJson.data) ? bookingsJson.data : [];
+        const allExpenses = Array.isArray(expensesJson.data) ? expensesJson.data : [];
+        const allBillings = Array.isArray(billingsJson.data) ? billingsJson.data : [];
+
+        const booking = allBookings.find((b: any) =>
+          b.id === selectedBookingId ||
+          b.bookingId === selectedBookingId ||
+          b.bookingNumber === selectedBookingId ||
+          b.booking_number === selectedBookingId ||
+          b.tracking_number === selectedBookingId
+        ) || null;
+
+        if (!booking) toast.error(`Booking "${selectedBookingId}" not found`);
+        setBookingDetails(booking);
+
+        const identifiers = collectBookingIdentifiers(booking, selectedBookingId);
+        setExpenses(allExpenses.filter((e: any) => matchesAnyIdentifier(e, identifiers)));
+        setBillings(allBillings.filter((b: any) => matchesAnyIdentifier(b, identifiers)));
       } catch (error) {
         console.error("Error loading report data:", error);
         toast.error("Failed to load report data");
@@ -269,87 +253,206 @@ export function InDepthProfitLossReport() {
     }
   };
 
-  const isExport = bookingDetails?.mode === "EXPORT" || 
-                   bookingDetails?.id?.startsWith("E") || 
-                   false; 
-
-  // Mapping Booking Details
-  // Date -> booking_date -> date -> createdAt
-  const date = formatDate(
-      bookingDetails?.date || 
-      bookingDetails?.booking_date || 
-      bookingDetails?.bookingDate || 
-      bookingDetails?.createdAt || 
-      bookingDetails?.created_at
-  );
-  
-  const shipmentNo = bookingDetails?.bookingNumber || bookingDetails?.booking_number || bookingDetails?.id || "—";
-  
-  const shipperConsignee = isExport 
-    ? (bookingDetails?.shipper || "—")
-    : (bookingDetails?.consignee || "—");
-  const shipperConsigneeLabel = isExport ? "Shipper" : "Consignee";
-  
-  const vesselVoyage = bookingDetails?.vesselVoyage || bookingDetails?.vessel_voyage || "—";
-  const volume = bookingDetails?.volume || "—";
-  const origin = bookingDetails?.origin || bookingDetails?.pol || "—";
-  const destination = bookingDetails?.destination || bookingDetails?.pod || "—";
-  const blNumber = bookingDetails?.blNumber || bookingDetails?.bl_number || "—";
-  
-  // Container No -> Pull from container list
-  let containerNos: string[] = [];
-  if (bookingDetails?.containers && Array.isArray(bookingDetails.containers)) {
-      containerNos = bookingDetails.containers
-        .map(c => c.container_number || c.containerNumber)
-        .filter((c): c is string => !!c);
-  } else if (bookingDetails?.containerNumbers || bookingDetails?.container_numbers) {
-      containerNos = bookingDetails?.containerNumbers || bookingDetails?.container_numbers || [];
-  } else if (bookingDetails?.containerNo || bookingDetails?.container_no) {
-      // Handle comma-separated string
-      const raw = bookingDetails.containerNo || bookingDetails.container_no || "";
-      containerNos = raw.split(',').map(c => c.trim()).filter(Boolean);
-  }
-  
-  // Releasing Date -> Discharged Date -> Discharged
-  const releasingDate = formatDate(
-      bookingDetails?.discharged || 
-      bookingDetails?.discharged_date || 
-      bookingDetails?.dischargedDate || 
-      bookingDetails?.releasing_date || 
-      bookingDetails?.releasingDate
-  );
-
-  const handleExport = () => {
-    if (!groupedExpenses.length) {
-        toast.error("No data to export");
-        return;
+  // Export bookings store most fields inside segments[0] (SEGMENT_FIELDS in ExportBookingDetails);
+  // imports keep them at the root. This getter checks both.
+  const seg0: any = bookingDetails?.segments?.[0] || {};
+  const getField = (...keys: string[]): string => {
+    for (const k of keys) {
+      const v = (bookingDetails as any)?.[k];
+      if (v !== undefined && v !== null && v !== "") return String(v);
     }
-    
-    // Simple CSV Export
-    const headers = ["Voucher No", "Description", "Currency", "Amount"];
-    const rows = groupedExpenses.flatMap(group => 
-        group.charges.map(charge => [
-            group.voucherNo,
-            charge.description || "",
-            charge.currency || "PHP",
-            charge.amount.toString()
-        ])
-    );
-    
-    const csvContent = [
-        headers.join(","),
-        ...rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `ProfitLoss_${shipmentNo}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Exporting to Excel...");
+    for (const k of keys) {
+      const v = seg0?.[k];
+      if (v !== undefined && v !== null && v !== "") return String(v);
+    }
+    return "";
+  };
+
+  const modeStr = (bookingDetails?.mode || bookingDetails?.shipmentType || (bookingDetails as any)?.booking_type || "").toLowerCase();
+  const isExport = modeStr.includes("export") ||
+                   bookingDetails?.bookingId?.toUpperCase().startsWith("E") ||
+                   bookingDetails?.id?.toUpperCase().startsWith("E") ||
+                   false;
+
+  const date = formatDate(
+      getField("date", "booking_date", "bookingDate", "createdAt", "created_at")
+  );
+
+  const shipmentNo = bookingDetails?.bookingId || bookingDetails?.bookingNumber || bookingDetails?.booking_number || bookingDetails?.id || "—";
+
+  const shipperConsignee = (isExport
+    ? getField("shipper", "shipperName", "customerName", "clientName", "client")
+    : getField("consignee", "consigneeName", "customerName", "clientName", "client")
+  ) || "—";
+  const shipperConsigneeLabel = isExport ? "Shipper" : "Consignee";
+
+  const vesselVoyage = getField("vesselVoyage", "vessel_voyage") ||
+    (getField("vessel") && getField("voyage") ? `${getField("vessel")} / ${getField("voyage")}` : getField("vessel")) ||
+    "—";
+  const origin = getField("origin", "pol", "portOfLoading") || "—";
+  const destination = getField("destination", "pod", "portOfDischarge") || "—";
+  const blNumber = getField("blNumber", "bl_number") || "—";
+  const commodity = getField("commodity") || "—";
+
+  // Container No -> comma-separated string in containerNo (root or segment); fallback to arrays
+  let containerNos: string[] = [];
+  const rawContainerNo = getField("containerNo", "container_no");
+  if (rawContainerNo) {
+    containerNos = rawContainerNo.split(',').map(c => c.trim()).filter(Boolean);
+  } else if (Array.isArray(seg0?.containerNos) && seg0.containerNos.length) {
+    containerNos = seg0.containerNos.filter(Boolean);
+  } else if (bookingDetails?.containers && Array.isArray(bookingDetails.containers)) {
+    containerNos = bookingDetails.containers
+      .map(c => c.container_number || c.containerNumber)
+      .filter((c): c is string => !!c);
+  } else if (bookingDetails?.containerNumbers || bookingDetails?.container_numbers) {
+    containerNos = bookingDetails?.containerNumbers || bookingDetails?.container_numbers || [];
+  }
+
+  // Volume — "{count}x{size'type}" (e.g. "2x40'HC"); LCL stays as "LCL"
+  const rawVolume = getField("volume").trim();
+  let volume = "—";
+  if (rawVolume) {
+    if (rawVolume.toUpperCase() === "LCL") {
+      volume = "LCL";
+    } else {
+      const count = Math.max(containerNos.length, 1);
+      volume = `${count}x${rawVolume}`;
+    }
+  }
+
+  // Releasing Date — sourced from the linked expenses' releasingDate field
+  const releasingDateRaw = expenses
+    .map((e: any) => e.releasingDate || e.releasing_date)
+    .find((d: any) => !!d);
+  const releasingDate = formatDate(releasingDateRaw);
+
+  // SOA / Billing number for the footer line — first billing's number
+  const billingSoaNo = (billings as any[])
+    .map((b: any) => b.billingNumber || b.soaNumber || b.soa_number || b.billing_number)
+    .find((n: any) => !!n) || "—";
+
+  const handlePrintPDF = () => {
+    if (!bookingDetails) {
+      toast.error("Select a booking first");
+      return;
+    }
+
+    const fmt = (n: number) =>
+      n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const esc = (s: string) =>
+      String(s ?? "").toUpperCase().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Build particulars rows with rowspan-merged voucher cells, matching the photo
+    const particularRowsHtml = groupedExpenses.length > 0
+      ? groupedExpenses.flatMap(group => {
+          const rowSpan = group.charges.length || 1;
+          return group.charges.map((charge: any, idx: number) => {
+            const voucherCell = idx === 0
+              ? `<td class="vch" rowspan="${rowSpan}">${esc(group.voucherNo)}</td>`
+              : "";
+            return `<tr>
+              <td class="part">${esc((charge.description || "—").toUpperCase())}</td>
+              <td class="amt">${fmt(Number(charge.amount) || 0)}</td>
+              ${voucherCell}
+            </tr>`;
+          }).join("");
+        }).join("")
+      : `<tr><td class="part" colspan="3" style="text-align:center;font-style:italic;">No operational expenses recorded.</td></tr>`;
+
+    const containerNoStr = containerNos.length > 0 ? containerNos.join(", ") : "—";
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Profit / Loss — ${esc(shipmentNo)}</title>
+<style>
+  @page { size: A4 portrait; margin: 18mm 16mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 7.7pt; color: #000; text-transform: uppercase; }
+  table.meta { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  table.meta td { padding: 3px 6px; vertical-align: top; font-size: 7.7pt; }
+  table.meta td.lbl { width: 28%; font-weight: normal; text-transform: uppercase; }
+  table.meta td.val { width: 72%; }
+  table.particulars { width: 100%; border-collapse: collapse; margin-top: 0; }
+  table.particulars th, table.particulars td {
+    border: 1px solid #000;
+    padding: 5px 8px;
+    font-size: 7.4pt;
+    vertical-align: middle;
+    text-align: center;
+  }
+  table.particulars th {
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  td.part { text-transform: uppercase; }
+  td.amt  { font-variant-numeric: tabular-nums; width: 25%; }
+  td.vch  { font-weight: normal; width: 28%; }
+  tr.total td, tr.soa td, tr.pnl td {
+    border: none;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding-top: 6px;
+  }
+</style>
+</head>
+<body>
+  <table class="meta">
+    <tr><td class="lbl">Date</td><td class="val">${esc(date)}</td></tr>
+    <tr><td class="lbl">Shipment No:</td><td class="val">${esc(shipmentNo)}</td></tr>
+    <tr><td class="lbl">${esc(shipperConsigneeLabel)}</td><td class="val">${esc(shipperConsignee)}</td></tr>
+    <tr><td class="lbl">Vessel/Voy:</td><td class="val">${esc(vesselVoyage)}</td></tr>
+    <tr><td class="lbl">Volume:</td><td class="val">${esc(volume)}</td></tr>
+    <tr><td class="lbl">Origin:</td><td class="val">${esc(origin)}</td></tr>
+    <tr><td class="lbl">Destination:</td><td class="val">${esc(destination)}</td></tr>
+    <tr><td class="lbl">Commodity:</td><td class="val">${esc(commodity)}</td></tr>
+    <tr><td class="lbl">BL Number:</td><td class="val">${esc(blNumber)}</td></tr>
+    <tr><td class="lbl">Container No:</td><td class="val">${esc(containerNoStr)}</td></tr>
+    <tr><td class="lbl">Releasing Date:</td><td class="val">${esc(releasingDate)}</td></tr>
+  </table>
+
+  <table class="particulars">
+    <thead>
+      <tr>
+        <th>Particulars</th>
+        <th>Amount</th>
+        <th>Voucher Number</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${particularRowsHtml}
+      <tr class="total">
+        <td class="part">Total</td>
+        <td class="amt">${fmt(totalExpenses)}</td>
+        <td></td>
+      </tr>
+      <tr class="soa">
+        <td class="part">Billing/SOA ${esc(String(billingSoaNo))}</td>
+        <td class="amt">${fmt(totalRevenue)}</td>
+        <td></td>
+      </tr>
+      <tr class="pnl">
+        <td class="part">${netProfit >= 0 ? "Profit" : "Loss"}</td>
+        <td class="amt">${fmt(Math.abs(netProfit))}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    } else {
+      toast.error("Popup blocked. Please allow popups for this site.");
+    }
   };
 
   return (
@@ -390,15 +493,15 @@ export function InDepthProfitLossReport() {
             </div>
           </div>
           <button
-            onClick={handleExport}
+            onClick={handlePrintPDF}
             style={{
               height: "40px",
               padding: "0 20px",
               fontSize: "14px",
               fontWeight: 600,
-              color: "#0F766E",
-              backgroundColor: "white",
-              border: "1px solid #0F766E",
+              color: "white",
+              backgroundColor: "var(--neuron-brand-green)",
+              border: "none",
               borderRadius: "8px",
               cursor: "pointer",
               display: "flex",
@@ -406,8 +509,8 @@ export function InDepthProfitLossReport() {
               gap: "8px"
             }}
           >
-            <Download size={16} />
-            Export Excel
+            <Printer size={16} />
+            Print PDF
           </button>
         </div>
       </div>
@@ -461,15 +564,9 @@ export function InDepthProfitLossReport() {
                             <SummaryField label="BL Number" value={blNumber} />
                             <div style={{ marginBottom: "16px" }}>
                                 <span style={{ display: "block", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>Container No</span>
-                                {containerNos.length > 0 ? (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                        {containerNos.map((c, i) => (
-                                            <span key={i} style={{ fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>{c}</span>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <span style={{ fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>—</span>
-                                )}
+                                <span style={{ fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>
+                                    {containerNos.length > 0 ? containerNos.join(", ") : "—"}
+                                </span>
                             </div>
                             <SummaryField label="Releasing Date" value={releasingDate} />
                         </div>

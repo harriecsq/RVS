@@ -358,17 +358,13 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
       {/* Goods */}
       <SectionCard title="Goods">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-          {/* Marks & Nos — number input, fixed CONTAINER unit */}
           <div>
             <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Marks &amp; Nos</label>
             {isEditing ? (
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <input value={field("marksAndNos")} onChange={(e) => setField("marksAndNos", e.target.value)} placeholder="e.g. 4" style={{ flex: 1, height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
-                <span style={{ whiteSpace: "nowrap", fontSize: "13px", color: "#667085", padding: "0 10px", height: "42px", display: "flex", alignItems: "center", background: "#F3F4F6", borderRadius: "6px", border: "1px solid #E5E9F0" }}>CONTAINER</span>
-              </div>
+              <input value={field("marksAndNos")} onChange={(e) => setField("marksAndNos", e.target.value)} placeholder="e.g. 2x40'HC" style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
             ) : (
               <div style={{ padding: "10px 14px", backgroundColor: field("marksAndNos") ? "#F9FAFB" : "white", border: field("marksAndNos") ? "1px solid #E5E9F0" : "2px dashed #E5E9F0", borderRadius: "6px", fontSize: "14px", color: field("marksAndNos") ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center", gap: "6px" }}>
-                {field("marksAndNos") ? <>{fmtNum(field("marksAndNos"))} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "—"}
+                {field("marksAndNos") ? <>{field("marksAndNos")} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "e.g. 2x40'HC"}
               </div>
             )}
           </div>

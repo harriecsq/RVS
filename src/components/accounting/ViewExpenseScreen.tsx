@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, ChevronDown, ChevronRight, Plus, X, Trash2, FileText, Receipt, Save, Pencil, Link2, Paperclip } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Plus, X, Trash2, FileText, Receipt, Save, Pencil, Link2, Paperclip, Edit3 } from "lucide-react";
 import { PortalDropdown } from "../shared/PortalDropdown";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
@@ -16,6 +16,12 @@ import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
+import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
+import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
+import { ExpenseDocTemplate } from "../shared/document-preview/templates/ExpenseDocTemplate";
+import { ExportExpenseDocTemplate } from "../shared/document-preview/templates/ExportExpenseDocTemplate";
+import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
+import type { DocumentSettings } from "../../types/document-settings";
 
 const EXPENSE_STATUS_COLORS: Record<string, string> = {
   "Draft": "#6B7280",
@@ -23,9 +29,9 @@ const EXPENSE_STATUS_COLORS: Record<string, string> = {
   "Approved": "#3B82F6",
   "Paid": "#10B981",
   "Partially Paid": "#F97316",
-  "Rejected": "#EF4444",
+  "Cancelled": "#EF4444",
 };
-const EXPENSE_STATUSES = ["Draft", "For Approval", "Approved", "Paid", "Partially Paid", "Rejected"];
+const EXPENSE_STATUSES = ["Draft", "For Approval", "Approved", "Paid", "Partially Paid", "Cancelled"];
 
 interface ViewExpenseScreenProps {
   expenseId: string;
@@ -50,6 +56,8 @@ interface LineItem {
   currency?: string;
   voucherNo?: string;
   sourceVoucherLineItemId?: string;
+  /** Snapshot of linked voucher total — used to recompute unit price when "per" changes. */
+  linkedVoucherAmount?: number;
   // Refund Fields
   refundDateSubmitted?: string;
   refundCheckNo?: string;
@@ -171,6 +179,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
   const [showTimeline, setShowTimeline] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<{ [key: string]: boolean }>({});
   const [activeTab, setActiveTab] = useState<"overview" | "vouchers" | "attachments">("overview");
+  const [expenseView, setExpenseView] = useState<"form" | "pdf">("form");
+  const [expenseDocSettings, setExpenseDocSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [voucherLinkFilter, setVoucherLinkFilter] = useState<"ALL" | "LINKED" | "UNLINKED">("ALL");
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -358,24 +368,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                 
                 if (linkId) {
                     const liveItem = voucherLineItemsMap.get(String(linkId));
-                    if (liveItem) {
-                        // Found: Sync Amount ONLY (Keep description as is)
-                        // Check if amount changed
-                        if (charge.amount !== liveItem.amount) {
-                            hasChanges = true;
-                            return { 
-                                ...charge, 
-                                amount: liveItem.amount,
-                                // Also sync unitPrice if per is not "40" (which implies manual calculation)
-                                // or just sync it to keep data clean.
-                                unitPrice: liveItem.amount 
-                            };
-                        }
-                    } else {
-                        // Not Found: Item was deleted from voucher -> Remove from expense
+                    if (!liveItem) {
+                        // Voucher line item was deleted → drop the linked charge
                         hasChanges = true;
-                        return null; 
+                        return null;
                     }
+                    // Voucher exists: keep the user's manually-edited unit price/amount/per.
                 }
                 return charge;
             }).filter(Boolean) as LineItem[];
@@ -493,17 +491,25 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     const updatedCharges = [...editedExpense.charges];
     const targetItem = updatedCharges[actualIndex];
 
-    // Update the item
+    // Auto-fill unit price from voucher amount based on the chosen "per" type.
+    // PER BL → use total. PER 40 / PER 20 → divide by container count. Stays editable after.
+    const voucherAmount = parseFloat(String(voucherItem.amount)) || 0;
+    const per = targetItem.per;
+    const contCount = (editedExpense?.containerNumbers?.length) || bookingShipment.containers.length || 0;
+    const containers = (targetItem.multiplyByContainers !== false) ? Math.max(contCount, 1) : 1;
+    const computedUnitPrice = per === "BL" ? voucherAmount : voucherAmount / containers;
+
     updatedCharges[actualIndex] = {
       ...targetItem,
       voucherNo: voucherItem.voucherNumber,
       sourceVoucherLineItemId: voucherItem.id,
-      amount: voucherItem.amount,
-      unitPrice: voucherItem.amount, // Sync unit price too
+      unitPrice: computedUnitPrice,
+      amount: voucherAmount,
+      linkedVoucherAmount: voucherAmount,
     };
 
     setEditedExpense({ ...editedExpense, charges: updatedCharges });
-    setLinkingLineItem(null); // Close modal
+    setLinkingLineItem(null);
     toast.success("Linked to voucher item");
   };
 
@@ -520,6 +526,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
       ...targetItem,
       voucherNo: undefined,
       sourceVoucherLineItemId: undefined,
+      linkedVoucherAmount: undefined,
       // Keep amount as is, but now it's editable
     };
 
@@ -698,110 +705,59 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
           setExpandedCategories(initialExpandedState);
         }
 
-        if (expenseData.projectId) {
-          const projectResponse = await fetch(`${API_BASE_URL}/projects/${expenseData.projectId}`, {
-            headers: {
-              "Authorization": `Bearer ${publicAnonKey}`,
-            },
-          });
-
-          if (projectResponse.ok) {
-            const projectResult = await projectResponse.json();
-            if (projectResult.success && projectResult.data) {
-              setProject(projectResult.data);
-            }
-          }
-        }
-
-        // Support both bookingIds (new format) and linkedBookingIds (from projects)
-        // Filter out null, undefined, empty strings, and string "null"/"undefined" values
         const bookingIdsToFetch = (expenseData.bookingIds || expenseData.linkedBookingIds || [])
           .filter((id: string) => id != null && id !== "" && id !== "null" && id !== "undefined");
-        
-        console.log("Booking IDs to fetch (after filtering nulls):", bookingIdsToFetch);
-        console.log("Full expense data:", expenseData);
-        
-        if (bookingIdsToFetch && bookingIdsToFetch.length > 0) {
-          const bookingPromises = bookingIdsToFetch.map(async (bookingId: string) => {
-            console.log(`Attempting to fetch booking: ${bookingId}`);
-            const endpoints = [
-              `${API_BASE_URL}/export-bookings/${bookingId}`,
-              `${API_BASE_URL}/import-bookings/${bookingId}`,
-              `${API_BASE_URL}/forwarding-bookings/${bookingId}`,
-              `${API_BASE_URL}/trucking-bookings/${bookingId}`,
-              `${API_BASE_URL}/brokerage-bookings/${bookingId}`,
-              `${API_BASE_URL}/marine-insurance-bookings/${bookingId}`,
-              `${API_BASE_URL}/others-bookings/${bookingId}`,
-            ];
 
-            for (const endpoint of endpoints) {
-              try {
-                const response = await fetch(endpoint, {
-                  headers: {
-                    "Authorization": `Bearer ${publicAnonKey}`,
-                  },
-                });
-
-                if (response.ok) {
-                  const result = await response.json();
-                  if (result.success && result.data) {
-                    console.log(`Found booking ${bookingId} at ${endpoint}:`, result.data);
-                    // Normalize: ensure id field exists (use bookingId as fallback)
-                    return {
-                      ...result.data,
-                      id: result.data.id || result.data.bookingId || bookingId
-                    };
-                  }
+        // Fetch project and all bookings in parallel
+        const [projectResult, ...bookingResults] = await Promise.all([
+          expenseData.projectId
+            ? fetch(`${API_BASE_URL}/projects/${expenseData.projectId}`, {
+                headers: { "Authorization": `Bearer ${publicAnonKey}` },
+              }).then(r => r.ok ? r.json() : null).catch(() => null)
+            : Promise.resolve(null),
+          ...bookingIdsToFetch.map(async (bookingId: string) => {
+            try {
+              const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
+                headers: { "Authorization": `Bearer ${publicAnonKey}` },
+              });
+              if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data) {
+                  return { ...result.data, id: result.data.id || result.data.bookingId || bookingId };
                 }
-              } catch (error) {
-                console.log(`Failed to fetch from ${endpoint}:`, error);
-                continue;
               }
-            }
-            console.log(`Booking ${bookingId} not found in any endpoint`);
+            } catch {}
             return null;
-          });
+          }),
+        ]);
 
-          const bookingResults = await Promise.all(bookingPromises);
-          console.log("Booking results:", bookingResults);
+        if (projectResult?.success && projectResult.data) {
+          setProject(projectResult.data);
+        }
+
+        if (bookingIdsToFetch.length > 0) {
           const validBookings = bookingResults.filter((b): b is Booking => b !== null);
-          console.log("Valid bookings:", validBookings);
-          
-          // Fetch client/company names for each booking
+
+          // Fetch client names for all bookings in parallel
           const enrichedBookings = await Promise.all(
             validBookings.map(async (booking) => {
               const clientId = booking.customer_id || booking.client_id;
-              console.log(`Booking ${booking.bookingId} has client_id: ${clientId}`);
-              if (clientId) {
-                try {
-                  const clientResponse = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
-                    headers: {
-                      "Authorization": `Bearer ${publicAnonKey}`,
-                    },
-                  });
-                  
-                  if (clientResponse.ok) {
-                    const clientResult = await clientResponse.json();
-                    if (clientResult.success && clientResult.data) {
-                      console.log(`Fetched company name for ${clientId}:`, clientResult.data.company_name || clientResult.data.name);
-                      return {
-                        ...booking,
-                        companyName: clientResult.data.company_name || clientResult.data.name
-                      };
-                    }
-                  } else {
-                    console.log(`Failed to fetch client ${clientId}: ${clientResponse.status}`);
+              if (!clientId) return booking;
+              try {
+                const clientResponse = await fetch(`${API_BASE_URL}/clients/${clientId}`, {
+                  headers: { "Authorization": `Bearer ${publicAnonKey}` },
+                });
+                if (clientResponse.ok) {
+                  const clientResult = await clientResponse.json();
+                  if (clientResult.success && clientResult.data) {
+                    return { ...booking, companyName: clientResult.data.company_name || clientResult.data.name };
                   }
-                } catch (error) {
-                  console.log(`Failed to fetch client ${clientId}:`, error);
                 }
-              } else {
-                console.log(`Booking ${booking.bookingId} has no client_id or customer_id field`);
-              }
+              } catch {}
               return booking;
             })
           );
-          
+
           setBookings(enrichedBookings);
 
           // Auto-sync expense number from linked booking
@@ -824,8 +780,6 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
               }).catch(() => {});
             }
           }
-        } else {
-          console.log("No booking IDs to fetch");
         }
       }
     } catch (error) {
@@ -874,145 +828,6 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     }
   };
 
-  // Helper for Container Numbers
-  const ExpenseContainerField = () => {
-    // Determine current value
-    const rawValue = isEditing 
-        ? editedExpense?.containerNumbers 
-        : expense?.containerNumbers;
-    
-    // Parse
-    let containers: string[] = [];
-    if (rawValue) {
-        if (Array.isArray(rawValue)) {
-            containers = rawValue;
-        } else if (typeof rawValue === 'string') {
-            containers = (rawValue as string).split(',').map(s => s.trim()).filter(Boolean);
-        }
-    } else if (expense?.containerNo) {
-        // Fallback to legacy field
-        containers = [expense.containerNo];
-    }
-    
-    // Fallback if empty array
-    if (containers.length === 0) containers = [];
-
-    const handleChange = (index: number, val: string) => {
-        if (!editedExpense) return;
-        const newContainers = [...containers];
-        newContainers[index] = val;
-        setEditedExpense({ ...editedExpense, containerNumbers: newContainers, containerNo: newContainers.join(', ') });
-    };
-
-    const addRow = () => {
-        if (!editedExpense) return;
-        setEditedExpense({ ...editedExpense, containerNumbers: [...containers, ""], containerNo: [...containers, ""].join(', ') });
-    };
-
-    const removeRow = (index: number) => {
-        if (!editedExpense) return;
-        const newContainers = containers.filter((_, i) => i !== index);
-        setEditedExpense({ ...editedExpense, containerNumbers: newContainers, containerNo: newContainers.join(', ') });
-    };
-
-    if (!isEditing) {
-        return (
-          <div>
-            <div style={{ fontSize: "13px", color: "#667085", marginBottom: "8px", fontWeight: 500 }}>
-              Container Numbers
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {containers.length > 0 ? containers.map((c, i) => (
-                    <div key={i} style={{
-                      padding: "10px 12px",
-                      fontSize: "14px",
-                      color: "#0A1D4D",
-                      background: "#F9FAFB",
-                      border: "1px solid #E5E9F0",
-                      borderRadius: "8px"
-                    }}>
-                      {c}
-                    </div>
-                )) : (
-                    <div style={{
-                      padding: "10px 12px",
-                      fontSize: "14px",
-                      color: "#9CA3AF",
-                      background: "#F9FAFB",
-                      border: "1px solid #E5E9F0",
-                      borderRadius: "8px"
-                    }}>—</div>
-                )}
-            </div>
-          </div>
-        );
-    }
-
-    // Edit mode
-    const editableContainers = containers.length > 0 ? containers : [""];
-
-    return (
-        <div>
-            <div style={{ fontSize: "13px", color: "#667085", marginBottom: "8px", fontWeight: 500 }}>Container Numbers</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {editableContainers.map((c, i) => (
-                    <div key={i} style={{ display: "flex", gap: "8px" }}>
-                        <input
-                            type="text"
-                            value={c}
-                            onChange={(e) => handleChange(i, e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", fontSize: "14px", color: "#0A1D4D", background: "white", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", transition: "border-color 0.15s ease" }}
-                            onFocus={e => { e.currentTarget.style.borderColor = "#0F766E"; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
-                            placeholder={`Container #${i + 1}`}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (editableContainers.length <= 1 && i === 0) {
-                                    setEditedExpense({ ...editedExpense!, containerNumbers: [], containerNo: "" });
-                                } else {
-                                    removeRow(i);
-                                }
-                            }}
-                            disabled={editableContainers.length <= 1}
-                            style={{ 
-                                padding: "8px", 
-                                color: "#EF4444", 
-                                background: "transparent", 
-                                border: "none",
-                                cursor: editableContainers.length <= 1 ? "not-allowed" : "pointer",
-                                opacity: editableContainers.length <= 1 ? 0.5 : 1
-                            }}
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
-                ))}
-                <button
-                    type="button"
-                    onClick={addRow}
-                    style={{
-                        padding: "8px",
-                        border: "1px dashed #0F766E",
-                        borderRadius: "6px",
-                        background: "#F0FDFA",
-                        color: "#0F766E",
-                        fontSize: "13px",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px"
-                    }}
-                >
-                    <Plus size={14} /> Add Container
-                </button>
-            </div>
-        </div>
-    );
-  };
 
   const handleSave = async () => {
     if (!editedExpense) return;
@@ -1434,10 +1249,38 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     return categoryName.charAt(0) + categoryName.slice(1).toLowerCase();
   };
 
+  // Live booking-derived shipment fields. Merge segments[0] over root for exports.
+  const primaryBooking = bookings.length > 0 ? bookings[0] : null;
+  const bookingShipment = (() => {
+    const b: any = primaryBooking || {};
+    const seg: any = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : {};
+    const containerRaw = seg.containerNo ?? b.containerNo ?? b.containerNos ?? "";
+    const containers: string[] = Array.isArray(containerRaw)
+      ? containerRaw.filter(Boolean)
+      : (typeof containerRaw === "string" ? containerRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
+    return {
+      blNumber: seg.blNumber ?? b.blNumber ?? "",
+      vesselVoyage: seg.vesselVoyage ?? b.vesselVoyage ?? seg.vessel ?? b.vessel ?? "",
+      origin: seg.origin ?? b.origin ?? b.pol ?? b.pickup ?? "",
+      destination: seg.destination || b.destination || seg.pod || b.pod || "",
+      pod: seg.pod ?? b.pod ?? seg.destination ?? b.destination ?? "",
+      shipper: seg.shipper ?? b.shipper ?? "",
+      consignee: seg.consignee ?? b.consignee ?? "",
+      commodity: seg.commodity ?? b.commodity ?? "",
+      containers,
+      weight: seg.weight ?? b.weight ?? b.grossWeight ?? b.gross_weight ?? "",
+      loadingAddress: seg.loadingAddress ?? b.loadingAddress ?? "",
+      volume: b.volume ?? seg.volume ?? "",
+      clientName: b.customerName ?? b.customer_name ?? b.clientName ?? b.client_name ?? "",
+      companyName: b.companyName ?? b.company_name ?? "",
+      contactPersonName: b.contactPersonName ?? b.contact_person_name ?? "",
+    };
+  })();
+
   if (isLoading) {
     return (
-      <div style={{ 
-        minHeight: "100vh", 
+      <div style={{
+        minHeight: "100vh",
         background: "#FFFFFF",
         display: "flex",
         alignItems: "center",
@@ -1534,7 +1377,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
   
   const pendingAmount = 0; // Removed pending amount logic
     
-  const containerCount = displayedExpense.containerNumbers?.length || 0;
+  const containerCount = displayedExpense.containerNumbers?.length || bookingShipment.containers.length || 0;
 
   const renderCategoryTable = (categoryName: string, items: LineItem[]) => {
     const categoryTotal = calculateCategoryTotal(items);
@@ -1547,7 +1390,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
     const computeVolumeAmount = (unitPrice: number | string, per: string | undefined, currency: string | undefined, multiplyByContainers?: boolean) => {
       const parsedPrice = parseFloat(String(unitPrice)) || 0;
       const currencyMultiplier = (currency === "USD" || currency === "RMB") ? exchangeRate : 1;
-      const containerMultiplier = (multiplyByContainers !== false) ? containerCount : 1;
+      const isPerBL = per === "BL";
+      const containerMultiplier = (!isPerBL && multiplyByContainers !== false) ? containerCount : 1;
       return parsedPrice * currencyMultiplier * containerMultiplier;
     };
 
@@ -1868,7 +1712,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                               <input
                                 type="number"
                                 step="0.01"
-                                value={item.amount}
+                                value={item.amount ?? ""}
                                 disabled={isLinked}
                                 onChange={(e) => {
                                   if (editedExpense?.charges && actualIndex !== -1) {
@@ -2085,15 +1929,14 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                 <input
                                   type="number"
                                   step="0.01"
-                                  value={item.unitPrice}
-                                  disabled={isLinked}
+                                  value={item.unitPrice ?? ""}
                                   onChange={(e) => {
                                     if (editedExpense?.charges && actualIndex !== -1) {
                                       const val = e.target.value;
                                       const updatedCharges = [...editedExpense.charges];
                                       const newAmount = computeVolumeAmount(val, updatedCharges[actualIndex].per, updatedCharges[actualIndex].currency, updatedCharges[actualIndex].multiplyByContainers);
-                                      updatedCharges[actualIndex] = { 
-                                        ...updatedCharges[actualIndex], 
+                                      updatedCharges[actualIndex] = {
+                                        ...updatedCharges[actualIndex],
                                         unitPrice: val,
                                         amount: newAmount
                                       };
@@ -2107,10 +1950,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     fontSize: "13px",
                                     border: "1px solid #E5E9F0",
                                     borderRadius: "4px",
-                                    background: isLinked ? "#F3F4F6" : "white",
+                                    background: "white",
                                     textAlign: "right",
-                                    color: isLinked ? "#6B7280" : "#0A1D4D",
-                                    cursor: isLinked ? "not-allowed" : "text"
+                                    color: "#0A1D4D",
+                                    cursor: "text"
                                   }}
                                 />
                                 <select
@@ -2145,16 +1988,26 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                 </select>
                                 <select
                                   value={item.per || "40"}
-                                  disabled={isLinked}
                                   onChange={(e) => {
                                     if (editedExpense?.charges && actualIndex !== -1) {
                                       const updatedCharges = [...editedExpense.charges];
                                       const newPer = e.target.value;
-                                      const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, newPer, updatedCharges[actualIndex].currency, updatedCharges[actualIndex].multiplyByContainers);
-                                      updatedCharges[actualIndex] = { 
-                                        ...updatedCharges[actualIndex], 
+                                      const current = updatedCharges[actualIndex];
+                                      // When linked to a voucher, derive unit price from the snapshot voucher total
+                                      // so PER 40 ↔ PER BL toggling stays consistent. Stays editable after.
+                                      let nextUnitPrice = current.unitPrice;
+                                      if (current.linkedVoucherAmount !== undefined) {
+                                        const containers = (current.multiplyByContainers !== false) ? Math.max(containerCount, 1) : 1;
+                                        nextUnitPrice = newPer === "BL"
+                                          ? current.linkedVoucherAmount
+                                          : current.linkedVoucherAmount / containers;
+                                      }
+                                      const newAmount = computeVolumeAmount(nextUnitPrice || 0, newPer, current.currency, current.multiplyByContainers);
+                                      updatedCharges[actualIndex] = {
+                                        ...current,
                                         per: newPer,
-                                        amount: newAmount
+                                        unitPrice: nextUnitPrice,
+                                        amount: newAmount,
                                       };
                                       setEditedExpense({ ...editedExpense, charges: updatedCharges });
                                     }
@@ -2165,9 +2018,9 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                                     fontSize: "11px",
                                     border: "1px solid #E5E9F0",
                                     borderRadius: "4px",
-                                    background: isLinked ? "#F3F4F6" : "white",
-                                    color: isLinked ? "#6B7280" : "#667085",
-                                    cursor: isLinked ? "not-allowed" : "pointer"
+                                    background: "white",
+                                    color: "#667085",
+                                    cursor: "pointer"
                                   }}
                                 >
                                   <option value="40">PER 40</option>
@@ -2268,16 +2121,18 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         >
                           {voucherNo || (isEditing ? "+ Link" : "—")}
                         </td>
-                        {/* Voucher Amount */}
-                        <td style={{ 
-                          padding: "12px 16px", 
-                          fontSize: "14px", 
-                          color: "#0A1D4D", 
-                          textAlign: "right", 
+                        {/* Voucher Amount — snapshot from the linked voucher; frozen until unlink */}
+                        <td style={{
+                          padding: "12px 16px",
+                          fontSize: "14px",
+                          color: "#0A1D4D",
+                          textAlign: "right",
                           fontWeight: voucherNo ? 600 : 400,
                           width: "130px"
                         }}>
-                          ₱{formatAmount(parseFloat(String(item.amount)) || 0)}
+                          {voucherNo
+                            ? `₱${formatAmount(item.linkedVoucherAmount ?? (parseFloat(String(item.amount)) || 0))}`
+                            : `₱${formatAmount(parseFloat(String(item.amount)) || 0)}`}
                         </td>
                         {isEditing && (
                           <td style={{ padding: "12px 16px", textAlign: "center" }}>
@@ -2388,7 +2243,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
       </div>
 
       {/* Tabs */}
-      {!embedded && (
+      {!embedded && expenseView === "form" && (
         <StandardTabs
           tabs={[
             { id: "overview", label: "Expenses Overview", icon: <FileText size={18} /> },
@@ -2416,11 +2271,69 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
         />
       )}
 
+      {/* Form / PDF view toggle — only on Expenses Overview tab (or in PDF mode) */}
+      {(expenseView === "pdf" || activeTab === "overview") && (
+        <DocumentViewToggle value={expenseView} onChange={setExpenseView} />
+      )}
+
+      {/* PDF View */}
+      {expenseView === "pdf" && expense && (
+        <DocumentPreviewShell settings={null}>
+          {expense.documentTemplate === "EXPORT" ? (
+            <ExportExpenseDocTemplate
+              data={{
+                expenseNumber: expense.expenseNumber,
+                expenseDate: expense.expenseDate,
+                clientShipper: bookingShipment.shipper || bookingShipment.companyName || bookingShipment.clientName,
+                vesselVoyage: bookingShipment.vesselVoyage,
+                destination: bookingShipment.destination,
+                commodity: bookingShipment.commodity,
+                blNumber: bookingShipment.blNumber,
+                containerNo: bookingShipment.containers.join(", "),
+                loadingAddress: bookingShipment.loadingAddress,
+                exchangeRate: expense.exchangeRate,
+                volume: bookingShipment.volume,
+                charges: expense.charges,
+                totalAmount: expense.amount,
+                billingAmount: expense.billing_amount,
+              }}
+              settings={expenseDocSettings}
+            />
+          ) : (
+            <ExpenseDocTemplate
+              data={{
+                expenseNumber: expense.expenseNumber,
+                expenseDate: expense.expenseDate,
+                documentTemplate: expense.documentTemplate,
+                vendor: expense.vendor,
+                blNumber: bookingShipment.blNumber,
+                containerNo: bookingShipment.containers.join(", "),
+                vesselVoyage: bookingShipment.vesselVoyage,
+                origin: bookingShipment.origin,
+                destination: bookingShipment.destination,
+                pod: bookingShipment.pod,
+                weight: bookingShipment.weight,
+                releasingDate: expense.releasingDate,
+                commodity: bookingShipment.commodity,
+                exchangeRate: expense.exchangeRate,
+                charges: expense.charges,
+                totalAmount: expense.amount,
+                preparedBy: (expense as any).preparedBy,
+                checkedBy: (expense as any).checkedBy,
+                approvedBy: (expense as any).approvedBy,
+              }}
+              settings={expenseDocSettings}
+            />
+          )}
+        </DocumentPreviewShell>
+      )}
+
       {/* Content */}
-      <div style={{ 
+      <div style={{
         background: "#F9FAFB",
         flex: 1,
-        overflow: "auto"
+        overflow: "auto",
+        display: expenseView === "pdf" ? "none" : undefined
       }}>
         <div style={{ display: (embedded || activeTab === "overview") ? undefined : "none", padding: "32px 48px" }}>
             <div>
@@ -2452,6 +2365,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                   <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>Link to Booking</div>
                   <BookingSelector
                     value={getBookingIds(editedExpense)[0] || ""}
+                    excludeLinked="expense"
                     onSelect={(booking) => {
                       if (!booking) {
                         setEditedExpense(prev => {
@@ -2461,13 +2375,9 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                         setBookings([]);
                         return;
                       }
-                      let updatedWeight = editedExpense?.weight;
-                      if (editedExpense?.documentTemplate === "IMPORT" && !updatedWeight) {
-                        updatedWeight = (booking as any).weight || (booking as any).grossWeight || (booking as any).gross_weight || "";
-                      }
                       setEditedExpense(prev => {
                         if (!prev) return prev;
-                        return { ...prev, bookingIds: [booking.id], linkedBookingIds: [booking.id], weight: updatedWeight };
+                        return { ...prev, bookingIds: [booking.id], linkedBookingIds: [booking.id] };
                       });
                       setBookings([booking as any]);
                     }}
@@ -2515,53 +2425,39 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.shipperConsignee || (bookings.length > 0 ? ((bookings[0] as any).companyName || (bookings[0] as any).company_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.consignee || bookingShipment.companyName || bookingShipment.clientName || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.client || (bookings.length > 0 ? ((bookings[0] as any).contactPersonName || (bookings[0] as any).contact_person_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName || bookingShipment.clientName || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Port of Destination (POD)</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.pod || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.pod || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.commodity || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.commodity || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.blNumber || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {(() => {
-                            const raw = expense?.containerNumbers;
-                            let containers: string[] = [];
-                            if (raw) {
-                              if (Array.isArray(raw)) containers = raw;
-                              else if (typeof raw === 'string') containers = (raw as string).split(',').map(s => s.trim()).filter(Boolean);
-                            } else if (expense?.containerNo) {
-                              containers = [expense.containerNo];
-                            }
-                            return containers.length > 0 ? containers.join(", ") : "—";
-                          })()}
-                        </div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containers.join(", ") : "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Weight</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {expense.weight || (bookings.length > 0 ? (bookings[0] as any).weight || (bookings[0] as any).grossWeight || (bookings[0] as any).gross_weight || "—" : "—")}
-                        </div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.weight || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel/Voyage</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.vesselVoyage || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.vesselVoyage || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.origin || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.origin || "—"}</div>
                       </div>
                     </div>
                   </>
@@ -2573,48 +2469,36 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.shipperConsignee || (bookings.length > 0 ? ((bookings[0] as any).companyName || (bookings[0] as any).company_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || expense.clientShipper || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.shipper || bookingShipment.companyName || bookingShipment.clientName || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.client || (bookings.length > 0 ? ((bookings[0] as any).contactPersonName || (bookings[0] as any).contact_person_name || (bookings[0] as any).customerName || (bookings[0] as any).customer_name || "") : "") || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName || bookingShipment.clientName || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel/Voyage</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.vesselVoyage || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.vesselVoyage || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Destination</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.destination || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.destination || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Commodity</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.commodity || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.commodity || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>B/L Number</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.blNumber || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.blNumber || "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {(() => {
-                            const raw = expense?.containerNumbers;
-                            let containers: string[] = [];
-                            if (raw) {
-                              if (Array.isArray(raw)) containers = raw;
-                              else if (typeof raw === 'string') containers = (raw as string).split(',').map(s => s.trim()).filter(Boolean);
-                            } else if (expense?.containerNo) {
-                              containers = [expense.containerNo];
-                            }
-                            return containers.length > 0 ? containers.join(", ") : "—";
-                          })()}
-                        </div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containers.join(", ") : "—"}</div>
                       </div>
                     </div>
                     <div>
                       <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingLoadingAddress || expense.loadingAddress || "—"}</div>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingLoadingAddress || bookingShipment.loadingAddress || "—"}</div>
                     </div>
                   </>
                 )}
@@ -2645,27 +2529,27 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
             <div style={{ padding: "20px 24px" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Date</div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Date</label>
                   {isEditing && editedExpense ? (
                     <NeuronDatePicker
                       value={editedExpense.expenseDate || ""}
                       onChange={(iso) => setEditedExpense({ ...editedExpense, expenseDate: iso })}
                     />
                   ) : (
-                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                    <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid var(--neuron-ui-border)", borderRadius: "6px", fontSize: "14px", color: expense.expenseDate ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
                       {formatDate(expense.expenseDate) || "—"}
                     </div>
                   )}
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Releasing Date</div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Releasing Date</label>
                   {isEditing && editedExpense ? (
                     <NeuronDatePicker
                       value={editedExpense.releasingDate || ""}
                       onChange={(iso) => setEditedExpense({ ...editedExpense, releasingDate: iso })}
                     />
                   ) : (
-                    <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                    <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid var(--neuron-ui-border)", borderRadius: "6px", fontSize: "14px", color: expense.releasingDate ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
                       {formatDate(expense.releasingDate) || "—"}
                     </div>
                   )}

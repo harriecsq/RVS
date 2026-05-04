@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
+import { CreditCard } from "lucide-react";
 import { SubTabRow } from "./SubTabRow";
-import { ExpensesTab } from "./ExpensesTab";
 import { ViewExpenseScreen } from "../../accounting/ViewExpenseScreen";
+import { CreateExpensePanel } from "../../accounting/CreateExpensePanel";
 import { BookingVouchersTab } from "./BookingVouchersTab";
-import { projectId, publicAnonKey } from "../../../utils/supabase/info";
+import { StandardLoadingState } from "../../design-system/StandardLoadingState";
+import { StandardEmptyState } from "../../design-system/StandardEmptyState";
+import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from '@/utils/api-config';
 
 interface ExpensesSubTabsProps {
@@ -20,27 +23,17 @@ interface ExpensesSubTabsProps {
   externalSaveCounter?: number;
 }
 
-interface ExpenseRecord {
-  id: string;
-  expenseNumber: string;
-  amount: number;
-  status: string;
-}
-
 /**
- * ExpensesSubTabs - Wraps the Expenses tab with nested sub-tabs:
- * - Expense Details: Shows the ExpensesTab list. When an expense is selected,
- *   shows the ViewExpenseScreen in embedded mode.
- * - Vouchers: Shows ALL vouchers linked to this booking (via BookingVouchersTab).
- *   Always visible regardless of whether an expense is selected.
+ * ExpensesSubTabs — one expense per booking.
+ *
+ * Resolves the booking's expense on mount and goes straight to ViewExpenseScreen.
+ * If none exists, shows an empty state with a Create action.
  */
 export function ExpensesSubTabs({
   bookingId,
   bookingNumber,
   projectId: bookingProjectId,
   projectNumber,
-  bookingType,
-  currentUser,
   externalEdit,
   onEditStateChange,
   onRecordSelected,
@@ -48,66 +41,73 @@ export function ExpensesSubTabs({
 }: ExpensesSubTabsProps) {
   const [activeSubTab, setActiveSubTab] = useState<"expense-details" | "vouchers">("expense-details");
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
-  const [selectedExpenseNumber, setSelectedExpenseNumber] = useState<string>("");
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [vouchersCount, setVouchersCount] = useState(0);
 
-  // Fetch expenses and vouchers count in parallel
-  useEffect(() => {
-    Promise.all([fetchExpenses(), fetchVouchersCount()]);
-  }, [bookingId]);
+  const resolveExpense = () => {
+    setIsLoading(true);
+    return fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((result) => {
+        const first = result?.success && Array.isArray(result.data) ? result.data[0] : null;
+        if (first) {
+          setSelectedExpenseId(first.id);
+          onRecordSelected?.(true);
+        } else {
+          setSelectedExpenseId(null);
+          onRecordSelected?.(false);
+        }
+      })
+      .catch((err) => console.error("Error fetching expense for booking:", err))
+      .finally(() => setIsLoading(false));
+  };
 
-  const fetchExpenses = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
+  const fetchVouchersCount = () => {
+    fetch(`${API_BASE_URL}/bookings/${bookingId}/vouchers`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((result) => {
+        if (result?.success && Array.isArray(result.data)) setVouchersCount(result.data.length);
+      })
+      .catch((err) => console.error("Error fetching vouchers count:", err));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    setSelectedExpenseId(null);
+    onRecordSelected?.(false);
+    Promise.all([
+      fetch(`${API_BASE_URL}/expenses?bookingId=${bookingId}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await response.json();
-      if (result.success) {
-        const data = result.data || [];
-        data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        setExpenses(data);
-        // Auto-select first expense if only one exists
-        if (result.data?.length === 1) {
-          setSelectedExpenseId(result.data[0].id);
-          setSelectedExpenseNumber(result.data[0].expenseNumber);
+      }).then((r) => r.json()).then((result) => {
+        if (cancelled) return;
+        const first = result?.success && Array.isArray(result.data) ? result.data[0] : null;
+        if (first) {
+          setSelectedExpenseId(first.id);
           onRecordSelected?.(true);
         }
-      }
-    } catch (error) {
-      console.error("Error fetching expenses for sub-tabs:", error);
-    }
-  };
-
-  const fetchVouchersCount = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/vouchers`, {
+      }).catch((err) => console.error("Error fetching expense for booking:", err)),
+      fetch(`${API_BASE_URL}/bookings/${bookingId}/vouchers`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await response.json();
-      if (result.success && Array.isArray(result.data)) {
-        setVouchersCount(result.data.length);
-      }
-    } catch (error) {
-      console.error("Error fetching vouchers count:", error);
-    }
+      }).then((r) => r.json()).then((result) => {
+        if (cancelled) return;
+        if (result?.success && Array.isArray(result.data)) setVouchersCount(result.data.length);
+      }).catch((err) => console.error("Error fetching vouchers count:", err)),
+    ]).finally(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [bookingId]);
+
+  const handleExpenseCreated = () => {
+    setShowCreatePanel(false);
+    resolveExpense();
+    fetchVouchersCount();
   };
 
-  const handleExpenseSelected = (expenseId: string, expenseNumber: string) => {
-    setSelectedExpenseId(expenseId);
-    setSelectedExpenseNumber(expenseNumber);
-    setActiveSubTab("expense-details");
-    onRecordSelected?.(true);
-  };
-
-  const handleBackToList = () => {
-    setSelectedExpenseId(null);
-    setSelectedExpenseNumber("");
-    setActiveSubTab("expense-details");
-    onRecordSelected?.(false);
-  };
-
-  // Build sub-tabs - Vouchers is always visible (shows all booking vouchers)
   const subTabs = [
     { id: "expense-details", label: "Expense Details" },
     { id: "vouchers", label: "Vouchers", badge: vouchersCount || undefined },
@@ -115,69 +115,34 @@ export function ExpensesSubTabs({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Sub-tab row */}
       <SubTabRow
         tabs={subTabs}
         activeTab={activeSubTab}
         onTabChange={(id) => setActiveSubTab(id as "expense-details" | "vouchers")}
       />
 
-      {/* Sub-tab content */}
       <div style={{ flex: 1, overflow: "auto" }}>
-        {activeSubTab === "expense-details" && !selectedExpenseId && (
-          <ExpensesTab
-            bookingId={bookingId}
-            bookingNumber={bookingNumber}
-            projectId={bookingProjectId}
-            projectNumber={projectNumber}
-            bookingType={bookingType}
-            currentUser={currentUser}
-            onExpenseSelect={handleExpenseSelected}
-          />
-        )}
-
-        {activeSubTab === "expense-details" && selectedExpenseId && (
-          <div style={{ position: "relative" }}>
-            {/* Back to list button */}
-            {expenses.length > 1 && (
-              <div style={{ padding: "12px 48px 0" }}>
-                <button
-                  onClick={handleBackToList}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "6px 12px",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    color: "#0F766E",
-                    background: "transparent",
-                    border: "1px solid #E5E9F0",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#F0FDF9";
-                    e.currentTarget.style.borderColor = "#0F766E";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.borderColor = "#E5E9F0";
-                  }}
-                >
-                  &larr; All Expenses
-                </button>
-              </div>
-            )}
-            <ViewExpenseScreen
-              expenseId={selectedExpenseId}
-              embedded={true}
-              externalEdit={externalEdit}
-              onEditStateChange={onEditStateChange}
-              externalSaveCounter={externalSaveCounter}
+        {activeSubTab === "expense-details" && (
+          isLoading ? (
+            <StandardLoadingState message="Loading expense..." />
+          ) : selectedExpenseId ? (
+            <div style={{ position: "relative" }}>
+              <ViewExpenseScreen
+                expenseId={selectedExpenseId}
+                embedded={true}
+                externalEdit={externalEdit}
+                onEditStateChange={onEditStateChange}
+                externalSaveCounter={externalSaveCounter}
+              />
+            </div>
+          ) : (
+            <StandardEmptyState
+              icon={<CreditCard size={48} />}
+              title="No expense yet"
+              description="Create an expense for this booking."
+              action={{ label: "Add expense", onClick: () => setShowCreatePanel(true) }}
             />
-          </div>
+          )
         )}
 
         {activeSubTab === "vouchers" && (
@@ -186,11 +151,22 @@ export function ExpensesSubTabs({
             bookingNumber={bookingNumber}
             onUpdate={() => {
               fetchVouchersCount();
-              fetchExpenses();
+              resolveExpense();
             }}
           />
         )}
       </div>
+
+      {showCreatePanel && (
+        <CreateExpensePanel
+          isOpen={showCreatePanel}
+          onClose={() => setShowCreatePanel(false)}
+          onSuccess={handleExpenseCreated}
+          prefillBookingId={bookingId}
+          prefillBookingNumber={bookingNumber}
+          prefillProjectNumber={projectNumber}
+        />
+      )}
     </div>
   );
 }

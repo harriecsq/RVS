@@ -8,6 +8,7 @@ import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildPackingListDefaults, applyTemplate } from "../../../utils/export-document-autofill";
 import type { PackingList, PackingListContainer, SalesContract } from "../../../types/export-documents";
+import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -88,16 +89,9 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
 
 // ── Metric dropdown (PayeeSelector-style with add-new) ──────────────
 
-const DEFAULT_METRICS = ["Sacks", "Bags", "Boxes", "Cartons", "Drums", "Pallets"];
-
 function MetricDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { options, addMetric } = usePackingMetrics();
   const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem("packing-list-metrics");
-      return saved ? JSON.parse(saved) : DEFAULT_METRICS;
-    } catch { return DEFAULT_METRICS; }
-  });
   const [searchQuery, setSearchQuery] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -110,12 +104,10 @@ function MetricDropdown({ value, onChange }: { value: string; onChange: (v: stri
   const exactMatch = options.some((o) => o.toLowerCase() === searchQuery.trim().toLowerCase());
   const canAdd = searchQuery.trim().length > 0 && !exactMatch;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const name = searchQuery.trim();
     if (!name) return;
-    const updated = [...options, name];
-    setOptions(updated);
-    localStorage.setItem("packing-list-metrics", JSON.stringify(updated));
+    await addMetric(name);
     onChange(name);
     setOpen(false);
     setSearchQuery("");
@@ -573,11 +565,16 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
       {/* Description of Goods */}
       <SectionCard title="Description of Goods">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-          {isEditing ? (
-            <FieldInput label="Volume" value={field("volume") || ""} onChange={(v) => setField("volume", v)} placeholder="e.g. 2x40'HC CONTAINER" />
-          ) : (
-            <FieldView label="Volume" value={field("volume") || ""} />
-          )}
+          <div>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Volume</label>
+            {isEditing ? (
+              <input value={field("volume") || ""} onChange={(e) => setField("volume", e.target.value)} placeholder="e.g. 2x40'HC" style={{ width: "100%", height: "42px", padding: "0 12px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+            ) : (
+              <div style={{ padding: "10px 14px", backgroundColor: field("volume") ? "#F9FAFB" : "white", border: field("volume") ? "1px solid #E5E9F0" : "2px dashed #E5E9F0", borderRadius: "6px", fontSize: "14px", color: field("volume") ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center", gap: "6px" }}>
+                {field("volume") ? <>{field("volume")} <span style={{ color: "#667085", fontSize: "12px" }}>CONTAINER</span></> : "e.g. 2x40'HC"}
+              </div>
+            )}
+          </div>
           {isEditing ? (
             <FieldInput label="Commodity" value={field("commodity") || ""} onChange={(v) => setField("commodity", v)} />
           ) : (

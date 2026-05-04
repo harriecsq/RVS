@@ -6,7 +6,7 @@ import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { CreateExportBookingPanel } from "./CreateExportBookingPanel";
 import { ExportBookingDetails, ExportBooking } from "./ExportBookingDetails";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
 import { getStatusSummary } from "../../utils/statusTags";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
@@ -16,7 +16,6 @@ import {
   StandardTable,
 } from "../design-system";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
-import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import type { ColumnDef } from "../design-system";
 
@@ -57,6 +56,7 @@ const EXPORT_STATUS_FILTER_OPTIONS = [
   "Awaiting Billing and Signed BL",
   "Request for Telex",
   "Form E Ongoing Process",
+  "Cancelled",
 ];
 
 function getBookingShipmentTags(booking: ExportBooking): string[] {
@@ -78,17 +78,16 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
         projectNumber: b.projectNumber || b.project_number,
         projectName: b.projectName || b.project_name,
       }));
-    list.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    list.sort((a: any, b: any) => String(b.bookingId || "").localeCompare(String(a.bookingId || ""), undefined, { numeric: true }));
     return list;
   }, [bookingsResult]);
   const fetchBookings = () => { invalidateCache("/bookings"); refetch(); };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string[]>([]);
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const clientsMasterList = useClientsMasterList();
   const [selectedBooking, setSelectedBooking] = useState<ExportBooking | null>(null);
@@ -107,7 +106,18 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     );
   }
 
-  const filteredBookings = bookings.filter(booking => {
+  const getExportMatchedStatusIndex = (shipmentTags: string[], bookingStatus: string | undefined): number => {
+    if (activeTab.length === 0) return -1;
+    for (let i = 0; i < activeTab.length; i++) {
+      const sel = activeTab[i];
+      const combos = LEGACY_EXPORT_STATUS_TO_TAGS[sel] || [];
+      const byTags = combos.length > 0 && combos.some((combo) => combo.every((tag) => shipmentTags.includes(tag)));
+      if (byTags || bookingStatus === sel) return i;
+    }
+    return -1;
+  };
+
+  const filteredBookingsRaw = bookings.filter(booking => {
     const shipmentTags = getBookingShipmentTags(booking);
     const shipmentStatusSummary = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : (booking.status || "");
     const matchesSearch =
@@ -124,25 +134,30 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
       if (dateFilterEnd && bookingISO > dateFilterEnd) return false;
     }
 
-    const filterTagCombos = LEGACY_EXPORT_STATUS_TO_TAGS[activeTab] || [];
-    const matchesStatusByTags =
-      filterTagCombos.length > 0 &&
-      filterTagCombos.some((combo) => combo.every((tag) => shipmentTags.includes(tag)));
-    const matchesStatus = activeTab === "all" || matchesStatusByTags || booking.status === activeTab;
-    if (!matchesStatus) return false;
+    if (activeTab.length > 0 && getExportMatchedStatusIndex(shipmentTags, booking.status) === -1) return false;
 
     if (portFilter.length > 0) {
       const bookingPort = (booking as any).origin || booking.pod || (booking as any).destination || "";
       if (!portFilter.some(p => bookingPort.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
-    if (companyFilter) {
-      if ((booking.customerName || "") !== companyFilter) return false;
-      if (clientFilter && ((booking as any).companyName || "") !== clientFilter) return false;
+    if (clientSelections.length > 0) {
+      if (!clientSelectionMatches(clientSelections, {
+        company: booking.customerName || "",
+        client: (booking as any).companyName || "",
+      })) return false;
     }
 
     return true;
   });
+
+  const filteredBookings = activeTab.length > 0
+    ? [...filteredBookingsRaw].sort((a, b) => {
+        const ai = getExportMatchedStatusIndex(getBookingShipmentTags(a), a.status);
+        const bi = getExportMatchedStatusIndex(getBookingShipmentTags(b), b.status);
+        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+      })
+    : filteredBookingsRaw;
 
   const columns: ColumnDef<ExportBooking>[] = [
     {
@@ -162,49 +177,40 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     {
       header: "Container #",
       cell: (booking) => {
-        const containers = booking.containerNo ? booking.containerNo.split(",").map((c: string) => c.trim()) : [];
-        const displayContainer = containers.length > 0 ? containers[0] : "—";
-        const extraContainers = containers.length > 1 ? ` +${containers.length - 1}` : "";
+        const containers = booking.containerNo ? booking.containerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : [];
+        if (containers.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
         return (
-          <div title={booking.containerNo} style={{ fontSize: "14px", color: "#0A1D4D" }}>
-            {displayContainer}{extraContainers}
+          <div style={{ fontSize: "14px", color: "#0A1D4D", display: "flex", flexDirection: "column", gap: "2px" }}>
+            {containers.map((c, i) => <div key={i}>{c}</div>)}
           </div>
         );
       },
     },
     {
       header: "Shipper / Client",
-      cell: (booking) => (
-        <>
-          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-            {booking.shipper || booking.customerName}
-          </div>
-          {booking.shipper && booking.customerName && booking.shipper !== booking.customerName && (
-            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{booking.customerName}</div>
-          )}
-          {(booking as any).companyName && booking.customerName !== (booking as any).companyName && (
-            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{(booking as any).companyName}</div>
-          )}
-        </>
-      ),
+      cell: (booking) => {
+        const lines = Array.from(new Set(
+          [booking.shipper, booking.customerName, (booking as any).companyName]
+            .map((v: any) => (v || "").trim())
+            .filter(Boolean)
+        ));
+        if (lines.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
+        const [primary, ...rest] = lines;
+        return (
+          <>
+            <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{primary}</div>
+            {rest.map((line, i) => (
+              <div key={i} style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{line}</div>
+            ))}
+          </>
+        );
+      },
     },
     {
-      header: "Route",
-      cell: (booking) => {
-        const segs = (booking as any).segments;
-        if (Array.isArray(segs) && segs.length > 1) {
-          const sorted = [...segs].sort((a: any, b: any) => (a.legOrder || 0) - (b.legOrder || 0));
-          const points = [sorted[0]?.origin, ...sorted.map((s: any) => s.destination || s.pod)].filter(Boolean);
-          const unique = [...new Set(points)];
-          return (
-            <div>
-              <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{unique.join(" → ") || "—"}</div>
-              <span style={{ fontSize: "11px", color: "#0F766E", fontWeight: 600 }}>{segs.length} legs</span>
-            </div>
-          );
-        }
-        return <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{booking.pod || booking.destination || "—"}</div>;
-      },
+      header: "Destination",
+      cell: (booking) => (
+        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{booking.pod || "—"}</div>
+      ),
     },
     {
       header: "Date",
@@ -284,13 +290,11 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
               />
             </div>
 
-            <FilterSingleDropdown
+            <MultiSelectPortalDropdown
               value={activeTab}
               onChange={setActiveTab}
-              options={[
-                { value: "all", label: "All Statuses" },
-                ...EXPORT_STATUS_FILTER_OPTIONS.map(s => ({ value: s, label: s })),
-              ]}
+              options={EXPORT_STATUS_FILTER_OPTIONS.map(s => ({ value: s, label: s }))}
+              placeholder="All Statuses"
             />
 
             <MultiSelectPortalDropdown
@@ -308,10 +312,8 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
 
             <CompanyClientFilter
               extraEntries={clientsMasterList}
-              selectedCompany={companyFilter}
-              selectedClient={clientFilter}
-              onCompanyChange={setCompanyFilter}
-              onClientChange={setClientFilter}
+              selected={clientSelections}
+              onChange={setClientSelections}
               placeholder="All Companies"
             />
           </div>
@@ -324,8 +326,8 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
             rowKey={(b) => b.bookingId}
             isLoading={isLoading}
             onRowClick={(b) => setSelectedBooking(b)}
-            emptyTitle={searchTerm || activeTab !== "all" ? "No bookings match your filters" : "No export bookings yet"}
-            emptyDescription={searchTerm || activeTab !== "all" ? undefined : "Create your first booking to get started"}
+            emptyTitle={searchTerm || activeTab.length > 0 ? "No bookings match your filters" : "No export bookings yet"}
+            emptyDescription={searchTerm || activeTab.length > 0 ? undefined : "Create your first booking to get started"}
             emptyIcon={<Package size={24} />}
           />
         </div>

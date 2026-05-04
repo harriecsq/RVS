@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, MoreVertical, Lock, ChevronRight, Trash2, Plus, ChevronDown } from "lucide-react";
-import type { BrokerageBooking, ExecutionStatus } from "../../types/operations";
+import type { BrokerageBooking } from "../../types/operations";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
 import { ExpensesSubTabs } from "./shared/ExpensesSubTabs";
 import { TruckingTab } from "./shared/TruckingTab";
@@ -26,6 +27,9 @@ import { getTagByKey } from "../../utils/statusTags";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import type { TagHistoryEntry } from "../../types/operations";
 import { API_BASE_URL } from '@/utils/api-config';
+import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
+import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
+import { ImportJobOrderTemplate } from "../shared/document-preview/templates/ImportJobOrderTemplate";
 
 interface BrokerageBookingDetailsProps {
   booking: BrokerageBooking;
@@ -36,28 +40,15 @@ interface BrokerageBookingDetailsProps {
 
 type DetailTab = "booking-info" | "trucking" | "billings" | "expenses" | "attachments";
 
-const STATUS_COLORS: Record<ExecutionStatus, string> = {
-  "Draft": "bg-gray-100 text-gray-700 border-gray-300",
-  "For Approval": "bg-amber-50 text-amber-700 border-amber-300",
-  "Approved": "bg-emerald-50 text-emerald-700 border-emerald-300",
-  "In Transit": "bg-blue-50 text-blue-700 border-blue-300",
-  "Delivered": "bg-[#0F766E]/10 text-[#0F766E] border-[#0F766E]/30",
-  "Completed": "bg-emerald-50 text-emerald-700 border-emerald-300",
-  "On Hold": "bg-orange-50 text-orange-700 border-orange-300",
-  "Cancelled": "bg-red-50 text-red-700 border-red-300",
-};
-
 // Activity Timeline Data Structure
 interface ActivityLogEntry {
   id: string;
   timestamp: Date;
   user: string;
-  action: "field_updated" | "status_changed" | "created" | "note_added";
+  action: "field_updated" | "created" | "note_added";
   fieldName?: string;
   oldValue?: string;
   newValue?: string;
-  statusFrom?: ExecutionStatus;
-  statusTo?: ExecutionStatus;
   note?: string;
 }
 
@@ -70,13 +61,6 @@ const initialActivityLog: ActivityLogEntry[] = [
     action: "created"
   },
 ];
-
-// Field locking rules based on status
-// NOTE: All fields are now editable regardless of status since changes are tracked in activity log
-function isFieldLocked(fieldName: string, status: ExecutionStatus): { locked: boolean; reason: string } {
-  // All fields are editable - changes will be tracked in the activity log
-  return { locked: false, reason: "" };
-}
 
 const validateDate = (dateStr: string): boolean => {
   if (dateStr.length !== 10) return false;
@@ -164,6 +148,9 @@ export function BrokerageBookingDetails({
   const [isSaving, setIsSaving] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [bookingView, setBookingView] = useState<"form" | "pdf">("form");
+  const [pdfTruckingRecords, setPdfTruckingRecords] = useState<any[]>([]);
+  const [pdfBillingNumbers, setPdfBillingNumbers] = useState<string[]>([]);
 
   // Milestones edit state
   const milestonesRef = useRef<ShipmentMilestonesTabHandle>(null);
@@ -270,49 +257,60 @@ export function BrokerageBookingDetails({
     }
   };
 
-  const handleShipmentTagsChange = async (newTags: string[]) => {
-    const previousTags = shipmentTags;
-    const previousHistory = tagHistory;
-    setShipmentTags(newTags);
-    setIsTagsSaving(true);
+  const pendingTagsRef = useRef<string[]>(shipmentTags);
+  const tagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tagSaveBaseRef = useRef<string[]>(shipmentTags);
 
+  const flushTagSave = useCallback(async (tagsToSave: string[], revertTags: string[], revertHistory: typeof tagHistory) => {
+    setIsTagsSaving(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-tags`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify({
-            shipmentTags: newTags,
-            user: currentUser?.name || "Unknown",
-          }),
-        },
-      );
+      const isLegacy = !(booking as any).booking_type;
+      const endpoint = isLegacy
+        ? `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-tags`
+        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-tags`;
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ shipmentTags: tagsToSave, user: currentUser?.name || "Unknown" }),
+      });
       const result = await response.json();
       if (result.success && result.data) {
         const updated = result.data as BrokerageBooking;
         setCurrentBooking(updated);
         setEditedBooking(updated);
-        setShipmentTags(Array.isArray((updated as any).shipmentTags) ? (updated as any).shipmentTags : []);
+        const saved = Array.isArray((updated as any).shipmentTags) ? (updated as any).shipmentTags : [];
+        setShipmentTags(saved);
+        tagSaveBaseRef.current = saved;
+        pendingTagsRef.current = saved;
         setTagHistory(Array.isArray((updated as any).tagHistory) ? (updated as any).tagHistory : []);
         onBookingUpdated();
       } else {
-        setShipmentTags(previousTags);
-        setTagHistory(previousHistory);
+        setShipmentTags(revertTags);
+        pendingTagsRef.current = revertTags;
+        setTagHistory(revertHistory);
         toast.error(`Failed to update status: ${result.error || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error updating shipment tags:", error);
-      setShipmentTags(previousTags);
-      setTagHistory(previousHistory);
+      setShipmentTags(revertTags);
+      pendingTagsRef.current = revertTags;
+      setTagHistory(revertHistory);
       toast.error("Unable to update status");
     } finally {
       setIsTagsSaving(false);
     }
-  };
+  }, [booking, currentBooking.bookingId, currentUser, onBookingUpdated, tagHistory]);
+
+  const handleShipmentTagsChange = useCallback((newTags: string[]) => {
+    pendingTagsRef.current = newTags;
+    setShipmentTags(newTags);
+    const revertTags = tagSaveBaseRef.current;
+    const revertHistory = tagHistory;
+    if (tagDebounceRef.current) clearTimeout(tagDebounceRef.current);
+    tagDebounceRef.current = setTimeout(() => {
+      flushTagSave(pendingTagsRef.current, revertTags, revertHistory);
+    }, 400);
+  }, [flushTagSave, tagHistory]);
 
 
 
@@ -533,6 +531,29 @@ export function BrokerageBookingDetails({
     }
   };
 
+  const viewToggle = (
+    <DocumentViewToggle
+      value={bookingView}
+      onChange={(v) => {
+        setBookingView(v);
+        if (v === "pdf") {
+          fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${currentBooking.bookingId}`, {
+            headers: { Authorization: `Bearer ${publicAnonKey}` },
+          })
+            .then((r) => r.json())
+            .then((result) => { if (result.success && Array.isArray(result.data)) setPdfTruckingRecords(result.data); })
+            .catch(() => {});
+          fetch(`${API_BASE_URL}/billings?bookingId=${currentBooking.bookingId}`, {
+            headers: { Authorization: `Bearer ${publicAnonKey}` },
+          })
+            .then((r) => r.json())
+            .then((result) => { if (result.success && Array.isArray(result.data)) setPdfBillingNumbers(result.data.map((b: any) => b.billingNumber).filter(Boolean)); })
+            .catch(() => {});
+        }
+      }}
+    />
+  );
+
   return (
     <div style={{
       backgroundColor: "#F9FAFB",
@@ -612,7 +633,7 @@ export function BrokerageBookingDetails({
 
         {/* Shipment Status Tags — editable, aligned with trucking's tag set */}
         <StatusTagBar
-          bookingType="trucking"
+          bookingType="import"
           shipmentTags={shipmentTags}
           operationalTags={[]}
           onShipmentTagsChange={handleShipmentTagsChange}
@@ -621,6 +642,7 @@ export function BrokerageBookingDetails({
       </div>
 
       {/* Tabs */}
+      {bookingView === "form" && (
       <div style={{
         padding: "0 48px",
         borderBottom: "1px solid #E5E9F0",
@@ -660,12 +682,78 @@ export function BrokerageBookingDetails({
           }
         />
       </div>
+      )}
+
+      {/* Form / PDF view toggle — visible above PDF preview when in PDF mode */}
+      {bookingView === "pdf" && viewToggle}
+
+      {/* PDF View */}
+      {bookingView === "pdf" && (() => {
+        const uniqueVendors = [...new Set(pdfTruckingRecords.map((r) => r.truckingVendor).filter(Boolean))];
+        const uniqueRates = [...new Set(pdfTruckingRecords.map((r) => r.truckingRate).filter(Boolean))];
+        const truckingDisplay = uniqueVendors.join(", ");
+        const truckingRateDisplay = uniqueRates.join(", ");
+        const evMap: Record<string, string> = {};
+        const baseEvents: ShipmentEvent[] = (currentBooking as any).shipmentEvents || [];
+        for (const ev of baseEvents) {
+          if (ev?.event) evMap[ev.event] = ev.dateTime || "";
+        }
+        // Fallbacks from booking fields if not in shipmentEvents
+        if (!evMap["eta"] && currentBooking.eta) evMap["eta"] = currentBooking.eta;
+        if (!evMap["ata"] && currentBooking.ata) evMap["ata"] = currentBooking.ata;
+        if (!evMap["storage-begins"] && (currentBooking as any).storageBegins) evMap["storage-begins"] = (currentBooking as any).storageBegins;
+        if (!evMap["dem-begins"] && (currentBooking as any).demBegins) evMap["dem-begins"] = (currentBooking as any).demBegins;
+        return (
+          <DocumentPreviewShell settings={null}>
+            <ImportJobOrderTemplate
+              data={{
+                bookingId: currentBooking.bookingId,
+                voucherNo: (currentBooking as any).voucherNo,
+                consignee: currentBooking.consignee || currentBooking.customerName,
+                rcvdBilling: evMap["rcvd-billing"],
+                shippingLine: currentBooking.shippingLine,
+                vesselVoyage: currentBooking.vesselVoyage,
+                blNumber: currentBooking.blNumber,
+                polPod: [currentBooking.origin, currentBooking.pod || currentBooking.destination].filter(Boolean).join(" / "),
+                commodity: currentBooking.commodity,
+                volume: currentBooking.volume,
+                containerNo: currentBooking.containerNo,
+                registryNo: (currentBooking as any).registryNo,
+                entryNo: currentBooking.entryNumber,
+                eta: evMap["eta"],
+                ata: evMap["ata"],
+                section: currentBooking.section,
+                ot: (currentBooking as any).ot,
+                dischargedDate: evMap["discharged"],
+                stowage: (currentBooking as any).stowage,
+                storageBegin: evMap["storage-begins"],
+                demurrageBegin: evMap["dem-begins"],
+                arrastre: evMap["arrastre"],
+                gatepass: evMap["ready-gatepass"] || (currentBooking as any).gatepass,
+                selectivity: (currentBooking as any).selectivity,
+                finalTaxNavValue: (currentBooking as any).finalTaxNavValue,
+                ticket: (currentBooking as any).ticket,
+                trucking: truckingDisplay || (currentBooking as any).truckingCompany,
+                truckingRates: truckingRateDisplay || (currentBooking as any).truckingRates,
+                delivered: evMap["delivered"],
+                returned: evMap["returned"],
+                soaNo: pdfBillingNumbers.join(", ") || (currentBooking as any).soaNo,
+                draftDocs: evMap["draft"],
+                signedDocs: evMap["signed"],
+                final: evMap["final"],
+                forDebit: evMap["for-debit"],
+                debited: evMap["debited"],
+              }}
+            />
+          </DocumentPreviewShell>
+        );
+      })()}
 
       {/* Content with Timeline Sidebar */}
-      <div style={{ 
+      <div style={{
         flex: 1,
         overflow: "hidden",
-        display: "flex"
+        display: bookingView === "pdf" ? "none" : "flex"
       }}>
         {/* Main Content */}
         <div style={{ 
@@ -692,6 +780,7 @@ export function BrokerageBookingDetails({
                   setActiveBookingSubTab(id as "booking-details" | "shipment-milestones");
                 }}
               />
+              {viewToggle}
               <div style={{ flex: 1, overflow: "auto" }}>
                 {activeBookingSubTab === "booking-details" && (
                   <BookingInformationTab
@@ -766,7 +855,10 @@ export function BrokerageBookingDetails({
               bookingType="brokerage"
               currentUser={currentUser}
               externalEdit={activeTab === "expenses" ? subTabEditRequest : undefined}
-              onEditStateChange={(editing: boolean) => setSubTabEditing(editing)}
+              onEditStateChange={(editing: boolean) => {
+                setSubTabEditing(editing);
+                if (!editing) setSubTabEditRequest(false);
+              }}
               onRecordSelected={(has: boolean) => setSubTabHasRecord((prev: Record<string, boolean>) => ({ ...prev, expenses: has }))}
               externalSaveCounter={activeTab === "expenses" ? subTabSaveCounter : undefined}
             />
@@ -897,8 +989,7 @@ function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
                 width: "16px",
                 height: "16px",
                 borderRadius: "50%",
-                backgroundColor: activity.action === "status_changed" ? "#0F766E" :
-                               activity.action === "created" ? "#6B7280" :
+                backgroundColor: activity.action === "created" ? "#6B7280" :
                                activity.action === "field_updated" ? "#3B82F6" : "#F59E0B",
                 border: "3px solid #FAFBFC"
               }} />
@@ -1026,27 +1117,24 @@ interface EditableFieldProps {
   options?: string[];
   required?: boolean;
   placeholder?: string;
-  status: ExecutionStatus;
   isEditing?: boolean;
   editData?: Partial<BrokerageBooking>;
   setEditData?: (data: Partial<BrokerageBooking>) => void;
 }
 
-function EditableField({ 
+function EditableField({
   fieldName,
-  label, 
-  value, 
-  type = "text", 
+  label,
+  value,
+  type = "text",
   options = [],
   required = false,
   placeholder = "—",
-  status,
   isEditing = false,
   editData = {},
   setEditData
 }: EditableFieldProps) {
-  const lockStatus = isFieldLocked(fieldName, status);
-  
+
   // Helper to ensure date is YYYY-MM-DD for input fields
   const toInputDate = (dateVal: string | Date | undefined | null): string => {
     if (!dateVal) return "";
@@ -1095,38 +1183,6 @@ function EditableField({
       setEditData({ ...editData, [fieldName]: newValue });
     }
   };
-
-  // If field is locked by status, show as locked field
-  if (lockStatus.locked) {
-    return (
-      <div>
-        <label style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          fontSize: "13px",
-          fontWeight: 500,
-          color: "var(--neuron-ink-base)",
-          marginBottom: "8px"
-        }}>
-          {label}
-          {required && <span style={{ color: "#EF4444" }}>*</span>}
-          <Lock size={12} color="#9CA3AF" title={lockStatus.reason} style={{ cursor: "help" }} />
-        </label>
-        <div style={{
-          padding: "10px 14px",
-          backgroundColor: "#F9FAFB",
-          border: "1px solid #E5E9F0",
-          borderRadius: "6px",
-          fontSize: "14px",
-          color: "#6B7280",
-          cursor: "not-allowed"
-        }}>
-          {type === "date" ? toDisplayDate(displayValue) : (displayValue || "—")}
-        </div>
-      </div>
-    );
-  }
 
   // View mode (not editing)
   if (!isEditing) {
@@ -1256,11 +1312,88 @@ function EditableField({
 
 const PORT_OPTIONS = ["Manila North", "Manila South", "CDO", "Iloilo", "Davao"];
 
+// Shared portal dropdown list — renders at document.body to escape overflow:hidden containers
+function PortalDropdownList({
+  anchorRef,
+  open,
+  onClose,
+  children,
+  width,
+}: {
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  width?: number | string;
+}) {
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; openUp: boolean }>({ top: 0, left: 0, width: 0, openUp: false });
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const updatePos = useCallback(() => {
+    if (!anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    const viewH = window.innerHeight;
+    const spaceBelow = viewH - rect.bottom;
+    const openUp = spaceBelow < 320 && rect.top > spaceBelow;
+    setPos({
+      top: openUp ? rect.top + window.scrollY : rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX,
+      width: typeof width === "number" ? width : rect.width,
+      openUp,
+    });
+  }, [anchorRef, width]);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open, updatePos]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!anchorRef.current?.contains(target) && !listRef.current?.contains(target)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open, anchorRef, onClose]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      ref={listRef}
+      style={{
+        position: "absolute",
+        top: pos.top,
+        transform: pos.openUp ? "translateY(calc(-100% - 8px))" : undefined,
+        left: pos.left,
+        width: pos.width,
+        zIndex: 99999,
+        background: "white",
+        border: "1.5px solid #E5E9F0",
+        borderRadius: "8px",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+        maxHeight: "300px",
+        overflowY: "auto",
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 function PodSelectField({
   label,
   value,
   placeholder = "—",
-  status,
   isEditing = false,
   editData = {},
   setEditData,
@@ -1268,13 +1401,12 @@ function PodSelectField({
   label: string;
   value: string;
   placeholder?: string;
-  status: ExecutionStatus | string;
   isEditing?: boolean;
   editData?: Partial<BrokerageBooking>;
   setEditData?: (data: Partial<BrokerageBooking>) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const lockStatus = isFieldLocked("pod", status as ExecutionStatus);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const rawValue =
     (editData as any).pod !== undefined ? String((editData as any).pod || "") : value;
   const isEmpty = !rawValue || rawValue.trim() === "";
@@ -1282,20 +1414,6 @@ function PodSelectField({
   const handleChange = (newValue: string) => {
     if (setEditData) setEditData({ ...editData, pod: newValue } as any);
   };
-
-  if (lockStatus.locked) {
-    return (
-      <div>
-        <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
-          {label}
-          <Lock size={12} color="#9CA3AF" title={lockStatus.reason} style={{ cursor: "help" }} />
-        </label>
-        <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: "#6B7280", cursor: "not-allowed" }}>
-          {rawValue || "—"}
-        </div>
-      </div>
-    );
-  }
 
   if (!isEditing) {
     return (
@@ -1317,29 +1435,26 @@ function PodSelectField({
       </label>
       <div style={{ position: "relative" }}>
         <div
+          ref={anchorRef}
           onClick={() => setOpen(!open)}
-          onBlur={() => setTimeout(() => setOpen(false), 200)}
-          tabIndex={0}
           style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box" }}
         >
           {rawValue || "Select POD"}
           <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
         </div>
-        {open && (
-          <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "white", border: "1px solid #E5E9F0", borderRadius: "8px", zIndex: 9999, maxHeight: "300px", overflowY: "auto" }}>
-            {PORT_OPTIONS.map((option, index) => (
-              <div
-                key={option}
-                onClick={() => { handleChange(option); setOpen(false); }}
-                style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease" }}
-                onMouseEnter={(e) => { if (rawValue !== option) e.currentTarget.style.background = "#F9FAFB"; }}
-                onMouseLeave={(e) => { if (rawValue !== option) e.currentTarget.style.background = "transparent"; }}
-              >
-                {option}
-              </div>
-            ))}
-          </div>
-        )}
+        <PortalDropdownList anchorRef={anchorRef} open={open} onClose={() => setOpen(false)}>
+          {PORT_OPTIONS.map((option, index) => (
+            <div
+              key={option}
+              onMouseDown={(e) => { e.preventDefault(); handleChange(option); setOpen(false); }}
+              style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease" }}
+              onMouseEnter={(e) => { if (rawValue !== option) e.currentTarget.style.background = "#F9FAFB"; }}
+              onMouseLeave={(e) => { if (rawValue !== option) e.currentTarget.style.background = "transparent"; }}
+            >
+              {option}
+            </div>
+          ))}
+        </PortalDropdownList>
       </div>
     </div>
   );
@@ -1349,7 +1464,6 @@ function ContainerListField({
   fieldName,
   label,
   value, // Comma separated string or array
-  status,
   isEditing,
   editData,
   setEditData
@@ -1578,6 +1692,11 @@ function BookingInformationTab({
   const [showSectionDD, setShowSectionDD] = useState(false);
   const [sectionSearch, setSectionSearch] = useState("");
   const [shippingLineSearch, setShippingLineSearch] = useState("");
+
+  // Anchor refs for portal dropdowns
+  const ddAnchorRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const ddAnchorRef = (name: string) => (el: HTMLDivElement | null) => { ddAnchorRefs.current[name] = el; };
+  const getAnchorRef = (name: string): React.RefObject<HTMLDivElement | null> => ({ current: ddAnchorRefs.current[name] ?? null });
 
   // Date+Time split states for ETA, ATA, Discharged, Storage Begins, DEM Begins, RCVD
   const splitDateTime = (val: string | undefined): { date: string; time: string } => {
@@ -1825,9 +1944,8 @@ function BookingInformationTab({
         </label>
         <div style={{ position: "relative" }}>
           <div
+            ref={ddAnchorRef(fieldName)}
             onClick={() => setIsOpenState(!isOpenState)}
-            onBlur={() => setTimeout(() => setIsOpenState(false), 200)}
-            tabIndex={0}
             style={{
               width: "100%",
               padding: "10px 14px",
@@ -1848,77 +1966,66 @@ function BookingInformationTab({
             {renderOption && currentVal ? renderOption(currentVal) : (currentVal || `Select ${label.toLowerCase()}...`)}
             <ChevronDown size={16} color="#667085" style={{ transform: isOpenState ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
           </div>
-          {isOpenState && (
-            <div style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              right: 0,
-              background: "white",
-              border: "1.5px solid #E5E9F0",
-              borderRadius: "8px",
-              zIndex: 50,
-              maxHeight: "300px",
-              overflowY: "auto"
-            }}>
-              {searchable && setSearchValue && (
-                <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
-                  <input
-                    type="text"
-                    value={searchValue || ""}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="Search..."
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      width: "100%",
-                      padding: "8px 12px",
-                      fontSize: "13px",
-                      border: "1px solid #E5E9F0",
-                      borderRadius: "6px",
-                      outline: "none",
-                      color: "#111827",
-                      backgroundColor: "#F9FAFB"
-                    }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
-                  />
-                </div>
-              )}
-              {filteredOptions.map((option, index) => (
-                <div
-                  key={option}
-                  onClick={() => {
-                    setEditData({ ...editData, [fieldName]: option } as any);
-                    setIsOpenState(false);
-                    if (setSearchValue) setSearchValue("");
-                  }}
+          <PortalDropdownList anchorRef={getAnchorRef(fieldName)} open={isOpenState} onClose={() => setIsOpenState(false)}>
+            {searchable && setSearchValue && (
+              <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white", zIndex: 1 }}>
+                <input
+                  type="text"
+                  value={searchValue || ""}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  placeholder="Search..."
+                  autoFocus
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   style={{
-                    padding: "10px 14px",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: "pointer",
+                    width: "100%",
+                    padding: "8px 12px",
+                    fontSize: "13px",
+                    border: "1px solid #E5E9F0",
+                    borderRadius: "6px",
+                    outline: "none",
                     color: "#111827",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    background: currentVal === option ? "#F0FDF4" : "transparent",
-                    borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
-                    transition: "all 0.15s ease"
+                    backgroundColor: "#F9FAFB"
                   }}
-                  onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
-                  onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
-                >
-                  {renderOption ? renderOption(option) : option}
-                </div>
-              ))}
-              {searchable && filteredOptions.length === 0 && (
-                <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>
-                  No results found
-                </div>
-              )}
-            </div>
-          )}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                />
+              </div>
+            )}
+            {filteredOptions.map((option, index) => (
+              <div
+                key={option}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setEditData({ ...editData, [fieldName]: option } as any);
+                  setIsOpenState(false);
+                  if (setSearchValue) setSearchValue("");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  color: "#111827",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  background: currentVal === option ? "#F0FDF4" : "transparent",
+                  borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
+                  transition: "all 0.15s ease"
+                }}
+                onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
+                onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
+              >
+                {renderOption ? renderOption(option) : option}
+              </div>
+            ))}
+            {searchable && filteredOptions.length === 0 && (
+              <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>
+                No results found
+              </div>
+            )}
+          </PortalDropdownList>
         </div>
       </div>
     );
@@ -1973,9 +2080,8 @@ function BookingInformationTab({
         </label>
         <div style={{ position: "relative" }}>
           <div
+            ref={ddAnchorRef("section")}
             onClick={() => setShowSectionDD(!showSectionDD)}
-            onBlur={() => setTimeout(() => setShowSectionDD(false), 200)}
-            tabIndex={0}
             style={{
               width: "100%",
               padding: "10px 14px",
@@ -1996,78 +2102,63 @@ function BookingInformationTab({
             {currentVal || "Select section..."}
             <ChevronDown size={16} color="#667085" style={{ transform: showSectionDD ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
           </div>
-          {showSectionDD && (
-            <div style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              right: 0,
-              background: "white",
-              border: "1.5px solid #E5E9F0",
-              borderRadius: "8px",
-              zIndex: 50,
-              maxHeight: "300px",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}>
-              <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0" }}>
-                <input
-                  type="text"
-                  value={sectionSearch}
-                  onChange={(e) => setSectionSearch(e.target.value)}
-                  placeholder="Search section..."
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    width: "100%",
-                    padding: "8px 10px",
-                    fontSize: "13px",
-                    border: "1px solid #E5E9F0",
-                    borderRadius: "6px",
-                    outline: "none",
-                    color: "#111827",
-                  }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
-                />
-              </div>
-              <div style={{ overflowY: "auto", maxHeight: "240px" }}>
-                {filtered.map((option, index) => (
-                  <div
-                    key={option}
-                    onClick={() => {
-                      setEditData({ ...editData, section: option } as any);
-                      setShowSectionDD(false);
-                      setSectionSearch("");
-                    }}
-                    style={{
-                      padding: "10px 14px",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: "#111827",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      background: currentVal === option ? "#F0FDF4" : "transparent",
-                      borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
-                      transition: "all 0.15s ease"
-                    }}
-                    onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
-                    onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
-                  >
-                    {option}
-                  </div>
-                ))}
-                {filtered.length === 0 && (
-                  <div style={{ padding: "10px 14px", fontSize: "13px", color: "#9CA3AF" }}>
-                    No matching sections
-                  </div>
-                )}
-              </div>
+          <PortalDropdownList anchorRef={getAnchorRef("section")} open={showSectionDD} onClose={() => { setShowSectionDD(false); setSectionSearch(""); }}>
+            <div style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", position: "sticky", top: 0, background: "white" }}>
+              <input
+                type="text"
+                value={sectionSearch}
+                onChange={(e) => setSectionSearch(e.target.value)}
+                placeholder="Search section..."
+                autoFocus
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  fontSize: "13px",
+                  border: "1px solid #E5E9F0",
+                  borderRadius: "6px",
+                  outline: "none",
+                  color: "#111827",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+              />
             </div>
-          )}
+            {filtered.map((option, index) => (
+              <div
+                key={option}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setEditData({ ...editData, section: option } as any);
+                  setShowSectionDD(false);
+                  setSectionSearch("");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  color: "#111827",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  background: currentVal === option ? "#F0FDF4" : "transparent",
+                  borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
+                  transition: "all 0.15s ease"
+                }}
+                onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
+                onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
+              >
+                {option}
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <div style={{ padding: "10px 14px", fontSize: "13px", color: "#9CA3AF" }}>
+                No matching sections
+              </div>
+            )}
+          </PortalDropdownList>
         </div>
       </div>
     );
@@ -2169,9 +2260,8 @@ function BookingInformationTab({
           />
           <div style={{ position: "relative", width: "80px" }}>
             <div
+              ref={ddAnchorRef("grossWeightUnit")}
               onClick={() => setShowGrossWeightUnitDD(!showGrossWeightUnitDD)}
-              onBlur={() => setTimeout(() => setShowGrossWeightUnitDD(false), 200)}
-              tabIndex={0}
               style={{
                 padding: "10px 8px",
                 fontSize: "14px",
@@ -2191,41 +2281,31 @@ function BookingInformationTab({
               {parsed.unit}
               <ChevronDown size={14} color="#667085" style={{ transform: showGrossWeightUnitDD ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
             </div>
-            {showGrossWeightUnitDD && (
-              <div style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                right: 0,
-                background: "white",
-                border: "1.5px solid #E5E9F0",
-                borderRadius: "8px",
-                  zIndex: 50
-              }}>
-                {GROSS_WEIGHT_UNITS.map((unit, index) => (
-                  <div
-                    key={unit}
-                    onClick={() => {
-                      setEditData({ ...editData, grossWeight: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
-                      setShowGrossWeightUnitDD(false);
-                    }}
-                    style={{
-                      padding: "8px 10px",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: "#111827",
-                      background: parsed.unit === unit ? "#F0FDF4" : "transparent",
-                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
-                    }}
-                    onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
-                    onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
-                  >
-                    {unit}
-                  </div>
-                ))}
-              </div>
-            )}
+            <PortalDropdownList anchorRef={getAnchorRef("grossWeightUnit")} open={showGrossWeightUnitDD} onClose={() => setShowGrossWeightUnitDD(false)} width={80}>
+              {GROSS_WEIGHT_UNITS.map((unit, index) => (
+                <div
+                  key={unit}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setEditData({ ...editData, grossWeight: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
+                    setShowGrossWeightUnitDD(false);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    color: "#111827",
+                    background: parsed.unit === unit ? "#F0FDF4" : "transparent",
+                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
+                  }}
+                  onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
+                  onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
+                >
+                  {unit}
+                </div>
+              ))}
+            </PortalDropdownList>
           </div>
         </div>
       </div>
@@ -2296,9 +2376,8 @@ function BookingInformationTab({
           />
           <div style={{ position: "relative", width: "80px" }}>
             <div
+              ref={ddAnchorRef("stowageUnit")}
               onClick={() => setShowStowageUnitDD(!showStowageUnitDD)}
-              onBlur={() => setTimeout(() => setShowStowageUnitDD(false), 200)}
-              tabIndex={0}
               style={{
                 padding: "10px 8px",
                 fontSize: "14px",
@@ -2318,41 +2397,31 @@ function BookingInformationTab({
               {parsed.unit}
               <ChevronDown size={14} color="#667085" style={{ transform: showStowageUnitDD ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
             </div>
-            {showStowageUnitDD && (
-              <div style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                right: 0,
-                background: "white",
-                border: "1.5px solid #E5E9F0",
-                borderRadius: "8px",
-                  zIndex: 50
-              }}>
-                {GROSS_WEIGHT_UNITS.map((unit, index) => (
-                  <div
-                    key={unit}
-                    onClick={() => {
-                      setEditData({ ...editData, stowage: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
-                      setShowStowageUnitDD(false);
-                    }}
-                    style={{
-                      padding: "8px 10px",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: "#111827",
-                      background: parsed.unit === unit ? "#F0FDF4" : "transparent",
-                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
-                    }}
-                    onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
-                    onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
-                  >
-                    {unit}
-                  </div>
-                ))}
-              </div>
-            )}
+            <PortalDropdownList anchorRef={getAnchorRef("stowageUnit")} open={showStowageUnitDD} onClose={() => setShowStowageUnitDD(false)} width={80}>
+              {GROSS_WEIGHT_UNITS.map((unit, index) => (
+                <div
+                  key={unit}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setEditData({ ...editData, stowage: parsed.value ? `${parsed.value} ${unit}` : "" } as any);
+                    setShowStowageUnitDD(false);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    color: "#111827",
+                    background: parsed.unit === unit ? "#F0FDF4" : "transparent",
+                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
+                  }}
+                  onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
+                  onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
+                >
+                  {unit}
+                </div>
+              ))}
+            </PortalDropdownList>
           </div>
         </div>
       </div>
@@ -2385,12 +2454,6 @@ function BookingInformationTab({
           <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
             General Information
           </h3>
-          <span style={{
-            fontSize: "12px",
-            color: "#667085"
-          }}>
-            Last updated by System, {new Date(booking.updatedAt).toLocaleString()}
-          </span>
         </div>
 
         <div style={{ padding: "24px" }}>
@@ -2402,7 +2465,6 @@ function BookingInformationTab({
               label="Date"
               value={booking.date || ""}
               type="date"
-              status={booking.status}
               isEditing={isEditing}
               editData={editData}
               setEditData={setEditData}
@@ -2470,7 +2532,6 @@ function BookingInformationTab({
               fieldName="containerNo"
               label="Container No."
               value={(booking as any).containerNo || ""}
-              status={booking.status as ExecutionStatus}
               isEditing={isEditing}
               editData={editData}
               setEditData={setEditData}
@@ -2479,7 +2540,6 @@ function BookingInformationTab({
               fieldName="blNumber"
               label="BL Number"
               value={(booking as any).blNumber || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter BL number..."
               isEditing={isEditing}
               editData={editData}
@@ -2493,7 +2553,6 @@ function BookingInformationTab({
               fieldName="commodity"
               label="Commodity"
               value={(booking as any).commodity || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter commodity..."
               isEditing={isEditing}
               editData={editData}
@@ -2528,7 +2587,6 @@ function BookingInformationTab({
               fieldName="vesselVoyage"
               label="Vessel & Voyage"
               value={(booking as any).vesselVoyage || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter vessel & voyage..."
               isEditing={isEditing}
               editData={editData}
@@ -2546,7 +2604,6 @@ function BookingInformationTab({
               fieldName="origin"
               label="POL (Port of Loading)"
               value={(booking as any).origin || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter POL..."
               isEditing={isEditing}
               editData={editData}
@@ -2555,7 +2612,6 @@ function BookingInformationTab({
             <PodSelectField
               label="POD (Port of Discharge)"
               value={(booking as any).pod || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Select POD..."
               isEditing={isEditing}
               editData={editData}
@@ -2589,7 +2645,6 @@ function BookingInformationTab({
               fieldName="ot"
               label="OT"
               value={(booking as any).ot || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter OT..."
               isEditing={isEditing}
               editData={editData}
@@ -2603,7 +2658,6 @@ function BookingInformationTab({
               fieldName="registryNo"
               label="Registry No."
               value={(booking as any).registryNo || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter Registry No..."
               isEditing={isEditing}
               editData={editData}
@@ -2618,7 +2672,6 @@ function BookingInformationTab({
               fieldName="entryNumber"
               label="Entry #"
               value={(booking as any).entryNumber || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter entry number..."
               isEditing={isEditing}
               editData={editData}
@@ -2628,7 +2681,6 @@ function BookingInformationTab({
               fieldName="ticket"
               label="Ticket"
               value={(booking as any).ticket || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="Enter Ticket..."
               isEditing={isEditing}
               editData={editData}
@@ -2642,7 +2694,6 @@ function BookingInformationTab({
               fieldName="finalTaxNavValue"
               label="Final Tax/NAV Value"
               value={(booking as any).finalTaxNavValue || ""}
-              status={booking.status as ExecutionStatus}
               placeholder="0.00"
               type="text"
               isEditing={isEditing}

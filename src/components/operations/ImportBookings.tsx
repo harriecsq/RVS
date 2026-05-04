@@ -6,24 +6,23 @@ import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
 import { CreateBrokerageBookingPanel } from "./CreateImportBookingPanel";
 import { BrokerageBookingDetails } from "./ImportBookingDetails";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
-import { CompanyClientFilter } from "../shared/CompanyClientFilter";
-import { getStatusSummary } from "../../utils/statusTags";
+import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
+import { getStatusSummary, deriveCombos, getCombinationKey } from "../../utils/statusTags";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
 import {
   StandardButton,
   StandardSearchInput,
-  StandardTable,
 } from "../design-system";
+import { CombinationTagFilter } from "../shared/CombinationTagFilter";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
-import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { GroupedBookingsTable } from "../shared/GroupedBookingsTable";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import type { ColumnDef } from "../design-system";
 
 interface BrokerageBooking {
   bookingId: string;
   customerName: string;
-  status: string;
   shipmentTags?: string[];
   mode?: string;
   consignee?: string;
@@ -59,31 +58,6 @@ const getTimelineStatus = (timeline: { step: string; datetime: string | null }[]
   return "Debited";
 };
 
-const LEGACY_IMPORT_STATUS_TO_TAGS: Record<string, string[][]> = {
-  "For Gatepass": [["for-gatepass"]],
-  "Awaiting Discharge & CRO": [["awaiting-discharge", "cro"], ["awaiting-discharge-cro"]],
-  "For Debit For Final": [["for-debit", "for-final"], ["for-debit-for-final"]],
-  "For Lodgement": [["for-lodgement"]],
-  "Awaiting Stowage": [["awaiting-stowage"]],
-  "With Stowage / Discharged & Awaiting Signed Docs": [["with-stowage-discharged"], ["awaiting-stowage", "awaiting-signed-docs"]],
-  "With ETA": [["with-eta"]],
-  "Without ETA": [["without-eta"]],
-  "Delivered": [["delivered"]],
-  "Returned": [["returned"]],
-};
-
-const IMPORT_STATUS_FILTER_OPTIONS = [
-  "For Gatepass",
-  "Awaiting Discharge & CRO",
-  "For Debit For Final",
-  "For Lodgement",
-  "Awaiting Stowage",
-  "With Stowage / Discharged & Awaiting Signed Docs",
-  "With ETA",
-  "Without ETA",
-  "Delivered",
-  "Returned",
-];
 
 function getBookingShipmentTags(booking: BrokerageBooking): string[] {
   return Array.isArray(booking.shipmentTags) ? booking.shipmentTags : [];
@@ -105,19 +79,18 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
         projectName: b.projectName || b.project_name,
         docsTimeline: b.docsTimeline || [],
       }));
-    list.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+    list.sort((a: any, b: any) => String(b.bookingId || "").localeCompare(String(a.bookingId || ""), undefined, { numeric: true }));
     return list;
   }, [bookingsResult]);
   const fetchBookings = () => { invalidateCache("/bookings"); refetch(); };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [selectedComboKeys, setSelectedComboKeys] = useState<string[]>([]);
   const [dateFilterStart, setDateFilterStart] = useState("");
   const [dateFilterEnd, setDateFilterEnd] = useState("");
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const clientsMasterList = useClientsMasterList();
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState<string | null>(null);
+  const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<BrokerageBooking | null>(null);
   const [prefillData, setPrefillData] = useState<any>(null);
 
@@ -156,22 +129,10 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     }
   }, [location, bookings]);
 
-
-  if (selectedBooking) {
-    return (
-      <BrokerageBookingDetails
-        booking={selectedBooking}
-        onBack={() => { setSelectedBooking(null); fetchBookings(); }}
-        onBookingUpdated={fetchBookings}
-      />
-    );
-  }
-
-
-  const filteredBookings = bookings.filter(booking => {
+  const baseFiltered = useMemo(() => bookings.filter(booking => {
     const timelineStatus = getTimelineStatus(booking.docsTimeline);
     const shipmentTags = getBookingShipmentTags(booking);
-    const shipmentStatusSummary = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : (booking.status || "");
+    const shipmentStatusSummary = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : "";
     const matchesSearch =
       booking.bookingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -188,26 +149,44 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
       if (dateFilterEnd && bookingISO > dateFilterEnd) return false;
     }
 
-    const filterTagCombos = LEGACY_IMPORT_STATUS_TO_TAGS[activeTab] || [];
-    const matchesStatusByTags =
-      filterTagCombos.length > 0 &&
-      filterTagCombos.some((combo) => combo.every((tag) => shipmentTags.includes(tag)));
-    const matchesStatus = activeTab === "all" || matchesStatusByTags || booking.status === activeTab;
-    if (!matchesStatus) return false;
-
     if (portFilter.length > 0) {
       const bookingPort = booking.pod || booking.destination || "";
       if (!portFilter.some(p => bookingPort.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
-    if (companyFilter) {
+    if (clientSelections.length > 0) {
       const bookingCompany = booking.consignee || booking.customerName || "";
-      if (bookingCompany !== companyFilter) return false;
-      if (clientFilter && (booking.customerName || "") !== clientFilter) return false;
+      if (!clientSelectionMatches(clientSelections, { company: bookingCompany, client: booking.customerName || "" })) return false;
     }
 
     return true;
-  });
+  }), [bookings, searchTerm, dateFilterStart, dateFilterEnd, portFilter, clientSelections]);
+
+  // Derive combos from the base-filtered list (after all other filters)
+  const availableCombos = useMemo(() => deriveCombos(baseFiltered), [baseFiltered]);
+
+  // Prune selected combos that no longer exist in current view
+  useEffect(() => {
+    const validKeys = new Set(availableCombos.map((c) => c.key));
+    const pruned = selectedComboKeys.filter((k) => validKeys.has(k));
+    if (pruned.length !== selectedComboKeys.length) setSelectedComboKeys(pruned);
+  }, [availableCombos]);
+
+  const filteredBookings = useMemo(() =>
+    selectedComboKeys.length > 0
+      ? baseFiltered.filter((b) => selectedComboKeys.includes(getCombinationKey(getBookingShipmentTags(b))))
+      : baseFiltered,
+  [baseFiltered, selectedComboKeys]);
+
+  if (selectedBooking) {
+    return (
+      <BrokerageBookingDetails
+        booking={selectedBooking}
+        onBack={() => { setSelectedBooking(null); fetchBookings(); }}
+        onBookingUpdated={fetchBookings}
+      />
+    );
+  }
 
   const columns: ColumnDef<BrokerageBooking>[] = [
     {
@@ -227,31 +206,34 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     {
       header: "Container #",
       cell: (booking) => {
-        const containers = booking.containerNo ? booking.containerNo.split(",").map(c => c.trim()) : [];
-        const displayContainer = containers.length > 0 ? containers[0] : "—";
-        const extraContainers = containers.length > 1 ? ` +${containers.length - 1}` : "";
+        const containers = booking.containerNo ? booking.containerNo.split(",").map(c => c.trim()).filter(Boolean) : [];
+        if (containers.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
         return (
-          <div title={booking.containerNo} style={{ fontSize: "14px", color: "#0A1D4D" }}>
-            {displayContainer}{extraContainers}
+          <div style={{ fontSize: "14px", color: "#0A1D4D", display: "flex", flexDirection: "column", gap: "2px" }}>
+            {containers.map((c, i) => <div key={i}>{c}</div>)}
           </div>
         );
       },
     },
     {
       header: "Consignee / Client",
-      cell: (booking) => (
-        <>
-          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-            {booking.consignee || booking.customerName}
-          </div>
-          {booking.consignee && booking.customerName && booking.consignee !== booking.customerName && (
-            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{booking.customerName}</div>
-          )}
-          {booking.companyName && booking.customerName !== booking.companyName && (
-            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{booking.companyName}</div>
-          )}
-        </>
-      ),
+      cell: (booking) => {
+        const lines = Array.from(new Set(
+          [booking.consignee, booking.customerName, booking.companyName]
+            .map(v => (v || "").trim())
+            .filter(Boolean)
+        ));
+        if (lines.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
+        const [primary, ...rest] = lines;
+        return (
+          <>
+            <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{primary}</div>
+            {rest.map((line, i) => (
+              <div key={i} style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{line}</div>
+            ))}
+          </>
+        );
+      },
     },
     {
       header: "Destination",
@@ -271,7 +253,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
       header: "Status",
       cell: (booking) => {
         const shipmentTags = getBookingShipmentTags(booking);
-        const label = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : (booking.status || "—");
+        const label = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : "—";
         return (
           <div style={{
             display: "inline-flex", alignItems: "center", borderRadius: "20px",
@@ -283,14 +265,6 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
           </div>
         );
       },
-    },
-    {
-      header: "Timeline",
-      cell: (booking) => (
-        <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-          {getTimelineStatus(booking.docsTimeline)}
-        </div>
-      ),
     },
   ];
 
@@ -337,13 +311,10 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
               />
             </div>
 
-            <FilterSingleDropdown
-              value={activeTab}
-              onChange={setActiveTab}
-              options={[
-                { value: "all", label: "All Statuses" },
-                ...IMPORT_STATUS_FILTER_OPTIONS.map(s => ({ value: s, label: s })),
-              ]}
+            <CombinationTagFilter
+              combos={availableCombos}
+              selectedKeys={selectedComboKeys}
+              onChange={setSelectedComboKeys}
             />
 
             <MultiSelectPortalDropdown
@@ -361,24 +332,24 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
 
             <CompanyClientFilter
               extraEntries={clientsMasterList}
-              selectedCompany={companyFilter}
-              selectedClient={clientFilter}
-              onCompanyChange={setCompanyFilter}
-              onClientChange={setClientFilter}
+              selected={clientSelections}
+              onChange={setClientSelections}
               placeholder="All Companies"
             />
           </div>
         </div>
 
         <div style={{ padding: "0 48px 48px 48px" }}>
-          <StandardTable
+          <GroupedBookingsTable
             data={filteredBookings}
             columns={columns}
             rowKey={(b) => b.bookingId}
             isLoading={isLoading}
             onRowClick={(b) => setSelectedBooking(b)}
-            emptyTitle={searchTerm || activeTab !== "all" ? "No bookings match your filters" : "No import bookings yet"}
-            emptyDescription={searchTerm || activeTab !== "all" ? undefined : "Create your first booking to get started"}
+            selectedComboKeys={selectedComboKeys}
+            availableCombos={availableCombos}
+            emptyTitle={searchTerm || selectedComboKeys.length > 0 ? "No bookings match your filters" : "No import bookings yet"}
+            emptyDescription={searchTerm || selectedComboKeys.length > 0 ? undefined : "Create your first booking to get started"}
             emptyIcon={<Package size={24} />}
           />
         </div>
