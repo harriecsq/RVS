@@ -1,0 +1,29 @@
+export const EXPORT_STATUS_TEXT_COLORS: Record<string, string> = {
+  "For Lodgement and Portal": "#6B7A76",
+  "Awaiting for Final": "#FBBC04",
+  "Final - For Arrastre Payment": "#B45309",
+  "Arrastre Paid": "#10B981",
+  "Sent Draft Documents for Approval": "#4285F4",
+  "Approved Documents": "#0F766E",
+  "Sent FSI and DG Declaration": "#9900FF",
+  "Draft BL Okay to Finalize": "#0E7490",
+  "Awaiting Billing and Signed BL": "#D97706",
+  "Request for Telex": "#2563EB",
+  "Form E Ongoing Process": "#16A34A",
+  "Cancelled": "#EF4444",
+};
+
+export const EXPORT_STATUS_OPTIONS = [
+  "For Lodgement and Portal",
+  "Awaiting for Final",
+  "Final - For Arrastre Payment",
+  "Arrastre Paid",
+  "Sent Draft Documents for Approval",
+  "Approved Documents",
+  "Sent FSI and DG Declaration",
+  "Draft BL Okay to Finalize",
+  "Awaiting Billing and Signed BL",
+  "Request for Telex",
+  "Form E Ongoing Process",
+  "Cancelled",
+];

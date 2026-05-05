@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronDown, Check, Search } from "lucide-react";
 import { PortalDropdown } from "./PortalDropdown";
 
 interface Option {
@@ -14,6 +14,8 @@ interface MultiSelectPortalDropdownProps {
   placeholder?: string;
   label?: string;
   align?: "left" | "right";
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }
 
 export function MultiSelectPortalDropdown({
@@ -23,8 +25,11 @@ export function MultiSelectPortalDropdown({
   placeholder = "All",
   label,
   align = "left",
+  searchable = false,
+  searchPlaceholder = "Search...",
 }: MultiSelectPortalDropdownProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLDivElement>(null);
 
   const triggerLabel =
@@ -33,6 +38,14 @@ export function MultiSelectPortalDropdown({
       : value.length === 1
       ? options.find((o) => o.value === value[0])?.label ?? value[0]
       : value.map((v) => options.find((o) => o.value === v)?.label ?? v).join(", ");
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options;
+    const term = search.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(term));
+  }, [options, search, searchable]);
+
+  const closeDropdown = () => { setOpen(false); setSearch(""); };
 
   const toggle = (optValue: string) => {
     if (value.includes(optValue)) {
@@ -52,7 +65,7 @@ export function MultiSelectPortalDropdown({
       <div style={{ position: "relative" }}>
         <div
           ref={triggerRef}
-          onMouseDown={(e) => { e.preventDefault(); setOpen(!open); }}
+          onMouseDown={(e) => { e.preventDefault(); open ? closeDropdown() : setOpen(true); }}
           style={{
             width: "100%",
             height: "40px",
@@ -83,10 +96,31 @@ export function MultiSelectPortalDropdown({
           />
         </div>
 
-        <PortalDropdown isOpen={open} onClose={() => setOpen(false)} triggerRef={triggerRef} align={align}>
-          {options.map((opt, idx) => {
+        <PortalDropdown isOpen={open} onClose={closeDropdown} triggerRef={triggerRef} align={align}>
+          {searchable && (
+            <div
+              style={{ padding: "8px", borderBottom: "1px solid #E5E9F0", background: "#FFFFFF", position: "sticky", top: 0, zIndex: 1 }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div style={{ position: "relative" }}>
+                <Search size={14} style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} />
+                <input
+                  type="text"
+                  placeholder={searchPlaceholder}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  autoFocus
+                  style={{ width: "100%", padding: "6px 8px 6px 28px", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "13px", outline: "none", color: "#0A1D4D", backgroundColor: "#F9FAFB", boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+          )}
+          {searchable && filteredOptions.length === 0 && (
+            <div style={{ padding: "16px 12px", textAlign: "center", color: "#9CA3AF", fontSize: "13px" }}>No results</div>
+          )}
+          {filteredOptions.map((opt, idx) => {
             const selected = value.includes(opt.value);
-            const isLast = idx === options.length - 1;
+            const isLast = idx === filteredOptions.length - 1;
             return (
               <div
                 key={opt.value}

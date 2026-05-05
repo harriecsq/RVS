@@ -10,6 +10,8 @@ import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } fro
 import { getStatusSummary } from "../../utils/statusTags";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
+import { NeuronStatusPill } from "../NeuronStatusPill";
+import { EXPORT_STATUS_TEXT_COLORS } from "../../constants/exportStatuses";
 import {
   StandardButton,
   StandardSearchInput,
@@ -22,16 +24,6 @@ import type { ColumnDef } from "../design-system";
 interface ExportBookingsProps {
   currentUser?: { name: string; email: string; department: string } | null;
 }
-
-const getTimelineStatus = (timeline: { step: string; datetime: string | null }[] | undefined) => {
-  const STEPS = ["Draft", "Signed", "Final", "For Debit", "Debited"];
-  if (!timeline) return "Draft";
-  for (const step of STEPS) {
-    const entry = timeline.find(t => t.step === step);
-    if (!entry || !entry.datetime) return step;
-  }
-  return "Debited";
-};
 
 const LEGACY_EXPORT_STATUS_TO_TAGS: Record<string, string[][]> = {
   Draft: [["booked"]],
@@ -151,11 +143,33 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     return true;
   });
 
-  const filteredBookings = activeTab.length > 0
+  const filteredBookings = (activeTab.length > 0 || portFilter.length > 0 || clientSelections.length > 0)
     ? [...filteredBookingsRaw].sort((a, b) => {
-        const ai = getExportMatchedStatusIndex(getBookingShipmentTags(a), a.status);
-        const bi = getExportMatchedStatusIndex(getBookingShipmentTags(b), b.status);
-        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+        if (activeTab.length > 0) {
+          const ai = getExportMatchedStatusIndex(getBookingShipmentTags(a), a.status);
+          const bi = getExportMatchedStatusIndex(getBookingShipmentTags(b), b.status);
+          const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+          if (d !== 0) return d;
+        }
+        if (portFilter.length > 0) {
+          const aPort = (a as any).origin || a.pod || (a as any).destination || "";
+          const bPort = (b as any).origin || b.pod || (b as any).destination || "";
+          const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
+          const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
+          const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+          if (d !== 0) return d;
+        }
+        if (clientSelections.length > 0) {
+          const aIdx = clientSelections.findIndex((sel) =>
+            clientSelectionMatches([sel], { company: a.customerName || "", client: (a as any).companyName || "" })
+          );
+          const bIdx = clientSelections.findIndex((sel) =>
+            clientSelectionMatches([sel], { company: b.customerName || "", client: (b as any).companyName || "" })
+          );
+          const d = (aIdx === -1 ? Number.MAX_SAFE_INTEGER : aIdx) - (bIdx === -1 ? Number.MAX_SAFE_INTEGER : bIdx);
+          if (d !== 0) return d;
+        }
+        return 0;
       })
     : filteredBookingsRaw;
 
@@ -168,16 +182,25 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     },
     {
       header: "BL Number",
-      cell: (booking) => (
-        <div title={booking.blNumber} style={{ fontSize: "14px", color: "#0A1D4D", maxWidth: "120px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {booking.blNumber || "—"}
-        </div>
-      ),
+      cell: (booking) => {
+        const seg0: any = (booking as any).segments?.[0];
+        const blNumber = seg0?.blNumber || booking.blNumber || "";
+        return (
+          <div title={blNumber} style={{ fontSize: "14px", color: "#0A1D4D", maxWidth: "120px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {blNumber || "—"}
+          </div>
+        );
+      },
     },
     {
       header: "Container #",
       cell: (booking) => {
-        const containers = booking.containerNo ? booking.containerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : [];
+        const seg0: any = (booking as any).segments?.[0];
+        const segContainers: string[] = Array.isArray(seg0?.containerNos) ? seg0.containerNos.filter(Boolean) : [];
+        const rawContainerNo: string = seg0?.containerNo || booking.containerNo || "";
+        const containers = segContainers.length > 0
+          ? segContainers
+          : (rawContainerNo ? rawContainerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : []);
         if (containers.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
         return (
           <div style={{ fontSize: "14px", color: "#0A1D4D", display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -207,41 +230,32 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
       },
     },
     {
-      header: "Destination",
-      cell: (booking) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{booking.pod || "—"}</div>
-      ),
+      header: "Origin",
+      cell: (booking) => {
+        const seg0: any = (booking as any).segments?.[0];
+        const origin = seg0?.origin || (booking as any).origin || "";
+        return (
+          <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{origin || "—"}</div>
+        );
+      },
+    },
+    {
+      header: "Status",
+      cell: (booking) => {
+        const status = booking.status || "—";
+        return (
+          <NeuronStatusPill
+            status={status}
+            colorMap={EXPORT_STATUS_TEXT_COLORS}
+          />
+        );
+      },
     },
     {
       header: "Date",
       cell: (booking) => (
         <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
           {new Date(booking.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </div>
-      ),
-    },
-    {
-      header: "Status",
-      cell: (booking) => {
-        const shipmentTags = getBookingShipmentTags(booking);
-        const label = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : (booking.status || "—");
-        return (
-          <div style={{
-            display: "inline-flex", alignItems: "center", borderRadius: "20px",
-            padding: "0 12px", height: "32px", fontSize: "13px", fontWeight: 600,
-            whiteSpace: "nowrap", backgroundColor: "#E8F5F3", color: "#0A1D4D",
-            border: "1px solid #C1D9CC",
-          }}>
-            {label}
-          </div>
-        );
-      },
-    },
-    {
-      header: "Timeline",
-      cell: (booking) => (
-        <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
-          {getTimelineStatus((booking as any).docsTimeline)}
         </div>
       ),
     },

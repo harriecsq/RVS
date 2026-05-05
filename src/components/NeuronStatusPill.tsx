@@ -4,111 +4,81 @@ type StatusVariant = "success" | "warning" | "danger" | "neutral" | "info" | "or
 
 interface NeuronStatusPillProps {
   children?: ReactNode;
-  status?: string; // For auto-mapping from status strings
+  /** Auto-maps to a variant and renders as text. */
+  status?: string;
+  /** Force a variant. */
   variant?: StatusVariant;
+  /** Explicit text color override. Background is derived as a tint of this color. */
+  color?: string;
+  /** Map a status string to an explicit color (used by detail-screen dropdowns). */
+  colorMap?: Record<string, string>;
   size?: "sm" | "md";
 }
 
-export function NeuronStatusPill({ children, status, variant, size = "md" }: NeuronStatusPillProps) {
-  // Auto-map status strings to variants
-  const getVariantFromStatus = (statusStr: string): StatusVariant => {
-    const statusLower = statusStr.toLowerCase();
-    
-    // SUCCESS (Green) - Completed/Final positive states
-    if (statusLower === "completed" || statusLower === "delivered" || 
-        statusLower === "collected" || 
-        statusLower === "paid" || statusLower === "active" ||
-        statusLower === "fully collected" || statusLower === "fully paid" ||
-        statusLower.includes("accepted")) {
-      return "success";
-    }
-    
-    // INFO (Blue) - Approved states (for vouchers, expenses, billings)
-    if (statusLower === "approved") {
-      return "info";
-    }
+// Single source of truth — matches the colors used in the detail-screen
+// HeaderStatusDropdown components (EXPENSE_STATUS_COLORS, BILLING_STATUS_COLORS, etc.)
+const VARIANT_COLOR: Record<StatusVariant, string> = {
+  success: "#10B981", // Paid / Collected / Completed / Delivered
+  warning: "#F59E0B", // For Approval / Pending / In Transit
+  danger: "#EF4444",  // Cancelled / Rejected / Inactive
+  neutral: "#6B7280", // Draft
+  info: "#3B82F6",    // Approved / Informational
+  orange: "#F97316",  // Partially Paid / Partially Collected
+};
 
-    // ORANGE (Orange) - Partially collected/paid
-    if (statusLower === "partially collected" || statusLower === "partially paid") {
-      return "orange";
-    }
-    
-    // WARNING (Orange/Amber) - In-progress or needs attention
-    if (statusLower === "for approval" || statusLower === "in transit" ||
-        statusLower === "on hold" || statusLower.includes("pending") ||
-        statusLower === "sent to client" || statusLower === "needs revision") {
-      return "warning";
-    }
-    
-    // DANGER (Red) - Rejected/Cancelled states
-    if (statusLower === "cancelled" || statusLower.includes("rejected") || 
-        statusLower.includes("disapproved")) {
-      return "danger";
-    }
-    
-    // DANGER (Red) - Inactive status
-    if (statusLower === "inactive") {
-      return "danger";
-    }
+const SIZE_STYLES = {
+  sm: { height: "24px", padding: "0 8px", fontSize: "12px", lineHeight: "16px" },
+  md: { height: "32px", padding: "0 12px", fontSize: "14px", lineHeight: "20px" },
+} as const;
 
-    // NEUTRAL (Gray) - Draft/Initial states
-    if (statusLower === "draft") {
-      return "neutral";
-    }
-    
-    // INFO (Teal/Blue) - Other informational states
-    if (statusLower === "converted to project" || statusLower === "handed over" ||
-        statusLower.includes("priced")) {
-      return "info";
-    }
-    
-    return "neutral";
-  };
-  
-  const effectiveVariant = status ? getVariantFromStatus(status) : (variant || "neutral");
+function getVariantFromStatus(statusStr: string): StatusVariant {
+  const s = statusStr.toLowerCase();
+
+  if (
+    s === "completed" || s === "delivered" || s === "collected" ||
+    s === "paid" || s === "active" ||
+    s === "fully collected" || s === "fully paid" ||
+    s.includes("accepted")
+  ) return "success";
+
+  if (s === "approved") return "info";
+
+  if (s === "partially collected" || s === "partially paid") return "orange";
+
+  if (
+    s === "for approval" || s === "in transit" ||
+    s === "on hold" || s.includes("pending") ||
+    s === "sent to client" || s === "needs revision"
+  ) return "warning";
+
+  if (s === "cancelled" || s.includes("rejected") || s.includes("disapproved") || s === "inactive") return "danger";
+
+  if (s === "draft") return "neutral";
+
+  if (s === "converted to project" || s === "handed over" || s.includes("priced")) return "info";
+
+  return "neutral";
+}
+
+function tint(color: string): string {
+  // 12% color over white — soft tinted background that pairs with the text color.
+  return `color-mix(in srgb, ${color} 12%, white)`;
+}
+
+export function NeuronStatusPill({
+  children,
+  status,
+  variant,
+  color,
+  colorMap,
+  size = "md",
+}: NeuronStatusPillProps) {
+  const resolvedColor =
+    color ||
+    (status && colorMap?.[status]) ||
+    VARIANT_COLOR[variant ?? (status ? getVariantFromStatus(status) : "neutral")];
+
   const displayText = status || children;
-
-  const variantStyles = {
-    success: {
-      background: "var(--neuron-brand-green-100)",
-      color: "var(--neuron-semantic-success)",
-    },
-    warning: {
-      background: "#FFF4E6",
-      color: "var(--neuron-semantic-warn)",
-    },
-    danger: {
-      background: "#FFEBE9",
-      color: "var(--neuron-semantic-danger)",
-    },
-    neutral: {
-      background: "var(--neuron-state-selected)",
-      color: "var(--neuron-ink-secondary)",
-    },
-    info: {
-      background: "#DBEAFE",
-      color: "#3B82F6",
-    },
-    orange: {
-      background: "#FFEDD5", // Orange 100
-      color: "#EA580C", // Orange 600
-    },
-  };
-
-  const sizeStyles = {
-    sm: {
-      height: "24px",
-      padding: "0 8px",
-      fontSize: "12px",
-      lineHeight: "16px",
-    },
-    md: {
-      height: "32px",
-      padding: "0 12px",
-      fontSize: "14px",
-      lineHeight: "20px",
-    },
-  };
 
   return (
     <div
@@ -119,8 +89,9 @@ export function NeuronStatusPill({ children, status, variant, size = "md" }: Neu
         borderRadius: "var(--neuron-radius-l)",
         fontWeight: 500,
         whiteSpace: "nowrap",
-        ...sizeStyles[size],
-        ...variantStyles[effectiveVariant],
+        ...SIZE_STYLES[size],
+        background: tint(resolvedColor),
+        color: resolvedColor,
       }}
     >
       {displayText}

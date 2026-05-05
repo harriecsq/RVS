@@ -7,9 +7,10 @@ import { CreateBrokerageBookingPanel } from "./CreateImportBookingPanel";
 import { BrokerageBookingDetails } from "./ImportBookingDetails";
 import { UnifiedDateRangeFilter } from "../shared/UnifiedDateRangeFilter";
 import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from "../shared/CompanyClientFilter";
-import { getStatusSummary, deriveCombos, getCombinationKey } from "../../utils/statusTags";
+import { getStatusSummary, deriveCombos, getCombinationKey, getTagByKey } from "../../utils/statusTags";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronPageHeader } from "../NeuronPageHeader";
+import { NeuronStatusPill } from "../NeuronStatusPill";
 import {
   StandardButton,
   StandardSearchInput,
@@ -172,11 +173,34 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     if (pruned.length !== selectedComboKeys.length) setSelectedComboKeys(pruned);
   }, [availableCombos]);
 
-  const filteredBookings = useMemo(() =>
-    selectedComboKeys.length > 0
-      ? baseFiltered.filter((b) => selectedComboKeys.includes(getCombinationKey(getBookingShipmentTags(b))))
-      : baseFiltered,
-  [baseFiltered, selectedComboKeys]);
+  const filteredBookings = useMemo(() => {
+    const sorted = (portFilter.length > 0 || clientSelections.length > 0)
+      ? [...baseFiltered].sort((a, b) => {
+          if (portFilter.length > 0) {
+            const aPort = a.pod || a.destination || "";
+            const bPort = b.pod || b.destination || "";
+            const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
+            const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
+            const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+            if (d !== 0) return d;
+          }
+          if (clientSelections.length > 0) {
+            const aIdx = clientSelections.findIndex((sel) =>
+              clientSelectionMatches([sel], { company: a.consignee || a.customerName || "", client: a.customerName || "" })
+            );
+            const bIdx = clientSelections.findIndex((sel) =>
+              clientSelectionMatches([sel], { company: b.consignee || b.customerName || "", client: b.customerName || "" })
+            );
+            const d = (aIdx === -1 ? Number.MAX_SAFE_INTEGER : aIdx) - (bIdx === -1 ? Number.MAX_SAFE_INTEGER : bIdx);
+            if (d !== 0) return d;
+          }
+          return 0;
+        })
+      : baseFiltered;
+    return selectedComboKeys.length > 0
+      ? sorted.filter((b) => selectedComboKeys.includes(getCombinationKey(getBookingShipmentTags(b))))
+      : sorted;
+  }, [baseFiltered, selectedComboKeys, portFilter, clientSelections]);
 
   if (selectedBooking) {
     return (
@@ -242,29 +266,40 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
       ),
     },
     {
+      header: "Status",
+      width: "24%",
+      cell: (booking) => {
+        const shipmentTags = getBookingShipmentTags(booking);
+        if (shipmentTags.length === 0) return <span style={{ fontSize: "13px", color: "#9CA3AF" }}>—</span>;
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            {shipmentTags.map((t) => {
+              const tag = getTagByKey(t);
+              const isDanger = tag?.color === "danger";
+              return (
+                <span key={t} style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  height: "32px", padding: "0 12px", borderRadius: "var(--neuron-radius-l)",
+                  fontSize: "14px", fontWeight: 500, lineHeight: "20px", whiteSpace: "nowrap",
+                  backgroundColor: isDanger ? "#FEE2E2" : "#E8F5F3",
+                  color: isDanger ? "#991B1B" : "#12332B",
+                  border: isDanger ? "1px solid #FECACA" : "1px solid #C1D9CC",
+                }}>
+                  {tag?.label ?? t}
+                </span>
+              );
+            })}
+          </div>
+        );
+      },
+    },
+    {
       header: "Date",
       cell: (booking) => (
         <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
           {new Date(booking.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </div>
       ),
-    },
-    {
-      header: "Status",
-      cell: (booking) => {
-        const shipmentTags = getBookingShipmentTags(booking);
-        const label = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : "—";
-        return (
-          <div style={{
-            display: "inline-flex", alignItems: "center", borderRadius: "20px",
-            padding: "0 12px", height: "32px", fontSize: "13px", fontWeight: 600,
-            whiteSpace: "nowrap", backgroundColor: "#E8F5F3", color: "#0A1D4D",
-            border: "1px solid #C1D9CC",
-          }}>
-            {label}
-          </div>
-        );
-      },
     },
   ];
 

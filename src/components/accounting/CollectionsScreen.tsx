@@ -126,11 +126,25 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     return true;
   });
 
-  const filteredCollections = statusFilter.length > 0
+  const filteredCollections = (statusFilter.length > 0 || clientSelections.length > 0)
     ? [...filteredCollectionsRaw].sort((a, b) => {
-        const ai = statusFilter.indexOf(a.status);
-        const bi = statusFilter.indexOf(b.status);
-        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+        if (statusFilter.length > 0) {
+          const ai = statusFilter.indexOf(a.status);
+          const bi = statusFilter.indexOf(b.status);
+          const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+          if (d !== 0) return d;
+        }
+        if (clientSelections.length > 0) {
+          const aIdx = clientSelections.findIndex((sel) =>
+            clientSelectionMatches([sel], { company: (a as any).companyName || a.customerName || "", client: a.customerName || "" })
+          );
+          const bIdx = clientSelections.findIndex((sel) =>
+            clientSelectionMatches([sel], { company: (b as any).companyName || b.customerName || "", client: b.customerName || "" })
+          );
+          const d = (aIdx === -1 ? Number.MAX_SAFE_INTEGER : aIdx) - (bIdx === -1 ? Number.MAX_SAFE_INTEGER : bIdx);
+          if (d !== 0) return d;
+        }
+        return 0;
       })
     : filteredCollectionsRaw;
 
@@ -245,13 +259,14 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     },
     {
       header: "Created",
-      cell: (collection) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
-          {collection.collectionDate
-            ? new Date(collection.collectionDate).toLocaleDateString()
-            : new Date(collection.createdAt).toLocaleDateString()}
-        </div>
-      ),
+      cell: (collection) => {
+        const d = collection.collectionDate || collection.createdAt;
+        return (
+          <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+            {d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
+          </div>
+        );
+      },
     },
   ];
 

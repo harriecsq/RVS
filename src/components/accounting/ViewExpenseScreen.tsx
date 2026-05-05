@@ -37,6 +37,7 @@ interface ViewExpenseScreenProps {
   expenseId: string;
   onBack?: () => void;
   onDeleted?: () => void;
+  onUpdated?: () => void;
   /** When true, hides header/back button, metadata bar, and tab navigation. Renders overview content only. */
   embedded?: boolean;
   /** When provided, edit mode is controlled externally (from parent's tab row). */
@@ -138,7 +139,7 @@ interface Project {
   movement?: string;
 }
 
-export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = false, externalEdit, onEditStateChange, externalSaveCounter }: ViewExpenseScreenProps) {
+export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, embedded = false, externalEdit, onEditStateChange, externalSaveCounter }: ViewExpenseScreenProps) {
   const [expense, setExpense] = useState<ExpenseData | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -956,6 +957,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, embedded = fal
 
         // Refetch expense details
         await fetchExpenseDetails();
+        if (onUpdated) onUpdated();
       } else {
         toast.error("Failed to update status");
       }

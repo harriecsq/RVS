@@ -141,11 +141,35 @@ export function BillingsScreen() {
         })
       );
     }
-    if (statusFilter.length > 0) {
+    if (statusFilter.length > 0 || portFilter.length > 0 || clientSelections.length > 0) {
       filtered = [...filtered].sort((a, b) => {
-        const ai = statusFilter.indexOf(a.status);
-        const bi = statusFilter.indexOf(b.status);
-        return (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+        if (statusFilter.length > 0) {
+          const ai = statusFilter.indexOf(a.status);
+          const bi = statusFilter.indexOf(b.status);
+          const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+          if (d !== 0) return d;
+        }
+        if (portFilter.length > 0) {
+          const aId = (a as any).bookingId || ((a as any).bookingIds)?.[0];
+          const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
+          const aPort = (aId ? bookingEnrichMapRef.current.get(aId)?.port : "") || "";
+          const bPort = (bId ? bookingEnrichMapRef.current.get(bId)?.port : "") || "";
+          const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
+          const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
+          const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+          if (d !== 0) return d;
+        }
+        if (clientSelections.length > 0) {
+          const aIdx = clientSelections.findIndex((sel) =>
+            clientSelectionMatches([sel], { company: a.companyName || a.clientName || "", client: a.clientName || "" })
+          );
+          const bIdx = clientSelections.findIndex((sel) =>
+            clientSelectionMatches([sel], { company: b.companyName || b.clientName || "", client: b.clientName || "" })
+          );
+          const d = (aIdx === -1 ? Number.MAX_SAFE_INTEGER : aIdx) - (bIdx === -1 ? Number.MAX_SAFE_INTEGER : bIdx);
+          if (d !== 0) return d;
+        }
+        return 0;
       });
     }
     setFilteredBillings(filtered);
@@ -193,12 +217,15 @@ export function BillingsScreen() {
       ),
     },
     {
-      header: "Created",
-      cell: (b) => <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{formatDate(b.billingDate || b.created_at)}</div>,
-    },
-    {
       header: "Status",
       cell: (b) => <NeuronStatusPill status={b.status} />,
+    },
+    {
+      header: "Created",
+      cell: (b) => {
+        const d = b.billingDate || b.created_at;
+        return <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}</div>;
+      },
     },
   ];
 

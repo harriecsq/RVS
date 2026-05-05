@@ -98,7 +98,11 @@
       "Bash(curl -s http://localhost:3000/)",
       "Bash(dora status *)",
       "Bash(ls node_modules/typescript/bin)",
-      "Bash(ls tsconfig.json)"
+      "Bash(ls tsconfig.json)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(ls \"C:/Users/harri/.claude/\" 2>&1 | head -30)",
+      "Read(//c/Users/harri/.claude/**)"
     ]
   }
 }

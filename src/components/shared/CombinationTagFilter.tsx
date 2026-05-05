@@ -21,7 +21,7 @@ function MiniTagPill({ tagKey }: { tagKey: string }) {
       display: "inline-flex",
       alignItems: "center",
       padding: "1px 7px",
-      borderRadius: "6px",
+      borderRadius: "var(--neuron-radius-l)",
       fontSize: "11px",
       fontWeight: 600,
       letterSpacing: "0.03em",
