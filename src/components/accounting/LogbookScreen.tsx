@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { NeuronPageHeader } from "../NeuronPageHeader";
+import { NeuronStatusPill } from "../NeuronStatusPill";
 import {
   StandardButton,
   StandardSearchInput,
@@ -334,7 +335,13 @@ export function LogbookScreen() {
     {
       header: "Status",
       width: "160px",
-      cell: (entry) => <LogbookStatusPill status={entry.status} />,
+      cell: (entry) => (
+        <NeuronStatusPill
+          variant={entry.status === "green" ? "success" : "warning"}
+        >
+          {entry.status === "green" ? "Delivered" : "Done Payment"}
+        </NeuronStatusPill>
+      ),
     },
   ];
 
@@ -714,44 +721,6 @@ function IconButton({
     >
       {children}
     </button>
-  );
-}
-
-// ============================================================================
-// Status Pill
-// ============================================================================
-
-function LogbookStatusPill({ status }: { status: LogbookStatus }) {
-  const isGreen = status === "green";
-  const bg = isGreen ? "#E8F5F3" : "#FFF4E6";
-  const fg = isGreen ? "#0F766E" : "#B54708";
-  const label = isGreen ? "Delivered" : "Done Payment";
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "4px 10px",
-        borderRadius: "999px",
-        fontSize: "12px",
-        fontWeight: 600,
-        background: bg,
-        color: fg,
-        whiteSpace: "nowrap",
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: "6px",
-          height: "6px",
-          borderRadius: "50%",
-          background: fg,
-        }}
-      />
-      {label}
-    </span>
   );
 }
 

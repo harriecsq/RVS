@@ -3659,9 +3659,16 @@ app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-tags", async 
 
     const previousTags = dedupeTags(migratedBooking.shipmentTags || []);
     const historyEntries = createTagHistoryEntries(previousTags, newTags, user, "shipment");
+    const nextDeliveredAt = resolveDeliveredAt(
+      previousTags,
+      newTags,
+      migratedBooking.deliveredAt,
+      body.deliveredAt,
+    );
     const updatedBooking = {
       ...migratedBooking,
       shipmentTags: newTags,
+      deliveredAt: nextDeliveredAt,
       tagHistory: [...(migratedBooking.tagHistory || []), ...historyEntries],
       updatedAt: new Date().toISOString(),
     };
@@ -3672,6 +3679,7 @@ app.put("/make-server-ce0d67b8/trucking-records/:id/update-booking-tags", async 
       data: {
         shipmentTags: updatedBooking.shipmentTags || [],
         tagHistory: updatedBooking.tagHistory || [],
+        deliveredAt: updatedBooking.deliveredAt ?? null,
       },
     });
   } catch (error) {
@@ -6131,6 +6139,23 @@ function dedupeTags(tags: string[]): string[] {
   return Array.from(new Set((tags || []).filter(Boolean)));
 }
 
+// Compute the next deliveredAt value when shipment tags change.
+// - "delivered" added → use provided date or now()
+// - "delivered" removed → clear
+// - "delivered" still present → keep existing, or apply provided override
+function resolveDeliveredAt(
+  oldTags: string[],
+  newTags: string[],
+  existing: string | null | undefined,
+  provided: string | null | undefined,
+): string | null {
+  const hadDelivered = oldTags.includes("delivered");
+  const hasDelivered = newTags.includes("delivered");
+  if (!hasDelivered) return null;
+  if (!hadDelivered) return provided || new Date().toISOString();
+  return provided !== undefined && provided !== null ? provided : (existing ?? null);
+}
+
 async function nextLogbookNumberForYear(year: string): Promise<number> {
   // Numbering is per-year, continuous across months. Returns the next #N for `year`.
   const imports = await kv.getByPrefix("import_booking:");
@@ -6469,12 +6494,14 @@ async function enrichTruckingRecordWithLinkedTags(record: any): Promise<any> {
       ...migratedRecord,
       linkedBookingShipmentTags: [],
       linkedBookingTagHistory: [],
+      linkedBookingDeliveredAt: null,
     };
   }
   return {
     ...migratedRecord,
     linkedBookingShipmentTags: linkedBooking.shipmentTags || [],
     linkedBookingTagHistory: linkedBooking.tagHistory || [],
+    linkedBookingDeliveredAt: linkedBooking.deliveredAt ?? null,
   };
 }
 
@@ -6736,9 +6763,11 @@ app.put("/make-server-ce0d67b8/export-bookings/:id/shipment-tags", async (c) => 
 
     const oldTags = dedupeTags(existing.shipmentTags || []);
     const historyEntries = createTagHistoryEntries(oldTags, newTags, user, "shipment");
+    const nextDeliveredAt = resolveDeliveredAt(oldTags, newTags, existing.deliveredAt, body.deliveredAt);
     const updated = {
       ...existing,
       shipmentTags: newTags,
+      deliveredAt: nextDeliveredAt,
       tagHistory: [...(existing.tagHistory || []), ...historyEntries],
       updatedAt: new Date().toISOString(),
     };
@@ -7154,9 +7183,11 @@ app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-tags", async (c) => 
 
     const oldTags = dedupeTags(existing.shipmentTags || []);
     const historyEntries = createTagHistoryEntries(oldTags, newTags, user, "shipment");
+    const nextDeliveredAt = resolveDeliveredAt(oldTags, newTags, existing.deliveredAt, body.deliveredAt);
     const updated = {
       ...existing,
       shipmentTags: newTags,
+      deliveredAt: nextDeliveredAt,
       tagHistory: [...(existing.tagHistory || []), ...historyEntries],
       updatedAt: new Date().toISOString(),
     };

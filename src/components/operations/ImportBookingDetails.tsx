@@ -261,17 +261,27 @@ export function BrokerageBookingDetails({
   const tagDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tagSaveBaseRef = useRef<string[]>(shipmentTags);
 
-  const flushTagSave = useCallback(async (tagsToSave: string[], revertTags: string[], revertHistory: typeof tagHistory) => {
+  const flushTagSave = useCallback(async (
+    tagsToSave: string[],
+    revertTags: string[],
+    revertHistory: typeof tagHistory,
+    deliveredAtOverride?: string | null,
+  ) => {
     setIsTagsSaving(true);
     try {
       const isLegacy = !(booking as any).booking_type;
       const endpoint = isLegacy
         ? `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-tags`
         : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}/shipment-tags`;
+      const body: Record<string, unknown> = {
+        shipmentTags: tagsToSave,
+        user: currentUser?.name || "Unknown",
+      };
+      if (deliveredAtOverride !== undefined) body.deliveredAt = deliveredAtOverride;
       const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
-        body: JSON.stringify({ shipmentTags: tagsToSave, user: currentUser?.name || "Unknown" }),
+        body: JSON.stringify(body),
       });
       const result = await response.json();
       if (result.success && result.data) {
@@ -301,15 +311,21 @@ export function BrokerageBookingDetails({
     }
   }, [booking, currentBooking.bookingId, currentUser, onBookingUpdated, tagHistory]);
 
-  const handleShipmentTagsChange = useCallback((newTags: string[]) => {
+  const handleShipmentTagsChange = useCallback((
+    newTags: string[],
+    opts?: { deliveredAt?: string | null },
+  ) => {
     pendingTagsRef.current = newTags;
     setShipmentTags(newTags);
     const revertTags = tagSaveBaseRef.current;
     const revertHistory = tagHistory;
+    const deliveredAtOverride = opts && "deliveredAt" in opts ? opts.deliveredAt : undefined;
     if (tagDebounceRef.current) clearTimeout(tagDebounceRef.current);
+    // Date-bearing changes save immediately so the user sees confirmation; plain toggles debounce.
+    const delay = deliveredAtOverride !== undefined ? 0 : 400;
     tagDebounceRef.current = setTimeout(() => {
-      flushTagSave(pendingTagsRef.current, revertTags, revertHistory);
-    }, 400);
+      flushTagSave(pendingTagsRef.current, revertTags, revertHistory, deliveredAtOverride);
+    }, delay);
   }, [flushTagSave, tagHistory]);
 
 
@@ -638,6 +654,7 @@ export function BrokerageBookingDetails({
           operationalTags={[]}
           onShipmentTagsChange={handleShipmentTagsChange}
           onOperationalTagsChange={() => {}}
+          deliveredAt={(currentBooking as any).deliveredAt ?? null}
         />
       </div>
 

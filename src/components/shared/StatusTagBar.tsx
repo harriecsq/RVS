@@ -9,15 +9,48 @@ import {
   type BookingType,
 } from "../../utils/statusTags";
 import { StatusTagPill } from "./StatusTagPill";
+import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
+
+interface ShipmentTagsChangeOpts {
+  /** ISO timestamp; only meaningful when `delivered` is in the new tags. Pass null to clear. */
+  deliveredAt?: string | null;
+}
 
 interface StatusTagBarProps {
   bookingType: BookingType;
   shipmentTags: string[];
   operationalTags: string[];
-  onShipmentTagsChange: (tags: string[]) => void;
+  onShipmentTagsChange: (tags: string[], opts?: ShipmentTagsChangeOpts) => void;
   onOperationalTagsChange: (tags: string[]) => void;
   shipmentTagsReadOnly?: boolean;
   disabled?: boolean;
+  /** ISO timestamp of the captured delivery date (when the `delivered` tag is on). */
+  deliveredAt?: string | null;
+}
+
+function toDateInputValue(iso: string | null | undefined): string {
+  if (!iso) {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return toDateInputValue(null);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function dateInputToIso(value: string): string {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0).toISOString();
+}
+
+function formatDeliveredDateShort(iso: string | null | undefined): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function StatusTagBar({
@@ -28,6 +61,7 @@ export function StatusTagBar({
   onOperationalTagsChange,
   shipmentTagsReadOnly = false,
   disabled = false,
+  deliveredAt = null,
 }: StatusTagBarProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -38,6 +72,48 @@ export function StatusTagBar({
     left: 0,
     width: 320,
   });
+
+  const [deliveryDialog, setDeliveryDialog] = useState<{
+    mode: "add" | "edit";
+    dateValue: string;
+  } | null>(null);
+
+  // Optimistic override so the inline date appears the instant the user confirms,
+  // before the server roundtrip syncs the parent's `deliveredAt` prop.
+  const [optimisticDeliveredAt, setOptimisticDeliveredAt] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    setOptimisticDeliveredAt(undefined);
+  }, [deliveredAt]);
+  const effectiveDeliveredAt = optimisticDeliveredAt !== undefined ? optimisticDeliveredAt : deliveredAt;
+
+  const openDeliveryDialog = useCallback(
+    (mode: "add" | "edit") => {
+      setDeliveryDialog({
+        mode,
+        dateValue: toDateInputValue(mode === "edit" ? effectiveDeliveredAt : null),
+      });
+    },
+    [effectiveDeliveredAt],
+  );
+
+  const closeDeliveryDialog = useCallback(() => setDeliveryDialog(null), []);
+
+  const confirmDeliveryDialog = useCallback(() => {
+    setDeliveryDialog((prev) => {
+      if (!prev || !/^\d{4}-\d{2}-\d{2}$/.test(prev.dateValue)) return prev;
+      const iso = dateInputToIso(prev.dateValue);
+      setOptimisticDeliveredAt(iso);
+      if (prev.mode === "add") {
+        const next = shipmentTags.includes("delivered")
+          ? shipmentTags
+          : [...shipmentTags, "delivered"];
+        onShipmentTagsChange(next, { deliveredAt: iso });
+      } else {
+        onShipmentTagsChange(shipmentTags, { deliveredAt: iso });
+      }
+      return null;
+    });
+  }, [onShipmentTagsChange, shipmentTags]);
 
   const availableShipmentTags = useMemo(() => getShipmentTags(bookingType), [bookingType]);
   const availableOperationalTags = useMemo(
@@ -91,13 +167,25 @@ export function StatusTagBar({
   const toggleShipment = useCallback(
     (key: string) => {
       if (shipmentTagsReadOnly || disabled) return;
+      if (key === "delivered") {
+        const isAdding = !shipmentTags.includes("delivered");
+        if (isAdding) {
+          openDeliveryDialog("add");
+          return;
+        }
+        onShipmentTagsChange(
+          shipmentTags.filter((value) => value !== "delivered"),
+          { deliveredAt: null },
+        );
+        return;
+      }
       onShipmentTagsChange(
         shipmentTags.includes(key)
           ? shipmentTags.filter((value) => value !== key)
           : [...shipmentTags, key],
       );
     },
-    [disabled, onShipmentTagsChange, shipmentTags, shipmentTagsReadOnly],
+    [disabled, onShipmentTagsChange, openDeliveryDialog, shipmentTags, shipmentTagsReadOnly],
   );
 
   const toggleOperational = useCallback(
@@ -191,23 +279,30 @@ export function StatusTagBar({
           </span>
         )}
 
-        {pills.map((pill) => (
-          <StatusTagPill
-            key={`${pill.layer}:${pill.key}`}
-            label={pill.label}
-            layer={pill.layer}
-            color={pill.color}
-            onRemove={
-              pill.layer === "shipment"
-                ? shipmentTagsReadOnly || disabled
-                  ? undefined
-                  : () => toggleShipment(pill.key)
-                : disabled
-                  ? undefined
-                  : () => toggleOperational(pill.key)
-            }
-          />
-        ))}
+        {pills.map((pill) => {
+          const isDeliveredShipment = pill.layer === "shipment" && pill.key === "delivered";
+          const deliveredSuffix = isDeliveredShipment ? formatDeliveredDateShort(effectiveDeliveredAt) : undefined;
+          const canEditDelivered = isDeliveredShipment && !shipmentTagsReadOnly && !disabled;
+          return (
+            <StatusTagPill
+              key={`${pill.layer}:${pill.key}`}
+              label={pill.label}
+              layer={pill.layer}
+              color={pill.color}
+              suffix={deliveredSuffix}
+              onClick={canEditDelivered ? () => openDeliveryDialog("edit") : undefined}
+              onRemove={
+                pill.layer === "shipment"
+                  ? shipmentTagsReadOnly || disabled
+                    ? undefined
+                    : () => toggleShipment(pill.key)
+                  : disabled
+                    ? undefined
+                    : () => toggleOperational(pill.key)
+              }
+            />
+          );
+        })}
 
         {!disabled && (hasShipmentSection || hasOperationalSection) && (
           <button
@@ -300,7 +395,13 @@ export function StatusTagBar({
                         active: shipmentTags.includes(tag.key),
                         disabled: shipmentTagsReadOnly,
                         color: tag.color,
-                        onClick: () => toggleShipment(tag.key),
+                        onClick: () => {
+                          if (tag.key === "delivered" && !shipmentTags.includes("delivered")) {
+                            setOpen(false);
+                            setSearch("");
+                          }
+                          toggleShipment(tag.key);
+                        },
                       }))}
                     />
                   );
@@ -343,7 +444,150 @@ export function StatusTagBar({
           </div>,
           document.body,
         )}
+
+      {deliveryDialog &&
+        createPortal(
+          <DeliveryDateModal
+            mode={deliveryDialog.mode}
+            value={deliveryDialog.dateValue}
+            onChange={(v) =>
+              setDeliveryDialog((prev) => (prev ? { ...prev, dateValue: v } : prev))
+            }
+            onCancel={closeDeliveryDialog}
+            onConfirm={confirmDeliveryDialog}
+          />,
+          document.body,
+        )}
     </>
+  );
+}
+
+interface DeliveryDateModalProps {
+  mode: "add" | "edit";
+  value: string;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+function DeliveryDateModal({
+  mode,
+  value,
+  onChange,
+  onCancel,
+  onConfirm,
+}: DeliveryDateModalProps) {
+  const isValid = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  useEffect(() => {
+    const keyHandler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+      if (event.key === "Enter" && isValid) onConfirm();
+    };
+    document.addEventListener("keydown", keyHandler);
+    return () => document.removeEventListener("keydown", keyHandler);
+  }, [onCancel, onConfirm, isValid]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={mode === "add" ? "Mark as delivered" : "Edit delivery date"}
+      onClick={onCancel}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9000,
+        background: "rgba(10, 29, 77, 0.32)",
+        backdropFilter: "blur(2px)",
+        WebkitBackdropFilter: "blur(2px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(440px, 100%)",
+          background: "#FFFFFF",
+          border: "1px solid #E5E9F0",
+          borderRadius: 12,
+          boxShadow: "0 20px 48px rgba(10,29,77,0.24)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ padding: "20px 24px 4px" }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#0A1D4D", marginBottom: 4 }}>
+            {mode === "add" ? "Mark as Delivered" : "Edit Delivery Date"}
+          </div>
+          <div style={{ fontSize: 13, color: "#667085" }}>
+            {mode === "add"
+              ? "When was this shipment actually delivered? You can backdate if it was delivered earlier."
+              : "Update the recorded delivery date for this shipment."}
+          </div>
+        </div>
+
+        <div style={{ padding: "16px 24px 8px" }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#344054",
+              marginBottom: 6,
+            }}
+          >
+            Actual delivery date <span style={{ color: "#EF4444" }}>*</span>
+          </label>
+          <NeuronDatePicker value={value} onChange={onChange} />
+        </div>
+
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid #E5E9F0",
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+          }}
+        >
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid #E5E9F0",
+              background: "#FFFFFF",
+              color: "#344054",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!isValid}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: `1px solid ${isValid ? "#0F766E" : "#D1D5DB"}`,
+              background: isValid ? "#0F766E" : "#E5E7EB",
+              color: isValid ? "#FFFFFF" : "#9CA3AF",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: isValid ? "pointer" : "not-allowed",
+            }}
+          >
+            {mode === "add" ? "Confirm" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -1,14 +1,25 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import React, { useState } from "react";
+import { Pencil, X } from "lucide-react";
 
 interface StatusTagPillProps {
   label: string;
   onRemove?: () => void;
   layer?: "shipment" | "operational";
   color?: "danger";
+  /** Optional inline suffix (e.g. delivery date) shown after the label. */
+  suffix?: string;
+  /** When set, the pill body becomes clickable (used for editing the suffix). */
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
-export function StatusTagPill({ label, onRemove, layer = "shipment", color }: StatusTagPillProps) {
+export function StatusTagPill({
+  label,
+  onRemove,
+  layer = "shipment",
+  color,
+  suffix,
+  onClick,
+}: StatusTagPillProps) {
   const [hovered, setHovered] = useState(false);
 
   const palette =
@@ -18,10 +29,14 @@ export function StatusTagPill({ label, onRemove, layer = "shipment", color }: St
         ? { backgroundColor: "#E8F5F3", color: "#12332B", border: "1px solid #C1D9CC" }
         : { backgroundColor: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE" };
 
+  const clickable = !!onClick;
+
   return (
     <span
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={clickable ? onClick : undefined}
+      title={clickable ? "Click to edit delivery date" : undefined}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -32,11 +47,30 @@ export function StatusTagPill({ label, onRemove, layer = "shipment", color }: St
         fontWeight: 600,
         letterSpacing: "0.03em",
         whiteSpace: "nowrap",
+        cursor: clickable ? "pointer" : "default",
         transition: "all 0.12s ease",
         ...palette,
       }}
     >
       {label}
+      {suffix && (
+        <>
+          <span aria-hidden style={{ opacity: 0.45, fontWeight: 500 }}>·</span>
+          <span
+            style={{
+              fontWeight: 500,
+              fontVariantNumeric: "tabular-nums",
+              textDecoration: clickable && hovered ? "underline" : "none",
+              textUnderlineOffset: "2px",
+            }}
+          >
+            {suffix}
+          </span>
+          {clickable && hovered && (
+            <Pencil size={11} style={{ opacity: 0.7, marginLeft: "2px" }} />
+          )}
+        </>
+      )}
       {onRemove && hovered && (
         <button
           type="button"
@@ -62,4 +96,3 @@ export function StatusTagPill({ label, onRemove, layer = "shipment", color }: St
     </span>
   );
 }
-

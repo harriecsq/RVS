@@ -115,7 +115,8 @@
       "Skill(impeccable:*)",
       "Bash(sed \"s/.*\\\\`//g\")",
       "Bash(sed \"s/\\\\`.*//\")",
-      "Bash(sed \"s/.*\\\\`//\")"
+      "Bash(sed \"s/.*\\\\`//\")",
+      "Bash(supabase --version)"
     ]
   }
 }

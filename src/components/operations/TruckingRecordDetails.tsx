@@ -675,6 +675,9 @@ export function TruckingRecordDetails({
   const [linkedTagHistory, setLinkedTagHistory] = useState<TagHistoryEntry[]>(
     ((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[],
   );
+  const [linkedDeliveredAt, setLinkedDeliveredAt] = useState<string | null>(
+    ((record as any).linkedBookingDeliveredAt as string | null) ?? null,
+  );
   const [isShipmentTagsSaving, setIsShipmentTagsSaving] = useState(false);
 
   // ── Inline edit state ──
@@ -722,6 +725,7 @@ export function TruckingRecordDetails({
     setLinkedShipmentTags(initialShipmentTags ?? ((record as any).linkedBookingShipmentTags || []) as string[]);
     setLinkedShipmentEvents(((record as any).linkedBookingShipmentEvents || []) as ShipmentEvent[]);
     setLinkedTagHistory(((record as any).linkedBookingTagHistory || []) as TagHistoryEntry[]);
+    setLinkedDeliveredAt(((record as any).linkedBookingDeliveredAt as string | null) ?? null);
   }, [record]);
 
   const fetchLinkedBooking = useCallback(async (bookingId: string, autoFill = false) => {
@@ -883,7 +887,7 @@ export function TruckingRecordDetails({
   const linkedTagSaveBaseRef = useRef<string[]>(linkedShipmentTags);
 
   const handleLinkedShipmentTagsChange = useCallback(
-    (newTags: string[]) => {
+    (newTags: string[], opts?: { deliveredAt?: string | null }) => {
       if (!currentRecord.linkedBookingId) {
         toast.error("No linked booking to update");
         return;
@@ -892,16 +896,23 @@ export function TruckingRecordDetails({
       setLinkedShipmentTags(newTags);
       const revertTags = linkedTagSaveBaseRef.current;
       const revertHistory = linkedTagHistory;
+      const deliveredAtOverride = opts && "deliveredAt" in opts ? opts.deliveredAt : undefined;
       if (linkedTagDebounceRef.current) clearTimeout(linkedTagDebounceRef.current);
+      const delay = deliveredAtOverride !== undefined ? 0 : 400;
       linkedTagDebounceRef.current = setTimeout(async () => {
         setIsShipmentTagsSaving(true);
         try {
+          const body: Record<string, unknown> = {
+            shipmentTags: pendingLinkedTagsRef.current,
+            user: currentUser?.name || "Unknown",
+          };
+          if (deliveredAtOverride !== undefined) body.deliveredAt = deliveredAtOverride;
           const response = await fetch(
             `${API_BASE_URL}/trucking-records/${currentRecord.id}/update-booking-tags`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` },
-              body: JSON.stringify({ shipmentTags: pendingLinkedTagsRef.current, user: currentUser?.name || "Unknown" }),
+              body: JSON.stringify(body),
             },
           );
           const result = await response.json();
@@ -911,6 +922,7 @@ export function TruckingRecordDetails({
             linkedTagSaveBaseRef.current = saved;
             pendingLinkedTagsRef.current = saved;
             setLinkedTagHistory((result.data?.tagHistory || []) as TagHistoryEntry[]);
+            setLinkedDeliveredAt((result.data?.deliveredAt as string | null) ?? null);
             onUpdate();
             onBookingTagsUpdated?.();
           } else {
@@ -1201,6 +1213,7 @@ export function TruckingRecordDetails({
                   operationalTags={[]}
                   onShipmentTagsChange={handleLinkedShipmentTagsChange}
                   onOperationalTagsChange={() => {}}
+                  deliveredAt={linkedDeliveredAt}
                 />
               )
             ) : (

@@ -105,8 +105,9 @@ export function VouchersScreen() {
     if (!matchesSearch) return false;
 
     if (dateFilterStart || dateFilterEnd) {
-      // Filter by posting date (accounting month basis); fall back to voucherDate/created_at for legacy records
-      const voucherISO = new Date(voucher.postingDate || voucher.voucherDate || voucher.created_at || "").toISOString().split("T")[0];
+      // Filter by Created column (created_at)
+      if (!voucher.created_at) return false;
+      const voucherISO = new Date(voucher.created_at).toISOString().split("T")[0];
       if (dateFilterStart && voucherISO < dateFilterStart) return false;
       if (dateFilterEnd && voucherISO > dateFilterEnd) return false;
     }
