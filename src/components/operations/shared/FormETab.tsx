@@ -6,7 +6,7 @@ import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { applyTemplate } from "../../../utils/export-document-autofill";
-import type { FormE } from "../../../types/export-documents";
+import type { FormE, DocPngSettings } from "../../../types/export-documents";
 import { TemplatableFieldOverlay } from "./TemplatableFieldOverlay";
 import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
 import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
@@ -180,13 +180,17 @@ interface FormETabProps {
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
   onTemplateSaveConfig?: (config: any) => void;
   initialDraftData?: Partial<FormE>;
+  initialDocument?: FormE | null;
+  initialSalesContract?: import("../../../types/export-documents").SalesContract | null;
+  initialPackingList?: import("../../../types/export-documents").PackingList | null;
+  bundleLoaded?: boolean;
 }
 
-export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, onTemplateSaveConfig, initialDraftData }: FormETabProps) {
-  const [doc, setDoc] = useState<FormE | null>(null);
-  const [sc, setSc] = useState<import("../../../types/export-documents").SalesContract | null>(null);
-  const [pl, setPl] = useState<import("../../../types/export-documents").PackingList | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, onTemplateSaveConfig, initialDraftData, initialDocument, initialSalesContract, initialPackingList, bundleLoaded }: FormETabProps) {
+  const [doc, setDoc] = useState<FormE | null>(initialDocument ?? null);
+  const [sc, setSc] = useState<import("../../../types/export-documents").SalesContract | null>(initialSalesContract ?? null);
+  const [pl, setPl] = useState<import("../../../types/export-documents").PackingList | null>(initialPackingList ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -213,7 +217,19 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
     }
   };
 
-  useEffect(() => { fetchDocuments(); }, [bookingId]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+        setSc(initialSalesContract ?? null);
+        setPl(initialPackingList ?? null);
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument, initialSalesContract, initialPackingList]);
 
   const handleCreateClick = () => { proceedWithCreate(null); };
 
@@ -256,14 +272,24 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
     const formETemplateFields = initialDraftData || masterTemplate?.formE || null;
     if (formETemplateFields) { merged = applyTemplate(merged, formETemplateFields, "formE"); }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "formE"); }
-    setEditData(merged);
+    const seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    setEditData({ ...merged, settings: seededSettings } as Partial<FormE>);
     setIsCreating(true);
     setIsEditing(true);
   };
 
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      return { ...prev, settings: nextSettings } as Partial<FormE>;
+    });
+  }, []);
+
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc });
+    setEditData({ ...doc, settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined });
     setIsEditing(true);
     setIsCreating(false);
   };
@@ -309,8 +335,10 @@ export function FormETab({ bookingId, booking, currentUser, onDocumentUpdated, o
       refNo: "",
       docData: isEditing ? editData as any : doc,
       handleEdit, handleCancel, handleSave,
+      settings: isEditing ? (editData as any).settings : doc?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc, editData]);
+  }, [isEditing, isSaving, doc, editData, handleSettingsChange]);
 
   useEffect(() => {
     if (doc && !isEditing) {

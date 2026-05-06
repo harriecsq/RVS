@@ -5,7 +5,7 @@ import { PortalDropdown } from "../../shared/PortalDropdown";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
-import type { FSI, FSIContainer, SalesContract, PackingList } from "../../../types/export-documents";
+import type { FSI, FSIContainer, SalesContract, PackingList, DocPngSettings } from "../../../types/export-documents";
 import { applyTemplate } from "../../../utils/export-document-autofill";
 import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
 import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
@@ -285,13 +285,17 @@ interface FSITabProps {
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
   initialDraftData?: Partial<FSI>;
+  initialDocument?: FSI | null;
+  initialSalesContract?: SalesContract | null;
+  initialPackingList?: PackingList | null;
+  bundleLoaded?: boolean;
 }
 
-export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: FSITabProps) {
-  const [doc, setDoc] = useState<FSI | null>(null);
-  const [sc, setSc] = useState<SalesContract | null>(null);
-  const [pl, setPl] = useState<PackingList | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData, initialDocument, initialSalesContract, initialPackingList, bundleLoaded }: FSITabProps) {
+  const [doc, setDoc] = useState<FSI | null>(initialDocument ?? null);
+  const [sc, setSc] = useState<SalesContract | null>(initialSalesContract ?? null);
+  const [pl, setPl] = useState<PackingList | null>(initialPackingList ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -322,7 +326,19 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
     }
   };
 
-  useEffect(() => { fetchDocument(); }, [bookingId]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+        setSc(initialSalesContract ?? null);
+        setPl(initialPackingList ?? null);
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocument();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument, initialSalesContract, initialPackingList]);
 
   const buildDefaults = (): Partial<FSI> => {
     // Containers from booking containerNo/sealNo (comma-separated) + volume as volumeType
@@ -378,21 +394,31 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
   const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
-    let merged = buildDefaults();
+    let merged: any = buildDefaults();
     const masterTemplate = sc?.masterTemplateId
       ? getMasterTemplate(sc.masterTemplateId)
       : masterTemplates.length === 1 ? masterTemplates[0] : null;
     const fsiTemplateFields = initialDraftData || masterTemplate?.fsi || null;
     if (fsiTemplateFields) { merged = applyTemplate(merged, fsiTemplateFields, "fsi"); }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "fsi"); }
-    setEditData(merged);
+    const seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    setEditData({ ...merged, settings: seededSettings } as Partial<FSI>);
     setIsCreating(true);
     setIsEditing(true);
   };
 
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      return { ...prev, settings: nextSettings } as Partial<FSI>;
+    });
+  }, []);
+
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc });
+    setEditData({ ...doc, settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined });
     setIsEditing(true);
     setIsCreating(false);
   };
@@ -449,8 +475,10 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
       refNo: "",
       docData,
       handleEdit, handleCancel, handleSave,
+      settings: isEditing ? (editData as any).settings : (doc as any)?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc, editData, handleSave]);
+  }, [isEditing, isSaving, doc, editData, handleSave, handleSettingsChange]);
 
   const field = (key: keyof FSI) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");

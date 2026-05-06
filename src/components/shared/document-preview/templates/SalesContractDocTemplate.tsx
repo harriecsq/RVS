@@ -19,11 +19,23 @@ function formatDateLetters(raw: string): string {
 }
 
 export function SalesContractDocTemplate({ data, settings }: SalesContractDocTemplateProps) {
+  const stamps = settings.stamps || {};
+  const buyerStamp = stamps["buyer"]?.pngData;
+  const sellerStamp = stamps["seller"]?.pngData;
+  const supplierStamp = stamps["supplier"]?.pngData;
+
   const refNo = data.refNo || data.referenceNo || "";
   const date = formatDateLetters(data.date || "");
 
   return (
     <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
+
+      {/* Company letterhead */}
+      {settings.logoPng && (
+        <div style={{ marginBottom: "16px" }}>
+          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
+        </div>
+      )}
 
       {/* Title */}
       <div style={{ textAlign: "center", fontSize: "18px", fontWeight: 700, textTransform: "uppercase", margin: "18px 0 8px", letterSpacing: "0.08em" }}>
@@ -111,13 +123,16 @@ export function SalesContractDocTemplate({ data, settings }: SalesContractDocTem
       {/* Signatures — Buyer / Seller / Supplier */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "24px", marginTop: "8px" }}>
         {[
-          { label: "THE BUYER" },
-          { label: "THE SELLER" },
-          { label: "THE SUPPLIER" },
-        ].map(({ label }) => (
+          { label: "THE BUYER", stamp: buyerStamp },
+          { label: "THE SELLER", stamp: sellerStamp },
+          { label: "THE SUPPLIER", stamp: supplierStamp },
+        ].map(({ label, stamp }) => (
           <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ fontSize: "11px", marginBottom: "8px" }}>{label}</div>
             <div style={{ position: "relative", height: "64px", width: "100%" }}>
+              {stamp && (
+                <img src={stamp} alt={label} style={{ position: "absolute", bottom: "4px", left: "50%", transform: "translateX(-50%)", height: "60px", objectFit: "contain" }} />
+              )}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderBottom: "1px solid #000" }} />
             </div>
           </div>

@@ -519,7 +519,6 @@ export function CreateBrokerageBookingPanel({
     setShipper("");
     setConsignee("");
     setCommodity("");
-    setVolume("");
     setVesselVoyage("");
     setShippingLine("");
     setSection("");

@@ -4002,8 +4002,9 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
         }
       }
 
-      // Determine client name
+      // Determine company/client lines for the expenses list view.
       let clientName = "";
+      let companyName = "";
       
       // Try to find client via booking
       let bookingIds: string[] = [];
@@ -4018,24 +4019,31 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
       for (const bId of bookingIds) {
         const booking = bookingMap.get(bId);
         if (booking) {
-          const clientId = booking.customer_id || booking.client_id;
-          if (clientId) {
-            const client = clientMap.get(clientId);
-            if (client) {
-              clientName = client.company_name || client.name;
-              break; // Found a client, stop looking
-            }
-          } else {
-             // Fallback to booking fields if no client ID
-             clientName = booking.companyName || booking.company_name || booking.clientName || booking.client_name || booking.customerName || booking.customer_name || booking.shipper || "";
-             if (clientName) break;
+          const lines = [...new Set(
+            [
+              booking.consignee || booking.shipper,
+              booking.customerName || booking.customer_name,
+              booking.companyName || booking.company_name,
+              booking.contactPersonName || booking.contact_person_name,
+            ]
+              .map((v: any) => (v || "").trim())
+              .filter(Boolean)
+          )];
+          if (lines.length > 0) {
+            companyName = lines[0];
+            clientName = lines[1] || "";
+            break;
           }
         }
       }
       
-      // Fallback: check if expense has clientShipper (export specific)
-      if (!clientName && expense.clientShipper) {
-        clientName = expense.clientShipper;
+      // Fallback to stored expense fields when booking enrichment is unavailable.
+      if (!companyName && !clientName) {
+        const eCompany = (expense.shipperConsignee || expense.companyName || expense.clientShipper || "").trim();
+        const eClient = (expense.client || expense.clientName || "").trim();
+        const lines = [...new Set([eCompany, eClient].filter(Boolean))];
+        companyName = lines[0] || "";
+        clientName = lines[1] || "";
       }
       
       return {
@@ -4044,7 +4052,8 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
         outstanding,
         pendingAmount: outstanding, // Add alias for frontend consistency
         paymentStatus,
-        clientName: clientName || "—"
+        companyName: companyName || clientName || "—",
+        clientName: clientName || companyName || "—"
       };
     });
     

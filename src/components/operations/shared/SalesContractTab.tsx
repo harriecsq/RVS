@@ -6,7 +6,7 @@ import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildSalesContractDefaults, applyTemplate } from "../../../utils/export-document-autofill";
-import type { SalesContract } from "../../../types/export-documents";
+import type { SalesContract, DocPngSettings, DocPngStamp } from "../../../types/export-documents";
 import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
 import type { MasterTemplate } from "../../../types/master-template";
 
@@ -227,6 +227,10 @@ export interface DocumentEditState {
   handleEdit: () => void;
   handleCancel: () => void;
   handleSave: () => void;
+  // Per-document PNG settings — when isEditing, these are in-flight edits
+  // committed via handleSave; otherwise the saved doc.settings.
+  settings?: DocPngSettings;
+  handleSettingsChange?: (patch: Partial<DocPngSettings>) => void;
 }
 
 interface SalesContractTabProps {
@@ -235,11 +239,13 @@ interface SalesContractTabProps {
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: DocumentEditState) => void;
+  initialDocument?: SalesContract | null;
+  bundleLoaded?: boolean;
 }
 
-export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: SalesContractTabProps) {
-  const [doc, setDoc] = useState<SalesContract | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDocument, bundleLoaded }: SalesContractTabProps) {
+  const [doc, setDoc] = useState<SalesContract | null>(initialDocument ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -298,8 +304,28 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     } catch {}
   };
 
-  useEffect(() => { fetchDocument(); }, [bookingId]);
-  useEffect(() => { fetchNextRef(refCompanyCode, refYear); }, [refCompanyCode, refYear]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      // Sync from props but don't clobber active edits.
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+        const existingRef = initialDocument?.refNo || "";
+        const match = existingRef.match(/^(\w+)\s+(\d{4})-(\d+)$/);
+        if (match) {
+          setRefCompanyCode(match[1]);
+          setRefYear(match[2]);
+          setRefNumber(match[3]);
+        }
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocument();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument]);
+  useEffect(() => {
+    if (isEditing || isCreating) fetchNextRef(refCompanyCode, refYear);
+  }, [refCompanyCode, refYear, isEditing, isCreating]);
 
   // Build the full ref number from compound fields
   const buildRefNo = () => {
@@ -337,6 +363,19 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     if (master) {
       const defaults = buildSalesContractDefaults(booking);
       const sc = master.salesContract || {};
+      // Seed per-doc PNG settings from the master template's assets so they
+      // get persisted onto THIS sales contract record (and only this one).
+      const stamps: Record<string, DocPngStamp> = {};
+      if (master.stamps) {
+        for (const [k, v] of Object.entries(master.stamps)) {
+          if (v) stamps[k] = { pngData: v };
+        }
+      }
+      const seededSettings: DocPngSettings = {
+        logoPng: master.letterhead,
+        shippingLinePng: master.shippingLineLetterhead,
+        stamps: Object.keys(stamps).length > 0 ? stamps : undefined,
+      };
       const merged: Partial<SalesContract> = {
         ...defaults,
         ...sc,
@@ -350,6 +389,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
         portOfLoading: sc.portOfLoading || defaults.portOfLoading || "",
         portOfDestination: sc.portOfDestination || defaults.portOfDestination || "",
         masterTemplateId: master.id,
+        settings: seededSettings,
       };
       setEditData(merged);
       setIsCreating(true);
@@ -389,7 +429,7 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
 
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc });
+    setEditData({ ...doc, settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined });
     // Parse existing refNo into compound fields
     const match = (doc.refNo || "").match(/^(\w+)\s+(\d{4})-(\d+)$/);
     if (match) {
@@ -407,6 +447,17 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
     setEditData({});
     setAppliedMaster(null);
   };
+
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) {
+        nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      }
+      return { ...prev, settings: nextSettings } as Partial<SalesContract>;
+    });
+  }, []);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -446,8 +497,10 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
       docData: isEditing ? { ...editData, refNo: buildRefNo() } : doc,
       appliedMaster,
       handleEdit, handleCancel, handleSave,
+      settings: isEditing ? (editData as any).settings : doc?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc?.refNo, appliedMaster, editData]);
+  }, [isEditing, isSaving, doc, appliedMaster, editData, handleSettingsChange]);
 
   const field = (key: keyof SalesContract) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");

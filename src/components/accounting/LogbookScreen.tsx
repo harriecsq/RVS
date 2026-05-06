@@ -130,18 +130,13 @@ export function LogbookScreen() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    Promise.all([
-      fetch(`${API_BASE_URL}/logbook/${month}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      }).then((r) => r.json()),
-      fetch(`${API_BASE_URL}/logbook/history/${month}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      }).then((r) => r.json()),
-    ])
-      .then(([monthRes, historyRes]: [any, any]) => {
+    fetch(`${API_BASE_URL}/logbook/${month}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((monthRes: any) => {
         if (cancelled) return;
         setMonthData(monthRes?.success ? (monthRes.data as LogbookMonthData) : EMPTY_MONTH_DATA);
-        setHistory(historyRes?.success ? (historyRes.data as AdjustmentEntry[]) : []);
       })
       .catch((e) => {
         if (!cancelled) toast.error(`Failed to load logbook: ${(e as Error).message}`);
@@ -151,6 +146,21 @@ export function LogbookScreen() {
       });
     return () => { cancelled = true; };
   }, [month, refetchKey]);
+
+  useEffect(() => {
+    if (!isHistoryOpen) return;
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/logbook/history/${month}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    })
+      .then((r) => r.json())
+      .then((res: any) => {
+        if (cancelled) return;
+        setHistory(res?.success ? (res.data as AdjustmentEntry[]) : []);
+      })
+      .catch(() => { /* silent — panel shows empty state */ });
+    return () => { cancelled = true; };
+  }, [isHistoryOpen, month, refetchKey]);
 
   // Reset selection when leaving adjust mode or switching months
   useEffect(() => {

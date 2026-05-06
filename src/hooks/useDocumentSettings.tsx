@@ -23,6 +23,10 @@ export function useDocumentSettings() {
   const updateSettings = useCallback((patch: Partial<DocumentSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
+      // Deep-merge stamps so a single-slot patch doesn't drop the rest.
+      if (patch.stamps) {
+        next.stamps = { ...(prev.stamps || {}), ...patch.stamps };
+      }
       fetch(`${API_BASE_URL}/document-settings`, {
         method: "PUT",
         headers: HEADERS,

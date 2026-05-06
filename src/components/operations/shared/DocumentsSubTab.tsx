@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { FileText, Plus, CheckCircle, Settings, Sparkles } from "lucide-react";
 import { TemplateManagementView } from "./TemplateManagementView";
 import { publicAnonKey } from "../../../utils/supabase/info";
@@ -54,7 +54,8 @@ interface DocumentsSubTabProps {
 
 export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpdated }: DocumentsSubTabProps) {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
-  const [docStatus, setDocStatus] = useState<Record<string, boolean>>({});
+  const [docsBundle, setDocsBundle] = useState<any | null>(null);
+  const [fsiDoc, setFsiDoc] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activePanelKey, setActivePanelKey] = useState<DocKey | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
@@ -73,16 +74,36 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
   const handleEditStateChange = useCallback((state: DocumentEditState) => {
     editStateRef.current = state;
     setEditState(state);
-    // When a master template is applied, store it and populate in-memory drafts for all docs
+    // When a master template is applied, store it and populate in-memory drafts for all docs.
+    // Each draft also carries a per-document `settings` block (logo + stamps) so the master's
+    // PNGs get persisted onto each individual document record on Create — no global storage.
     if (state.appliedMaster) {
       const m: MasterTemplate = state.appliedMaster;
       setAppliedMaster(m);
+      const baseStamps: Record<string, { pngData: string }> = {};
+      if (m.stamps) {
+        for (const [k, v] of Object.entries(m.stamps)) {
+          if (v) baseStamps[k] = { pngData: v };
+        }
+      }
+      const settingsFor = (docKey: DocKey) => {
+        const stamps = { ...baseStamps };
+        // CI/PL use "manager" slot — sourced from master's "supplier" stamp
+        if ((docKey === "commercialInvoice" || docKey === "packingList") && m.stamps?.supplier) {
+          stamps.manager = { pngData: m.stamps.supplier };
+        }
+        return {
+          logoPng: m.letterhead,
+          shippingLinePng: m.shippingLineLetterhead,
+          stamps: Object.keys(stamps).length > 0 ? stamps : undefined,
+        };
+      };
       setDraftDocs({
-        commercialInvoice: m.commercialInvoice,
-        packingList: m.packingList,
-        declaration: m.declaration,
-        formE: m.formE,
-        fsi: m.fsi,
+        commercialInvoice: { ...m.commercialInvoice, settings: settingsFor("commercialInvoice") },
+        packingList: { ...m.packingList, settings: settingsFor("packingList") },
+        declaration: { ...m.declaration, settings: settingsFor("declaration") },
+        formE: { ...m.formE, settings: settingsFor("formE") },
+        fsi: { ...m.fsi, settings: settingsFor("fsi") },
       });
     }
   }, []);
@@ -104,16 +125,8 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
       const data = docsResult.success ? docsResult.data || {} : {};
 
       const hasFsi = !!(fsiResult.success && fsiResult.data);
-      setDocStatus({
-        salesContract: !!data.salesContract,
-        commercialInvoice: !!data.commercialInvoice,
-        packingList: !!data.packingList,
-        declaration: !!data.declaration,
-        formE: !!data.formE,
-        fsi: hasFsi,
-        processingFee: !!data.processingFee,
-        heartOfExport: !!data.heartOfExport,
-      });
+      setDocsBundle(data);
+      setFsiDoc(hasFsi ? fsiResult.data : null);
       setFsiId(hasFsi ? fsiResult.data.id : null);
     } catch (err) {
       console.error("Error fetching document status:", err);
@@ -123,6 +136,21 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
   }, [bookingId]);
 
   useEffect(() => { fetchDocumentStatus(); }, [fetchDocumentStatus]);
+
+  // Derive doc-existence map from bundle so existing UI keeps working unchanged.
+  const docStatus = useMemo<Record<string, boolean>>(() => {
+    const data = docsBundle || {};
+    return {
+      salesContract: !!data.salesContract,
+      commercialInvoice: !!data.commercialInvoice,
+      packingList: !!data.packingList,
+      declaration: !!data.declaration,
+      formE: !!(data.formE || data["form-e"]),
+      fsi: !!fsiDoc,
+      processingFee: !!data.processingFee,
+      heartOfExport: !!data.heartOfExport,
+    };
+  }, [docsBundle, fsiDoc]);
 
   // Reset edit state when panel closes; if the doc wasn't saved, discard its draft so
   // closing without saving doesn't re-pre-fill the form on next open.
@@ -139,10 +167,10 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
     }
   }, [activePanelKey, docStatus]);
 
-  const handleDocumentUpdated = () => {
+  const handleDocumentUpdated = useCallback(() => {
     fetchDocumentStatus();
     onDocumentUpdated?.();
-  };
+  }, [fetchDocumentStatus, onDocumentUpdated]);
 
   const handleDelete = useCallback(async () => {
     if (!activePanelKey) return;
@@ -190,8 +218,103 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
       : activeDoc.label
     : "";
 
+  const overrideSettings = useMemo(() => {
+    if (!appliedMaster) return undefined;
+    const baseStamps = appliedMaster.stamps && Object.keys(appliedMaster.stamps).length > 0
+      ? Object.fromEntries(Object.entries(appliedMaster.stamps).map(([k, v]) => [k, { pngData: v }]))
+      : {} as Record<string, { pngData: string }>;
+    const stamps = (activePanelKey === "commercialInvoice" || activePanelKey === "packingList")
+      ? { ...baseStamps, ...(appliedMaster.stamps?.supplier ? { manager: { pngData: appliedMaster.stamps.supplier } } : {}) }
+      : baseStamps;
+    return {
+      logoPng: appliedMaster.letterhead,
+      shippingLinePng: appliedMaster.shippingLineLetterhead,
+      stamps: Object.keys(stamps).length > 0 ? stamps : undefined,
+    };
+  }, [appliedMaster, activePanelKey]);
+
+  const stampSlots = useMemo(() => (
+    activePanelKey === "salesContract" ? ["buyer", "seller", "supplier"] :
+    activePanelKey === "commercialInvoice" ? ["manager", "seller"] :
+    activePanelKey === "packingList" ? ["manager"] :
+    activePanelKey === "declaration" ? ["supplier"] :
+    activePanelKey === "fsi" ? [] :
+    activePanelKey === "formE" ? [] :
+    undefined
+  ), [activePanelKey]);
+
+  const closePanel = useCallback(() => setActivePanelKey(null), []);
+
+  // Memoize the grid — it only depends on docStatus/draftDocs/hoveredKey, not editState.
+  // Without this, every keystroke in the side panel re-renders all 8 cards.
+  const documentGrid = useMemo(() => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {[
+        { label: "Shipping Documents", docs: DOCUMENT_TYPES.slice(0, 6) },
+        { label: "Other Documents", docs: DOCUMENT_TYPES.slice(6) },
+      ].map((group) => (
+        <div key={group.label}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "#6B7A76", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+              {group.label}
+            </span>
+            <div style={{ flex: 1, height: "1px", background: "#E5ECE9" }} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
+            {group.docs.map((doc) => {
+              const exists = docStatus[doc.key];
+              const hasDraft = !exists && !("noDraft" in doc && doc.noDraft) && !!draftDocs[doc.key] && Object.keys(draftDocs[doc.key] || {}).length > 0;
+              const isHovered = hoveredKey === doc.key;
+              return (
+                <button
+                  key={doc.key}
+                  onClick={() => setActivePanelKey(doc.key)}
+                  onMouseEnter={() => setHoveredKey(doc.key)}
+                  onMouseLeave={() => setHoveredKey(null)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "12px",
+                    minHeight: "160px",
+                    padding: "24px",
+                    border: `1px solid ${isHovered ? "#237F66" : "#E5E9F0"}`,
+                    borderRadius: "10px",
+                    background: exists ? "#F0FAF7" : "#FFFFFF",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    textAlign: "center",
+                  }}
+                >
+                  <FileText size={32} style={{ color: exists ? "#237F66" : "#D1D5DB" }} />
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
+                    {doc.label}
+                  </span>
+                  {exists ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#237F66", fontWeight: 500 }}>
+                      <CheckCircle size={14} /> Created
+                    </span>
+                  ) : hasDraft ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#0369A1", fontWeight: 500 }}>
+                      <Sparkles size={14} /> Draft Ready
+                    </span>
+                  ) : (
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#6B7A76", fontWeight: 500 }}>
+                      <Plus size={14} /> Create
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  ), [docStatus, draftDocs, hoveredKey]);
+
   // Build PDF preview renderer for the active document type
-  const buildPdfPreview = (docKey: DocKey) => (settings: DocumentSettings) => {
+  const buildPdfPreview = useCallback((docKey: DocKey) => (settings: DocumentSettings) => {
     const bookingData = {
       referenceNo: booking?.referenceNo || booking?.bookingNumber || bookingId,
       date: booking?.bookingDate || "",
@@ -216,7 +339,13 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
     if (docKey === "processingFee") return <ProcessingFeeDocTemplate data={merged} settings={settings} />;
     if (docKey === "heartOfExport") return <HeartOfExportDocTemplate data={merged} settings={settings} />;
     return null;
-  };
+  }, [booking, bookingId, docStatus, draftDocs]);
+
+  const renderPdfPreview = useMemo(() => {
+    if (!activePanelKey) return undefined;
+    const exists = docStatus[activePanelKey];
+    return exists || editState?.isEditing ? buildPdfPreview(activePanelKey) : undefined;
+  }, [activePanelKey, docStatus, editState?.isEditing, buildPdfPreview]);
 
   // Show template management view
   if (showTemplateManager) {
@@ -244,109 +373,59 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
           Loading documents...
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          {[
-            { label: "Shipping Documents", docs: DOCUMENT_TYPES.slice(0, 6) },
-            { label: "Other Documents", docs: DOCUMENT_TYPES.slice(6) },
-          ].map((group) => (
-            <div key={group.label}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "#6B7A76", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
-                  {group.label}
-                </span>
-                <div style={{ flex: 1, height: "1px", background: "#E5ECE9" }} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px" }}>
-                {group.docs.map((doc) => {
-                  const exists = docStatus[doc.key];
-                  const hasDraft = !exists && !("noDraft" in doc && doc.noDraft) && !!draftDocs[doc.key] && Object.keys(draftDocs[doc.key] || {}).length > 0;
-                  const isHovered = hoveredKey === doc.key;
-                  return (
-                    <button
-                      key={doc.key}
-                      onClick={() => setActivePanelKey(doc.key)}
-                      onMouseEnter={() => setHoveredKey(doc.key)}
-                      onMouseLeave={() => setHoveredKey(null)}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "12px",
-                        minHeight: "160px",
-                        padding: "24px",
-                        border: `1px solid ${isHovered ? "#237F66" : "#E5E9F0"}`,
-                        borderRadius: "10px",
-                        background: exists ? "#F0FAF7" : "#FFFFFF",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        textAlign: "center",
-                      }}
-                    >
-                      <FileText size={32} style={{ color: exists ? "#237F66" : "#D1D5DB" }} />
-                      <span style={{ fontSize: "14px", fontWeight: 600, color: "#12332B" }}>
-                        {doc.label}
-                      </span>
-                      {exists ? (
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#237F66", fontWeight: 500 }}>
-                          <CheckCircle size={14} /> Created
-                        </span>
-                      ) : hasDraft ? (
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#0369A1", fontWeight: 500 }}>
-                          <Sparkles size={14} /> Draft Ready
-                        </span>
-                      ) : (
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#6B7A76", fontWeight: 500 }}>
-                          <Plus size={14} /> Create
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+        documentGrid
       )}
 
       {/* Side panel for the active document */}
       {activeDoc && activePanelKey && (
         <DocumentSidePanel
           isOpen={!!activePanelKey}
-          onClose={() => setActivePanelKey(null)}
+          onClose={closePanel}
           title={panelTitle}
           documentExists={activePanelKey ? docStatus[activePanelKey] : false}
           editState={editState}
           onDelete={handleDelete}
-          renderPdfPreview={docStatus[activePanelKey] || editState?.isEditing ? buildPdfPreview(activePanelKey) : undefined}
-          overrideSettings={appliedMaster ? (() => {
-            const baseStamps = appliedMaster.stamps && Object.keys(appliedMaster.stamps).length > 0
-              ? Object.fromEntries(Object.entries(appliedMaster.stamps).map(([k, v]) => [k, { pngData: v }]))
-              : {} as Record<string, { pngData: string }>;
-            // CI and PL use "manager" stamp slot — map from master's "supplier"
-            const stamps = (activePanelKey === "commercialInvoice" || activePanelKey === "packingList")
-              ? { ...baseStamps, ...(appliedMaster.stamps?.supplier ? { manager: { pngData: appliedMaster.stamps.supplier } } : {}) }
-              : baseStamps;
-            return {
-              logoPng: appliedMaster.letterhead,
-              shippingLinePng: appliedMaster.shippingLineLetterhead,
-              stamps: Object.keys(stamps).length > 0 ? stamps : undefined,
-            };
-          })() : undefined}
-          stampSlots={
-            activePanelKey === "salesContract" ? ["buyer", "seller", "supplier"] :
-            activePanelKey === "commercialInvoice" ? ["manager", "seller"] :
-            activePanelKey === "packingList" ? ["manager"] :
-            activePanelKey === "declaration" ? ["supplier"] :
-            activePanelKey === "formE" ? [] :
-            undefined
-          }
+          renderPdfPreview={renderPdfPreview}
+          overrideSettings={overrideSettings}
+          stampSlots={stampSlots}
           showShippingLineLetterhead={activePanelKey === "fsi"}
-          hideSupplierLetterhead={activePanelKey === "fsi" || activePanelKey === "formE" || activePanelKey === "processingFee" || activePanelKey === "heartOfExport"}
+          hideSupplierLetterhead={activePanelKey === "fsi" || activePanelKey === "formE" || activePanelKey === "heartOfExport"}
+          supplierLetterheadLabel={activePanelKey === "processingFee" ? "Letterhead" : undefined}
+          useGalleryLetterhead={activePanelKey === "processingFee"}
           landscape={activePanelKey === "processingFee"}
+          showPreviewRail={activePanelKey !== "formE" && activePanelKey !== "heartOfExport"}
         >
           {(() => {
             const DocComponent = activeDoc.component as React.ComponentType<any>;
+            const bundleLoaded = docsBundle !== null;
+            const bundle = docsBundle || {};
+            const initialSalesContract = bundle.salesContract ?? null;
+            const initialPackingList = bundle.packingList ?? null;
+            // Per-tab seed: pull this tab's record from the bundle (FSI uses fsiDoc).
+            const initialDocument =
+              activePanelKey === "fsi"
+                ? fsiDoc
+                : activePanelKey === "formE"
+                  ? (bundle.formE ?? bundle["form-e"] ?? null)
+                  : (bundle[activePanelKey] ?? null);
+
+            const extraProps: Record<string, any> = { initialDocument, bundleLoaded };
+            if (
+              activePanelKey === "commercialInvoice" ||
+              activePanelKey === "packingList" ||
+              activePanelKey === "declaration"
+            ) {
+              extraProps.initialSalesContract = initialSalesContract;
+            }
+            if (activePanelKey === "formE") {
+              extraProps.initialSalesContract = initialSalesContract;
+              extraProps.initialPackingList = initialPackingList;
+            }
+            if (activePanelKey === "fsi") {
+              extraProps.initialSalesContract = initialSalesContract;
+              extraProps.initialPackingList = initialPackingList;
+            }
+
             return (
               <DocComponent
                 bookingId={bookingId}
@@ -355,6 +434,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
                 onDocumentUpdated={handleDocumentUpdated}
                 onEditStateChange={handleEditStateChange}
                 initialDraftData={activePanelKey !== "salesContract" ? draftDocs[activePanelKey] : undefined}
+                {...extraProps}
               />
             );
           })()}

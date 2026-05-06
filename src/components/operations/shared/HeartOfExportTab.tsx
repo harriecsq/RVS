@@ -4,7 +4,7 @@ import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
-import type { HeartOfExport } from "../../../types/export-documents";
+import type { HeartOfExport, DocPngSettings } from "../../../types/export-documents";
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -154,11 +154,13 @@ interface HeartOfExportTabProps {
   currentUser?: { name: string; email: string; department: string } | null;
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
+  initialDocument?: HeartOfExport | null;
+  bundleLoaded?: boolean;
 }
 
-export function HeartOfExportTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange }: HeartOfExportTabProps) {
-  const [doc, setDoc] = useState<HeartOfExport | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function HeartOfExportTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDocument, bundleLoaded }: HeartOfExportTabProps) {
+  const [doc, setDoc] = useState<HeartOfExport | null>(initialDocument ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -186,7 +188,17 @@ export function HeartOfExportTab({ bookingId, booking, currentUser, onDocumentUp
     }
   };
 
-  useEffect(() => { fetchDocument(); }, [bookingId]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocument();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument]);
 
   // Warm trucking data on mount so Create opens instantly. If the user clicks before
   // it lands, pendingCreate flips and the open fires when the data arrives.
@@ -217,9 +229,18 @@ export function HeartOfExportTab({ bookingId, booking, currentUser, onDocumentUp
     setIsEditing(true);
   };
 
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      return { ...prev, settings: nextSettings } as Partial<HeartOfExport>;
+    });
+  }, []);
+
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc });
+    setEditData({ ...doc, settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined });
     setIsEditing(true);
     setIsCreating(false);
   };
@@ -265,8 +286,10 @@ export function HeartOfExportTab({ bookingId, booking, currentUser, onDocumentUp
       refNo: doc?.bookingRef || "",
       docData: isEditing ? editData as any : doc,
       handleEdit, handleCancel, handleSave,
+      settings: isEditing ? (editData as any).settings : doc?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc, editData, handleSave]);
+  }, [isEditing, isSaving, doc, editData, handleSave, handleSettingsChange]);
 
   const field = <K extends keyof HeartOfExport>(key: K): string =>
     ((isEditing ? editData[key] : doc?.[key]) as string) || "";

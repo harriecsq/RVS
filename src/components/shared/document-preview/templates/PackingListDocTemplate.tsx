@@ -19,6 +19,7 @@ function formatNumber(raw: string | number): string {
 }
 
 export function PackingListDocTemplate({ data, settings }: PackingListDocTemplateProps) {
+  const managerStamp = settings.stamps?.["manager"]?.pngData;
 
   const refNo = data.refNo || "";
   const date = formatDateLetters(data.date || "");
@@ -43,6 +44,13 @@ export function PackingListDocTemplate({ data, settings }: PackingListDocTemplat
 
   return (
     <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
+
+      {/* Company letterhead */}
+      {settings.logoPng && (
+        <div style={{ marginBottom: "12px" }}>
+          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
+        </div>
+      )}
 
       {/* Title */}
       <div style={{ textAlign: "center", fontSize: "15px", fontWeight: 700, textTransform: "uppercase", margin: "14px 0 16px", letterSpacing: "0.05em" }}>
@@ -127,6 +135,9 @@ export function PackingListDocTemplate({ data, settings }: PackingListDocTemplat
       {/* Signature — manager with stamp */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "200px" }}>
         <div style={{ position: "relative", height: "80px", width: "160px" }}>
+          {managerStamp && (
+            <img src={managerStamp} alt="Manager stamp" style={{ position: "absolute", bottom: "4px", left: "50%", transform: "translateX(-50%)", height: "76px", objectFit: "contain" }} />
+          )}
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderBottom: "1px solid #000" }} />
         </div>
         <div style={{ fontSize: "11px", marginTop: "6px" }}>MANAGER</div>

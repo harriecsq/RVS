@@ -5,9 +5,10 @@ import { resizeImageToBase64 } from "../../../utils/imageResize";
 interface LogoUploadSlotProps {
   value?: string; // base64 data URL
   onChange: (value: string | undefined) => void;
+  readOnly?: boolean;
 }
 
-export function LogoUploadSlot({ value, onChange }: LogoUploadSlotProps) {
+export function LogoUploadSlot({ value, onChange, readOnly = false }: LogoUploadSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -18,6 +19,7 @@ export function LogoUploadSlot({ value, onChange }: LogoUploadSlotProps) {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   };
@@ -32,27 +34,30 @@ export function LogoUploadSlot({ value, onChange }: LogoUploadSlotProps) {
             style={{ display: "block", maxWidth: "100%", maxHeight: "80px", margin: "8px auto", objectFit: "contain" }}
           />
           <button
+            type="button"
             onClick={() => onChange(undefined)}
+            disabled={readOnly}
             style={{
               position: "absolute", top: "4px", right: "4px",
               background: "#FEE2E2", border: "none", borderRadius: "4px",
-              padding: "2px", cursor: "pointer", display: "flex", alignItems: "center",
+              padding: "2px", cursor: readOnly ? "default" : "pointer", display: "flex", alignItems: "center",
+              opacity: readOnly ? 0.45 : 1,
             }}
           >
             <X size={12} color="#DC2626" />
           </button>
           <div
-            onClick={() => inputRef.current?.click()}
-            style={{ textAlign: "center", fontSize: "11px", color: "#0F766E", cursor: "pointer", padding: "4px 0 8px", fontWeight: 500 }}
+            onClick={() => { if (!readOnly) inputRef.current?.click(); }}
+            style={{ textAlign: "center", fontSize: "11px", color: readOnly ? "#6B7A76" : "#0F766E", cursor: readOnly ? "default" : "pointer", padding: "4px 0 8px", fontWeight: 500 }}
           >
-            Replace
+            {readOnly ? "Saved Letterhead" : "Replace"}
           </div>
         </div>
       ) : (
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => { if (!readOnly) inputRef.current?.click(); }}
           style={{
             border: "1.5px dashed #CBD5E1",
             borderRadius: "6px",
@@ -61,13 +66,13 @@ export function LogoUploadSlot({ value, onChange }: LogoUploadSlotProps) {
             flexDirection: "column",
             alignItems: "center",
             gap: "4px",
-            cursor: "pointer",
+            cursor: readOnly ? "default" : "pointer",
             background: "#FAFBFC",
           }}
         >
           <Upload size={16} color="#9CA3AF" />
-          <span style={{ fontSize: "11px", color: "#9CA3AF" }}>Upload letterhead PNG</span>
-          <span style={{ fontSize: "10px", color: "#CBD5E1" }}>Shown at top of every document</span>
+          <span style={{ fontSize: "11px", color: "#9CA3AF" }}>{readOnly ? "No letterhead uploaded" : "Upload letterhead PNG"}</span>
+          <span style={{ fontSize: "10px", color: "#CBD5E1" }}>{readOnly ? "Shown at top of the document when available" : "Shown at top of every document"}</span>
         </div>
       )}
       <input
@@ -75,6 +80,7 @@ export function LogoUploadSlot({ value, onChange }: LogoUploadSlotProps) {
         type="file"
         accept="image/*"
         style={{ display: "none" }}
+        disabled={readOnly}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
       />
     </div>

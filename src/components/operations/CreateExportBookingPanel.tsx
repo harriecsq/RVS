@@ -407,7 +407,6 @@ export function CreateExportBookingPanel({
     setContainerNumbers([""]);
     setSealNumbers([""]);
     setBlNumber("");
-    setVolume("");
     setCommodity("");
     setShippingLine("");
     setBookingNumbers([{ id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }]);

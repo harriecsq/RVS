@@ -102,7 +102,20 @@
       "Bash(gh repo *)",
       "Bash(gh api *)",
       "Bash(ls \"C:/Users/harri/.claude/\" 2>&1 | head -30)",
-      "Read(//c/Users/harri/.claude/**)"
+      "Read(//c/Users/harri/.claude/**)",
+      "Bash(awk 'NR>=200 && NR<=270')",
+      "Bash(awk -F: 'NR>=1 && NR<=80')",
+      "Bash(PowerShell -Command \"Select-String -Path 'c:\\\\Users\\\\harri\\\\Downloads\\\\RVS\\\\supabase\\\\functions\\\\server\\\\index.ts' -Pattern 'document-settings|/fsi' | Select-Object -First 20\")",
+      "Bash(PowerShell -Command \"Select-String -Path 'c:\\\\Users\\\\harri\\\\Downloads\\\\RVS\\\\supabase\\\\functions\\\\server\\\\index.ts' -Pattern 'document-settings' | Head -5\")",
+      "Bash(PowerShell -Command \"Select-String -Path 'c:\\\\Users\\\\harri\\\\Downloads\\\\RVS\\\\supabase\\\\functions\\\\server\\\\index.ts' -Pattern '\\\\\"\\\\/make-server.*document-settings' | Head -5\")",
+      "Bash(PowerShell -Command \"Select-String -Path 'c:\\\\Users\\\\harri\\\\Downloads\\\\RVS\\\\supabase\\\\functions\\\\server\\\\index.ts' -Pattern 'app\\\\.get.*document-settings|app\\\\.put.*document-settings' | Head -5\")",
+      "Bash(PowerShell -Command \"Select-String -Path 'c:\\\\Users\\\\harri\\\\Downloads\\\\RVS\\\\supabase\\\\functions\\\\server\\\\index.ts' -Pattern 'document.settings' -Head 10\")",
+      "Bash(PowerShell -Command \"\\(Select-String -Path 'c:\\\\Users\\\\harri\\\\Downloads\\\\RVS\\\\supabase\\\\functions\\\\server\\\\index.ts' -Pattern 'document.settings'\\).LineNumber\")",
+      "Skill(impeccable)",
+      "Skill(impeccable:*)",
+      "Bash(sed \"s/.*\\\\`//g\")",
+      "Bash(sed \"s/\\\\`.*//\")",
+      "Bash(sed \"s/.*\\\\`//\")"
     ]
   }
 }

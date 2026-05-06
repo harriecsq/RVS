@@ -19,6 +19,9 @@ function formatNumber(raw: string | number): string {
 }
 
 export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoiceDocTemplateProps) {
+  const stamps = settings.stamps || {};
+  const managerStamp = stamps["manager"]?.pngData;
+  const sellerStamp = stamps["seller"]?.pngData;
 
   // Field mappings — must match CommercialInvoice type keys from export-documents.ts
   const invoiceNo = data.invoiceNo || "";
@@ -43,6 +46,13 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
 
   return (
     <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
+
+      {/* Company letterhead */}
+      {settings.logoPng && (
+        <div style={{ marginBottom: "12px" }}>
+          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
+        </div>
+      )}
 
       {/* Title */}
       <div style={{ textAlign: "center", fontSize: "15px", fontWeight: 700, textTransform: "uppercase", margin: "14px 0 10px", letterSpacing: "0.05em" }}>
@@ -107,9 +117,15 @@ export function CommercialInvoiceDocTemplate({ data, settings }: CommercialInvoi
 
       {/* Signatures — Manager left, Seller right */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px" }}>
-        {(["MANAGER", "SELLER"]).map((label) => (
+        {([
+          { label: "MANAGER", stamp: managerStamp },
+          { label: "SELLER", stamp: sellerStamp },
+        ]).map(({ label, stamp }) => (
           <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ position: "relative", height: "64px", width: "80%" }}>
+              {stamp && (
+                <img src={stamp} alt={label} style={{ position: "absolute", bottom: "4px", left: "50%", transform: "translateX(-50%)", height: "60px", objectFit: "contain" }} />
+              )}
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, borderBottom: "1px solid #000" }} />
             </div>
             <div style={{ fontSize: "11px", marginTop: "6px" }}>{label}</div>

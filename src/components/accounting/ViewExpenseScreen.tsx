@@ -181,7 +181,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
   const [expandedCategories, setExpandedCategories] = useState<{ [key: string]: boolean }>({});
   const [activeTab, setActiveTab] = useState<"overview" | "vouchers" | "attachments">("overview");
   const [expenseView, setExpenseView] = useState<"form" | "pdf">("form");
-  const [expenseDocSettings, setExpenseDocSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
+  const [expenseDocSettings] = useState<DocumentSettings>(DEFAULT_DOCUMENT_SETTINGS);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [voucherLinkFilter, setVoucherLinkFilter] = useState<"ALL" | "LINKED" | "UNLINKED">("ALL");
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -2280,7 +2280,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
 
       {/* PDF View */}
       {expenseView === "pdf" && expense && (
-        <DocumentPreviewShell settings={null}>
+        <DocumentPreviewShell>
           {expense.documentTemplate === "EXPORT" ? (
             <ExportExpenseDocTemplate
               data={{

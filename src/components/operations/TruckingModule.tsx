@@ -30,6 +30,7 @@ import { deriveCombos, getCombinationKey, getTagByKey } from "../../utils/status
 import type { ColumnDef } from "../design-system";
 import { API_BASE_URL } from '@/utils/api-config';
 import { NeuronStatusPill } from "../NeuronStatusPill";
+import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
 
 
 
@@ -98,8 +99,8 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
 
   // Filters
   const [search, setSearch] = useState("");
-  const [dateFilterStart, setDateFilterStart] = useState("");
-  const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
+  const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [selectedTruckingStatus, setSelectedTruckingStatus] = useState<string[]>([]);
   const [vendorFilter, setVendorFilter] = useState<string[]>([]);
   const [portFilter, setPortFilter] = useState<string[]>([]);

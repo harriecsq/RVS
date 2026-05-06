@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { X, Clock, Edit3, Save } from "lucide-react";
-import { PanelBackdrop } from "../../shared/PanelBackdrop";
 import { StandardButton } from "../../design-system/StandardButton";
 import { ActionsDropdown } from "../../shared/ActionsDropdown";
 import { toast } from "../../ui/toast-utils";
 import { DocumentViewToggle } from "../../shared/document-preview/DocumentViewToggle";
 import { DocumentPreviewShell } from "../../shared/document-preview/DocumentPreviewShell";
+import { DocumentSettingsPanel } from "../../shared/document-preview/DocumentSettingsPanel";
 import type { DocumentSettings } from "../../../types/document-settings";
 import type { DocumentEditState } from "./SalesContractTab";
+import type { DocPngSettings } from "../../../types/export-documents";
 
 interface DocumentSidePanelProps {
   isOpen: boolean;
@@ -22,7 +23,10 @@ interface DocumentSidePanelProps {
   overrideSettings?: Partial<DocumentSettings>;
   showShippingLineLetterhead?: boolean;
   hideSupplierLetterhead?: boolean;
+  supplierLetterheadLabel?: string;
+  useGalleryLetterhead?: boolean;
   landscape?: boolean;
+  showPreviewRail?: boolean;
 }
 
 export function DocumentSidePanel({
@@ -34,10 +38,49 @@ export function DocumentSidePanel({
   editState,
   onDelete,
   renderPdfPreview,
+  stampSlots,
+  overrideSettings,
+  showShippingLineLetterhead,
+  hideSupplierLetterhead,
+  supplierLetterheadLabel,
+  useGalleryLetterhead,
   landscape,
+  showPreviewRail = true,
 }: DocumentSidePanelProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [view, setView] = useState<"form" | "pdf">("form");
+
+  // Settings come solely from the active doc tab's editState — that field carries
+  // the saved doc.settings (view mode) or the in-flight editData.settings (edit mode).
+  // Per-doc semantics: nothing leaks across documents. Master template PNGs are seeded
+  // into editData.settings at Create time by each tab, so no override fallback is needed.
+  const tabSettings: DocPngSettings | undefined = editState?.settings;
+  const effectiveSettings: DocumentSettings = useMemo(() => ({
+    signatories: {},
+    display: { showBankDetails: true, showTerms: true, showFooter: true },
+    ...(overrideSettings || {}),
+    logoPng: tabSettings?.logoPng ?? overrideSettings?.logoPng,
+    shippingLinePng: tabSettings?.shippingLinePng ?? overrideSettings?.shippingLinePng,
+    stamps: {
+      ...(overrideSettings?.stamps || {}),
+      ...(tabSettings?.stamps || {}),
+    },
+  } as DocumentSettings), [overrideSettings, tabSettings?.logoPng, tabSettings?.shippingLinePng, tabSettings?.stamps]);
+
+  // Settings panel writes route to the active tab's editData via editState.
+  // Available only while the tab is in edit/create mode; otherwise no-op.
+  const handleSettingsChange = useCallback((patch: Partial<DocumentSettings>) => {
+    if (!editState?.handleSettingsChange) return;
+    const docPngPatch: Partial<DocPngSettings> = {};
+    if ("logoPng" in patch) docPngPatch.logoPng = patch.logoPng;
+    if ("shippingLinePng" in patch) docPngPatch.shippingLinePng = patch.shippingLinePng;
+    if (patch.stamps) {
+      docPngPatch.stamps = Object.fromEntries(
+        Object.entries(patch.stamps).map(([k, v]) => [k, { pngData: v?.pngData }])
+      );
+    }
+    editState.handleSettingsChange(docPngPatch);
+  }, [editState]);
 
   useEffect(() => {
     if (!isOpen) setView("form");
@@ -65,13 +108,27 @@ export function DocumentSidePanel({
   const isEditing = editState?.isEditing ?? false;
   const isSaving = editState?.isSaving ?? false;
   const isPdfView = view === "pdf";
-
-  // Pass empty settings object — no PNG-based settings used
-  const emptySettings: DocumentSettings = {};
+  const showSettingsPanel =
+    showPreviewRail &&
+    (
+      !hideSupplierLetterhead ||
+      !!showShippingLineLetterhead ||
+      !!stampSlots?.length
+    );
 
   return (
     <>
-      <PanelBackdrop onClick={onClose} zIndex={40} />
+      {/* Lightweight backdrop — no backdrop-filter blur, which is GPU-expensive
+          when the side panel re-paints, scrolls, or animates. */}
+      <div
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 40,
+          backgroundColor: "rgba(10, 29, 77, 0.25)",
+        }}
+      />
       <div
         style={{
           position: "fixed",
@@ -87,6 +144,9 @@ export function DocumentSidePanel({
           flexDirection: "column",
           borderLeft: "1px solid #E5E9F0",
           animation: "docPanelSlideIn 0.3s ease-out",
+          willChange: "transform",
+          transform: "translateZ(0)",
+          contain: "layout paint",
         }}
       >
         {/* Header */}
@@ -168,7 +228,7 @@ export function DocumentSidePanel({
             )}
 
             <ActionsDropdown
-              onDownloadPDF={() => toast.success("PDF download starting...")}
+              onDownloadPDF={() => window.print()}
               onDownloadWord={() => toast.success("Word download starting...")}
               onDelete={() => onDelete?.()}
               compact
@@ -183,20 +243,35 @@ export function DocumentSidePanel({
 
         {/* Content */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          {renderPdfPreview && (
-            <div style={{ flex: 1, overflow: "hidden", display: isPdfView ? "flex" : "none", flexDirection: "column" }}>
-              <DocumentPreviewShell landscape={landscape}>
-                {renderPdfPreview(emptySettings)}
+          {renderPdfPreview && isPdfView && (
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <DocumentPreviewShell
+                landscape={landscape}
+                settings={showSettingsPanel ? (
+                  <DocumentSettingsPanel
+                    settings={effectiveSettings}
+                    onChange={handleSettingsChange}
+                    stampSlots={stampSlots}
+                    showShippingLineLetterhead={showShippingLineLetterhead}
+                    hideSupplierLetterhead={hideSupplierLetterhead}
+                    supplierLetterheadLabel={supplierLetterheadLabel}
+                    useGalleryLetterhead={useGalleryLetterhead}
+                    readOnly={!isEditing}
+                  />
+                ) : undefined}
+              >
+                {renderPdfPreview(effectiveSettings)}
               </DocumentPreviewShell>
             </div>
           )}
 
-          <div style={{ flex: 1, overflow: "auto", display: isPdfView ? "none" : "flex" }}>
+          <div style={{ flex: 1, overflow: "auto", display: isPdfView ? "none" : "flex", contain: "layout paint" }}>
             <div
               style={{
                 flex: showTimeline ? "0 0 calc(100% - 300px)" : "1",
                 overflow: "auto",
                 transition: "flex 0.3s ease",
+                contain: "layout paint",
               }}
             >
               {children}

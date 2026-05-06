@@ -1,8 +1,21 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
+import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
 import * as kv from "./kv_store.tsx";
 const app = new Hono();
+
+let _sb: ReturnType<typeof createClient> | null = null;
+const sb = () => {
+  if (!_sb) {
+    _sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+  }
+  return _sb;
+};
+const KV_TABLE = "kv_store_ce0d67b8";
 
 // Enable logger — v2
 app.use('*', logger(console.log));
@@ -4058,8 +4071,9 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
         }
       }
 
-      // Determine client name
+      // Determine company/client lines for the expenses list view.
       let clientName = "";
+      let companyName = "";
       
       // Try to find client via booking
       let bookingIds: string[] = [];
@@ -4074,24 +4088,31 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
       for (const bId of bookingIds) {
         const booking = bookingMap.get(bId);
         if (booking) {
-          const clientId = booking.customer_id || booking.client_id;
-          if (clientId) {
-            const client = clientMap.get(clientId);
-            if (client) {
-              clientName = client.company_name || client.name;
-              break; // Found a client, stop looking
-            }
-          } else {
-             // Fallback to booking fields if no client ID
-             clientName = booking.companyName || booking.company_name || booking.clientName || booking.client_name || booking.customerName || booking.customer_name || booking.shipper || "";
-             if (clientName) break;
+          const lines = [...new Set(
+            [
+              booking.consignee || booking.shipper,
+              booking.customerName || booking.customer_name,
+              booking.companyName || booking.company_name,
+              booking.contactPersonName || booking.contact_person_name,
+            ]
+              .map((v: any) => (v || "").trim())
+              .filter(Boolean)
+          )];
+          if (lines.length > 0) {
+            companyName = lines[0];
+            clientName = lines[1] || "";
+            break;
           }
         }
       }
       
-      // Fallback: check if expense has clientShipper (export specific)
-      if (!clientName && expense.clientShipper) {
-        clientName = expense.clientShipper;
+      // Fallback to stored expense fields when booking enrichment is unavailable.
+      if (!companyName && !clientName) {
+        const eCompany = (expense.shipperConsignee || expense.companyName || expense.clientShipper || "").trim();
+        const eClient = (expense.client || expense.clientName || "").trim();
+        const lines = [...new Set([eCompany, eClient].filter(Boolean))];
+        companyName = lines[0] || "";
+        clientName = lines[1] || "";
       }
       
       return {
@@ -4100,7 +4121,8 @@ app.get("/make-server-ce0d67b8/expenses", async (c) => {
         outstanding,
         pendingAmount: outstanding, // Add alias for frontend consistency
         paymentStatus,
-        clientName: clientName || "—"
+        companyName: companyName || clientName || "—",
+        clientName: clientName || companyName || "—"
       };
     });
     
@@ -7250,10 +7272,37 @@ app.get("/make-server-ce0d67b8/logbook/:month", async (c) => {
       return c.json({ success: false, error: "Invalid month format" }, 400);
     }
 
-    const imports = await kv.getByPrefix("import_booking:");
-    const exports = await kv.getByPrefix("export_booking:");
-    const allRelevant = [...imports, ...exports];
-    const inMonth = allRelevant.filter((b: any) => b.logbookMonth === month);
+    // Per-prefix queries so the primary-key btree handles the narrowing first
+    // (an OR across two LIKE patterns defeats the index and forces a full-table
+    // sequential scan over every kv_store row — vouchers, billings, etc.).
+    // After the prefix narrows to bookings only, the JSON filter on the small
+    // result avoids hauling huge blobs (declarations, packing lists, etc.).
+    const inMonthFor = (prefix: string) =>
+      sb()
+        .from(KV_TABLE)
+        .select("value")
+        .like("key", `${prefix}%`)
+        .eq("value->>logbookMonth", month);
+    const movedOutFor = (prefix: string) =>
+      sb()
+        .from(KV_TABLE)
+        .select("key", { count: "exact", head: true })
+        .like("key", `${prefix}%`)
+        .eq("value->>originalLogbookMonth", month)
+        .neq("value->>logbookMonth", month);
+
+    const [impIn, expIn, impOut, expOut] = await Promise.all([
+      inMonthFor("import_booking:"),
+      inMonthFor("export_booking:"),
+      movedOutFor("import_booking:"),
+      movedOutFor("export_booking:"),
+    ]);
+    if (impIn.error) throw new Error(impIn.error.message);
+    if (expIn.error) throw new Error(expIn.error.message);
+    if (impOut.error) throw new Error(impOut.error.message);
+    if (expOut.error) throw new Error(expOut.error.message);
+
+    const inMonth = [...(impIn.data ?? []), ...(expIn.data ?? [])].map((r: any) => r.value);
     inMonth.sort((a: any, b: any) => (a.logbookNumber ?? 0) - (b.logbookNumber ?? 0));
 
     const bookings = inMonth.map((b: any) => ({
@@ -7268,22 +7317,14 @@ app.get("/make-server-ce0d67b8/logbook/:month", async (c) => {
       movedIn: b.originalLogbookMonth !== month,
     }));
 
-    let green = 0, yellow = 0;
+    let green = 0, yellow = 0, stayed = 0, movedIn = 0;
     for (const b of bookings) {
       if (b.status === "green") green++;
       else yellow++;
+      if (b.movedIn) movedIn++;
+      else stayed++;
     }
-
-    // "thisMonth" = originated in this month (still here + moved out), so the math reads
-    // total = thisMonth − movedOut + movedIn.
-    let stayed = 0, movedIn = 0, movedOut = 0;
-    for (const b of allRelevant) {
-      const bInMonth = b.logbookMonth === month;
-      const originInMonth = b.originalLogbookMonth === month;
-      if (bInMonth && originInMonth) stayed++;
-      else if (bInMonth && !originInMonth) movedIn++;
-      else if (!bInMonth && originInMonth) movedOut++;
-    }
+    const movedOut = (impOut.count ?? 0) + (expOut.count ?? 0);
     const thisMonth = stayed + movedOut;
 
     return c.json({
@@ -7312,8 +7353,7 @@ app.post("/make-server-ce0d67b8/logbook/adjust", async (c) => {
       return c.json({ success: false, error: "No bookings selected" }, 400);
     }
 
-    const imports = await kv.getByPrefix("import_booking:");
-    const exports = await kv.getByPrefix("export_booking:");
+    const [imports, exports] = await kv.getByPrefixes(["import_booking:", "export_booking:"]);
     const byBookingId = new Map<string, { record: any; kvKey: string }>();
     for (const b of imports) byBookingId.set(b.bookingId, { record: b, kvKey: `import_booking:${b.bookingId}` });
     for (const b of exports) byBookingId.set(b.bookingId, { record: b, kvKey: `export_booking:${b.bookingId}` });

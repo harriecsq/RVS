@@ -7,7 +7,7 @@ import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildPackingListDefaults, applyTemplate } from "../../../utils/export-document-autofill";
-import type { PackingList, PackingListContainer, SalesContract } from "../../../types/export-documents";
+import type { PackingList, PackingListContainer, SalesContract, DocPngSettings } from "../../../types/export-documents";
 import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -285,12 +285,15 @@ interface PackingListTabProps {
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
   initialDraftData?: Partial<PackingList>;
+  initialDocument?: PackingList | null;
+  initialSalesContract?: SalesContract | null;
+  bundleLoaded?: boolean;
 }
 
-export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: PackingListTabProps) {
-  const [doc, setDoc] = useState<PackingList | null>(null);
-  const [sc, setSc] = useState<SalesContract | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData, initialDocument, initialSalesContract, bundleLoaded }: PackingListTabProps) {
+  const [doc, setDoc] = useState<PackingList | null>(initialDocument ?? null);
+  const [sc, setSc] = useState<SalesContract | null>(initialSalesContract ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -341,8 +344,28 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
     } catch {}
   };
 
-  useEffect(() => { fetchDocuments(); }, [bookingId]);
-  useEffect(() => { fetchNextRef(refCompanyCode, refYear); }, [refCompanyCode, refYear]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+        setSc(initialSalesContract ?? null);
+        const existingRef = initialDocument?.refNo || "";
+        const match = existingRef.match(/^(\w+)\s+(\d{4})-(\d+)$/);
+        if (match) {
+          setRefCompanyCode(match[1]);
+          setRefYear(match[2]);
+          setRefNumber(match[3]);
+        }
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument, initialSalesContract]);
+  useEffect(() => {
+    if (isEditing || isCreating) fetchNextRef(refCompanyCode, refYear);
+  }, [refCompanyCode, refYear, isEditing, isCreating]);
 
   // Build the full ref number from compound fields
   const buildRefNo = () => {
@@ -353,17 +376,44 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
   const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
-    let merged = buildPackingListDefaults(booking, sc || undefined);
+    let merged: any = buildPackingListDefaults(booking, sc || undefined);
     if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "packingList"); }
-    setEditData({ ...merged, refNo: buildRefNo() });
+    // Prefer in-memory draft (same-session master pre-fill); fall back to the saved
+    // Sales Contract's settings so letterhead/stamps still appear in later sessions.
+    // PL uses "manager" stamp sourced from the master's "supplier" stamp.
+    let seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    if (!seededSettings && sc?.settings) {
+      const scStamps = sc.settings.stamps || {};
+      const mappedStamps: Record<string, { pngData?: string }> = { ...scStamps };
+      if (scStamps.supplier?.pngData) mappedStamps.manager = { pngData: scStamps.supplier.pngData };
+      seededSettings = {
+        logoPng: sc.settings.logoPng,
+        shippingLinePng: sc.settings.shippingLinePng,
+        stamps: Object.keys(mappedStamps).length > 0 ? mappedStamps : undefined,
+      };
+    }
+    setEditData({ ...merged, refNo: buildRefNo(), settings: seededSettings } as Partial<PackingList>);
     setIsCreating(true);
     setIsEditing(true);
   };
 
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      return { ...prev, settings: nextSettings } as Partial<PackingList>;
+    });
+  }, []);
+
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc, containers: doc.containers ? doc.containers.map((c) => ({ ...c })) : [] });
+    setEditData({
+      ...doc,
+      containers: doc.containers ? doc.containers.map((c) => ({ ...c })) : [],
+      settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined,
+    });
     // Parse existing refNo into compound fields
     const match = (doc.refNo || "").match(/^(\w+)\s+(\d{4})-(\d+)$/);
     if (match) {
@@ -416,8 +466,10 @@ export function PackingListTab({ bookingId, booking, currentUser, onDocumentUpda
       refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
       docData: isEditing ? { ...editData, refNo: buildRefNo() } as any : doc,
       handleEdit, handleCancel, handleSave,
+      settings: isEditing ? (editData as any).settings : doc?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc?.refNo, editData]);
+  }, [isEditing, isSaving, doc, editData, handleSettingsChange]);
 
   const field = (key: keyof PackingList) => {
     if (key === "containers") return;

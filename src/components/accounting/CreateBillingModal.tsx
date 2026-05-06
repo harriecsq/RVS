@@ -189,6 +189,7 @@ export function CreateBillingScreen({
   useEffect(() => {
     if (selectedBooking) {
       setClientName(selectedBooking.clientName || selectedBooking.client || selectedBooking.customerName || selectedBooking.customer_name || "");
+      setCompanyName(selectedBooking.companyName || selectedBooking.company_name || "");
       setVessel(selectedBooking.vesselVoyage || selectedBooking.vessel_voyage || "");
       setBlNumber(selectedBooking.blNumber || selectedBooking.bl_number || selectedBooking.awbBlNo || "");
       
@@ -341,6 +342,7 @@ export function CreateBillingScreen({
     if (booking) {
        // Auto-fill client name immediately on selection to ensure responsiveness
        setClientName(booking.clientName || booking.client || booking.customerName || booking.customer_name || "");
+       setCompanyName(booking.companyName || booking.company_name || "");
     }
   };
 

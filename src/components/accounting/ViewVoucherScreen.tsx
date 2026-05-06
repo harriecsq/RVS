@@ -815,7 +815,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
 
       {/* PDF View */}
       {voucherView === "pdf" && voucher && (
-        <DocumentPreviewShell settings={null}>
+        <DocumentPreviewShell>
           <VoucherDocTemplate
             data={{
               voucherNumber: voucher.voucherNumber,

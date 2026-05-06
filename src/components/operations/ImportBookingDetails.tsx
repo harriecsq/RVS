@@ -704,7 +704,7 @@ export function BrokerageBookingDetails({
         if (!evMap["storage-begins"] && (currentBooking as any).storageBegins) evMap["storage-begins"] = (currentBooking as any).storageBegins;
         if (!evMap["dem-begins"] && (currentBooking as any).demBegins) evMap["dem-begins"] = (currentBooking as any).demBegins;
         return (
-          <DocumentPreviewShell settings={null}>
+          <DocumentPreviewShell>
             <ImportJobOrderTemplate
               data={{
                 bookingId: currentBooking.bookingId,

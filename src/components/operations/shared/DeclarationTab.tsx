@@ -6,7 +6,7 @@ import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildDeclarationDefaults, applyTemplate } from "../../../utils/export-document-autofill";
-import type { Declaration, DeclarationContainer, SalesContract } from "../../../types/export-documents";
+import type { Declaration, DeclarationContainer, SalesContract, DocPngSettings } from "../../../types/export-documents";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -94,12 +94,15 @@ interface DeclarationTabProps {
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
   initialDraftData?: Partial<Declaration>;
+  initialDocument?: Declaration | null;
+  initialSalesContract?: SalesContract | null;
+  bundleLoaded?: boolean;
 }
 
-export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: DeclarationTabProps) {
-  const [doc, setDoc] = useState<Declaration | null>(null);
-  const [sc, setSc] = useState<SalesContract | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData, initialDocument, initialSalesContract, bundleLoaded }: DeclarationTabProps) {
+  const [doc, setDoc] = useState<Declaration | null>(initialDocument ?? null);
+  const [sc, setSc] = useState<SalesContract | null>(initialSalesContract ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -150,8 +153,28 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
     } catch {}
   };
 
-  useEffect(() => { fetchDocuments(); }, [bookingId]);
-  useEffect(() => { fetchNextRef(refCompanyCode, refYear); }, [refCompanyCode, refYear]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+        setSc(initialSalesContract ?? null);
+        const existingRef = initialDocument?.refNo || "";
+        const match = existingRef.match(/^(\w+)\s+(\d{4})-(\d+)$/);
+        if (match) {
+          setRefCompanyCode(match[1]);
+          setRefYear(match[2]);
+          setRefNumber(match[3]);
+        }
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument, initialSalesContract]);
+  useEffect(() => {
+    if (isEditing || isCreating) fetchNextRef(refCompanyCode, refYear);
+  }, [refCompanyCode, refYear, isEditing, isCreating]);
 
   // Build the full ref number from compound fields
   const buildRefNo = () => {
@@ -163,18 +186,38 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
     const defaults = buildDeclarationDefaults(booking, sc || undefined);
-    let merged = { ...defaults };
+    let merged: any = { ...defaults };
     if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "declaration"); }
     merged.containers = defaults.containers;
-    setEditData({ ...merged, refNo: buildRefNo() });
+    // Prefer in-memory draft (same-session master pre-fill); fall back to the saved
+    // Sales Contract's settings so letterhead/stamps still appear in later sessions.
+    // Declaration uses the "supplier" stamp directly — no remap needed.
+    let seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    if (!seededSettings && sc?.settings) {
+      seededSettings = {
+        logoPng: sc.settings.logoPng,
+        shippingLinePng: sc.settings.shippingLinePng,
+        stamps: sc.settings.stamps,
+      };
+    }
+    setEditData({ ...merged, refNo: buildRefNo(), settings: seededSettings } as Partial<Declaration>);
     setIsCreating(true);
     setIsEditing(true);
   };
 
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      return { ...prev, settings: nextSettings } as Partial<Declaration>;
+    });
+  }, []);
+
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc });
+    setEditData({ ...doc, settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined });
     // Parse existing refNo into compound fields
     const match = (doc.refNo || "").match(/^(\w+)\s+(\d{4})-(\d+)$/);
     if (match) {
@@ -227,8 +270,10 @@ export function DeclarationTab({ bookingId, booking, currentUser, onDocumentUpda
       refNo: doc?.refNo || (isEditing ? buildRefNo() : ""),
       docData: (isEditing ? { ...editData, refNo: buildRefNo() } : doc) as any,
       handleEdit, handleCancel, handleSave,
+      settings: isEditing ? (editData as any).settings : doc?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc, editData]);
+  }, [isEditing, isSaving, doc, editData, handleSettingsChange]);
 
   const field = (key: keyof Declaration) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");

@@ -20,6 +20,7 @@ import {
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import type { ColumnDef } from "../design-system";
+import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
 
 interface ExportBookingsProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -77,8 +78,8 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<string[]>([]);
-  const [dateFilterStart, setDateFilterStart] = useState("");
-  const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
+  const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const clientsMasterList = useClientsMasterList();
@@ -117,6 +118,12 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
       booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ((booking as any).companyName && (booking as any).companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (booking.mblMawb && booking.mblMawb.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      ((booking as any).blNumber && (booking as any).blNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      ((booking as any).segments || []).some((seg: any) => (seg?.blNumber || "").toLowerCase().includes(searchTerm.toLowerCase())) ||
+      ((booking as any).containerNo && (booking as any).containerNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      ((booking as any).bookingNumbers || []).some((bn: any) =>
+        (bn.containerNos || []).some((c: string) => (c || "").toLowerCase().includes(searchTerm.toLowerCase()))
+      ) ||
       shipmentStatusSummary.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
@@ -252,7 +259,7 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
       },
     },
     {
-      header: "Date",
+      header: "Created",
       cell: (booking) => (
         <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
           {new Date(booking.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -283,8 +290,8 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
           <div style={{ marginBottom: "24px" }}>
             <StandardSearchInput
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by Booking ID, Customer, Company, or MBL/MAWB..."
+              onChange={setSearchTerm}
+              placeholder="Search by Booking ID, Customer, Company, MBL/MAWB, BL #, or Container #..."
             />
           </div>
 

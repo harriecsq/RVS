@@ -20,6 +20,7 @@ import {
   StandardTable,
 } from "../design-system";
 import type { ColumnDef } from "../design-system";
+import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
 
 interface ExpensesScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -44,6 +45,13 @@ interface Expense {
   companyName?: string;
 }
 
+type BookingDisplayInfo = {
+  serviceType: string;
+  port: string;
+  company: string;
+  client: string;
+};
+
 export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const location = useLocation();
   const { data: expensesResult, isLoading: isLoadingExpenses, refetch: refetchExpenses } = useCachedFetch<{ success: boolean; data: any[] }>("/expenses");
@@ -60,14 +68,14 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [dateFilterStart, setDateFilterStart] = useState("");
-  const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
+  const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
-  const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
+  const bookingEnrichMapRef = useRef<Map<string, BookingDisplayInfo>>(new Map());
   const clientsMasterList = useClientsMasterList();
 
   useEffect(() => {
@@ -80,18 +88,61 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
 
   useEffect(() => {
     if (!bookingsResult?.success) return;
-    const enrichMap = new Map<string, { serviceType: string; port: string }>();
+    const enrichMap = new Map<string, BookingDisplayInfo>();
     (bookingsResult.data || []).forEach((b: any) => {
       const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
       const isImport = serviceType.toLowerCase().includes("import");
       const seg0 = b.segments?.[0];
       const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
-      const enrich = { serviceType, port };
+      const lines = Array.from(new Set(
+        [
+          seg0?.consignee ?? b.consignee ?? seg0?.shipper ?? b.shipper,
+          b.contactPersonName ?? b.contact_person_name ?? b.clientName ?? b.client_name ?? b.customerName ?? b.customer_name,
+          b.customerName ?? b.customer_name ?? b.clientName ?? b.client_name,
+          b.companyName ?? b.company_name,
+        ]
+          .map((v: any) => (v || "").trim())
+          .filter(Boolean)
+      ));
+      const enrich = {
+        serviceType,
+        port,
+        company: lines[0] || "",
+        client: lines[1] || "",
+      };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
     });
     bookingEnrichMapRef.current = enrichMap;
   }, [bookingsResult]);
+
+  const getExpenseDisplayInfo = (expense: Expense) => {
+    const bookingIds = [
+      (expense as any).bookingId,
+      ...(((expense as any).bookingIds || []) as string[]),
+      ...(((expense as any).linkedBookingIds || []) as string[]),
+    ].filter(Boolean);
+
+    for (const bookingId of bookingIds) {
+      const bookingInfo = bookingEnrichMapRef.current.get(bookingId);
+      if (bookingInfo?.company || bookingInfo?.client) {
+        return {
+          company: bookingInfo.company || bookingInfo.client || "",
+          client: bookingInfo.client || "",
+        };
+      }
+    }
+
+    const lines = Array.from(new Set(
+      [expense.companyName, expense.clientName]
+        .map(v => (v || "").trim())
+        .filter(Boolean)
+    ));
+    return {
+      company: lines[0] || "",
+      client: lines[1] || "",
+    };
+  };
 
   const fetchAndSelectExpense = async (expenseId: string) => {
     try {
@@ -171,8 +222,8 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     }
 
     if (clientSelections.length > 0) {
-      const expenseCompany = expense.companyName || expense.clientName || "";
-      if (!clientSelectionMatches(clientSelections, { company: expenseCompany, client: expense.clientName || "" })) return false;
+      const displayInfo = getExpenseDisplayInfo(expense);
+      if (!clientSelectionMatches(clientSelections, displayInfo)) return false;
     }
 
     return true;
@@ -198,10 +249,10 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
         }
         if (clientSelections.length > 0) {
           const aIdx = clientSelections.findIndex((sel) =>
-            clientSelectionMatches([sel], { company: a.companyName || a.clientName || "", client: a.clientName || "" })
+            clientSelectionMatches([sel], getExpenseDisplayInfo(a))
           );
           const bIdx = clientSelections.findIndex((sel) =>
-            clientSelectionMatches([sel], { company: b.companyName || b.clientName || "", client: b.clientName || "" })
+            clientSelectionMatches([sel], getExpenseDisplayInfo(b))
           );
           const d = (aIdx === -1 ? Number.MAX_SAFE_INTEGER : aIdx) - (bIdx === -1 ? Number.MAX_SAFE_INTEGER : bIdx);
           if (d !== 0) return d;
@@ -229,16 +280,24 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     },
     {
       header: "Company / Client",
-      cell: (expense) => (
-        <>
-          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-            {expense.companyName || expense.clientName || "—"}
-          </div>
-          {expense.companyName && expense.clientName && expense.companyName !== expense.clientName && (
-            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{expense.clientName}</div>
-          )}
-        </>
-      ),
+      cell: (expense) => {
+        const displayInfo = getExpenseDisplayInfo(expense);
+        const lines = Array.from(new Set(
+          [displayInfo.company, displayInfo.client]
+            .map(v => (v || "").trim())
+            .filter(Boolean)
+        ));
+        if (lines.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
+        const [primary, ...rest] = lines;
+        return (
+          <>
+            <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{primary}</div>
+            {rest.map((line, i) => (
+              <div key={i} style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{line}</div>
+            ))}
+          </>
+        );
+      },
     },
     {
       header: "Amount",
@@ -291,7 +350,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
         <div style={{ marginBottom: "24px" }}>
           <StandardSearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
             placeholder="Search by Expense Number, Client, Vendor, Booking, or Project Number..."
           />
         </div>
@@ -324,24 +383,6 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
               { value: "Cancelled", label: "Cancelled" },
             ]}
             placeholder="All Statuses"
-          />
-
-          <FilterSingleDropdown
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={[
-              { value: "all", label: "All Categories" },
-              ...uniqueCategories.map(c => ({ value: c, label: c })),
-            ]}
-          />
-
-          <FilterSingleDropdown
-            value={paymentMethodFilter}
-            onChange={setPaymentMethodFilter}
-            options={[
-              { value: "all", label: "All Payment Methods" },
-              ...uniquePaymentMethods.map(m => ({ value: m, label: m })),
-            ]}
           />
 
           <FilterSingleDropdown

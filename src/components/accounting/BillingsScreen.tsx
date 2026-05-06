@@ -17,6 +17,7 @@ import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { useClientsMasterList } from "../../hooks/useClientsMasterList";
 import { API_BASE_URL } from '@/utils/api-config';
+import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
 
 type BillingStatus = "Draft" | "Submitted" | "Approved" | "Paid" | "Completed" | "Cancelled";
 
@@ -57,8 +58,8 @@ export function BillingsScreen() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
-  const [dateFilterStart, setDateFilterStart] = useState("");
-  const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
+  const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
   const clientsMasterList = useClientsMasterList();
@@ -104,9 +105,9 @@ export function BillingsScreen() {
     if (searchQuery) {
       filtered = filtered.filter(
         (b) =>
-          b.billingNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          b.voucherNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          b.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+          (b.billingNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (b.voucherNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (b.clientName || "").toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (statusFilter.length > 0) {
@@ -194,14 +195,23 @@ export function BillingsScreen() {
     },
     {
       header: "Company / Client",
-      cell: (b) => (
-        <>
-          <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{b.companyName || b.clientName || "—"}</div>
-          {b.companyName && b.clientName && b.companyName !== b.clientName && (
-            <div style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{b.clientName}</div>
-          )}
-        </>
-      ),
+      cell: (b) => {
+        const lines = Array.from(new Set(
+          [b.companyName, b.clientName]
+            .map(v => (v || "").trim())
+            .filter(Boolean)
+        ));
+        if (lines.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
+        const [primary, ...rest] = lines;
+        return (
+          <>
+            <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{primary}</div>
+            {rest.map((line, i) => (
+              <div key={i} style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{line}</div>
+            ))}
+          </>
+        );
+      },
     },
     {
       header: "Amount",

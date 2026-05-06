@@ -20,6 +20,7 @@ import {
   StandardTable,
 } from "../design-system";
 import type { ColumnDef } from "../design-system";
+import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
 
 interface Voucher {
   id: string;
@@ -58,8 +59,8 @@ export function VouchersScreen() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedVoucherId, setSelectedVoucherId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [dateFilterStart, setDateFilterStart] = useState("");
-  const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
+  const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [payeeFilter, setPayeeFilter] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -99,7 +100,8 @@ export function VouchersScreen() {
     const matchesSearch =
       voucher.voucherNumber.toLowerCase().includes(searchLower) ||
       (voucher.payee && voucher.payee.toLowerCase().includes(searchLower)) ||
-      (voucher.shipper && voucher.shipper.toLowerCase().includes(searchLower));
+      (voucher.shipper && voucher.shipper.toLowerCase().includes(searchLower)) ||
+      (voucher.expenseNumber && voucher.expenseNumber.toLowerCase().includes(searchLower));
     if (!matchesSearch) return false;
 
     if (dateFilterStart || dateFilterEnd) {
@@ -251,8 +253,8 @@ export function VouchersScreen() {
         <div style={{ marginBottom: "24px" }}>
           <StandardSearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by Voucher Number, Payee, or Shipper..."
+            onChange={setSearchTerm}
+            placeholder="Search by Voucher Number, Payee, Shipper, or Linked Expense..."
           />
         </div>
 

@@ -19,6 +19,7 @@ import {
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import type { ColumnDef } from "../design-system";
+import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
 
 interface CollectionsScreenProps {
   currentUser?: { name: string; email: string; department: string } | null;
@@ -57,8 +58,8 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "collected" | "partial">("all");
-  const [dateFilterStart, setDateFilterStart] = useState("");
-  const [dateFilterEnd, setDateFilterEnd] = useState("");
+  const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
+  const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const clientsMasterList = useClientsMasterList();
@@ -99,6 +100,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       (collection.collectionNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (collection.customerName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (collection.billingNumber && collection.billingNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      ((collection.allocations || []).some((a: any) => (a?.billingNumber || "").toLowerCase().includes(searchTerm.toLowerCase()))) ||
       (collection.projectNumber && collection.projectNumber.toLowerCase().includes(searchTerm.toLowerCase()));
 
     if (!matchesSearch) return false;
@@ -292,7 +294,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
         <div style={{ marginBottom: "24px" }}>
           <StandardSearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
             placeholder="Search by Collection Number, Customer, Billing, or Project Number..."
           />
         </div>

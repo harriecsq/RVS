@@ -6,7 +6,7 @@ import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 import { SingleDateInput } from "../../shared/UnifiedDateRangeFilter";
 import { buildCommercialInvoiceDefaults, applyTemplate } from "../../../utils/export-document-autofill";
-import type { CommercialInvoice, SalesContract } from "../../../types/export-documents";
+import type { CommercialInvoice, SalesContract, DocPngSettings } from "../../../types/export-documents";
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -96,12 +96,15 @@ interface CommercialInvoiceTabProps {
   onDocumentUpdated?: () => void;
   onEditStateChange?: (state: import("./SalesContractTab").DocumentEditState) => void;
   initialDraftData?: Partial<CommercialInvoice>;
+  initialDocument?: CommercialInvoice | null;
+  initialSalesContract?: SalesContract | null;
+  bundleLoaded?: boolean;
 }
 
-export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData }: CommercialInvoiceTabProps) {
-  const [doc, setDoc] = useState<CommercialInvoice | null>(null);
-  const [sc, setSc] = useState<SalesContract | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocumentUpdated, onEditStateChange, initialDraftData, initialDocument, initialSalesContract, bundleLoaded }: CommercialInvoiceTabProps) {
+  const [doc, setDoc] = useState<CommercialInvoice | null>(initialDocument ?? null);
+  const [sc, setSc] = useState<SalesContract | null>(initialSalesContract ?? null);
+  const [isLoading, setIsLoading] = useState(!bundleLoaded);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,8 +155,28 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
     } catch {}
   };
 
-  useEffect(() => { fetchDocuments(); }, [bookingId]);
-  useEffect(() => { fetchNextRef(refCompanyCode, refYear); }, [refCompanyCode, refYear]);
+  useEffect(() => {
+    if (bundleLoaded) {
+      if (!isEditing && !isCreating) {
+        setDoc(initialDocument ?? null);
+        setSc(initialSalesContract ?? null);
+        const existingRef = initialDocument?.invoiceNo || "";
+        const match = existingRef.match(/^(\w+)\s+(\d{4})-(\d+)$/);
+        if (match) {
+          setRefCompanyCode(match[1]);
+          setRefYear(match[2]);
+          setRefNumber(match[3]);
+        }
+      }
+      setIsLoading(false);
+      return;
+    }
+    fetchDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId, bundleLoaded, initialDocument, initialSalesContract]);
+  useEffect(() => {
+    if (isEditing || isCreating) fetchNextRef(refCompanyCode, refYear);
+  }, [refCompanyCode, refYear, isEditing, isCreating]);
 
   // Build the full ref number from compound fields
   const buildRefNo = () => {
@@ -164,17 +187,41 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
   const handleCreateClick = () => { proceedWithCreate(null); };
 
   const proceedWithCreate = (templateFields: Record<string, any> | null) => {
-    let merged = buildCommercialInvoiceDefaults(booking, sc || undefined);
+    let merged: any = buildCommercialInvoiceDefaults(booking, sc || undefined);
     if (initialDraftData) { merged = { ...merged, ...initialDraftData }; }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "commercialInvoice"); }
-    setEditData({ ...merged, invoiceNo: buildRefNo() });
+    // Carry over PNG settings: prefer in-memory draft (same-session master pre-fill);
+    // fall back to the saved Sales Contract's settings so letterhead/stamps still appear
+    // when CI is created in a later session. CI uses "manager" stamp sourced from the
+    // master's "supplier" stamp — apply the same remap here.
+    let seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    if (!seededSettings && sc?.settings) {
+      const scStamps = sc.settings.stamps || {};
+      const mappedStamps: Record<string, { pngData?: string }> = { ...scStamps };
+      if (scStamps.supplier?.pngData) mappedStamps.manager = { pngData: scStamps.supplier.pngData };
+      seededSettings = {
+        logoPng: sc.settings.logoPng,
+        shippingLinePng: sc.settings.shippingLinePng,
+        stamps: Object.keys(mappedStamps).length > 0 ? mappedStamps : undefined,
+      };
+    }
+    setEditData({ ...merged, invoiceNo: buildRefNo(), settings: seededSettings } as Partial<CommercialInvoice>);
     setIsCreating(true);
     setIsEditing(true);
   };
 
+  const handleSettingsChange = useCallback((patch: Partial<DocPngSettings>) => {
+    setEditData((prev) => {
+      const prevSettings: DocPngSettings = (prev as any).settings || {};
+      const nextSettings: DocPngSettings = { ...prevSettings, ...patch };
+      if (patch.stamps) nextSettings.stamps = { ...(prevSettings.stamps || {}), ...patch.stamps };
+      return { ...prev, settings: nextSettings } as Partial<CommercialInvoice>;
+    });
+  }, []);
+
   const handleEdit = () => {
     if (!doc) return;
-    setEditData({ ...doc });
+    setEditData({ ...doc, settings: doc.settings ? { ...doc.settings, stamps: { ...(doc.settings.stamps || {}) } } : undefined });
     // Parse existing invoiceNo into compound fields
     const match = (doc.invoiceNo || "").match(/^(\w+)\s+(\d{4})-(\d+)$/);
     if (match) {
@@ -226,9 +273,11 @@ export function CommercialInvoiceTab({ bookingId, booking, currentUser, onDocume
       isEditing, isSaving,
       refNo: doc?.invoiceNo || (isEditing ? buildRefNo() : ""),
       handleEdit, handleCancel, handleSave,
-      docData: isEditing ? { ...editData, invoiceNo: buildRefNo() } : doc,
+      docData: isEditing ? { ...editData, invoiceNo: buildRefNo() } as any : doc,
+      settings: isEditing ? (editData as any).settings : doc?.settings,
+      handleSettingsChange: isEditing ? handleSettingsChange : undefined,
     });
-  }, [isEditing, isSaving, doc, editData]);
+  }, [isEditing, isSaving, doc, editData, handleSettingsChange]);
 
   const field = (key: keyof CommercialInvoice) => {
     return isEditing ? (editData[key] as string || "") : (doc?.[key] as string || "");

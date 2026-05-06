@@ -13,6 +13,7 @@ function formatDateLetters(raw: string): string {
 }
 
 export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplateProps) {
+  const supplierStamp = settings.stamps?.["supplier"]?.pngData;
 
   const containers: { containerNo: string; sealNo: string }[] = data.containers || [];
   const containerNos = containers.map((c) => [c.containerNo, c.sealNo].filter(Boolean).join("/")).filter(Boolean).join("\n");
@@ -23,6 +24,13 @@ export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplat
 
   return (
     <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
+
+      {/* Company letterhead */}
+      {settings.logoPng && (
+        <div style={{ marginBottom: "20px" }}>
+          <img src={settings.logoPng} alt="Company Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
+        </div>
+      )}
 
       {/* Title block */}
       <div style={{ textAlign: "center", marginBottom: "20px" }}>
@@ -68,6 +76,9 @@ export function DeclarationDocTemplate({ data, settings }: DeclarationDocTemplat
             </td>
             <td style={{ paddingBottom: "4px", verticalAlign: "top" }}>
               <div style={{ position: "relative", height: "80px" }}>
+                {supplierStamp && (
+                  <img src={supplierStamp} alt="Supplier Stamp" style={{ height: "80px", objectFit: "contain", display: "block" }} />
+                )}
               </div>
               <div>{formatDateLetters(data.date || "")}</div>
             </td>

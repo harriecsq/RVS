@@ -49,9 +49,36 @@ export function FSIDocTemplate({ data, settings }: FSIDocTemplateProps) {
   return (
     <div style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", fontSize: "11px", color: "#000", lineHeight: "1" }}>
 
-      {/* Letterhead row — title centered */}
-      <div style={{ display: "flex", alignItems: "center", marginBottom: "10px" }}>
-        <div style={{ flex: 1, textAlign: "center" }}>
+      {/* Letterhead row — shipping line letterhead left (60%) + FSI title right.
+          Placeholder shown when no PNG uploaded so the user sees where it lands. */}
+      <div style={{ display: "flex", alignItems: "flex-start", marginBottom: "10px" }}>
+        <div style={{ width: "60%", flexShrink: 0 }}>
+          {settings.shippingLinePng ? (
+            <img src={settings.shippingLinePng} alt="Shipping Line Letterhead" style={{ width: "100%", objectFit: "contain", display: "block" }} />
+          ) : (
+            <div
+              className="no-print"
+              style={{
+                width: "100%",
+                minHeight: "70px",
+                border: "1px dashed #9CA3AF",
+                borderRadius: "4px",
+                background: "#F9FAFB",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "10px",
+                fontSize: "10px",
+                color: "#6B7A76",
+                textAlign: "center",
+                lineHeight: "1.3",
+              }}
+            >
+              Upload letterhead PNG via Document Settings
+            </div>
+          )}
+        </div>
+        <div style={{ flex: 1, textAlign: "center", paddingLeft: "10px" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "#000" }}>FINAL SHIPPING INSTRUCTION</div>
         </div>
       </div>

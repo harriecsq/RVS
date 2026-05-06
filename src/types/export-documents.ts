@@ -2,6 +2,18 @@
 // Four document generators nested inside an ExportBooking record.
 // Ref number (CODE YEAR-N, e.g. RVS 2026-1) is shared across all 4 documents per booking.
 
+// Per-document PNG settings (letterhead + stamps) — scoped to the individual
+// document record rather than globally, so changes don't leak across docs/bookings.
+export interface DocPngStamp {
+  pngData?: string;
+}
+
+export interface DocPngSettings {
+  logoPng?: string;
+  shippingLinePng?: string;
+  stamps?: Record<string, DocPngStamp>;
+}
+
 export interface SalesContract {
   refNo: string;
   date: string;
@@ -49,6 +61,7 @@ export interface SalesContract {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface CommercialInvoice {
@@ -83,6 +96,7 @@ export interface CommercialInvoice {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface PackingListContainer {
@@ -122,6 +136,7 @@ export interface PackingList {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface DeclarationContainer {
@@ -141,6 +156,7 @@ export interface Declaration {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 // ── FSI (Final Shipping Instructions) ─────────────────────────────────
@@ -208,6 +224,7 @@ export interface FSI {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface FormE {
@@ -260,6 +277,7 @@ export interface FormE {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface ProcessingFee {
@@ -279,6 +297,7 @@ export interface ProcessingFee {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface HeartOfExportExpenseRow {
@@ -313,6 +332,7 @@ export interface HeartOfExport {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  settings?: DocPngSettings;
 }
 
 export interface ExportDocuments {
