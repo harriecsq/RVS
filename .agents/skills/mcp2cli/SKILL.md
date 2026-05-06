@@ -361,6 +361,6 @@ When the user asks to create a skill from an MCP server, OpenAPI spec, or GraphQ
    - Note which are text-safe vs binary
    - For binary formats: `bash ${CLAUDE_SKILL_DIR}/scripts/myapi export --format xlsx --raw > output.xlsx`
 
-   **Knowledge Delta Principle:** Do not duplicate parameter listings from `--help`. Instead, document which parameters actually matter for common tasks, default behaviors that are surprising, combinations that don't work, and rate limits or response size limits.
+   **Knowledge Delta Principle:** Do not duplicate parameter listings from `--help`. Instead, document which parameters actually matter for common tasksgit, default behaviors that are surprising, combinations that don't work, and rate limits or response size limits.
 
 The generated skill uses mcp2cli as its execution layer — the baked wrapper script handles all connection details so the SKILL.md stays clean and portable.
