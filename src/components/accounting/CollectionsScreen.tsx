@@ -321,6 +321,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           <MultiSelectPortalDropdown
             value={statusFilter}
             onChange={setStatusFilter}
+            preserveCase
             options={statusOptions}
             placeholder="All Statuses"
           />
@@ -330,6 +331,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
             value={paymentMethodFilter}
             onChange={setPaymentMethodFilter}
             options={paymentMethodOptions}
+            preserveCase
           />
 
           {/* Company / Client Filter */}

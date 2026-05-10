@@ -374,6 +374,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
           <MultiSelectPortalDropdown
             value={statusFilter}
             onChange={setStatusFilter}
+            preserveCase
             options={[
               { value: "Draft", label: "Draft" },
               { value: "For Approval", label: "For Approval" },
@@ -394,6 +395,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             ]}
             onChange={setServiceTypeFilter}
             placeholder="All Types"
+            preserveCase
           />
           <MultiSelectPortalDropdown
             value={portFilter}

@@ -2429,10 +2429,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Consignee</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.consignee || bookingShipment.companyName || bookingShipment.clientName || "—"}</div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName || bookingShipment.clientName || "—"}</div>
-                      </div>
+                      {bookingShipment.contactPersonName && (
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName}</div>
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Port of Destination (POD)</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.pod || "—"}</div>
@@ -2473,10 +2475,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.shipper || bookingShipment.companyName || bookingShipment.clientName || "—"}</div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName || bookingShipment.clientName || "—"}</div>
-                      </div>
+                      {bookingShipment.contactPersonName && (
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName}</div>
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel/Voyage</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.vesselVoyage || "—"}</div>

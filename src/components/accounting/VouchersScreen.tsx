@@ -278,6 +278,7 @@ export function VouchersScreen() {
           <MultiSelectPortalDropdown
             value={statusFilter}
             onChange={setStatusFilter}
+            preserveCase
             options={[
               { value: "Draft", label: "Draft" },
               { value: "For Approval", label: "For Approval" },
@@ -304,6 +305,7 @@ export function VouchersScreen() {
               { value: "all", label: "All Categories" },
               ...uniqueCategories.map(cat => ({ value: cat, label: cat })),
             ]}
+            preserveCase
           />
 
           <FilterSingleDropdown
@@ -315,6 +317,7 @@ export function VouchersScreen() {
             ]}
             onChange={setServiceTypeFilter}
             placeholder="All Types"
+            preserveCase
           />
           <MultiSelectPortalDropdown
             value={portFilter}

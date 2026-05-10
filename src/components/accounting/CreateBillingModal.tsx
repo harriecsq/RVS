@@ -653,12 +653,6 @@ export function CreateBillingScreen({
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client Name</div>
                           <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{clientName || "—"}</div>
                         </div>
-                        {companyName && (
-                          <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Company</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{companyName}</div>
-                          </div>
-                        )}
                         {/* Row 2: BL Number | Vessel / Voyage */}
                         <div>
                           <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>BL Number</div>

@@ -1393,26 +1393,40 @@ export function TruckingRecordDetails({
                     );
                   }
 
-                  const clientVal = linkedBookingData?.customerName || linkedBookingData?.client_name || linkedBookingData?.clientName || "—";
-                  const hasDistinctCompany = linkedBookingData?.companyName && clientVal !== linkedBookingData.companyName;
+                  const rawClient = linkedBookingData?.contactPersonName
+                    || linkedBookingData?.contact_person_name
+                    || linkedBookingData?.customerName
+                    || linkedBookingData?.client_name
+                    || linkedBookingData?.clientName
+                    || "";
+                  const lbShipper = linkedBookingData?.shipper || "";
+                  const lbConsignee = linkedBookingData?.consignee || "";
+                  const lbCompany = linkedBookingData?.companyName || linkedBookingData?.company_name || "";
+                  const hasDistinctClient = !!rawClient
+                    && rawClient !== lbShipper
+                    && rawClient !== lbConsignee
+                    && rawClient !== lbCompany;
+                  const clientVal = rawClient;
 
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                       {/* Row 1: Booking Ref */}
                       <SummaryField label="Linked Booking Ref" value={bookingId} />
 
-                      {/* Row 2: Client + Consignee */}
+                      {/* Row 2: Shipper/Consignee + Client */}
                       {isLoadingLinkedBooking ? (
                         <div style={{ fontSize: "13px", color: "#667085", fontStyle: "italic" }}>
                           Loading booking details…
                         </div>
                       ) : linkedBookingData ? (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                          <SummaryField label="Client" value={clientVal} />
-                          <SummaryField 
-                            label={isExportBooking ? "Shipper" : "Consignee"} 
-                            value={isExportBooking ? (linkedBookingData.shipper || "—") : (linkedBookingData.consignee || "—")} 
+                        <div style={{ display: "grid", gridTemplateColumns: hasDistinctClient ? "1fr 1fr" : "1fr", gap: "16px" }}>
+                          <SummaryField
+                            label={isExportBooking ? "Shipper" : "Consignee"}
+                            value={isExportBooking ? (linkedBookingData.shipper || "—") : (linkedBookingData.consignee || "—")}
                           />
+                          {hasDistinctClient && (
+                            <SummaryField label="Client" value={clientVal} />
+                          )}
                         </div>
                       ) : null}
 

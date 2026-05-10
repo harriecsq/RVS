@@ -323,6 +323,7 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
           <MultiSelectPortalDropdown
             value={selectedTruckingStatus}
             onChange={setSelectedTruckingStatus}
+            preserveCase
             options={statusOptions.map((status) => ({ value: status, label: status }))}
             placeholder="All Statuses"
           />

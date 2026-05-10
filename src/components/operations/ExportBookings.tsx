@@ -315,6 +315,7 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
             <MultiSelectPortalDropdown
               value={activeTab}
               onChange={setActiveTab}
+              preserveCase
               options={EXPORT_STATUS_FILTER_OPTIONS.map(s => ({ value: s, label: s }))}
               placeholder="All Statuses"
             />

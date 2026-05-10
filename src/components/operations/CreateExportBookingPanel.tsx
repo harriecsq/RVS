@@ -145,6 +145,9 @@ export function CreateExportBookingPanel({
   const [companyName, setCompanyName] = useState("");
   const [contactPersonName, setContactPersonName] = useState("");
   const [consignee, setConsignee] = useState("");
+  const [consigneeId, setConsigneeId] = useState("");
+  const [consigneeContactId, setConsigneeContactId] = useState("");
+  const [consigneeContactName, setConsigneeContactName] = useState("");
   const [shipper, setShipper] = useState("");
   const [containerNumbers, setContainerNumbers] = useState<string[]>([""]);
   const [blNumber, setBlNumber] = useState("");
@@ -289,6 +292,9 @@ export function CreateExportBookingPanel({
         contactPersonName,
         shipper: companyName,
         consignee,
+        consigneeId,
+        consigneeContactId,
+        consigneeContactName,
         containerNo: containerNumbers.filter((c) => c.trim()).join(", "),
         blNumber,
         volume: formatContainerVolume(containerSize, containerType),
@@ -561,6 +567,33 @@ export function CreateExportBookingPanel({
                   }}
                 />
               </div>
+            </div>
+
+            {/* Row 1b: Consignee + Client */}
+            <div>
+              <CompanyContactSelector
+                companyId={consigneeId}
+                contactId={consigneeContactId}
+                companyLabel="Consignee"
+                contactLabel="Client"
+                onSelect={({ company, contact }) => {
+                  const cName = company ? (company.name || company.company_name || "") : "";
+                  if (company) {
+                    setConsigneeId(company.id);
+                    setConsignee(cName);
+                  } else {
+                    setConsigneeId("");
+                    setConsignee("");
+                  }
+                  if (contact) {
+                    setConsigneeContactId(contact.id);
+                    setConsigneeContactName(contact.name);
+                  } else {
+                    setConsigneeContactId("");
+                    setConsigneeContactName("");
+                  }
+                }}
+              />
             </div>
 
             {/* Row 2: Containers (No. + Seal) + Volume */}

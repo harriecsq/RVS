@@ -40,7 +40,7 @@ export function buildSalesContractDefaults(booking: BookingForAutoFill): Partial
     marksAndNos: booking.volume || seg0?.volume || "",
     commodityDescription: booking.commodity || seg0?.commodity || "",
     buyerName: booking.consignee || seg0?.consignee || "",
-    sellerName: booking.shipper || seg0?.shipper || "",
+    supplierName: booking.shipper || seg0?.shipper || "",
     shipmentDate: booking.etd || seg0?.etd || "",
   };
 }

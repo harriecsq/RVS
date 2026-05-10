@@ -17,6 +17,7 @@ interface FilterSingleDropdownProps {
   disabled?: boolean;
   style?: React.CSSProperties;
   triggerStyle?: React.CSSProperties;
+  preserveCase?: boolean;
 }
 
 export function FilterSingleDropdown({
@@ -29,6 +30,7 @@ export function FilterSingleDropdown({
   disabled = false,
   style,
   triggerStyle,
+  preserveCase = false,
 }: FilterSingleDropdownProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -64,7 +66,7 @@ export function FilterSingleDropdown({
             backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF",
             gap: "8px",
             opacity: disabled ? 0.7 : 1,
-            textTransform: isPlaceholder ? "none" : "uppercase",
+            textTransform: preserveCase ? "none" : (isPlaceholder ? "none" : "uppercase"),
             ...triggerStyle,
           }}
         >
@@ -101,7 +103,7 @@ export function FilterSingleDropdown({
                   backgroundColor: selected ? "#E8F2EE" : "transparent",
                   borderBottom: isLast ? "none" : "1px solid #E5E9F0",
                   userSelect: "none",
-                  textTransform: "uppercase",
+                  textTransform: preserveCase ? "none" : "uppercase",
                 }}
                 onMouseEnter={(e) => {
                   if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6";

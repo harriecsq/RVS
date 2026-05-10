@@ -12,6 +12,7 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { toast } from "../ui/toast-utils";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
+import { StatusDateDialog, toDateInputValue, dateInputToIso } from "../shared/StatusDateDialog";
 import { TabRowActions } from "../shared/TabRowActions";
 import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
@@ -284,6 +285,7 @@ export function ExportBookingDetails({
   const [isSaving, setIsSaving] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [sailingDateDialog, setSailingDateDialog] = useState<{ dateValue: string } | null>(null);
 
   // Sub-tab edit propagation state
   const [subTabHasRecord, setSubTabHasRecord] = useState<Record<string, boolean>>({});
@@ -432,32 +434,36 @@ export function ExportBookingDetails({
 
 
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (currentBooking.status === newStatus) return;
-
+  const persistStatusChange = async (
+    newStatus: string,
+    extra: Record<string, unknown> = {},
+  ) => {
     try {
       const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
+      const endpoint = isLegacy
+        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}`
         : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
       const method = isLegacy ? "PATCH" : "PUT";
 
       const response = await fetch(endpoint, {
-        method: method,
+        method,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${publicAnonKey}`
+          "Authorization": `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, ...extra }),
       });
 
       if (!response.ok) throw new Error("Failed to update status");
 
       const result = await response.json();
       if (result.success) {
-        const updated = { ...currentBooking, status: newStatus };
-        setCurrentBooking(updated as ExportBooking);
-        setEditedBooking(updated as ExportBooking);
+        const updated = { ...currentBooking, status: newStatus, ...extra } as ExportBooking;
+        setCurrentBooking(updated);
+        setEditedBooking(updated);
+        if (Array.isArray((extra as any).shipmentTags)) {
+          setShipmentTags((extra as any).shipmentTags as string[]);
+        }
         toast.success(`Status updated to ${newStatus}`);
         onBookingUpdated();
       } else {
@@ -467,6 +473,30 @@ export function ExportBookingDetails({
       console.error("Error updating status:", error);
       toast.error("Failed to update status");
     }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === "Shipped Out") {
+      setSailingDateDialog({
+        dateValue: toDateInputValue((currentBooking as any).deliveredAt ?? null),
+      });
+      return;
+    }
+
+    if (currentBooking.status === newStatus) return;
+    await persistStatusChange(newStatus);
+  };
+
+  const confirmSailingDate = async () => {
+    if (!sailingDateDialog) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(sailingDateDialog.dateValue)) return;
+    const iso = dateInputToIso(sailingDateDialog.dateValue);
+    const nextTags = Array.from(new Set([...(shipmentTags || []), "delivered"]));
+    setSailingDateDialog(null);
+    await persistStatusChange("Shipped Out", {
+      deliveredAt: iso,
+      shipmentTags: nextTags,
+    });
   };
 
 
@@ -775,14 +805,25 @@ export function ExportBookingDetails({
 
         {/* Right Side: Status Only */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          {!isEditing && (
-            <HeaderStatusDropdown
-              currentStatus={currentBooking.status}
-              statusOptions={EXPORT_STATUS_OPTIONS}
-              statusColorMap={EXPORT_STATUS_TEXT_COLORS}
-              onStatusChange={handleStatusChange}
-            />
-          )}
+          {!isEditing && (() => {
+            const sailedAt = (currentBooking as any).deliveredAt as string | null | undefined;
+            const sailedSuffix =
+              currentBooking.status === "Shipped Out" && sailedAt
+                ? new Date(sailedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : null;
+            const displayLabel = sailedSuffix
+              ? `Shipped Out · ${sailedSuffix}`
+              : undefined;
+            return (
+              <HeaderStatusDropdown
+                currentStatus={currentBooking.status}
+                displayLabel={displayLabel}
+                statusOptions={EXPORT_STATUS_OPTIONS}
+                statusColorMap={EXPORT_STATUS_TEXT_COLORS}
+                onStatusChange={handleStatusChange}
+              />
+            );
+          })()}
         </div>
       </div>
 
@@ -997,6 +1038,26 @@ export function ExportBookingDetails({
           </div>
         </div>
       )}
+
+      {sailingDateDialog && (() => {
+        const isEdit = currentBooking.status === "Shipped Out";
+        return (
+          <StatusDateDialog
+            title={isEdit ? "Edit Sailing Date" : "Mark as Shipped Out"}
+            description={
+              isEdit
+                ? "Update the recorded sailing date for this shipment."
+                : "When did this shipment actually sail? You can backdate if it sailed earlier."
+            }
+            label="Actual sailing date"
+            confirmLabel={isEdit ? "Save" : "Confirm"}
+            value={sailingDateDialog.dateValue}
+            onChange={(v) => setSailingDateDialog((prev) => (prev ? { ...prev, dateValue: v } : prev))}
+            onCancel={() => setSailingDateDialog(null)}
+            onConfirm={confirmSailingDate}
+          />
+        );
+      })()}
 
     </div>
   );
@@ -2540,7 +2601,8 @@ function BookingInformationTab({
               alignItems: "center",
               justifyContent: "space-between",
               outline: "none",
-              minHeight: "42px"
+              minHeight: "42px",
+              textTransform: currentVal ? "uppercase" : "none"
             }}
           >
             {renderOption && currentVal ? renderOption(currentVal) : (currentVal || `Select ${label.toLowerCase()}...`)}
@@ -2603,7 +2665,8 @@ function BookingInformationTab({
                     gap: "10px",
                     background: currentVal === option ? "#F0FDF4" : "transparent",
                     borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
-                    transition: "all 0.15s ease"
+                    transition: "all 0.15s ease",
+                    textTransform: "uppercase"
                   }}
                   onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                   onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
@@ -2990,6 +3053,37 @@ function BookingInformationTab({
               }}
             />
           </div>
+        </div>
+
+        {/* Row 1b: Consignee + Client */}
+        <div>
+          <CompanyContactSelector
+            companyId={((isEditing && (mergedEditData as any).consigneeId !== undefined) ? (mergedEditData as any).consigneeId : (mergedBooking as any).consigneeId) || ""}
+            contactId={((isEditing && (mergedEditData as any).consigneeContactId !== undefined) ? (mergedEditData as any).consigneeContactId : (mergedBooking as any).consigneeContactId) || ""}
+            disabled={!isEditing}
+            showContact={true}
+            showLabels={true}
+            companyLabel="Consignee"
+            contactLabel="Client"
+            onSelect={({ company, contact }) => {
+              const updates: any = {};
+              const cName = company ? (company.name || company.company_name || "") : "";
+              updates.consignee = cName;
+              if (company) {
+                updates.consigneeId = company.id;
+              } else {
+                updates.consigneeId = "";
+              }
+              if (contact) {
+                updates.consigneeContactId = contact.id;
+                updates.consigneeContactName = contact.name;
+              } else {
+                updates.consigneeContactId = "";
+                updates.consigneeContactName = "";
+              }
+              mergedSetEditData(updates as any);
+            }}
+          />
         </div>
 
         {/* Row 2: Container No. + Seal No. | Volume */}

@@ -16,6 +16,7 @@ interface MultiSelectPortalDropdownProps {
   align?: "left" | "right";
   searchable?: boolean;
   searchPlaceholder?: string;
+  preserveCase?: boolean;
 }
 
 export function MultiSelectPortalDropdown({
@@ -27,6 +28,7 @@ export function MultiSelectPortalDropdown({
   align = "left",
   searchable = false,
   searchPlaceholder = "Search...",
+  preserveCase = false,
 }: MultiSelectPortalDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -80,7 +82,7 @@ export function MultiSelectPortalDropdown({
             color: value.length > 0 ? "#12332B" : "#9CA3AF",
             backgroundColor: "#FFFFFF",
             gap: "8px",
-            textTransform: value.length > 0 ? "uppercase" : "none",
+            textTransform: preserveCase ? "none" : (value.length > 0 ? "uppercase" : "none"),
           }}
         >
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
@@ -137,7 +139,7 @@ export function MultiSelectPortalDropdown({
                   backgroundColor: selected ? "#E8F2EE" : "transparent",
                   borderBottom: isLast ? "none" : "1px solid #E5E9F0",
                   userSelect: "none",
-                  textTransform: "uppercase",
+                  textTransform: preserveCase ? "none" : "uppercase",
                 }}
                 onMouseEnter={(e) => {
                   if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6";

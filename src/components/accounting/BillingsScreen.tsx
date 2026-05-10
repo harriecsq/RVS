@@ -276,6 +276,7 @@ export function BillingsScreen() {
             <MultiSelectPortalDropdown
               value={statusFilter}
               onChange={setStatusFilter}
+              preserveCase
               options={[
                 { value: "Draft", label: "Draft" },
                 { value: "For Approval", label: "For Approval" },
@@ -295,6 +296,7 @@ export function BillingsScreen() {
               ]}
               onChange={setServiceTypeFilter}
               placeholder="All Types"
+              preserveCase
             />
             <MultiSelectPortalDropdown
               value={portFilter}

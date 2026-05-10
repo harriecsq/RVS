@@ -1086,6 +1086,10 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                     const dClientName = bookingShipment.clientName;
                     const dCompanyName = bookingShipment.companyName;
                     const dContainers = bookingShipment.containers;
+                    const dHasDistinctClient = !!dClientName
+                      && dClientName !== dShipper
+                      && dClientName !== dConsignee
+                      && dClientName !== dCompanyName;
 
                     return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -1103,14 +1107,10 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                             <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dConsignee || "—"}</div>
                           </div>
                         )}
-                        <div>
-                          <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client Name</div>
-                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dClientName || "—"}</div>
-                        </div>
-                        {dCompanyName && (
+                        {dHasDistinctClient && (
                           <div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Company</div>
-                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dCompanyName}</div>
+                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client Name</div>
+                            <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dClientName}</div>
                           </div>
                         )}
                         {/* Row 2: B/L Number | Vessel / Voyage */}
