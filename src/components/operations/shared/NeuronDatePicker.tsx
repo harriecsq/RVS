@@ -348,6 +348,7 @@ export function NeuronDatePicker({
       {open && createPortal(
         <div
           ref={popoverRef}
+          data-neuron-calendar="true"
           style={{
             position: "absolute",
             top: popoverPos.top,

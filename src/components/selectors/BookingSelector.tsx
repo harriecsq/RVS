@@ -159,6 +159,7 @@ export function BookingSelector({
           display: "flex", alignItems: "center", justifyContent: "space-between",
           cursor: disabled ? "not-allowed" : "pointer", outline: "none", gap: "8px",
           opacity: disabled ? 0.7 : 1,
+          textTransform: selectedBooking ? "uppercase" : "none",
         }}
         className={className}
       >
@@ -208,6 +209,7 @@ export function BookingSelector({
                   backgroundColor: isSelected ? "#E8F2EE" : "transparent",
                   borderBottom: isLast ? "none" : "1px solid #E5E9F0",
                   userSelect: "none",
+                  textTransform: "uppercase",
                 }}
                 onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? "#E8F2EE" : "transparent"; }}

@@ -136,6 +136,7 @@ export function BasisDropdown({
             alignItems: "center",
             justifyContent: "space-between",
             boxSizing: "border-box",
+            textTransform: label ? "uppercase" : "none",
           }}
         >
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -165,6 +166,7 @@ export function BasisDropdown({
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: "8px",
+                  textTransform: "uppercase",
                 }}
                 onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLDivElement).style.backgroundColor = "#F8F9FB"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = isActive ? "#F0FAF8" : "transparent"; }}

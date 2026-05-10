@@ -23,6 +23,7 @@ export function NeuronDropdown({ value, options, onChange, placeholder = "Select
           border: "1px solid #E5E9F0", fontSize: "14px", display: "flex",
           alignItems: "center", justifyContent: "space-between", cursor: "pointer",
           color: value ? "#12332B" : "#9CA3AF", backgroundColor: "#FFFFFF",
+          textTransform: value ? "uppercase" : "none",
         }}
       >
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value || placeholder}</span>
@@ -38,6 +39,7 @@ export function NeuronDropdown({ value, options, onChange, placeholder = "Select
               padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
               display: "flex", alignItems: "center", justifyContent: "space-between",
               backgroundColor: value === opt ? "#E8F2EE" : "transparent",
+              textTransform: "uppercase",
             }}
             onMouseEnter={(e) => { if (value !== opt) e.currentTarget.style.backgroundColor = "#F3F4F6"; }}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = value === opt ? "#E8F2EE" : "transparent"; }}

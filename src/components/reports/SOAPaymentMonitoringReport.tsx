@@ -300,7 +300,7 @@ export function SOAPaymentMonitoringReport() {
           containerNumbers,
           soaNumber,
           soaAmount,
-          nameCheck: nameCheckParts.join(", ") || "—",
+          nameCheck: nameCheckParts.join(" / ") || "—",
           checkAmount: checkAmountTotal,
           dateOfPayment: paymentDates.join(", ") || "—",
           billingDate: billing.billingDate || "",

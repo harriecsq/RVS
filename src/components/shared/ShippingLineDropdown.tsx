@@ -38,6 +38,7 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
           outline: "none",
           minHeight: "40px",
           boxSizing: "border-box",
+          textTransform: value ? "uppercase" : "none",
         }}
       >
         {value || "Select shipping line"}
@@ -85,6 +86,7 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
               background: value === option ? "#E8F2EE" : "transparent",
               borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
               transition: "background 0.15s ease",
+              textTransform: "uppercase",
             }}
             onMouseEnter={(e) => { if (value !== option) e.currentTarget.style.background = "#F9FAFB"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = value === option ? "#E8F2EE" : "transparent"; }}

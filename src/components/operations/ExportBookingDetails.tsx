@@ -2689,7 +2689,8 @@ function BookingInformationTab({
               alignItems: "center",
               justifyContent: "space-between",
               outline: "none",
-              minHeight: "42px"
+              minHeight: "42px",
+              textTransform: currentVal ? "uppercase" : "none"
             }}
           >
             {currentVal || "Select section..."}
@@ -2751,7 +2752,8 @@ function BookingInformationTab({
                       gap: "10px",
                       background: currentVal === option ? "#F0FDF4" : "transparent",
                       borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
-                      transition: "all 0.15s ease"
+                      transition: "all 0.15s ease",
+                      textTransform: "uppercase"
                     }}
                     onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                     onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
@@ -2883,7 +2885,8 @@ function BookingInformationTab({
                 alignItems: "center",
                 justifyContent: "space-between",
                 outline: "none",
-                height: "42px"
+                height: "42px",
+                textTransform: "uppercase"
               }}
             >
               {parsed.unit}
@@ -2914,7 +2917,8 @@ function BookingInformationTab({
                       cursor: "pointer",
                       color: "#111827",
                       background: parsed.unit === unit ? "#F0FDF4" : "transparent",
-                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
+                      borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none",
+                      textTransform: "uppercase"
                     }}
                     onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
                     onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}

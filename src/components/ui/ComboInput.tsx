@@ -179,6 +179,7 @@ export function ComboInput({
             borderRadius: "8px",
             outline: "none",
             transition: "all 0.2s",
+            textTransform: value ? "uppercase" : "none",
           }}
           onMouseEnter={(e) => {
             if (!isOpen && !isMatch) {
@@ -272,6 +273,7 @@ export function ComboInput({
                     borderBottom: index < filteredOptions.length - 1 ? "1px solid #F0F2F5" : "none",
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     transition: "background-color 0.15s",
+                    textTransform: "uppercase",
                   }}
                   onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.backgroundColor = "#F8FAFB"; }}
                   onMouseLeave={(e) => {

@@ -64,6 +64,7 @@ export function FilterSingleDropdown({
             backgroundColor: disabled ? "#F9FAFB" : "#FFFFFF",
             gap: "8px",
             opacity: disabled ? 0.7 : 1,
+            textTransform: isPlaceholder ? "none" : "uppercase",
             ...triggerStyle,
           }}
         >
@@ -100,6 +101,7 @@ export function FilterSingleDropdown({
                   backgroundColor: selected ? "#E8F2EE" : "transparent",
                   borderBottom: isLast ? "none" : "1px solid #E5E9F0",
                   userSelect: "none",
+                  textTransform: "uppercase",
                 }}
                 onMouseEnter={(e) => {
                   if (!selected) e.currentTarget.style.backgroundColor = "#F3F4F6";

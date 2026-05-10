@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { usePopper } from "react-popper";
 import { Save, X } from "lucide-react";
+import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
 
 interface RefundPopoverProps {
   referenceElement: HTMLElement | null;
@@ -34,34 +35,13 @@ export function RefundPopover({ referenceElement, isOpen, onClose, onSave, initi
     placement: 'bottom-end',
   });
 
-  // Internal display state (MM/DD/YYYY)
+  // Internal state — dates stored as ISO (YYYY-MM-DD)
   const [formData, setFormData] = useState({
-    refundDateSubmitted: "", // displayed as MM/DD/YYYY
+    refundDateSubmitted: "",
     refundCheckNo: "",
     refundAmount: "",
-    refundDateRefunded: "" // displayed as MM/DD/YYYY
+    refundDateRefunded: "",
   });
-
-  // Helper to convert ISO (YYYY-MM-DD) to Display (MM/DD/YYYY)
-  const toDisplayDate = (isoDate?: string) => {
-    if (!isoDate) return "";
-    const parts = isoDate.split('-');
-    if (parts.length === 3) {
-        return `${parts[1]}/${parts[2]}/${parts[0]}`;
-    }
-    return isoDate;
-  };
-
-  // Helper to convert Display (MM/DD/YYYY) to ISO (YYYY-MM-DD)
-  const toIsoDate = (displayDate: string) => {
-    if (!displayDate) return "";
-    const parts = displayDate.split('/');
-    if (parts.length === 3) {
-        return `${parts[2]}-${parts[0]}-${parts[1]}`; // YYYY-MM-DD
-    }
-    // Fallback if user entered something weird but we want to try to save it or it's already ISO
-    return displayDate; 
-  };
 
   // Helper to format number with commas
   const formatNumberWithCommas = (value: string) => {
@@ -79,31 +59,13 @@ export function RefundPopover({ referenceElement, isOpen, onClose, onSave, initi
     if (isOpen) {
       const initialAmount = initialData.refundAmount !== undefined ? String(initialData.refundAmount) : "";
       setFormData({
-        refundDateSubmitted: toDisplayDate(initialData.refundDateSubmitted),
+        refundDateSubmitted: initialData.refundDateSubmitted || "",
         refundCheckNo: initialData.refundCheckNo || "",
         refundAmount: formatNumberWithCommas(initialAmount),
-        refundDateRefunded: toDisplayDate(initialData.refundDateRefunded)
+        refundDateRefunded: initialData.refundDateRefunded || "",
       });
     }
   }, [isOpen, initialData]);
-
-  const handleDateChange = (val: string, field: 'refundDateSubmitted' | 'refundDateRefunded') => {
-    // Remove all non-digit characters
-    const numbers = val.replace(/\D/g, "");
-    
-    // Limit to 8 digits (MMDDYYYY)
-    const truncated = numbers.slice(0, 8);
-    
-    let formatted = truncated;
-    if (truncated.length > 2) {
-      formatted = `${truncated.slice(0, 2)}/${truncated.slice(2)}`;
-    }
-    if (truncated.length > 4) {
-      formatted = `${truncated.slice(0, 2)}/${truncated.slice(2, 4)}/${truncated.slice(4)}`;
-    }
-    
-    setFormData(prev => ({ ...prev, [field]: formatted }));
-  };
 
   const handleAmountChange = (val: string) => {
     // Allow digits, one decimal point
@@ -121,30 +83,21 @@ export function RefundPopover({ referenceElement, isOpen, onClose, onSave, initi
     setFormData(prev => ({ ...prev, refundAmount: commaFormatted }));
   };
 
-  const handleDateBlur = (field: 'refundDateSubmitted' | 'refundDateRefunded') => {
-      // Basic validation on blur if needed
-      // If incomplete, maybe clear it? But let's leave it for now.
-  };
-
   const handleSaveInternal = () => {
-      // Clean amount before saving (remove commas)
-      const cleanAmount = formData.refundAmount.replace(/,/g, '');
-      
-      onSave({
-          ...formData,
-          refundDateSubmitted: toIsoDate(formData.refundDateSubmitted),
-          refundDateRefunded: toIsoDate(formData.refundDateRefunded),
-          refundAmount: cleanAmount
-      });
+    const cleanAmount = formData.refundAmount.replace(/,/g, '');
+    onSave({ ...formData, refundAmount: cleanAmount });
   };
 
   // Click outside to close
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-        if (popperElement && !popperElement.contains(event.target as Node) && 
-            referenceElement && !referenceElement.contains(event.target as Node)) {
-            onClose();
-        }
+      const target = event.target as Node;
+      const inCalendar = !!(target as Element).closest?.("[data-neuron-calendar]");
+      if (inCalendar) return;
+      if (popperElement && !popperElement.contains(target) &&
+          referenceElement && !referenceElement.contains(target)) {
+        onClose();
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -193,23 +146,10 @@ export function RefundPopover({ referenceElement, isOpen, onClose, onSave, initi
           <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "#344054", marginBottom: "6px" }}>
             Date Submitted
           </label>
-          <input
-            type="text"
+          <NeuronDatePicker
             value={formData.refundDateSubmitted}
-            onChange={(e) => handleDateChange(e.target.value, 'refundDateSubmitted')}
-            onBlur={() => handleDateBlur('refundDateSubmitted')}
-            placeholder="MM/DD/YYYY"
-            maxLength={10}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              fontSize: "14px",
-              border: "1px solid #D1D5DB",
-              borderRadius: "8px",
-              outline: "none",
-              color: "#111827",
-              fontFamily: "monospace" // Optional: helps align date chars
-            }}
+            onChange={(iso) => setFormData(prev => ({ ...prev, refundDateSubmitted: iso }))}
+            placeholder="Select date"
           />
         </div>
 
@@ -265,23 +205,10 @@ export function RefundPopover({ referenceElement, isOpen, onClose, onSave, initi
           <label style={{ display: "block", fontSize: "12px", fontWeight: 500, color: "#344054", marginBottom: "6px" }}>
             Date Refunded
           </label>
-          <input
-            type="text"
+          <NeuronDatePicker
             value={formData.refundDateRefunded}
-            onChange={(e) => handleDateChange(e.target.value, 'refundDateRefunded')}
-            onBlur={() => handleDateBlur('refundDateRefunded')}
-            placeholder="MM/DD/YYYY"
-            maxLength={10}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              fontSize: "14px",
-              border: "1px solid #D1D5DB",
-              borderRadius: "8px",
-              outline: "none",
-              color: "#111827",
-              fontFamily: "monospace"
-            }}
+            onChange={(iso) => setFormData(prev => ({ ...prev, refundDateRefunded: iso }))}
+            placeholder="Select date"
           />
         </div>
       </div>

@@ -143,6 +143,7 @@ export function PayeeSelector({
     outline: 'none',
     gap: '8px',
     opacity: disabled ? 0.7 : 1,
+    textTransform: value ? 'uppercase' : 'none',
   };
 
   return (
@@ -219,6 +220,7 @@ export function PayeeSelector({
                     backgroundColor: isSelected ? '#E8F2EE' : 'transparent',
                     borderBottom: isLast ? 'none' : '1px solid #E5E9F0',
                     userSelect: 'none',
+                    textTransform: 'uppercase',
                   }}
                   onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#F3F4F6'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isSelected ? '#E8F2EE' : 'transparent'; }}

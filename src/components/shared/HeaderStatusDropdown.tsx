@@ -44,6 +44,7 @@ export function HeaderStatusDropdown({
           color: statusColor,
           whiteSpace: "nowrap",
           transition: "all 0.15s ease",
+          textTransform: "uppercase",
         }}
         onMouseEnter={(e) => {
           if (!open) {
@@ -99,6 +100,7 @@ export function HeaderStatusDropdown({
                 color: statusColorMap[status] || "#6B7280",
                 textAlign: "left",
                 transition: "background 0.1s ease",
+                textTransform: "uppercase",
               }}
               onMouseEnter={(e) => {
                 if (!isSelected) e.currentTarget.style.background = "#F9FAFB";

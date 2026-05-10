@@ -1454,7 +1454,7 @@ function PodSelectField({
         <div
           ref={anchorRef}
           onClick={() => setOpen(!open)}
-          style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box" }}
+          style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box", textTransform: rawValue ? "uppercase" : "none" }}
         >
           {rawValue || "Select POD"}
           <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
@@ -1464,7 +1464,7 @@ function PodSelectField({
             <div
               key={option}
               onMouseDown={(e) => { e.preventDefault(); handleChange(option); setOpen(false); }}
-              style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease" }}
+              style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease", textTransform: "uppercase" }}
               onMouseEnter={(e) => { if (rawValue !== option) e.currentTarget.style.background = "#F9FAFB"; }}
               onMouseLeave={(e) => { if (rawValue !== option) e.currentTarget.style.background = "transparent"; }}
             >
@@ -1977,7 +1977,8 @@ function BookingInformationTab({
               alignItems: "center",
               justifyContent: "space-between",
               outline: "none",
-              minHeight: "42px"
+              minHeight: "42px",
+              textTransform: currentVal ? "uppercase" : "none"
             }}
           >
             {renderOption && currentVal ? renderOption(currentVal) : (currentVal || `Select ${label.toLowerCase()}...`)}
@@ -2029,7 +2030,8 @@ function BookingInformationTab({
                   gap: "10px",
                   background: currentVal === option ? "#F0FDF4" : "transparent",
                   borderBottom: index < filteredOptions.length - 1 ? "1px solid #E5E9F0" : "none",
-                  transition: "all 0.15s ease"
+                  transition: "all 0.15s ease",
+                  textTransform: "uppercase"
                 }}
                 onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                 onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
@@ -2113,7 +2115,8 @@ function BookingInformationTab({
               alignItems: "center",
               justifyContent: "space-between",
               outline: "none",
-              minHeight: "42px"
+              minHeight: "42px",
+              textTransform: currentVal ? "uppercase" : "none"
             }}
           >
             {currentVal || "Select section..."}
@@ -2162,7 +2165,8 @@ function BookingInformationTab({
                   gap: "10px",
                   background: currentVal === option ? "#F0FDF4" : "transparent",
                   borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
-                  transition: "all 0.15s ease"
+                  transition: "all 0.15s ease",
+                  textTransform: "uppercase"
                 }}
                 onMouseEnter={(e) => { if (currentVal !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                 onMouseLeave={(e) => { if (currentVal !== option) e.currentTarget.style.background = "transparent"; }}
@@ -2292,7 +2296,8 @@ function BookingInformationTab({
                 alignItems: "center",
                 justifyContent: "space-between",
                 outline: "none",
-                height: "42px"
+                height: "42px",
+                textTransform: "uppercase"
               }}
             >
               {parsed.unit}
@@ -2314,7 +2319,8 @@ function BookingInformationTab({
                     cursor: "pointer",
                     color: "#111827",
                     background: parsed.unit === unit ? "#F0FDF4" : "transparent",
-                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
+                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none",
+                    textTransform: "uppercase"
                   }}
                   onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
                   onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}
@@ -2408,7 +2414,8 @@ function BookingInformationTab({
                 alignItems: "center",
                 justifyContent: "space-between",
                 outline: "none",
-                height: "42px"
+                height: "42px",
+                textTransform: "uppercase"
               }}
             >
               {parsed.unit}
@@ -2430,7 +2437,8 @@ function BookingInformationTab({
                     cursor: "pointer",
                     color: "#111827",
                     background: parsed.unit === unit ? "#F0FDF4" : "transparent",
-                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none"
+                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none",
+                    textTransform: "uppercase"
                   }}
                   onMouseEnter={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
                   onMouseLeave={(e) => { if (parsed.unit !== unit) e.currentTarget.style.background = "transparent"; }}

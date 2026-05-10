@@ -945,7 +945,8 @@ export function CreateBrokerageBookingPanel({
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between"
+                      justifyContent: "space-between",
+                      textTransform: pod ? "uppercase" : "none"
                     }}
                   >
                     {pod || "Select POD"}
@@ -983,7 +984,8 @@ export function CreateBrokerageBookingPanel({
                             gap: "10px",
                             background: pod === option ? "#F0FDF4" : "transparent",
                             borderBottom: index < 4 ? "1px solid #E5E9F0" : "none",
-                            transition: "all 0.15s ease"
+                            transition: "all 0.15s ease",
+                            textTransform: "uppercase"
                           }}
                           onMouseEnter={(e) => {
                             if (pod !== option) {
@@ -1027,6 +1029,7 @@ export function CreateBrokerageBookingPanel({
                       backgroundColor: "white", cursor: "pointer", display: "flex",
                       alignItems: "center", justifyContent: "space-between",
                       outline: "none", minHeight: "40px",
+                      textTransform: section ? "uppercase" : "none",
                     }}
                   >
                     {section || "Select section"}
@@ -1058,6 +1061,7 @@ export function CreateBrokerageBookingPanel({
                           color: "#0A1D4D", background: section === option ? "#E8F2EE" : "transparent",
                           borderBottom: index < arr.length - 1 ? "1px solid #E5E9F0" : "none",
                           transition: "background 0.15s ease",
+                          textTransform: "uppercase",
                         }}
                         onMouseEnter={(e) => { if (section !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = section === option ? "#E8F2EE" : "transparent"; }}
@@ -1181,6 +1185,7 @@ export function CreateBrokerageBookingPanel({
                       backgroundColor: "white", cursor: "pointer", display: "flex",
                       alignItems: "center", justifyContent: "space-between",
                       outline: "none", minHeight: "40px",
+                      textTransform: selectivity ? "uppercase" : "none",
                     }}
                   >
                     {selectivity ? renderSelectivityOption(selectivity) : "Select selectivity"}
@@ -1196,6 +1201,7 @@ export function CreateBrokerageBookingPanel({
                           background: selectivity === option ? "#E8F2EE" : "transparent",
                           borderBottom: index < SELECTIVITY_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none",
                           transition: "background 0.15s ease",
+                          textTransform: "uppercase",
                         }}
                         onMouseEnter={(e) => { if (selectivity !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = selectivity === option ? "#E8F2EE" : "transparent"; }}
@@ -1364,6 +1370,7 @@ export function CreateBrokerageBookingPanel({
                         justifyContent: "space-between",
                         outline: "none",
                         height: "42px",
+                        textTransform: "uppercase",
                       }}
                     >
                       {grossWeightUnit}
@@ -1395,6 +1402,7 @@ export function CreateBrokerageBookingPanel({
                               color: "#111827",
                               background: grossWeightUnit === unit ? "#F0FDF4" : "transparent",
                               borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none",
+                              textTransform: "uppercase",
                             }}
                             onMouseEnter={(e) => {
                               if (grossWeightUnit !== unit) e.currentTarget.style.background = "#F9FAFB";
@@ -1446,7 +1454,8 @@ export function CreateBrokerageBookingPanel({
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between"
+                      justifyContent: "space-between",
+                      textTransform: shippingLineStatus ? "uppercase" : "none"
                     }}
                   >
                     {shippingLineStatus || "Select shipping line status"}
@@ -1484,7 +1493,8 @@ export function CreateBrokerageBookingPanel({
                             gap: "10px",
                             background: shippingLineStatus === option ? "#F0FDF4" : "transparent",
                             borderBottom: index < 2 ? "1px solid #E5E9F0" : "none",
-                            transition: "all 0.15s ease"
+                            transition: "all 0.15s ease",
+                            textTransform: "uppercase"
                           }}
                           onMouseEnter={(e) => {
                             if (shippingLineStatus !== option) {

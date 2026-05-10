@@ -116,6 +116,7 @@ export function PodDropdown({ value, onChange, placeholder = "Select POD", disab
           outline: "none",
           minHeight: "42px",
           boxSizing: "border-box",
+          textTransform: value ? "uppercase" : "none",
         }}
       >
         {value || placeholder}
@@ -201,6 +202,7 @@ export function PodDropdown({ value, onChange, placeholder = "Select POD", disab
               background: value === option ? "#F0FDF4" : "transparent",
               borderBottom: index < filtered.length - 1 || canAdd ? "1px solid #E5E9F0" : "none",
               transition: "background 0.15s ease",
+              textTransform: "uppercase",
             }}
             onMouseEnter={(e) => { if (value !== option) e.currentTarget.style.background = "#F9FAFB"; }}
             onMouseLeave={(e) => { if (value !== option) e.currentTarget.style.background = "transparent"; }}

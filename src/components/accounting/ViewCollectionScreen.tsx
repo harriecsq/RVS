@@ -421,16 +421,18 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                       { value: "Bank Transfer", label: "Bank Transfer" },
                       { value: "Check", label: "Check" }
                     ]}
-                    onChange={(value) => setEditedCollection({ ...editedCollection, paymentMethod: value })}
+                    onChange={(value) => setEditedCollection({ ...editedCollection, paymentMethod: value, referenceNumber: value.toLowerCase() === "cash" ? "" : editedCollection.referenceNumber })}
                     placeholder="Select payment method"
                   />
-                  
-                  <StandardInput
-                    label="Reference Number"
-                    value={editedCollection.referenceNumber || ""}
-                    onChange={(value) => setEditedCollection({ ...editedCollection, referenceNumber: value })}
-                    placeholder="Enter reference number"
-                  />
+
+                  {editedCollection.paymentMethod?.toLowerCase() !== "cash" && (
+                    <StandardInput
+                      label="Reference Number"
+                      value={editedCollection.referenceNumber || ""}
+                      onChange={(value) => setEditedCollection({ ...editedCollection, referenceNumber: value })}
+                      placeholder="Enter reference number"
+                    />
+                  )}
                   
                   {/* Only show single Billing Number field if it's not a multi-allocation, OR if we want to allow editing the primary link */}
                   {/* With multi-allocation, this field is less relevant. */}
@@ -464,10 +466,12 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                     value={currentCollection.paymentMethod}
                   />
                   
-                  <Field 
-                    label="Reference Number" 
-                    value={currentCollection.referenceNumber}
-                  />
+                  {currentCollection.paymentMethod?.toLowerCase() !== "cash" && (
+                    <Field
+                      label="Reference Number"
+                      value={currentCollection.referenceNumber}
+                    />
+                  )}
 
                   {currentCollection.paymentMethod === "Bank Transfer" && (
                     <Field 
