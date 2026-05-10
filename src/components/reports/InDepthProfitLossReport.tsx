@@ -6,6 +6,7 @@ import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { formatAmount } from "../../utils/formatAmount";
 import { toast } from "sonner@2.0.3";
 import { API_BASE_URL } from '@/utils/api-config';
+import { cachedJSON } from '@/hooks/useCachedFetch';
 
 interface LineItem {
   description: string;
@@ -130,16 +131,11 @@ export function InDepthProfitLossReport() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const headers = { "Authorization": `Bearer ${publicAnonKey}` };
-        const [bookingsRes, expensesRes, billingsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/bookings`, { headers }),
-          fetch(`${API_BASE_URL}/expenses`, { headers }),
-          fetch(`${API_BASE_URL}/billings`, { headers }),
+        const [bookingsJson, expensesJson, billingsJson] = await Promise.all([
+          cachedJSON("/bookings").catch(() => ({ data: [] })),
+          cachedJSON("/expenses").catch(() => ({ data: [] })),
+          cachedJSON("/billings").catch(() => ({ data: [] })),
         ]);
-
-        const bookingsJson = bookingsRes.ok ? await bookingsRes.json() : { data: [] };
-        const expensesJson = expensesRes.ok ? await expensesRes.json() : { data: [] };
-        const billingsJson = billingsRes.ok ? await billingsRes.json() : { data: [] };
 
         const allBookings = Array.isArray(bookingsJson.data) ? bookingsJson.data : [];
         const allExpenses = Array.isArray(expensesJson.data) ? expensesJson.data : [];

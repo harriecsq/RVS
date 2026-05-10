@@ -9,7 +9,8 @@ export const EXPORT_STATUS_TEXT_COLORS: Record<string, string> = {
   "Draft BL Okay to Finalize": "#0E7490",
   "Awaiting Billing and Signed BL": "#D97706",
   "Request for Telex": "#2563EB",
-  "Form E Ongoing Process": "#16A34A",
+  "Form E Ongoing Process": "#0EA5E9",
+  "Shipped Out": "#16A34A",
   "Cancelled": "#EF4444",
 };
 
@@ -25,5 +26,6 @@ export const EXPORT_STATUS_OPTIONS = [
   "Awaiting Billing and Signed BL",
   "Request for Telex",
   "Form E Ongoing Process",
+  "Shipped Out",
   "Cancelled",
 ];

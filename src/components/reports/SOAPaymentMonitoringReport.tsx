@@ -6,6 +6,7 @@ import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { cachedJSON } from '@/hooks/useCachedFetch';
 import { MultiSelectPortalDropdown } from '../shared/MultiSelectPortalDropdown';
 import { FilterSingleDropdown } from '../shared/FilterSingleDropdown';
 import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from '../shared/CompanyClientFilter';
@@ -172,17 +173,11 @@ export function SOAPaymentMonitoringReport() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${publicAnonKey}` };
-
-      const [bookingsRes, billingsRes, collectionsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/bookings`, { headers }),
-        fetch(`${API_BASE_URL}/billings`, { headers }),
-        fetch(`${API_BASE_URL}/collections`, { headers })
+      const [bookingsData, billingsData, collectionsData] = await Promise.all([
+        cachedJSON("/bookings"),
+        cachedJSON("/billings"),
+        cachedJSON("/collections"),
       ]);
-
-      const bookingsData = await bookingsRes.json();
-      const billingsData = await billingsRes.json();
-      const collectionsData = await collectionsRes.json();
 
       const bookings: Booking[] = bookingsData.success ? bookingsData.data : [];
       const billings: Billing[] = billingsData.success ? billingsData.data : [];

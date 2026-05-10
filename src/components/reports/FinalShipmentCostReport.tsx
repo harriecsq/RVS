@@ -6,6 +6,7 @@ import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { cachedJSON } from '@/hooks/useCachedFetch';
 import { MultiSelectPortalDropdown } from '../shared/MultiSelectPortalDropdown';
 import { FilterSingleDropdown } from '../shared/FilterSingleDropdown';
 import { CompanyClientFilter, clientSelectionMatches, type ClientSelection } from '../shared/CompanyClientFilter';
@@ -193,20 +194,12 @@ export function FinalShipmentCostReport() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${publicAnonKey}` };
-      
-      // Fetch all required data in parallel
-      const [bookingsRes, billingsRes, expensesRes, collectionsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/bookings`, { headers }),
-        fetch(`${API_BASE_URL}/billings`, { headers }),
-        fetch(`${API_BASE_URL}/expenses`, { headers }),
-        fetch(`${API_BASE_URL}/collections`, { headers })
+      const [bookingsData, billingsData, expensesData, collectionsData] = await Promise.all([
+        cachedJSON("/bookings"),
+        cachedJSON("/billings"),
+        cachedJSON("/expenses"),
+        cachedJSON("/collections"),
       ]);
-
-      const bookingsData = await bookingsRes.json();
-      const billingsData = await billingsRes.json();
-      const expensesData = await expensesRes.json();
-      const collectionsData = await collectionsRes.json();
 
       const bookings: Booking[] = bookingsData.success ? bookingsData.data : [];
       const billings: Billing[] = billingsData.success ? billingsData.data : [];

@@ -3,12 +3,40 @@ import { publicAnonKey } from "../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
 
 type CacheEntry = { data: any; timestamp: number };
+const SESSION_KEY = "__neuronCache_v1";
+
+function loadPersistedCache(): Map<string, CacheEntry> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return new Map();
+    const obj = JSON.parse(raw);
+    return new Map(Object.entries(obj));
+  } catch {
+    return new Map();
+  }
+}
+
 const globalCache: Map<string, CacheEntry> =
-  ((window as any).__neuronCache = (window as any).__neuronCache || new Map());
+  ((window as any).__neuronCache = (window as any).__neuronCache || loadPersistedCache());
 const cache = globalCache;
 const inflight = new Map<string, Promise<any>>();
 
-const STALE_MS = 30_000;
+const STALE_MS = 5 * 60_000;
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePersist() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    try {
+      const obj: Record<string, CacheEntry> = {};
+      cache.forEach((v, k) => { obj[k] = v; });
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(obj));
+    } catch {
+      // sessionStorage full or unavailable — drop persistence silently
+    }
+  }, 250);
+}
 
 export function invalidateCache(path?: string) {
   if (path) {
@@ -16,6 +44,7 @@ export function invalidateCache(path?: string) {
   } else {
     cache.clear();
   }
+  schedulePersist();
 }
 
 function isSuccessPayload(result: any): boolean {
@@ -36,6 +65,7 @@ async function fetchJSON(path: string): Promise<any> {
       const result = await r.json();
       if (r.ok && isSuccessPayload(result)) {
         cache.set(path, { data: result, timestamp: Date.now() });
+        schedulePersist();
       }
       inflight.delete(path);
       return result;
@@ -51,6 +81,19 @@ async function fetchJSON(path: string): Promise<any> {
 
 export function prefetch(path: string): Promise<any> {
   return fetchJSON(path).catch(() => undefined);
+}
+
+/**
+ * Imperative cache-aware fetch for non-hook callsites (e.g. report screens
+ * that fan out to multiple endpoints inside a useEffect).
+ * Returns cached JSON immediately if fresh; otherwise fetches and caches.
+ */
+export function cachedJSON(path: string): Promise<any> {
+  const entry = cache.get(path);
+  if (entry && Date.now() - entry.timestamp <= STALE_MS) {
+    return Promise.resolve(entry.data);
+  }
+  return fetchJSON(path);
 }
 
 export function useCachedFetch<T = any>(path: string) {

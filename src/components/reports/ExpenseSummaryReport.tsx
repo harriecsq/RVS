@@ -6,6 +6,7 @@ import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { cachedJSON } from '@/hooks/useCachedFetch';
 
 // --- Data Interfaces ---
 
@@ -178,10 +179,7 @@ export function ExpenseSummaryReport() {
   const fetchExpenses = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/vouchers`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      const result = await response.json();
+      const result = await cachedJSON("/vouchers");
       if (result.success && Array.isArray(result.data)) {
         setRawData(result.data);
         processData(result.data);

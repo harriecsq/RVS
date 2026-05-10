@@ -6,6 +6,7 @@ import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { cachedJSON } from '@/hooks/useCachedFetch';
 
 // --- Interfaces ---
 
@@ -161,20 +162,12 @@ export function ProfitLossPeriodReport() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${publicAnonKey}` };
-
-      // Parallel fetch: Bookings/Billings/Expenses (for Revenue) AND Vouchers (for Expenses)
-      const [bookingsRes, billingsRes, expensesRes, vouchersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/bookings`, { headers }),
-        fetch(`${API_BASE_URL}/billings`, { headers }),
-        fetch(`${API_BASE_URL}/expenses`, { headers }),
-        fetch(`${API_BASE_URL}/vouchers`, { headers })
+      const [bookingsData, billingsData, expensesData, vouchersData] = await Promise.all([
+        cachedJSON("/bookings"),
+        cachedJSON("/billings"),
+        cachedJSON("/expenses"),
+        cachedJSON("/vouchers"),
       ]);
-
-      const bookingsData = await bookingsRes.json();
-      const billingsData = await billingsRes.json();
-      const expensesData = await expensesRes.json();
-      const vouchersData = await vouchersRes.json();
 
       const bookings: Booking[] = bookingsData.success ? bookingsData.data : [];
       const billings: Billing[] = billingsData.success ? billingsData.data : [];

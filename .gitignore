@@ -3,3 +3,6 @@ build
 
 # dora code context index
 .dora/
+
+# secrets
+supabase/.new-project-creds.txt

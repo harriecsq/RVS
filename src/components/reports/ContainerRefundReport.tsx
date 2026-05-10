@@ -6,6 +6,7 @@ import { MonthOrRangeDateFilter } from "../shared/MonthOrRangeDateFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { useNavigate } from "react-router";
 import { API_BASE_URL } from '@/utils/api-config';
+import { cachedJSON } from '@/hooks/useCachedFetch';
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 
@@ -163,14 +164,10 @@ export function ContainerRefundReport() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch Expenses (Anchor) and Vouchers (Lookup) in parallel
-      const [expensesRes, vouchersRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/expenses`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
-        fetch(`${API_BASE_URL}/vouchers`, { headers: { Authorization: `Bearer ${publicAnonKey}` } })
+      const [expensesResult, vouchersResult] = await Promise.all([
+        cachedJSON("/expenses"),
+        cachedJSON("/vouchers"),
       ]);
-
-      const expensesResult = await expensesRes.json();
-      const vouchersResult = await vouchersRes.json();
 
       const expenses: Expense[] = expensesResult.success ? expensesResult.data : [];
       const vouchers: Voucher[] = vouchersResult.success ? vouchersResult.data : [];

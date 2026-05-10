@@ -49,6 +49,7 @@ const EXPORT_STATUS_FILTER_OPTIONS = [
   "Awaiting Billing and Signed BL",
   "Request for Telex",
   "Form E Ongoing Process",
+  "Shipped Out",
   "Cancelled",
 ];
 
