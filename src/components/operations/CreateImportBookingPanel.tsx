@@ -99,39 +99,18 @@ export function CreateBrokerageBookingPanel({
   const [shippingLine, setShippingLine] = useState(prefillData?.shipping_line || "");
   const [section, setSection] = useState("");
   const [ot, setOt] = useState("");
-  // ETA / ATA / Discharged - date + time
+  // ETA - date + time (estimate provided at booking time, not a milestone)
   const [eta, setEta] = useState("");
   const [etaTime, setEtaTime] = useState("");
-  const [ata, setAta] = useState("");
-  const [ataTime, setAtaTime] = useState("");
-  const [discharged, setDischarged] = useState("");
-  const [dischargedTime, setDischargedTime] = useState("");
-  // Storage Begins / DEM Begins - date + time with auto-calc
-  const [storageBegins, setStorageBegins] = useState("");
-  const [storageBeginsTime, setStorageBeginsTime] = useState("");
-  const [storageManualOverride, setStorageManualOverride] = useState(false);
-  const [demBegins, setDemBegins] = useState("");
-  const [demBeginsTime, setDemBeginsTime] = useState("");
-  const [demManualOverride, setDemManualOverride] = useState(false);
   const [entryNumber, setEntryNumber] = useState("");
-  
+
   // Clearance / References
   const [registryNo, setRegistryNo] = useState("");
   const [selectivity, setSelectivity] = useState("");
   const [ticket, setTicket] = useState("");
-  // RCVD Billing - date + time
-  const [rcvdBilling, setRcvdBilling] = useState("");
-  const [rcvdBillingTime, setRcvdBillingTime] = useState("");
   const [finalTaxNavValue, setFinalTaxNavValue] = useState("");
-  const [arrastre, setArrastre] = useState("");
-  const [arrastreTime, setArrastreTime] = useState("");
-  const [arrastreError, setArrastreError] = useState("");
   const [arrastreAmount, setArrastreAmount] = useState("");
   const [stowage, setStowage] = useState("");
-  // Gatepass - date + time
-  const [gatepassDate, setGatepassDate] = useState("");
-  const [gatepassDateError, setGatepassDateError] = useState("");
-  const [gatepassTime, setGatepassTime] = useState("");
   // Gross Weight
   const [grossWeightValue, setGrossWeightValue] = useState("");
   const [grossWeightUnit, setGrossWeightUnit] = useState("kg");
@@ -209,11 +188,6 @@ export function CreateBrokerageBookingPanel({
   // Date validation states
   const [dateError, setDateError] = useState("");
   const [etaError, setEtaError] = useState("");
-  const [ataError, setAtaError] = useState("");
-  const [dischargedError, setDischargedError] = useState("");
-  const [storageBeginsError, setStorageBeginsError] = useState("");
-  const [demBeginsError, setDemBeginsError] = useState("");
-  const [rcvdBillingError, setRcvdBillingError] = useState("");
 
   // Fetch next available ref number when panel opens
   useEffect(() => {
@@ -304,85 +278,6 @@ export function CreateBrokerageBookingPanel({
     }
   };
 
-  // Auto-calculate Storage Begins and DEM Begins from Discharged
-  const addDaysToDate = (dateStr: string, days: number): string => {
-    if (!dateStr || dateStr.length !== 10 || !validateDate(dateStr)) return "";
-    const parts = dateStr.split('/');
-    const d = new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
-    d.setDate(d.getDate() + days);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
-  };
-
-  const handleDischargedDateChange = (value: string) => {
-    const formatted = formatDateInput(value);
-    setDischarged(formatted);
-    
-    if (formatted.length === 10) {
-      const isValid = validateDate(formatted);
-      setDischargedError(isValid ? "" : "Invalid date");
-      
-      if (isValid) {
-        // Auto-calculate Storage Begins (+5 days) if not manually overridden
-        if (!storageManualOverride) {
-          const storageDateVal = addDaysToDate(formatted, 5);
-          setStorageBegins(storageDateVal);
-          if (!storageBeginsTime && dischargedTime) {
-            setStorageBeginsTime(dischargedTime);
-          }
-        }
-        // Auto-calculate DEM Begins (+14 days) if not manually overridden
-        if (!demManualOverride) {
-          const demDateVal = addDaysToDate(formatted, 14);
-          setDemBegins(demDateVal);
-          if (!demBeginsTime && dischargedTime) {
-            setDemBeginsTime(dischargedTime);
-          }
-        }
-      }
-    } else {
-      setDischargedError("");
-    }
-  };
-
-  // ISO version for SingleDateInput calendar picker
-  const handleDischargedDateChangeISO = (iso: string) => {
-    const formatted = isoToMMDD(iso);
-    setDischarged(formatted);
-    setDischargedError("");
-    
-    if (formatted) {
-      // Auto-calculate Storage Begins (+5 days) if not manually overridden
-      if (!storageManualOverride) {
-        const storageDateVal = addDaysToDate(formatted, 5);
-        setStorageBegins(storageDateVal);
-        if (!storageBeginsTime && dischargedTime) {
-          setStorageBeginsTime(dischargedTime);
-        }
-      }
-      // Auto-calculate DEM Begins (+14 days) if not manually overridden
-      if (!demManualOverride) {
-        const demDateVal = addDaysToDate(formatted, 14);
-        setDemBegins(demDateVal);
-        if (!demBeginsTime && dischargedTime) {
-          setDemBeginsTime(dischargedTime);
-        }
-      }
-    }
-  };
-
-  const handleDischargedTimeChange = (value: string) => {
-    setDischargedTime(value);
-    if (!storageManualOverride && !storageBeginsTime) {
-      setStorageBeginsTime(value);
-    }
-    if (!demManualOverride && !demBeginsTime) {
-      setDemBeginsTime(value);
-    }
-  };
-
   const handleClientSelect = (selectedClient: any) => {
     if (selectedClient) {
       setClient(selectedClient.name || selectedClient.company_name || "");
@@ -419,12 +314,6 @@ export function CreateBrokerageBookingPanel({
         return t ? `${d} ${t}` : d;
       };
 
-      // Format Gatepass
-      let gatepass = "";
-      if (gatepassDate) {
-        gatepass = combineDateTime(gatepassDate, gatepassTime);
-      }
-
       // Format Gross Weight
       const grossWeight = grossWeightValue ? `${grossWeightValue} ${grossWeightUnit}` : "";
 
@@ -451,20 +340,13 @@ export function CreateBrokerageBookingPanel({
         section,
         ot,
         eta: combineDateTime(eta, etaTime),
-        ata: combineDateTime(ata, ataTime),
-        discharged: combineDateTime(discharged, dischargedTime),
-        storageBegins: combineDateTime(storageBegins, storageBeginsTime),
-        demBegins: combineDateTime(demBegins, demBeginsTime),
         entryNumber,
         registryNo,
         selectivity,
         ticket,
-        rcvdBilling: combineDateTime(rcvdBilling, rcvdBillingTime),
         finalTaxNavValue,
-        arrastre: combineDateTime(arrastre, arrastreTime),
         arrastreAmount,
         stowage,
-        gatepass,
         grossWeight,
         status,
         shippingLineStatus,
@@ -525,31 +407,13 @@ export function CreateBrokerageBookingPanel({
     setOt("");
     setEta("");
     setEtaTime("");
-    setAta("");
-    setAtaTime("");
-    setDischarged("");
-    setDischargedTime("");
-    setStorageBegins("");
-    setStorageBeginsTime("");
-    setStorageManualOverride(false);
-    setDemBegins("");
-    setDemBeginsTime("");
-    setDemManualOverride(false);
     setEntryNumber("");
     setRegistryNo("");
     setSelectivity("");
     setTicket("");
-    setRcvdBilling("");
-    setRcvdBillingTime("");
     setFinalTaxNavValue("");
-    setArrastre("");
-    setArrastreTime("");
-    setArrastreError("");
     setArrastreAmount("");
     setStowage("");
-    setGatepassDate("");
-    setGatepassDateError("");
-    setGatepassTime("");
     setGrossWeightValue("");
     setGrossWeightUnit("kg");
     setStatus("");
@@ -1101,59 +965,6 @@ export function CreateBrokerageBookingPanel({
                 setEtaTime
               )}
 
-              {/* ATA - Date + Time */}
-              {renderDateTimeField(
-                "ATA",
-                ata,
-                (iso) => { setAta(isoToMMDD(iso)); setAtaError(""); },
-                ataError,
-                ataTime,
-                setAtaTime
-              )}
-
-              {/* Discharged - Date + Time (triggers auto-calc) */}
-              {renderDateTimeField(
-                "Discharged",
-                discharged,
-                handleDischargedDateChangeISO,
-                dischargedError,
-                dischargedTime,
-                handleDischargedTimeChange
-              )}
-
-              {/* Storage Begins - Date + Time (auto-calculated, editable override) */}
-              {renderDateTimeField(
-                "Storage Begins",
-                storageBegins,
-                (iso) => {
-                  setStorageManualOverride(true);
-                  setStorageBegins(isoToMMDD(iso));
-                  setStorageBeginsError("");
-                },
-                storageBeginsError,
-                storageBeginsTime,
-                (v) => { setStorageManualOverride(true); setStorageBeginsTime(v); }
-              )}
-
-              {/* DEM Begins - Date + Time (auto-calculated, editable override) */}
-              {renderDateTimeField(
-                "DEM Begins",
-                demBegins,
-                (iso) => {
-                  setDemManualOverride(true);
-                  setDemBegins(isoToMMDD(iso));
-                  setDemBeginsError("");
-                },
-                demBeginsError,
-                demBeginsTime,
-                (v) => { setDemManualOverride(true); setDemBeginsTime(v); }
-              )}
-
-              {/* Clearance / References Group */}
-              <div className="col-span-2">
-                 
-              </div>
-              
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Registry No.
@@ -1228,51 +1039,6 @@ export function CreateBrokerageBookingPanel({
                 />
               </div>
 
-              {/* RCVD Billing - Date + Time */}
-              {renderDateTimeField(
-                "RCVD Billing",
-                rcvdBilling,
-                (iso) => { setRcvdBilling(isoToMMDD(iso)); setRcvdBillingError(""); },
-                rcvdBillingError,
-                rcvdBillingTime,
-                setRcvdBillingTime
-              )}
-
-              {/* Charges / Values Group */}
-              <div className="col-span-2">
-                 
-              </div>
-
-              {/* Arrastre - Date + Amount + Time */}
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
-                  Arrastre
-                </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: "8px" }}>
-                  <div>
-                    <input
-                      type="text"
-                      value={arrastreAmount}
-                      onChange={(e) => setArrastreAmount(e.target.value)}
-                      placeholder="Amount (0.00)"
-                      className="w-full px-4 py-2.5 rounded border transition-colors"
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <SingleDateInput
-                      value={mmddToISO(arrastre)}
-                      onChange={(iso) => { setArrastre(isoToMMDD(iso)); setArrastreError(""); }}
-                      placeholder="MM/DD/YYYY"
-                    />
-                    {arrastreError && <p style={{ fontSize: "12px", color: "#EF4444", marginTop: "4px" }}>{arrastreError}</p>}
-                  </div>
-                  <div>
-                    <NeuronTimePicker value={arrastreTime} onChange={setArrastreTime} />
-                  </div>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
                   Final Tax/NAV Value
@@ -1281,6 +1047,21 @@ export function CreateBrokerageBookingPanel({
                   type="text"
                   value={finalTaxNavValue}
                   onChange={(e) => setFinalTaxNavValue(e.target.value)}
+                  placeholder="0.00"
+                  {...inputFocusHandlers}
+                  className="w-full px-4 py-2.5 rounded border transition-colors"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
+                  Arrastre Amount
+                </label>
+                <input
+                  type="text"
+                  value={arrastreAmount}
+                  onChange={(e) => setArrastreAmount(e.target.value)}
                   placeholder="0.00"
                   {...inputFocusHandlers}
                   className="w-full px-4 py-2.5 rounded border transition-colors"
@@ -1301,25 +1082,6 @@ export function CreateBrokerageBookingPanel({
                   className="w-full px-4 py-2.5 rounded border transition-colors"
                   style={inputStyle}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: "var(--neuron-ink-base)" }}>
-                  Gatepass
-                </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.1fr", gap: "6px" }}>
-                  <div style={{ position: "relative", minWidth: 0 }}>
-                    <SingleDateInput
-                      value={mmddToISO(gatepassDate)}
-                      onChange={(iso) => { setGatepassDate(isoToMMDD(iso)); setGatepassDateError(""); }}
-                      placeholder="MM/DD/YYYY"
-                    />
-                    {gatepassDateError && <p className="text-red-500 text-sm mt-1">{gatepassDateError}</p>}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <NeuronTimePicker value={gatepassTime} onChange={(v) => setGatepassTime(v)} />
-                  </div>
-                </div>
               </div>
 
               {/* Gross Weight - Numeric + Unit Dropdown */}

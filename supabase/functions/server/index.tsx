@@ -7068,6 +7068,8 @@ app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-tags", async (c) => 
     const body = await c.req.json();
     const newTags = dedupeTags(Array.isArray(body.shipmentTags) ? body.shipmentTags : []);
     const user = String(body.user || "Unknown");
+    const hasDeliveredAt = Object.prototype.hasOwnProperty.call(body, "deliveredAt");
+    const deliveredAt: string | null = hasDeliveredAt ? (body.deliveredAt ?? null) : null;
 
     const existingRaw = await kv.get(`import_booking:${id}`);
     if (!existingRaw) {
@@ -7077,12 +7079,27 @@ app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-tags", async (c) => 
 
     const oldTags = dedupeTags(existing.shipmentTags || []);
     const historyEntries = createTagHistoryEntries(oldTags, newTags, user, "shipment");
-    const updated = {
+
+    // When the caller supplies a deliveredAt, mirror it into the "delivered" shipment milestone
+    // so the Milestones tab reflects the prompt's captured date. Null clears the milestone.
+    let nextShipmentEvents = Array.isArray(existing.shipmentEvents) ? [...existing.shipmentEvents] : [];
+    if (hasDeliveredAt) {
+      nextShipmentEvents = nextShipmentEvents.filter((ev: any) => ev?.event !== "delivered");
+      if (deliveredAt) {
+        nextShipmentEvents.push({ event: "delivered", dateTime: deliveredAt, note: "" });
+      }
+    }
+
+    const updated: any = {
       ...existing,
       shipmentTags: newTags,
       tagHistory: [...(existing.tagHistory || []), ...historyEntries],
       updatedAt: new Date().toISOString(),
     };
+    if (hasDeliveredAt) {
+      updated.deliveredAt = deliveredAt;
+      updated.shipmentEvents = nextShipmentEvents;
+    }
     await kv.set(`import_booking:${id}`, updated);
 
     return c.json({ success: true, data: updated });
@@ -7106,9 +7123,15 @@ app.put("/make-server-ce0d67b8/import-bookings/:id/shipment-events", async (c) =
     }
     const existing = await migrateImportBookingIfNeeded(existingRaw, id);
 
+    // Two-way sync: mirror the "delivered" milestone's dateTime into booking.deliveredAt
+    // so the Delivered status tag's inline date reflects edits made on the Milestones tab.
+    const deliveredEvent = shipmentEvents.find((ev: any) => ev?.event === "delivered");
+    const deliveredAt = deliveredEvent?.dateTime || null;
+
     const updated = {
       ...existing,
       shipmentEvents,
+      deliveredAt,
       updatedAt: new Date().toISOString(),
     };
     await kv.set(`import_booking:${id}`, updated);

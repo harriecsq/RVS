@@ -35,6 +35,9 @@ interface LogbookEntry {
   logbookNumber: number;
   client: string;
   shippingLine: string;
+  vesselVoyage: string;
+  blNumber: string;
+  containerNumber: string;
   donePaymentAt: string; // ISO
   deliveredAt?: string | null; // ISO, when status went green
   status: LogbookStatus;
@@ -179,7 +182,9 @@ export function LogbookScreen() {
           (b) =>
             b.bookingId.toLowerCase().includes(term) ||
             b.client.toLowerCase().includes(term) ||
-            b.shippingLine.toLowerCase().includes(term),
+            (b.vesselVoyage || "").toLowerCase().includes(term) ||
+            (b.blNumber || "").toLowerCase().includes(term) ||
+            (b.containerNumber || "").toLowerCase().includes(term),
         );
     return [...base].sort((a, b) => (a.logbookNumber || 0) - (b.logbookNumber || 0));
   }, [monthData.bookings, searchTerm]);
@@ -290,16 +295,60 @@ export function LogbookScreen() {
       ),
     },
     {
-      header: "Client",
+      header: "Consignee/Shipper",
       cell: (entry) => (
         <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{entry.client}</div>
       ),
     },
     {
-      header: "Shipping Line",
+      header: "Vessel/Voyage",
       cell: (entry) => (
-        <div style={{ fontSize: "14px", color: "#344054" }}>{entry.shippingLine}</div>
+        <div style={{ fontSize: "14px", color: "#344054" }}>{entry.vesselVoyage || "—"}</div>
       ),
+    },
+    {
+      header: "BL Number",
+      cell: (entry) => (
+        <div
+          style={{
+            fontSize: "14px",
+            color: "#344054",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {entry.blNumber || "—"}
+        </div>
+      ),
+    },
+    {
+      header: "Container Number",
+      cell: (entry) => {
+        const list = (entry.containerNumber || "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (list.length === 0) {
+          return (
+            <div style={{ fontSize: "14px", color: "#344054" }}>—</div>
+          );
+        }
+        return (
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#344054",
+              fontVariantNumeric: "tabular-nums",
+              display: "flex",
+              flexDirection: "column",
+              gap: "2px",
+            }}
+          >
+            {list.map((c, i) => (
+              <div key={i}>{c}</div>
+            ))}
+          </div>
+        );
+      },
     },
     {
       header: "Done Payment",
@@ -410,7 +459,7 @@ export function LogbookScreen() {
           <StandardSearchInput
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by Booking ID, Client, or Shipping Line..."
+            placeholder="Search by Booking ID, Consignee/Shipper, Vessel/Voyage, BL #, or Container #..."
           />
         </div>
       </div>

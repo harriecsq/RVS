@@ -6718,9 +6718,12 @@ app.put("/make-server-ce0d67b8/export-bookings/:id", async (c) => {
     const existingSlsSeg = Array.isArray(existing.segments) ? existing.segments?.[0]?.shippingLineStatus : undefined;
     const effectiveSls = incomingSlsTop ?? incomingSlsSeg ?? existing.shippingLineStatus ?? existingSlsSeg;
     if (effectiveSls === "Done Payment" && !existing.donePaymentAt) {
-      const now = new Date().toISOString();
-      const month = now.slice(0, 7);
-      updates.donePaymentAt = now;
+      const supplied = typeof updates.donePaymentAt === "string" && !Number.isNaN(new Date(updates.donePaymentAt).getTime())
+        ? updates.donePaymentAt
+        : null;
+      const iso = supplied ?? new Date().toISOString();
+      const month = iso.slice(0, 7);
+      updates.donePaymentAt = iso;
       updates.logbookMonth = month;
       updates.originalLogbookMonth = month;
       updates.logbookNumber = await nextLogbookNumberForYear(month.slice(0, 4));
@@ -7137,9 +7140,12 @@ app.put("/make-server-ce0d67b8/import-bookings/:id", async (c) => {
 
     // Logbook entry on first Done Payment flip. Never unset once set (toggle protection).
     if (updates.shippingLineStatus === "Done Payment" && !existing.donePaymentAt) {
-      const now = new Date().toISOString();
-      const month = now.slice(0, 7);
-      updates.donePaymentAt = now;
+      const supplied = typeof updates.donePaymentAt === "string" && !Number.isNaN(new Date(updates.donePaymentAt).getTime())
+        ? updates.donePaymentAt
+        : null;
+      const iso = supplied ?? new Date().toISOString();
+      const month = iso.slice(0, 7);
+      updates.donePaymentAt = iso;
       updates.logbookMonth = month;
       updates.originalLogbookMonth = month;
       updates.logbookNumber = await nextLogbookNumberForYear(month.slice(0, 4));
@@ -7336,17 +7342,38 @@ app.get("/make-server-ce0d67b8/logbook/:month", async (c) => {
     const inMonth = [...(impIn.data ?? []), ...(expIn.data ?? [])].map((r: any) => r.value);
     inMonth.sort((a: any, b: any) => (a.logbookNumber ?? 0) - (b.logbookNumber ?? 0));
 
-    const bookings = inMonth.map((b: any) => ({
+    const bookings = inMonth.map((b: any) => {
+      const seg = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : null;
+      const vesselVoyage = b.vesselVoyage || seg?.vesselVoyage || b.vesselVoy || "—";
+      const blNumber = b.blNumber || seg?.blNumber || "—";
+      const containerList: string[] = (() => {
+        if (Array.isArray(b.containerNumbers) && b.containerNumbers.length > 0) return b.containerNumbers;
+        if (Array.isArray(seg?.containerNos) && seg.containerNos.length > 0) return seg.containerNos;
+        if (Array.isArray(b.containers) && b.containers.length > 0) {
+          return b.containers
+            .map((c: any) => c?.containerNo || c?.container_no || "")
+            .filter((s: string) => !!s);
+        }
+        if (typeof b.containerNo === "string" && b.containerNo.trim()) {
+          return b.containerNo.split(",").map((s: string) => s.trim()).filter(Boolean);
+        }
+        return [];
+      })();
+      return ({
       bookingRowId: b.bookingId,
       bookingId: b.bookingId,
       logbookNumber: b.logbookNumber,
       client: b.consignee || b.shipper || "—",
-      shippingLine: b.shippingLine || "—",
+      shippingLine: b.shippingLine || seg?.shippingLine || "—",
+      vesselVoyage,
+      blNumber,
+      containerNumber: containerList.length > 0 ? containerList.join(", ") : "—",
       donePaymentAt: b.donePaymentAt,
       deliveredAt: b.deliveredAt ?? null,
       status: (Array.isArray(b.shipmentTags) && b.shipmentTags.includes("delivered")) ? "green" : "yellow",
       movedIn: b.originalLogbookMonth !== month,
-    }));
+    });
+    });
 
     let green = 0, yellow = 0, stayed = 0, movedIn = 0;
     for (const b of bookings) {

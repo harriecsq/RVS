@@ -23,6 +23,7 @@ import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, 
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { StatusTagBar } from "../shared/StatusTagBar";
+import { StatusDateDialog, toDateInputValue, dateInputToIso } from "../shared/StatusDateDialog";
 import { getTagByKey } from "../../utils/statusTags";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import type { TagHistoryEntry } from "../../types/operations";
@@ -966,6 +967,7 @@ export function BrokerageBookingDetails({
           </div>
         </div>
       )}
+
     </div>
   );
 }
@@ -1698,6 +1700,9 @@ function BookingInformationTab({
   const [gatepassDateError, setGatepassDateError] = useState("");
   const [gatepassTime, setGatepassTime] = useState("");
 
+  // Done Payment date capture dialog
+  const [donePaymentDialog, setDonePaymentDialog] = useState<{ dateValue: string } | null>(null);
+
   // Dropdown visibility states
   const [showShippingLineDD, setShowShippingLineDD] = useState(false);
   const [showShippingLineStatusDD, setShowShippingLineStatusDD] = useState(false);
@@ -1900,7 +1905,21 @@ function BookingInformationTab({
     const filteredOptions = searchable && searchValue
       ? options.filter(opt => opt.toLowerCase().includes(searchValue.toLowerCase()))
       : options;
-    
+
+    const donePaymentIso =
+      fieldName === "shippingLineStatus" && currentVal === "Done Payment"
+        ? ((editData as any).donePaymentAt ?? (booking as any).donePaymentAt ?? null)
+        : null;
+    const donePaymentLabel = donePaymentIso
+      ? new Date(donePaymentIso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : null;
+    const donePaymentDateSuffix = donePaymentLabel ? (
+      <>
+        <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#667085", margin: "0 8px", flexShrink: 0 }} />
+        <span style={{ color: "#667085", fontWeight: 500, textTransform: "none" }}>{donePaymentLabel}</span>
+      </>
+    ) : null;
+
     if (!isEditing) {
       // View mode - special display for selectivity
       if (fieldName === "selectivity" && currentVal && SELECTIVITY_COLORS[currentVal]) {
@@ -1921,7 +1940,8 @@ function BookingInformationTab({
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              minHeight: "42px"
+              minHeight: "42px",
+              textTransform: "uppercase"
             }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: colors.dot }} />
               {currentVal}
@@ -1929,7 +1949,7 @@ function BookingInformationTab({
           </div>
         );
       }
-      
+
       const isEmpty = !currentVal || currentVal.trim() === "";
       return (
         <div>
@@ -1945,14 +1965,16 @@ function BookingInformationTab({
             color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
             minHeight: "42px",
             display: "flex",
-            alignItems: "center"
+            alignItems: "center",
+            textTransform: isEmpty ? "none" : "uppercase"
           }}>
             {isEmpty ? "—" : currentVal}
+            {donePaymentDateSuffix}
           </div>
         </div>
       );
     }
-    
+
     // Edit mode dropdown
     return (
       <div>
@@ -1981,7 +2003,10 @@ function BookingInformationTab({
               textTransform: currentVal ? "uppercase" : "none"
             }}
           >
-            {renderOption && currentVal ? renderOption(currentVal) : (currentVal || `Select ${label.toLowerCase()}...`)}
+            <span style={{ display: "inline-flex", alignItems: "center", minWidth: 0, flex: 1 }}>
+              {renderOption && currentVal ? renderOption(currentVal) : (currentVal || `Select ${label.toLowerCase()}...`)}
+              {donePaymentDateSuffix}
+            </span>
             <ChevronDown size={16} color="#667085" style={{ transform: isOpenState ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
           </div>
           <PortalDropdownList anchorRef={getAnchorRef(fieldName)} open={isOpenState} onClose={() => setIsOpenState(false)}>
@@ -2015,6 +2040,14 @@ function BookingInformationTab({
                 key={option}
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  if (fieldName === "shippingLineStatus" && option === "Done Payment") {
+                    setDonePaymentDialog({
+                      dateValue: toDateInputValue((booking as any).donePaymentAt ?? null),
+                    });
+                    setIsOpenState(false);
+                    if (setSearchValue) setSearchValue("");
+                    return;
+                  }
                   setEditData({ ...editData, [fieldName]: option } as any);
                   setIsOpenState(false);
                   if (setSearchValue) setSearchValue("");
@@ -2082,7 +2115,8 @@ function BookingInformationTab({
             color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
             minHeight: "42px",
             display: "flex",
-            alignItems: "center"
+            alignItems: "center",
+            textTransform: isEmpty ? "none" : "uppercase"
           }}>
             {isEmpty ? "—" : currentVal}
           </div>
@@ -2796,6 +2830,27 @@ function BookingInformationTab({
         onChange={(val) => setEditData({ ...editData, notes: val } as any)}
         disabled={!isEditing}
       />
+
+      {donePaymentDialog && createPortal(
+        <StatusDateDialog
+          title="Mark as Done Payment"
+          description="When was payment to the shipping line actually completed? You can backdate if it was paid earlier — this will determine the logbook month."
+          label="Payment date"
+          confirmLabel="Confirm"
+          value={donePaymentDialog.dateValue}
+          onChange={(v) => setDonePaymentDialog((prev) => (prev ? { ...prev, dateValue: v } : prev))}
+          onCancel={() => setDonePaymentDialog(null)}
+          onConfirm={() => {
+            setDonePaymentDialog((prev) => {
+              if (!prev || !/^\d{4}-\d{2}-\d{2}$/.test(prev.dateValue)) return prev;
+              const iso = dateInputToIso(prev.dateValue);
+              setEditData({ ...editData, shippingLineStatus: "Done Payment", donePaymentAt: iso } as any);
+              return null;
+            });
+          }}
+        />,
+        document.body,
+      )}
 
     </div>
   );
