@@ -1411,7 +1411,11 @@ export function TruckingRecordDetails({
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                       {/* Row 1: Booking Ref */}
-                      <SummaryField label="Linked Booking Ref" value={bookingId} />
+                      <SummaryField
+                        label="Linked Booking Ref"
+                        value={linkedBookingData?.bookingId || linkedBookingData?.id || (isLoadingLinkedBooking ? "Loading…" : bookingId)}
+                      />
+
 
                       {/* Row 2: Shipper/Consignee + Client */}
                       {isLoadingLinkedBooking ? (

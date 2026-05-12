@@ -336,16 +336,12 @@ export function BrokerageBookingDetails({
     // Optimistic update
     const updatedBooking = { ...currentBooking, docsTimeline: newTimeline };
     setCurrentBooking(updatedBooking as any);
-    
+
     try {
-      const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}` 
-        : `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
-      const method = isLegacy ? "PATCH" : "PUT";
+      const endpoint = `${API_BASE_URL}/import-bookings/${currentBooking.bookingId}`;
 
       await fetch(endpoint, {
-        method: method,
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`
@@ -424,21 +420,10 @@ export function BrokerageBookingDetails({
         updatedAt: new Date().toISOString()
       };
 
-      // 2. Call API
-      // Determine if this is a legacy booking (prefix "booking:") or new (prefix "import_booking:")
-      // Legacy bookings don't have booking_type set (fetched from generic /bookings endpoint without mapping)
-      const isLegacy = !(booking as any).booking_type;
-      
-      const endpoint = isLegacy 
-        ? `${API_BASE_URL}/bookings/${booking.bookingId}` 
-        : `${API_BASE_URL}/import-bookings/${booking.bookingId}`;
-      
-      const method = isLegacy ? "PATCH" : "PUT";
-
-      console.log(`Saving booking to ${endpoint} via ${method} (Legacy: ${isLegacy})`);
+      const endpoint = `${API_BASE_URL}/import-bookings/${booking.bookingId}`;
 
       const response = await fetch(endpoint, {
-        method: method,
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`
@@ -1139,6 +1124,7 @@ interface EditableFieldProps {
   isEditing?: boolean;
   editData?: Partial<BrokerageBooking>;
   setEditData?: (data: Partial<BrokerageBooking>) => void;
+  capitalize?: boolean;
 }
 
 function EditableField({
@@ -1151,7 +1137,8 @@ function EditableField({
   placeholder = "—",
   isEditing = false,
   editData = {},
-  setEditData
+  setEditData,
+  capitalize = false,
 }: EditableFieldProps) {
 
   // Helper to ensure date is YYYY-MM-DD for input fields
@@ -1225,7 +1212,8 @@ function EditableField({
           color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
           minHeight: type === "textarea" ? "80px" : "42px",
           display: "flex",
-          alignItems: "center"
+          alignItems: "center",
+          textTransform: capitalize ? "uppercase" : undefined,
         }}>
           {isEmpty ? (
             <span style={{ color: "#9CA3AF" }}>{placeholder}</span>
@@ -1320,6 +1308,7 @@ function EditableField({
             outline: "none",
             minHeight: "40px",
             transition: "border-color 0.15s ease",
+            textTransform: capitalize ? "uppercase" : undefined,
           }}
           onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
           onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
@@ -1440,7 +1429,7 @@ function PodSelectField({
         <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
           {label}
         </label>
-        <div style={{ padding: "10px 14px", backgroundColor: isEmpty ? "white" : "#F9FAFB", border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)", minHeight: "40px", display: "flex", alignItems: "center" }}>
+        <div style={{ padding: "10px 14px", backgroundColor: isEmpty ? "white" : "#F9FAFB", border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)", minHeight: "40px", display: "flex", alignItems: "center", textTransform: "uppercase" }}>
           {isEmpty ? <span style={{ color: "#9CA3AF" }}>{placeholder}</span> : rawValue}
         </div>
       </div>
@@ -2667,6 +2656,7 @@ function BookingInformationTab({
               isEditing={isEditing}
               editData={editData}
               setEditData={setEditData}
+              capitalize
             />
             <PodSelectField
               label="POD (Port of Discharge)"

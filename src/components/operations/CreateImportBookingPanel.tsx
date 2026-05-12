@@ -787,7 +787,7 @@ export function CreateBrokerageBookingPanel({
                   onChange={(e) => setOrigin(e.target.value)}
                   placeholder="Enter POL"
                   className="w-full px-4 py-2.5 rounded border transition-colors"
-                  style={getInputStyle('origin')}
+                  style={{ ...getInputStyle('origin'), textTransform: "uppercase" }}
                   {...inputFocusHandlers}
                 />
               </div>

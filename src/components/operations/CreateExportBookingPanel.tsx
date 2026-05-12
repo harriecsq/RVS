@@ -283,7 +283,7 @@ export function CreateExportBookingPanel({
 
     try {
       const bookingData = {
-        bookingId: `EXP ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
+        bookingId: refNumber.trim() ? `EXP ${refYear}-${refNumber.trim()}` : undefined,
         date,
         customerName: client.trim() || companyName,
         companyName: companyName || client,
@@ -533,40 +533,40 @@ export function CreateExportBookingPanel({
               </p>
             </div>
 
-            {/* Row 1: Date + Company/Contact */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "16px" }}>
-              <div>
-                <label style={labelStyle}>Date</label>
-                <NeuronDatePicker value={date} onChange={setDate} />
-              </div>
-              <div>
-                <CompanyContactSelector
-                  companyId={clientId}
-                  contactId={contactId}
-                  companyLabel="Shipper"
-                  contactLabel="Client"
-                  onSelect={({ company, contact }) => {
-                    const cName = company ? (company.name || company.company_name || "") : "";
-                    setCompanyName(cName);
-                    if (company) {
-                      setClientId(company.id);
-                      setShipper(cName);
-                    } else {
-                      setClientId("");
-                      setShipper("");
-                    }
-                    if (contact) {
-                      setContactId(contact.id);
-                      setContactPersonName(contact.name);
-                      setClient(contact.name);
-                    } else {
-                      setContactId("");
-                      setContactPersonName("");
-                      setClient("");
-                    }
-                  }}
-                />
-              </div>
+            {/* Row 1: Date */}
+            <div>
+              <label style={labelStyle}>Date</label>
+              <NeuronDatePicker value={date} onChange={setDate} />
+            </div>
+
+            {/* Row 2: Company/Contact */}
+            <div>
+              <CompanyContactSelector
+                companyId={clientId}
+                contactId={contactId}
+                companyLabel="Shipper"
+                contactLabel="Client"
+                onSelect={({ company, contact }) => {
+                  const cName = company ? (company.name || company.company_name || "") : "";
+                  setCompanyName(cName);
+                  if (company) {
+                    setClientId(company.id);
+                    setShipper(cName);
+                  } else {
+                    setClientId("");
+                    setShipper("");
+                  }
+                  if (contact) {
+                    setContactId(contact.id);
+                    setContactPersonName(contact.name);
+                    setClient(contact.name);
+                  } else {
+                    setContactId("");
+                    setContactPersonName("");
+                    setClient("");
+                  }
+                }}
+              />
             </div>
 
             {/* Row 1b: Consignee + Client */}

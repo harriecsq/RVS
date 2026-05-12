@@ -384,12 +384,12 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
             },
             {
               header: "Trucking Vendor",
-              width: "9%",
+              width: "13%",
               cell: (r) => <VendorPill vendor={r.truckingVendor} />,
             },
             ...(isExport ? [] : [{
               header: "Container Status",
-              width: "22%",
+              width: "18%",
               cell: (r: any) => {
                 const tags: string[] = (r as any).shipmentTags ?? [];
                 if (tags.length === 0) return <span style={{ fontSize: "13px", color: "#9CA3AF" }}>—</span>;

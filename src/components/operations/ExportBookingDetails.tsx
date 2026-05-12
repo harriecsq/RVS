@@ -440,14 +440,10 @@ export function ExportBookingDetails({
     extra: Record<string, unknown> = {},
   ) => {
     try {
-      const isLegacy = !(currentBooking as any).booking_type;
-      const endpoint = isLegacy
-        ? `${API_BASE_URL}/bookings/${currentBooking.bookingId}`
-        : `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
-      const method = isLegacy ? "PATCH" : "PUT";
+      const endpoint = `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}`;
 
       const response = await fetch(endpoint, {
-        method,
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`,
@@ -597,19 +593,11 @@ export function ExportBookingDetails({
         updatedAt: new Date().toISOString()
       };
 
-      const isLegacy = !(booking as any).booking_type;
       const encodedId = encodeURIComponent(booking.id || booking.bookingId);
-
-      const endpoint = isLegacy
-        ? `${API_BASE_URL}/bookings/${encodedId}`
-        : `${API_BASE_URL}/export-bookings/${encodedId}`;
-      
-      const method = isLegacy ? "PATCH" : "PUT";
-
-      console.log(`Saving booking to ${endpoint} via ${method} (Legacy: ${isLegacy})`);
+      const endpoint = `${API_BASE_URL}/export-bookings/${encodedId}`;
 
       const response = await fetch(endpoint, {
-        method: method,
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`
@@ -1492,7 +1480,7 @@ function PolEditableField({
           {required && <span style={{ color: "#EF4444" }}>*</span>}
           <Lock size={12} color="#9CA3AF" title={lockStatus.reason} style={{ cursor: "help" }} />
         </label>
-        <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: "#6B7280", cursor: "not-allowed" }}>
+        <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: "#6B7280", cursor: "not-allowed", textTransform: "uppercase" }}>
           {rawValue || "—"}
         </div>
       </div>
@@ -1505,7 +1493,7 @@ function PolEditableField({
         <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
           {label} {required && <span style={{ color: "#EF4444" }}>*</span>}
         </label>
-        <div style={{ padding: "10px 14px", backgroundColor: isEmpty ? "white" : "#F9FAFB", border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)", minHeight: "40px", display: "flex", alignItems: "center" }}>
+        <div style={{ padding: "10px 14px", backgroundColor: isEmpty ? "white" : "#F9FAFB", border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)", minHeight: "40px", display: "flex", alignItems: "center", textTransform: "uppercase" }}>
           {isEmpty ? <span style={{ color: "#9CA3AF" }}>{placeholder}</span> : rawValue}
         </div>
       </div>
@@ -1522,7 +1510,7 @@ function PolEditableField({
           onClick={() => setOpen(!open)}
           onBlur={() => setTimeout(() => setOpen(false), 200)}
           tabIndex={0}
-          style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box" }}
+          style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box", textTransform: rawValue ? "uppercase" : "none" }}
         >
           {rawValue || "Select POL"}
           <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
@@ -1533,7 +1521,7 @@ function PolEditableField({
               <div
                 key={option}
                 onClick={() => { handleChange(option); setOpen(false); }}
-                style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease" }}
+                style={{ padding: "10px 14px", fontSize: "14px", fontWeight: 500, cursor: "pointer", color: "#111827", display: "flex", alignItems: "center", background: rawValue === option ? "#F0FDF4" : "transparent", borderBottom: index < PORT_OPTIONS.length - 1 ? "1px solid #E5E9F0" : "none", transition: "background 0.15s ease", textTransform: "uppercase" }}
                 onMouseEnter={(e) => { if (rawValue !== option) e.currentTarget.style.background = "#F9FAFB"; }}
                 onMouseLeave={(e) => { if (rawValue !== option) e.currentTarget.style.background = "transparent"; }}
               >
@@ -1602,6 +1590,7 @@ function PodEditableField({
             fontSize: "14px",
             color: "#6B7280",
             cursor: "not-allowed",
+            textTransform: "uppercase",
           }}
         >
           {rawValue || "\u2014"}
@@ -1635,6 +1624,7 @@ function PodEditableField({
             minHeight: "42px",
             display: "flex",
             alignItems: "center",
+            textTransform: "uppercase",
           }}
         >
           {isEmpty ? <span style={{ color: "#9CA3AF" }}>{placeholder}</span> : rawValue}
@@ -2277,10 +2267,15 @@ function BookingInformationTab({
   const parentSetEditData = setEditData;
   const parentSetSegmentEditData = setSegmentEditData;
 
-  // Merge active segment fields into booking so existing field rendering works unchanged
-  const mergedBooking: ExportBooking = activeSegment
-    ? { ...booking, ...activeSegment } as ExportBooking
-    : booking;
+  // Merge active segment fields into booking so existing field rendering works unchanged.
+  // SEGMENT_FIELDS must come from the active segment only — clear them from the booking root
+  // before merging so a segment without a value renders blank instead of inheriting segment 1.
+  const mergedBooking: ExportBooking = (() => {
+    if (!activeSegment) return booking;
+    const stripped: any = { ...booking };
+    SEGMENT_FIELDS.forEach(f => { stripped[f] = undefined; });
+    return { ...stripped, ...activeSegment } as ExportBooking;
+  })();
 
   // Merge editData: combine booking-level edits + segment-level edits
   const mergedEditData: Partial<ExportBooking> = { ...editData, ...segmentEditData } as any;
@@ -3042,19 +3037,20 @@ function BookingInformationTab({
       
       {/* ═══════════════ SHIPMENT DETAILS ═══════════════ */}
       <SectionCard title="Shipment Details">
-        {/* Row 1: Date + Company/Contact */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "20px" }}>
-          <EditableField
-            fieldName="date"
-            label="Date"
-            value={mergedBooking.date || ""}
-            type="date"
-            status={mergedBooking.status}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <div>
+        {/* Row 1: Date */}
+        <EditableField
+          fieldName="date"
+          label="Date"
+          value={mergedBooking.date || ""}
+          type="date"
+          status={mergedBooking.status}
+          isEditing={isEditing}
+          editData={mergedEditData}
+          setEditData={mergedSetEditData}
+        />
+
+        {/* Row 2: Company/Contact */}
+        <div>
             <CompanyContactSelector
               companyId={((isEditing && (mergedEditData as any).clientId !== undefined) ? (mergedEditData as any).clientId : (mergedBooking as any).clientId) || ""}
               contactId={((isEditing && (mergedEditData as any).contactId !== undefined) ? (mergedEditData as any).contactId : (mergedBooking as any).contactId) || ""}
@@ -3085,7 +3081,6 @@ function BookingInformationTab({
                 mergedSetEditData(updates as any);
               }}
             />
-          </div>
         </div>
 
         {/* Row 1b: Consignee + Client */}

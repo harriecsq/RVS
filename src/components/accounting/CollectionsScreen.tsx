@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, DollarSign } from "lucide-react";
 import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -47,6 +47,8 @@ interface Collection {
 
 export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const { data: collectionsResult, isLoading, refetch } = useCachedFetch<{ success: boolean; data: any[] }>("/collections");
+  const { data: billingsResult } = useCachedFetch<{ success: boolean; data: any[] }>("/billings");
+  const { data: bookingsResult } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
   const collections = useMemo<Collection[]>(() => {
     if (!collectionsResult?.success || !Array.isArray(collectionsResult.data)) return [];
     const data = [...collectionsResult.data];
@@ -61,8 +63,41 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
   const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [portFilter, setPortFilter] = useState<string[]>([]);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
+  const collectionPortMapRef = useRef<Map<string, string>>(new Map());
   const clientsMasterList = useClientsMasterList();
+
+  useEffect(() => {
+    const bookingPortMap = new Map<string, string>();
+    (bookingsResult?.data || []).forEach((b: any) => {
+      const serviceType = String(b.booking_type || b.shipmentType || b.mode || "Import");
+      const isImport = serviceType.toLowerCase().includes("import");
+      const seg0 = b.segments?.[0];
+      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      if (b.id) bookingPortMap.set(b.id, port);
+      if (b.bookingId) bookingPortMap.set(b.bookingId, port);
+    });
+    const billingPortMap = new Map<string, string>();
+    (billingsResult?.data || []).forEach((b: any) => {
+      const bookingId = b.bookingId || (Array.isArray(b.bookingIds) ? b.bookingIds[0] : undefined);
+      const port = bookingId ? (bookingPortMap.get(bookingId) || "") : "";
+      if (b.id) billingPortMap.set(b.id, port);
+      if (b.billingNumber) billingPortMap.set(b.billingNumber, port);
+    });
+    const map = new Map<string, string>();
+    (collectionsResult?.data || []).forEach((c: any) => {
+      const allocations: any[] = Array.isArray(c.allocations) ? c.allocations : [];
+      let port = "";
+      for (const a of allocations) {
+        const p = (a?.billingId && billingPortMap.get(a.billingId)) || (a?.billingNumber && billingPortMap.get(a.billingNumber)) || "";
+        if (p) { port = p; break; }
+      }
+      if (!port && c.billingNumber) port = billingPortMap.get(c.billingNumber) || "";
+      if (c.id) map.set(c.id, port);
+    });
+    collectionPortMapRef.current = map;
+  }, [collectionsResult, billingsResult, bookingsResult]);
 
   const fetchCollections = () => { invalidateCache("/collections"); refetch(); };
 
@@ -125,14 +160,28 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       if (!clientSelectionMatches(clientSelections, { company: collCompany, client: collection.customerName || "" })) return false;
     }
 
+    // Port filter
+    if (portFilter.length > 0) {
+      const port = collectionPortMapRef.current.get(collection.id) || "";
+      if (!portFilter.some(p => port.toLowerCase().includes(p.toLowerCase()))) return false;
+    }
+
     return true;
   });
 
-  const filteredCollections = (statusFilter.length > 0 || clientSelections.length > 0)
+  const filteredCollections = (statusFilter.length > 0 || portFilter.length > 0 || clientSelections.length > 0)
     ? [...filteredCollectionsRaw].sort((a, b) => {
         if (statusFilter.length > 0) {
           const ai = statusFilter.indexOf(a.status);
           const bi = statusFilter.indexOf(b.status);
+          const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
+          if (d !== 0) return d;
+        }
+        if (portFilter.length > 0) {
+          const aPort = collectionPortMapRef.current.get(a.id) || "";
+          const bPort = collectionPortMapRef.current.get(b.id) || "";
+          const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
+          const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
           const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
           if (d !== 0) return d;
         }
@@ -332,6 +381,20 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
             onChange={setPaymentMethodFilter}
             options={paymentMethodOptions}
             preserveCase
+          />
+
+          {/* Port Filter */}
+          <MultiSelectPortalDropdown
+            value={portFilter}
+            options={[
+              { value: "Manila North", label: "Manila North" },
+              { value: "Manila South", label: "Manila South" },
+              { value: "CDO", label: "CDO" },
+              { value: "Iloilo", label: "Iloilo" },
+              { value: "Davao", label: "Davao" },
+            ]}
+            onChange={setPortFilter}
+            placeholder="All Ports"
           />
 
           {/* Company / Client Filter */}

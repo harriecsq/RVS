@@ -50,6 +50,15 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const asUuid = (v: unknown): string | null =>
   typeof v === "string" && UUID_RE.test(v) ? v : null;
 
+// Resolve an /:id route param to the actual UUID by checking either the
+// surrogate `id` column or the public ref-number column. Lets the frontend
+// pass either form transparently.
+async function resolveRowId(table: string, refColumn: string, idOrRef: string): Promise<string | null> {
+  if (UUID_RE.test(idOrRef)) return idOrRef;
+  const { data } = await db().from(table).select("id").eq(refColumn, idOrRef).maybeSingle();
+  return (data as any)?.id ?? null;
+}
+
 const route = new Hono().basePath("/server-v2");
 
 // ============================================================================
@@ -189,8 +198,7 @@ route.post("/contacts", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const payload = {
     client_id: asUuid(body.customer_id ?? body.client_id),
-    first_name: body.first_name,
-    last_name: body.last_name,
+    name: body.name ?? "",
     title: body.title ?? null,
     email: body.email ?? null,
     phone: body.phone ?? null,
@@ -213,6 +221,7 @@ route.put("/contacts/:id", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   delete body.id;
   delete body.created_at;
+  delete body.updated_at;
   if (body.customer_id !== undefined) {
     body.client_id = asUuid(body.customer_id);
     delete body.customer_id;
@@ -220,6 +229,8 @@ route.put("/contacts/:id", async (c) => {
     body.client_id = asUuid(body.client_id);
   }
   if ("created_by" in body) body.created_by = asUuid(body.created_by);
+  delete body.clients;
+  delete body.company_name;
   const { data, error } = await db().from("contacts").update(body).eq("id", id).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
   if (!data) return c.json(fail("Contact not found", 404), 404);
@@ -292,10 +303,15 @@ route.get("/next-ref/:type", async (c) => {
   const year = Number(c.req.query("year") ?? new Date().getFullYear());
   let scope: string;
   let counterYear = year;
+  const movement = (c.req.query("movement") ?? "").toLowerCase();
   switch (type) {
     case "import":          scope = "booking:Import"; break;
     case "export":          scope = "booking:Export"; break;
-    case "trucking":        scope = "trucking";       break;
+    case "trucking":
+      if (movement !== "import" && movement !== "export")
+        return c.json(fail("movement query param must be 'import' or 'export' for trucking", 400), 400);
+      scope = movement === "import" ? "trucking:Import" : "trucking:Export";
+      break;
     case "collection":      scope = "collection";     counterYear = 0; break;
     case "voucher":         scope = `voucher:${voucherType}`; break;
     case "billing":         scope = `billing:${companyCode}`; break;
@@ -359,7 +375,8 @@ function bookingRowToApi(row: any, kids: {
   const passthrough = row.data ?? {};
   const base = {
     ...passthrough,                                 // passthrough fields first; known columns overwrite
-    id: row.id,
+    id: row.booking_number,                         // public id matches ref number (e.g. "EXP 2026-1")
+    uuid: row.id,                                   // internal UUID kept around if anything needs it
     bookingId: row.booking_number,
     movement: row.movement,
     clientId: row.client_id,
@@ -514,9 +531,13 @@ function segmentApiToRow(body: any, bookingId: string, legOrder?: number) {
   };
 }
 
+function docTypeToCamel(slug: string): string {
+  return slug.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+}
+
 function docRowToApi(row: any) {
   return {
-    docType: row.doc_type,
+    docType: docTypeToCamel(row.doc_type),
     refNo: row.ref_no,
     status: row.status,
     fileUrl: row.file_url,
@@ -536,7 +557,7 @@ async function fetchBookingChildren(bookingId: string) {
     d.from("booking_documents").select("*").eq("booking_id", bookingId),
   ]);
   const documents: Record<string, any> = {};
-  for (const row of documentsRes.data ?? []) documents[(row as any).doc_type] = docRowToApi(row);
+  for (const row of documentsRes.data ?? []) documents[docTypeToCamel((row as any).doc_type)] = docRowToApi(row);
   return {
     tags: (tagsRes.data ?? []).map((r: any) => r.tag),
     history: historyRes.data ?? [],
@@ -565,22 +586,71 @@ async function nextBookingNumber(movement: Movement): Promise<string> {
 }
 
 // ----- LIST -----
-async function listBookingsByMovement(movement: Movement) {
-  const { data: rows, error } = await db()
-    .from("bookings").select("*").eq("movement", movement)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  if (!rows?.length) return [];
-  const ids = rows.map((r: any) => r.id);
+// Slim mode skips the 4 child fan-out queries (tags/history/segments/docs).
+// Use it for selectors and any list view that only needs id/number/client/status/etc.
+async function listBookings(opts: {
+  movement?: Movement | null;
+  slim?: boolean;
+  limit?: number;
+  offset?: number;
+  excludeLinked?: "billing" | "expense" | null;
+} = {}): Promise<{ rows: any[]; total: number }> {
+  const movement = opts.movement ?? null;
+  const slim = !!opts.slim;
+  const limit = opts.limit;
+  const offset = opts.offset ?? 0;
+  const excludeLinked = opts.excludeLinked ?? null;
 
+  // Resolve the "already linked" booking-id set if requested. One small query
+  // beats the previous client-side approach of fetching every billing/expense.
+  let excludedSet: Set<string> | null = null;
+  if (excludeLinked) {
+    const linkedQuery = excludeLinked === "billing"
+      ? db().from("billing_bookings").select("booking_id")
+      : db().from("expenses").select("booking_id");
+    const { data: linked } = await linkedQuery;
+    excludedSet = new Set(((linked ?? []) as any[]).map((r) => r.booking_id).filter(Boolean));
+  }
+
+  let q = db()
+    .from("bookings")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false });
+  if (movement) q = q.eq("movement", movement);
+  // PostgREST .not("id", "in", "(...)") works for modest exclusion lists. For
+  // very large sets we fall back to JS-side filtering after the fetch.
+  const canPushdownExclude = excludedSet && excludedSet.size > 0 && excludedSet.size <= 100;
+  if (canPushdownExclude) {
+    q = q.not("id", "in", `(${Array.from(excludedSet!).join(",")})`);
+  }
+  // Pagination only pushes down when we are not JS-filtering after the fact.
+  const pushdownPaging = limit !== undefined && (!excludedSet || canPushdownExclude);
+  if (pushdownPaging) q = q.range(offset, offset + (limit as number) - 1);
+
+  const { data: rawRows, error, count } = await q;
+  if (error) throw new Error(error.message);
+  let rows = (rawRows ?? []) as any[];
+  if (excludedSet && !canPushdownExclude) {
+    rows = rows.filter((r) => !excludedSet!.has(r.id));
+    if (limit !== undefined) rows = rows.slice(offset, offset + limit);
+  }
+  const total = count ?? rows.length;
+  if (!rows.length) return { rows: [], total };
+
+  if (slim) {
+    return { rows: rows.map((r: any) => bookingRowToApi(r, {})), total };
+  }
+
+  const ids = rows.map((r: any) => r.id);
   const d = db();
+  const hasExport = !movement || rows.some((r: any) => r.movement === "EXPORT");
   const [tagsRes, historyRes, segmentsRes, docsRes] = await Promise.all([
     d.from("booking_shipment_tags").select("booking_id, tag").in("booking_id", ids),
     d.from("booking_tag_history").select("*").in("booking_id", ids).order("timestamp", { ascending: false }),
-    movement === "EXPORT"
+    hasExport
       ? d.from("booking_segments").select("*").in("booking_id", ids).order("leg_order", { ascending: true })
       : Promise.resolve({ data: [] as any[] }),
-    movement === "EXPORT"
+    hasExport
       ? d.from("booking_documents").select("*").in("booking_id", ids)
       : Promise.resolve({ data: [] as any[] }),
   ]);
@@ -596,15 +666,23 @@ async function listBookingsByMovement(movement: Movement) {
 
   const docsByBooking: Record<string, Record<string, any>> = {};
   for (const d_ of (docsRes.data ?? []) as any[]) {
-    (docsByBooking[d_.booking_id] ??= {})[d_.doc_type] = docRowToApi(d_);
+    (docsByBooking[d_.booking_id] ??= {})[docTypeToCamel(d_.doc_type)] = docRowToApi(d_);
   }
 
-  return rows.map((r: any) => bookingRowToApi(r, {
-    tags:      tagsByBooking[r.id] ?? [],
-    history:   historyByBooking[r.id] ?? [],
-    segments:  segmentsByBooking[r.id] ?? [],
-    documents: docsByBooking[r.id]   ?? {},
-  }));
+  return {
+    rows: rows.map((r: any) => bookingRowToApi(r, {
+      tags:      tagsByBooking[r.id] ?? [],
+      history:   historyByBooking[r.id] ?? [],
+      segments:  segmentsByBooking[r.id] ?? [],
+      documents: docsByBooking[r.id]   ?? {},
+    })),
+    total,
+  };
+}
+
+async function listBookingsByMovement(movement: Movement) {
+  const { rows } = await listBookings({ movement });
+  return rows;
 }
 
 function registerBookingCrud(prefix: "import-bookings" | "export-bookings", movement: Movement) {
@@ -618,7 +696,9 @@ function registerBookingCrud(prefix: "import-bookings" | "export-bookings", move
 
   route.get(`/${prefix}/:id`, async (c) => {
     try {
-      const booking = await loadBookingApi(c.req.param("id"));
+      const uuid = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+      if (!uuid) return c.json(fail("Booking not found", 404), 404);
+      const booking = await loadBookingApi(uuid);
       if (!booking) return c.json(fail("Booking not found", 404), 404);
       if (booking.movement !== movement) return c.json(fail("Wrong booking movement for this route", 400), 400);
       return c.json(ok(booking));
@@ -665,59 +745,98 @@ function registerBookingCrud(prefix: "import-bookings" | "export-bookings", move
 
   route.put(`/${prefix}/:id`, async (c) => {
     try {
-      const id = c.req.param("id");
+      const uuid = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+      if (!uuid) return c.json(fail("Booking not found", 404), 404);
       const body = await c.req.json().catch(() => ({}));
       const update = bookingApiToRow(body, movement, false);
       if (body.bookingId) update.booking_number = body.bookingId;
       if (Object.keys(update).length === 0) {
-        // nothing to update — just return current state
-        const booking = await loadBookingApi(id);
-        if (!booking) return c.json(fail("Booking not found", 404), 404);
+        const booking = await loadBookingApi(uuid);
         return c.json(ok(booking));
       }
-      const { error } = await db().from("bookings").update(update).eq("id", id);
-      if (error) return c.json(fail(error.message, 400), 400);
-      const booking = await loadBookingApi(id);
-      if (!booking) return c.json(fail("Booking not found", 404), 404);
-      return c.json(ok(booking));
+      // Merge JSONB passthrough with existing row.data so a partial edit
+      // doesn't wipe fields the form didn't re-send (e.g. shipmentType, shipper, costs).
+      if (update.data !== undefined) {
+        const { data: existing } = await db().from("bookings").select("data").eq("id", uuid).maybeSingle();
+        update.data = { ...((existing as any)?.data ?? {}), ...update.data };
+      }
+      if (Object.keys(update).length) {
+        const { error } = await db().from("bookings").update(update).eq("id", uuid);
+        if (error) return c.json(fail(error.message, 400), 400);
+      }
+
+      // Persist segments if provided. Match by segmentId (= row id) so we can
+      // update existing rows rather than wipe + reinsert (which would break FKs).
+      if (Array.isArray(body.segments)) {
+        const { data: existingSegs } = await db()
+          .from("booking_segments").select("id").eq("booking_id", uuid);
+        const existingIds = new Set(((existingSegs ?? []) as any[]).map((r) => r.id));
+        const incomingIds = new Set<string>();
+        for (let i = 0; i < body.segments.length; i++) {
+          const s = body.segments[i];
+          const segRow = segmentApiToRow(s, uuid, s.legOrder ?? s.leg_order ?? i + 1);
+          // Merge JSONB so partial edits don't drop untouched segment fields.
+          if (s.segmentId && existingIds.has(s.segmentId)) {
+            const { data: existingSeg } = await db()
+              .from("booking_segments").select("data").eq("id", s.segmentId).maybeSingle();
+            segRow.data = { ...((existingSeg as any)?.data ?? {}), ...(segRow.data ?? {}) };
+            incomingIds.add(s.segmentId);
+            const { error: ue } = await db().from("booking_segments").update(segRow).eq("id", s.segmentId);
+            if (ue) console.error("segment update failed:", ue.message);
+          } else {
+            const { data: ins, error: ie } = await db().from("booking_segments").insert(segRow).select("id").single();
+            if (ie) console.error("segment insert failed:", ie.message);
+            else if (ins) incomingIds.add((ins as any).id);
+          }
+        }
+        // Delete segments the client removed.
+        for (const id of existingIds) {
+          if (!incomingIds.has(id)) {
+            await db().from("booking_segments").delete().eq("id", id);
+          }
+        }
+      }
+
+      return c.json(ok(await loadBookingApi(uuid)));
     } catch (e: any) {
       return c.json(fail(e.message, 500), 500);
     }
   });
 
   route.delete(`/${prefix}/:id`, async (c) => {
-    const { error } = await db().from("bookings").delete().eq("id", c.req.param("id"));
+    const uuid = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+    if (!uuid) return c.json({ success: true });                         // idempotent
+    const { error } = await db().from("bookings").delete().eq("id", uuid);
     if (error) return c.json(fail(error.message, 400), 400);
     return c.json({ success: true });
   });
 
   // ----- shipment tags -----
   route.put(`/${prefix}/:id/shipment-tags`, async (c) => {
-    const id = c.req.param("id");
+    const uuid = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+    if (!uuid) return c.json(fail("Booking not found", 404), 404);
     const body = await c.req.json().catch(() => ({}));
     const newTags: string[] = Array.isArray(body.shipmentTags) ? body.shipmentTags : [];
     const user: string = body.user ?? "system";
 
     const { data: existing } = await db()
-      .from("booking_shipment_tags").select("tag").eq("booking_id", id);
+      .from("booking_shipment_tags").select("tag").eq("booking_id", uuid);
     const oldTags = ((existing ?? []) as any[]).map((r) => r.tag);
 
-    await db().from("booking_shipment_tags").delete().eq("booking_id", id);
+    await db().from("booking_shipment_tags").delete().eq("booking_id", uuid);
     if (newTags.length) {
       await db().from("booking_shipment_tags").insert(
-        newTags.map((tag) => ({ booking_id: id, tag })),
+        newTags.map((tag) => ({ booking_id: uuid, tag })),
       );
     }
     await db().from("booking_tag_history").insert({
-      booking_id: id,
+      booking_id: uuid,
       old_tags: oldTags,
       new_tags: newTags,
       change_type: "replace",
       user_name: user,
     });
-    const booking = await loadBookingApi(id);
-    if (!booking) return c.json(fail("Booking not found", 404), 404);
-    return c.json(ok(booking));
+    return c.json(ok(await loadBookingApi(uuid)));
   });
 }
 
@@ -726,7 +845,8 @@ registerBookingCrud("export-bookings", "EXPORT");
 
 // ----- export segments -----
 route.post("/export-bookings/:id/segments", async (c) => {
-  const bookingId = c.req.param("id");
+  const bookingId = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+  if (!bookingId) return c.json(fail("Booking not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const { data: existing } = await db()
     .from("booking_segments").select("leg_order").eq("booking_id", bookingId)
@@ -739,7 +859,8 @@ route.post("/export-bookings/:id/segments", async (c) => {
 });
 
 route.put("/export-bookings/:id/segments/:segmentId", async (c) => {
-  const bookingId = c.req.param("id");
+  const bookingId = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+  if (!bookingId) return c.json(fail("Booking not found", 404), 404);
   const segmentId = c.req.param("segmentId");
   const body = await c.req.json().catch(() => ({}));
   const row = segmentApiToRow(body, bookingId, body.legOrder ?? body.leg_order);
@@ -752,7 +873,8 @@ route.put("/export-bookings/:id/segments/:segmentId", async (c) => {
 });
 
 route.delete("/export-bookings/:id/segments/:segmentId", async (c) => {
-  const bookingId = c.req.param("id");
+  const bookingId = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+  if (!bookingId) return c.json(fail("Booking not found", 404), 404);
   const segmentId = c.req.param("segmentId");
   const { count } = await db()
     .from("booking_segments").select("*", { count: "exact", head: true }).eq("booking_id", bookingId);
@@ -773,16 +895,19 @@ route.delete("/export-bookings/:id/segments/:segmentId", async (c) => {
 
 // ----- export documents -----
 route.get("/export-bookings/:id/documents", async (c) => {
+  const bookingId = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+  if (!bookingId) return c.json(ok({}));
   const { data } = await db()
-    .from("booking_documents").select("*").eq("booking_id", c.req.param("id"));
+    .from("booking_documents").select("*").eq("booking_id", bookingId);
   const out: Record<string, any> = {};
-  for (const row of (data ?? []) as any[]) out[row.doc_type] = docRowToApi(row);
+  for (const row of (data ?? []) as any[]) out[docTypeToCamel(row.doc_type)] = docRowToApi(row);
   return c.json(ok(out));
 });
 
 route.put("/export-bookings/:id/documents/:docType", async (c) => {
-  const bookingId = c.req.param("id");
-  const docType = c.req.param("docType");
+  const bookingId = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+  if (!bookingId) return c.json(fail("Booking not found", 404), 404);
+  const docType = docTypeToCamel(c.req.param("docType"));
   const body = await c.req.json().catch(() => ({}));
   const knownKeys = new Set(["docType","doc_type","bookingId","booking_id","refNo","ref_no","status","fileUrl","file_url","createdAt","updatedAt","created_at","updated_at"]);
   const data: any = {};
@@ -802,33 +927,71 @@ route.put("/export-bookings/:id/documents/:docType", async (c) => {
 });
 
 route.delete("/export-bookings/:id/documents/:docType", async (c) => {
+  const bookingId = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+  if (!bookingId) return c.json({ success: true });
   const { error } = await db()
     .from("booking_documents").delete()
-    .eq("booking_id", c.req.param("id")).eq("doc_type", c.req.param("docType"));
+    .eq("booking_id", bookingId).eq("doc_type", docTypeToCamel(c.req.param("docType")));
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });
 
 // ----- unified /bookings (read-only listing across movements) -----
+// Query params:
+//   movement=IMPORT|EXPORT   restrict to one movement (single SQL query instead of merging two)
+//   slim=1                   omit tags/history/segments/documents — use for selectors and list views
+//   limit, offset            pagination
+//   excludeLinked=billing|expense  hide bookings already linked to a billing/expense
 route.get("/bookings", async (c) => {
   try {
-    const [imp, exp] = await Promise.all([
-      listBookingsByMovement("IMPORT"),
-      listBookingsByMovement("EXPORT"),
-    ]);
-    const merged = [...imp, ...exp].sort((a, b) =>
-      String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
-    return c.json({ success: true, data: merged, pagination: { total: merged.length, offset: 0, limit: merged.length, hasMore: false } });
+    const movementParam = (c.req.query("movement") ?? "").toUpperCase();
+    const movement: Movement | null =
+      movementParam === "IMPORT" || movementParam === "EXPORT" ? (movementParam as Movement) : null;
+    const slim = c.req.query("slim") === "1" || c.req.query("slim") === "true";
+    const limit = c.req.query("limit") ? Number(c.req.query("limit")) : undefined;
+    const offset = c.req.query("offset") ? Number(c.req.query("offset")) : 0;
+    const excludeLinkedRaw = c.req.query("excludeLinked");
+    const excludeLinked: "billing" | "expense" | null =
+      excludeLinkedRaw === "billing" || excludeLinkedRaw === "expense" ? excludeLinkedRaw : null;
+
+    const { rows, total } = await listBookings({ movement, slim, limit, offset, excludeLinked });
+    return c.json({
+      success: true,
+      data: rows,
+      pagination: {
+        total,
+        offset,
+        limit: limit ?? rows.length,
+        hasMore: limit !== undefined && offset + rows.length < total,
+      },
+    });
   } catch (e: any) {
     return c.json(fail(e.message, 500), 500);
   }
 });
 
+// Returns the set of booking UUIDs already linked to a billing or expense.
+// Used by selectors to grey-out "already taken" bookings without having to
+// fetch every billing/expense + their child rows.
+route.get("/bookings/linked-ids", async (c) => {
+  const type = c.req.query("type");
+  if (type !== "billing" && type !== "expense") {
+    return c.json(fail("type must be 'billing' or 'expense'", 400), 400);
+  }
+  const query = type === "billing"
+    ? db().from("billing_bookings").select("booking_id")
+    : db().from("expenses").select("booking_id");
+  const { data, error } = await query;
+  if (error) return c.json(fail(error.message, 500), 500);
+  const ids = Array.from(new Set(((data ?? []) as any[]).map((r) => r.booking_id).filter(Boolean)));
+  return c.json(ok(ids));
+});
+
 route.get("/bookings/:id", async (c) => {
   try {
-    const booking = await loadBookingApi(c.req.param("id"));
-    if (!booking) return c.json(fail("Booking not found", 404), 404);
-    return c.json(ok(booking));
+    const uuid = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+    if (!uuid) return c.json(fail("Booking not found", 404), 404);
+    return c.json(ok(await loadBookingApi(uuid)));
   } catch (e: any) {
     return c.json(fail(e.message, 500), 500);
   }
@@ -842,14 +1005,15 @@ route.all("/bookings/*", (c) =>
 // ============================================================================
 function truckingBookingRowToApi(row: any) {
   return {
-    id: row.id,
+    ...(row.data ?? {}),
+    id: row.booking_number,
+    uuid: row.id,
     bookingId: row.booking_number,
     clientId: row.client_id,
     clientName: row.client_name,
     status: row.status,
     origin: row.origin,
     destination: row.destination,
-    ...(row.data ?? {}),
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -886,8 +1050,10 @@ route.get("/trucking-bookings", async (c) => {
 });
 
 route.get("/trucking-bookings/:id", async (c) => {
+  const uuid = await resolveRowId("trucking_bookings", "booking_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Booking not found", 404), 404);
   const { data, error } = await db()
-    .from("trucking_bookings").select("*").eq("id", c.req.param("id")).maybeSingle();
+    .from("trucking_bookings").select("*").eq("id", uuid).maybeSingle();
   if (error) return c.json(fail(error.message, 500), 500);
   if (!data) return c.json(fail("Booking not found", 404), 404);
   return c.json(ok(truckingBookingRowToApi(data)));
@@ -909,22 +1075,23 @@ route.post("/trucking-bookings", async (c) => {
 });
 
 route.put("/trucking-bookings/:id", async (c) => {
-  const id = c.req.param("id");
+  const uuid = await resolveRowId("trucking_bookings", "booking_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Booking not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const row = truckingBookingApiToRow(body);
   if (Object.keys(row).length === 0) {
-    const { data } = await db().from("trucking_bookings").select("*").eq("id", id).maybeSingle();
-    if (!data) return c.json(fail("Booking not found", 404), 404);
+    const { data } = await db().from("trucking_bookings").select("*").eq("id", uuid).maybeSingle();
     return c.json(ok(truckingBookingRowToApi(data)));
   }
-  const { data, error } = await db().from("trucking_bookings").update(row).eq("id", id).select().single();
+  const { data, error } = await db().from("trucking_bookings").update(row).eq("id", uuid).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
-  if (!data) return c.json(fail("Booking not found", 404), 404);
   return c.json(ok(truckingBookingRowToApi(data)));
 });
 
 route.delete("/trucking-bookings/:id", async (c) => {
-  const { error } = await db().from("trucking_bookings").delete().eq("id", c.req.param("id"));
+  const uuid = await resolveRowId("trucking_bookings", "booking_number", c.req.param("id"));
+  if (!uuid) return c.json({ success: true });
+  const { error } = await db().from("trucking_bookings").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });
@@ -934,7 +1101,9 @@ route.delete("/trucking-bookings/:id", async (c) => {
 // ============================================================================
 function truckingLegRowToApi(row: any) {
   return {
-    id: row.id,
+    ...(row.data ?? {}),
+    id: row.leg_number,
+    uuid: row.id,
     truckingLegId: row.leg_number,
     parentBookingId: row.parent_booking_id,
     parentBookingType: row.parent_booking_type,
@@ -942,7 +1111,6 @@ function truckingLegRowToApi(row: any) {
     origin: row.origin,
     destination: row.destination,
     status: row.status,
-    ...(row.data ?? {}),
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -973,10 +1141,11 @@ route.get("/trucking-legs", async (c) => {
 });
 
 route.get("/trucking-legs/:id", async (c) => {
+  const uuid = await resolveRowId("trucking_legs", "leg_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Trucking leg not found", 404), 404);
   const { data, error } = await db()
-    .from("trucking_legs").select("*").eq("id", c.req.param("id")).maybeSingle();
+    .from("trucking_legs").select("*").eq("id", uuid).maybeSingle();
   if (error) return c.json(fail(error.message, 500), 500);
-  if (!data) return c.json(fail("Trucking leg not found", 404), 404);
   return c.json(ok(truckingLegRowToApi(data)));
 });
 
@@ -1017,7 +1186,8 @@ route.post("/trucking-legs", async (c) => {
 });
 
 route.put("/trucking-legs/:id", async (c) => {
-  const id = c.req.param("id");
+  const uuid = await resolveRowId("trucking_legs", "leg_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Trucking leg not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const known = new Set([
     "id","truckingLegId","leg_number","parentBookingId","parent_booking_id","parentBookingType","parent_booking_type",
@@ -1034,14 +1204,15 @@ route.put("/trucking-legs/:id", async (c) => {
   if (Object.keys(data).length) update.data = data;
   // parent_* immutable
   const { data: updated, error } = await db()
-    .from("trucking_legs").update(update).eq("id", id).select().single();
+    .from("trucking_legs").update(update).eq("id", uuid).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
-  if (!updated) return c.json(fail("Trucking leg not found", 404), 404);
   return c.json(ok(truckingLegRowToApi(updated)));
 });
 
 route.delete("/trucking-legs/:id", async (c) => {
-  const { error } = await db().from("trucking_legs").delete().eq("id", c.req.param("id"));
+  const uuid = await resolveRowId("trucking_legs", "leg_number", c.req.param("id"));
+  if (!uuid) return c.json({ success: true });
+  const { error } = await db().from("trucking_legs").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });
@@ -1049,16 +1220,30 @@ route.delete("/trucking-legs/:id", async (c) => {
 // ============================================================================
 // trucking records  (TRK YYYY-NNN operational records linked to a booking)
 // ============================================================================
-function truckingRecordRowToApi(row: any, linked?: { tags: string[]; history: any[] }) {
+function truckingRecordRowToApi(
+  row: any,
+  linked?: { tags: string[]; history: any[] },
+  bookingMovement?: string | null,
+  bookingRefNumber?: string | null,
+) {
+  // Derive linkedBookingType from movement when available so the import/export
+  // filter on the list view is authoritative regardless of what the client sent.
+  const derivedType =
+    bookingMovement === "EXPORT" ? "Export"
+    : bookingMovement === "IMPORT" ? "Import"
+    : undefined;
   return {
-    id: row.id,
+    ...(row.data ?? {}),
+    id: row.record_number,
+    uuid: row.id,
     truckingRefNo: row.record_number,
-    linkedBookingId: row.linked_booking_id,
+    linkedBookingId: bookingRefNumber ?? row.linked_booking_id,    // public ref preferred
+    linkedBookingUuid: row.linked_booking_id,
     linkedSegmentId: row.linked_segment_id,
     containerNo: row.container_no,
     containers: row.containers ?? [],
     remarks: row.remarks ?? [],
-    ...(row.data ?? {}),
+    ...(derivedType ? { linkedBookingType: derivedType } : {}),
     linkedBookingShipmentTags: linked?.tags,
     linkedBookingTagHistory: linked?.history,
     createdBy: row.created_by,
@@ -1067,18 +1252,23 @@ function truckingRecordRowToApi(row: any, linked?: { tags: string[]; history: an
   };
 }
 
-function truckingRecordApiToRow(body: any) {
+async function truckingRecordApiToRow(body: any) {
+  // Identity / column-mapped fields are excluded from `data`. linkedBookingType
+  // is intentionally NOT in this set — it has no column, so we let it fall
+  // through into the `data` JSONB so the list view can filter by it.
   const known = new Set([
     "id","truckingRefNo","record_number","linkedBookingId","linked_booking_id",
     "linkedSegmentId","linked_segment_id","containerNo","container_no",
-    "containers","remarks","linkedBookingType","linkedBookingShipmentTags","linkedBookingTagHistory",
+    "containers","remarks","linkedBookingShipmentTags","linkedBookingTagHistory",
     "createdBy","created_by","createdAt","created_at","updatedAt","updated_at",
   ]);
   const data: any = {};
   for (const [k, v] of Object.entries(body)) if (!known.has(k)) data[k] = v;
   const row: any = {};
-  if (body.linkedBookingId !== undefined || body.linked_booking_id !== undefined)
-    row.linked_booking_id = asUuid(body.linkedBookingId ?? body.linked_booking_id);
+  if (body.linkedBookingId !== undefined || body.linked_booking_id !== undefined) {
+    const raw = body.linkedBookingId ?? body.linked_booking_id;
+    row.linked_booking_id = raw ? await resolveRowId("bookings", "booking_number", String(raw)) : null;
+  }
   if (body.linkedSegmentId !== undefined || body.linked_segment_id !== undefined)
     row.linked_segment_id = asUuid(body.linkedSegmentId ?? body.linked_segment_id);
   if (body.containerNo !== undefined || body.container_no !== undefined)
@@ -1089,6 +1279,13 @@ function truckingRecordApiToRow(body: any) {
     row.created_by = asUuid(body.createdBy ?? body.created_by);
   if (Object.keys(data).length) row.data = data;
   return row;
+}
+
+async function fetchBookingMeta(bookingId: string | null | undefined) {
+  if (!bookingId) return undefined;
+  const { data } = await db()
+    .from("bookings").select("movement, booking_number").eq("id", bookingId).maybeSingle();
+  return (data as any) ?? undefined;
 }
 
 async function fetchLinkedBookingState(linkedBookingId: string | null | undefined) {
@@ -1109,77 +1306,106 @@ route.post("/trucking-records", async (c) => {
   const year = new Date().getFullYear();
   let recordNumber = body.truckingRefNo;
   if (!recordNumber) {
+    const linkedRaw = body.linkedBookingId ?? body.linked_booking_id;
+    if (!linkedRaw) return c.json(fail("Trucking record requires a linked booking", 400), 400);
+    const linkedUuid = await resolveRowId("bookings", "booking_number", String(linkedRaw));
+    const meta = await fetchBookingMeta(linkedUuid);
+    const movement = meta?.movement;
+    if (movement !== "IMPORT" && movement !== "EXPORT")
+      return c.json(fail("Linked booking has no import/export movement", 400), 400);
+    const scope = movement === "IMPORT" ? "trucking:Import" : "trucking:Export";
+    const label = movement === "IMPORT" ? "IMP" : "EXP";
     const { data: counter, error: ce } = await db().rpc("next_counter", {
-      p_scope: "trucking", p_year: year,
+      p_scope: scope, p_year: year,
     });
     if (ce) return c.json(fail(ce.message, 500), 500);
-    recordNumber = `TRK ${year}-${counter}`;
+    recordNumber = `TRK ${label} ${year}-${counter}`;
   }
   // uniqueness check
   const { data: dup } = await db()
     .from("trucking_records").select("id").eq("record_number", recordNumber).maybeSingle();
   if (dup) return c.json(fail(`Reference number ${recordNumber} is already in use by another active record.`, 409), 409);
 
-  const row = truckingRecordApiToRow(body);
+  const row = await truckingRecordApiToRow(body);
   row.record_number = recordNumber;
   const { data: inserted, error } = await db().from("trucking_records").insert(row).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
-  return c.json(ok(truckingRecordRowToApi(inserted)));
+  const meta = await fetchBookingMeta((inserted as any).linked_booking_id);
+  return c.json(ok(truckingRecordRowToApi(inserted, undefined, meta?.movement, meta?.booking_number)));
 });
 
 route.get("/trucking-records", async (c) => {
-  const linkedBookingId = c.req.query("linkedBookingId");
+  const linkedBookingIdParam = c.req.query("linkedBookingId");
   const segmentId = c.req.query("segmentId");
+  let linkedBookingUuid: string | null = null;
+  if (linkedBookingIdParam) {
+    linkedBookingUuid = await resolveRowId("bookings", "booking_number", linkedBookingIdParam);
+    if (!linkedBookingUuid) return c.json(ok([]));
+  }
   let q = db().from("trucking_records").select("*").order("updated_at", { ascending: false });
-  if (linkedBookingId) q = q.eq("linked_booking_id", linkedBookingId);
-  if (segmentId)       q = q.eq("linked_segment_id", segmentId);
+  if (linkedBookingUuid) q = q.eq("linked_booking_id", linkedBookingUuid);
+  if (segmentId)         q = q.eq("linked_segment_id", segmentId);
   const { data, error } = await q;
   if (error) return c.json(fail(error.message, 500), 500);
   const rows = (data ?? []) as any[];
-  // when filtered by linkedBookingId, enrich with linked tags/history
-  if (linkedBookingId && rows.length) {
-    const linked = await fetchLinkedBookingState(linkedBookingId);
-    return c.json(ok(rows.map((r) => truckingRecordRowToApi(r, linked))));
+
+  // Resolve linked-booking movement + ref-number for every distinct booking so
+  // the list can be filtered by import/export and shows public refs (not UUIDs).
+  const bookingIds = Array.from(new Set(rows.map((r) => r.linked_booking_id).filter(Boolean)));
+  const bookingMeta = new Map<string, { movement: string; booking_number: string }>();
+  if (bookingIds.length) {
+    const { data: bookings } = await db()
+      .from("bookings").select("id, movement, booking_number").in("id", bookingIds);
+    ((bookings ?? []) as any[]).forEach((b) => bookingMeta.set(b.id, { movement: b.movement, booking_number: b.booking_number }));
   }
-  return c.json(ok(rows.map((r) => truckingRecordRowToApi(r))));
+
+  // when filtered by linkedBookingId, enrich with linked tags/history
+  const linked = linkedBookingId && rows.length ? await fetchLinkedBookingState(linkedBookingId) : undefined;
+  return c.json(ok(rows.map((r) => {
+    const meta = r.linked_booking_id ? bookingMeta.get(r.linked_booking_id) : undefined;
+    return truckingRecordRowToApi(r, linked, meta?.movement, meta?.booking_number);
+  })));
 });
 
 route.get("/trucking-records/:id", async (c) => {
+  const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Not found", 404), 404);
   const { data, error } = await db()
-    .from("trucking_records").select("*").eq("id", c.req.param("id")).maybeSingle();
+    .from("trucking_records").select("*").eq("id", uuid).maybeSingle();
   if (error) return c.json(fail(error.message, 500), 500);
-  if (!data) return c.json(fail("Not found", 404), 404);
   const linked = await fetchLinkedBookingState((data as any).linked_booking_id);
-  return c.json(ok(truckingRecordRowToApi(data, linked)));
+  const meta = await fetchBookingMeta((data as any).linked_booking_id);
+  return c.json(ok(truckingRecordRowToApi(data, linked, meta?.movement, meta?.booking_number)));
 });
 
 route.put("/trucking-records/:id", async (c) => {
-  const id = c.req.param("id");
+  const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Not found", 404), 404);
   const updates = await c.req.json().catch(() => ({}));
-  // uniqueness check if record_number changing
   if (updates.truckingRefNo) {
     const { data: dup } = await db()
       .from("trucking_records").select("id")
-      .eq("record_number", updates.truckingRefNo).neq("id", id).maybeSingle();
+      .eq("record_number", updates.truckingRefNo).neq("id", uuid).maybeSingle();
     if (dup) return c.json(fail(`Reference number ${updates.truckingRefNo} is already in use by another active record.`, 409), 409);
   }
-  const row = truckingRecordApiToRow(updates);
+  const row = await truckingRecordApiToRow(updates);
   if (updates.truckingRefNo) row.record_number = updates.truckingRefNo;
   const { data, error } = await db()
-    .from("trucking_records").update(row).eq("id", id).select().single();
+    .from("trucking_records").update(row).eq("id", uuid).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
-  if (!data) return c.json(fail("Not found", 404), 404);
-  return c.json(ok(truckingRecordRowToApi(data)));
+  const meta = await fetchBookingMeta((data as any).linked_booking_id);
+  return c.json(ok(truckingRecordRowToApi(data, undefined, meta?.movement, meta?.booking_number)));
 });
 
 route.put("/trucking-records/:id/update-booking-tags", async (c) => {
-  const id = c.req.param("id");
+  const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Trucking record not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const newTags: string[] = Array.from(new Set(Array.isArray(body.shipmentTags) ? body.shipmentTags : []));
   const user = String(body.user || "Unknown");
 
   const { data: record } = await db()
-    .from("trucking_records").select("linked_booking_id").eq("id", id).maybeSingle();
+    .from("trucking_records").select("linked_booking_id").eq("id", uuid).maybeSingle();
   if (!record) return c.json(fail("Trucking record not found", 404), 404);
   const linkedId = (record as any).linked_booking_id;
   if (!linkedId) return c.json(fail("No linked booking", 400), 400);
@@ -1205,12 +1431,13 @@ route.put("/trucking-records/:id/update-booking-tags", async (c) => {
 });
 
 route.put("/trucking-records/:id/update-booking-events", async (c) => {
-  const id = c.req.param("id");
+  const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Trucking record not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const events = Array.isArray(body.shipmentEvents) ? body.shipmentEvents : [];
 
   const { data: record } = await db()
-    .from("trucking_records").select("linked_booking_id").eq("id", id).maybeSingle();
+    .from("trucking_records").select("linked_booking_id").eq("id", uuid).maybeSingle();
   if (!record) return c.json(fail("Trucking record not found", 404), 404);
   const linkedId = (record as any).linked_booking_id;
   if (!linkedId) return c.json(fail("No linked booking", 400), 400);
@@ -1231,7 +1458,9 @@ route.put("/trucking-records/:id/update-booking-events", async (c) => {
 });
 
 route.delete("/trucking-records/:id", async (c) => {
-  const { error } = await db().from("trucking_records").delete().eq("id", c.req.param("id"));
+  const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
+  if (!uuid) return c.json({ success: true });
+  const { error } = await db().from("trucking_records").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });
@@ -1398,8 +1627,14 @@ route.get("/expenses", async (c) => {
   const limit = c.req.query("limit") ? Number(c.req.query("limit")) : undefined;
   const offset = c.req.query("offset") ? Number(c.req.query("offset")) : 0;
   let q = db().from("expenses").select("*").order("updated_at", { ascending: false });
-  if (status)    q = q.eq("status", status);
-  if (bookingId) q = q.eq("booking_id", bookingId);
+  if (status) q = q.eq("status", status);
+  if (bookingId) {
+    const bookingUuid = UUID_RE.test(bookingId)
+      ? bookingId
+      : await resolveRowId("bookings", "booking_number", bookingId);
+    if (!bookingUuid) return c.json(ok([]));
+    q = q.eq("booking_id", bookingUuid);
+  }
   if (segmentId) q = q.eq("segment_id", segmentId);
   if (limit !== undefined) q = q.range(offset, offset + limit - 1);
   const { data, error } = await q;
@@ -1468,7 +1703,8 @@ route.delete("/expenses/:id", async (c) => {
 // ---------- vouchers ----------
 function voucherRowToApi(row: any, lineItems: any[]) {
   return {
-    id: row.id,
+    id: row.voucher_number,
+    uuid: row.id,
     voucherNumber: row.voucher_number,
     voucherType: row.voucher_type,
     voucherYear: row.voucher_year,
@@ -1534,7 +1770,9 @@ route.get("/vouchers", async (c) => {
 });
 
 route.get("/vouchers/:voucherId", async (c) => {
-  const voucher = await loadVoucherApi(c.req.param("voucherId"));
+  const uuid = await resolveRowId("vouchers", "voucher_number", c.req.param("voucherId"));
+  if (!uuid) return c.json(fail("Voucher not found", 404), 404);
+  const voucher = await loadVoucherApi(uuid);
   if (!voucher) return c.json(fail("Voucher not found", 404), 404);
   return c.json(ok(voucher));
 });
@@ -1592,7 +1830,8 @@ route.post("/vouchers", async (c) => {
 });
 
 route.patch("/vouchers/:id", async (c) => {
-  const id = c.req.param("id");
+  const id = await resolveRowId("vouchers", "voucher_number", c.req.param("id"));
+  if (!id) return c.json(fail("Voucher not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const update: any = {};
   if (body.payee !== undefined)        update.payee = body.payee;
@@ -1636,7 +1875,9 @@ route.patch("/vouchers/:id", async (c) => {
 });
 
 route.delete("/vouchers/:id", async (c) => {
-  const { error } = await db().from("vouchers").delete().eq("id", c.req.param("id"));
+  const id = await resolveRowId("vouchers", "voucher_number", c.req.param("id"));
+  if (!id) return c.json({ success: true });
+  const { error } = await db().from("vouchers").delete().eq("id", id);
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });
@@ -1661,7 +1902,8 @@ route.get("/expenses/:expenseId/vouchers", async (c) => {
 function billingRowToApi(row: any, particulars: any[], bookingIds: string[], expenseIds: string[], balance?: { collected: number; outstanding: number }) {
   const sh = row.shipment ?? {};
   return {
-    id: row.id,
+    id: row.billing_number,
+    uuid: row.id,
     billingNumber: row.billing_number,
     billingCompanyCode: row.billing_company_code,
     billingYear: row.billing_year,
@@ -1731,9 +1973,29 @@ async function nextBillingNumber(companyCode: string, year: number) {
 route.get("/billings", async (c) => {
   const status = c.req.query("status");
   const clientId = c.req.query("clientId") ?? c.req.query("client_id");
+  const bookingId = c.req.query("bookingId") ?? c.req.query("booking_id");
+
+  // bookingId filter pre-resolves the relevant billing ids via the junction
+  // table so we don't have to fetch every billing + child row just to filter
+  // client-side (the previous reports/detail flow). Accept either a UUID or
+  // a public booking_number.
+  let billingIdFilter: string[] | null = null;
+  if (bookingId) {
+    const bookingUuid = UUID_RE.test(bookingId)
+      ? bookingId
+      : await resolveRowId("bookings", "booking_number", bookingId);
+    if (!bookingUuid) return c.json(ok([]));
+    const { data: junc, error: je } = await db()
+      .from("billing_bookings").select("billing_id").eq("booking_id", bookingUuid);
+    if (je) return c.json(fail(je.message, 500), 500);
+    billingIdFilter = Array.from(new Set(((junc ?? []) as any[]).map((r) => r.billing_id).filter(Boolean)));
+    if (billingIdFilter.length === 0) return c.json(ok([]));
+  }
+
   let q = db().from("billings").select("*").order("billing_date", { ascending: false });
-  if (status)   q = q.eq("status", status);
-  if (clientId) q = q.eq("client_id", clientId);
+  if (status)            q = q.eq("status", status);
+  if (clientId)          q = q.eq("client_id", clientId);
+  if (billingIdFilter)   q = q.in("id", billingIdFilter);
   const { data, error } = await q;
   if (error) return c.json(fail(error.message, 500), 500);
   const rows = (data ?? []) as any[];
@@ -1762,7 +2024,9 @@ route.get("/billings", async (c) => {
 });
 
 route.get("/billings/:id", async (c) => {
-  const billing = await loadBillingApi(c.req.param("id"));
+  const uuid = await resolveRowId("billings", "billing_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Billing not found", 404), 404);
+  const billing = await loadBillingApi(uuid);
   if (!billing) return c.json(fail("Billing not found", 404), 404);
   return c.json(ok(billing));
 });
@@ -1889,24 +2153,26 @@ async function patchBilling(id: string, body: any) {
 
 route.patch("/billings/:id", async (c) => {
   try {
-    await patchBilling(c.req.param("id"), await c.req.json().catch(() => ({})));
-    const billing = await loadBillingApi(c.req.param("id"));
-    if (!billing) return c.json(fail("Billing not found", 404), 404);
-    return c.json(ok(billing));
+    const uuid = await resolveRowId("billings", "billing_number", c.req.param("id"));
+    if (!uuid) return c.json(fail("Billing not found", 404), 404);
+    await patchBilling(uuid, await c.req.json().catch(() => ({})));
+    return c.json(ok(await loadBillingApi(uuid)));
   } catch (e: any) { return c.json(fail(e.message, 400), 400); }
 });
 
 route.put("/billings/:id", async (c) => {
   try {
-    await patchBilling(c.req.param("id"), await c.req.json().catch(() => ({})));
-    const billing = await loadBillingApi(c.req.param("id"));
-    if (!billing) return c.json(fail("Billing not found", 404), 404);
-    return c.json(ok(billing));
+    const uuid = await resolveRowId("billings", "billing_number", c.req.param("id"));
+    if (!uuid) return c.json(fail("Billing not found", 404), 404);
+    await patchBilling(uuid, await c.req.json().catch(() => ({})));
+    return c.json(ok(await loadBillingApi(uuid)));
   } catch (e: any) { return c.json(fail(e.message, 400), 400); }
 });
 
 route.delete("/billings/:id", async (c) => {
-  const { error } = await db().from("billings").delete().eq("id", c.req.param("id"));
+  const uuid = await resolveRowId("billings", "billing_number", c.req.param("id"));
+  if (!uuid) return c.json({ success: true });
+  const { error } = await db().from("billings").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });
@@ -1915,7 +2181,8 @@ route.delete("/billings/:id", async (c) => {
 function collectionRowToApi(row: any, allocations: any[], billingNumbersById: Record<string, string>) {
   const primary = allocations[0];
   return {
-    id: row.id,
+    id: row.collection_number,
+    uuid: row.id,
     collectionNumber: row.collection_number,
     clientId: row.client_id,
     clientName: row.client_name,
@@ -1987,7 +2254,9 @@ route.get("/collections", async (c) => {
 });
 
 route.get("/collections/:id", async (c) => {
-  const collection = await loadCollectionApi(c.req.param("id"));
+  const uuid = await resolveRowId("collections", "collection_number", c.req.param("id"));
+  if (!uuid) return c.json(fail("Collection not found", 404), 404);
+  const collection = await loadCollectionApi(uuid);
   if (!collection) return c.json(fail("Collection not found", 404), 404);
   return c.json(ok(collection));
 });
@@ -2067,7 +2336,8 @@ route.post("/collections", async (c) => {
 });
 
 route.patch("/collections/:id", async (c) => {
-  const id = c.req.param("id");
+  const id = await resolveRowId("collections", "collection_number", c.req.param("id"));
+  if (!id) return c.json(fail("Collection not found", 404), 404);
   const body = await c.req.json().catch(() => ({}));
   const update: any = {};
   if (body.collectionNumber !== undefined) update.collection_number = body.collectionNumber;
@@ -2092,9 +2362,11 @@ route.patch("/collections/:id", async (c) => {
 });
 
 route.delete("/collections/:id", async (c) => {
+  const uuid = await resolveRowId("collections", "collection_number", c.req.param("id"));
+  if (!uuid) return c.json({ success: true });
   // capture affected billings to refresh status
-  const { data: allocs } = await db().from("collection_allocations").select("billing_id").eq("collection_id", c.req.param("id"));
-  const { error } = await db().from("collections").delete().eq("id", c.req.param("id"));
+  const { data: allocs } = await db().from("collection_allocations").select("billing_id").eq("collection_id", uuid);
+  const { error } = await db().from("collections").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   const billingIds = Array.from(new Set(((allocs ?? []) as any[]).map((a) => a.billing_id)));
   if (billingIds.length) {

@@ -6,6 +6,7 @@ import { API_BASE_URL } from '@/utils/api-config';
 
 interface Booking {
   id: string;
+  uuid?: string;
   trackingNo: string;
   client: string;
   clientName?: string;
@@ -42,7 +43,9 @@ export function BookingSelector({
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [linkedBookingIds, setLinkedBookingIds] = useState<Set<string>>(new Set());
+  // UUIDs of bookings already linked to a billing/expense — checked against
+  // booking.uuid so we can keep the currently-selected one visible (by `value`).
+  const [linkedBookingUuids, setLinkedBookingUuids] = useState<Set<string>>(new Set());
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -52,17 +55,22 @@ export function BookingSelector({
 
         const headers = { Authorization: `Bearer ${publicAnonKey}` };
 
-        // Fetch bookings (with retry) and linked records in parallel
-        const fetchWithRetry = async () => {
+        // Single slim query: server filters by movement and skips the
+        // tag/history/segment/document fan-out queries.
+        const params = new URLSearchParams({ slim: "1" });
+        if (bookingTypeFilter === "import") params.set("movement", "IMPORT");
+        else if (bookingTypeFilter === "export") params.set("movement", "EXPORT");
+
+        const fetchBookingsList = async () => {
           let response: Response | null = null;
           let lastError: any = null;
           for (let attempt = 0; attempt < 3; attempt++) {
             try {
-              response = await fetch(`${API_BASE_URL}/bookings`, { headers });
+              response = await fetch(`${API_BASE_URL}/bookings?${params.toString()}`, { headers });
               break;
             } catch (err) {
               lastError = err;
-              if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+              if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
             }
           }
           if (!response) throw lastError || new Error("Failed to fetch bookings after retries");
@@ -73,44 +81,33 @@ export function BookingSelector({
         const fetchLinked = async (): Promise<Set<string>> => {
           if (!excludeLinked) return new Set();
           try {
-            const endpoint = excludeLinked === "billing" ? "/billings" : "/expenses";
-            const res = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+            const res = await fetch(
+              `${API_BASE_URL}/bookings/linked-ids?type=${excludeLinked}`,
+              { headers },
+            );
             if (!res.ok) return new Set();
             const result = await res.json();
             if (!result.success || !Array.isArray(result.data)) return new Set();
-            const ids = new Set<string>();
-            for (const record of result.data) {
-              // Each record may link to bookings via bookingIds array or single bookingId
-              if (Array.isArray(record.bookingIds)) {
-                record.bookingIds.forEach((id: string) => ids.add(id));
-              } else if (record.bookingId) {
-                ids.add(record.bookingId);
-              }
-            }
-            return ids;
+            return new Set<string>(result.data);
           } catch {
             return new Set();
           }
         };
 
-        const [bookingResult, linked] = await Promise.all([fetchWithRetry(), fetchLinked()]);
-        setLinkedBookingIds(linked);
+        const [bookingResult, linked] = await Promise.all([fetchBookingsList(), fetchLinked()]);
+        setLinkedBookingUuids(linked);
 
         if (bookingResult.success) {
           const mapped = bookingResult.data.map((b: any) => ({
             ...b,
             id: b.id || b.bookingId,
+            uuid: b.uuid,
             trackingNo: b.trackingNumber || b.trackingNo || b.booking_number || b.id || b.bookingId,
             client: b.client || b.clientName || b.customerName || b.customer_name || b.shipper || "Unknown Client",
             status: b.status,
             bl_number: b.bl_number || b.blNumber || b.awbBlNo || b.awb_bl_no || "",
             shipmentType: b.shipmentType || b.booking_type || "Unknown",
           }));
-          mapped.sort((a: any, b: any) => {
-            const da = new Date(a.createdAt || a.created_at || a.date || 0).getTime();
-            const db = new Date(b.createdAt || b.created_at || b.date || 0).getTime();
-            return db - da;
-          });
           setBookings(mapped);
         }
       } catch (error) {
@@ -123,7 +120,7 @@ export function BookingSelector({
     if ((open || (value && bookings.length === 0)) && !isLoading) {
       fetchBookings();
     }
-  }, [open, value]);
+  }, [open, value, bookingTypeFilter, excludeLinked]);
 
   useEffect(() => { if (!open) setSearchQuery(""); }, [open]);
 
@@ -131,8 +128,10 @@ export function BookingSelector({
 
   const filteredBookings = bookings.filter((booking) => {
     // Hide bookings already linked to a billing/expense — but always show the current selection
-    if (excludeLinked && linkedBookingIds.has(booking.id) && booking.id !== value) return false;
+    if (excludeLinked && booking.uuid && linkedBookingUuids.has(booking.uuid) && booking.id !== value) return false;
 
+    // Movement filter is applied server-side via ?movement=…; this is a
+    // defensive fallback for bookings coming from places that don't honour it.
     if (bookingTypeFilter) {
       const type = (booking.shipmentType || "").toLowerCase();
       if (!type.includes(bookingTypeFilter)) return false;

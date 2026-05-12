@@ -14,6 +14,11 @@ function notify() {
   subscribers.forEach((fn) => fn());
 }
 
+export function warmMasterTemplatesCache(): void {
+  if (cache !== null || inflightPromise) return;
+  void fetchTemplates();
+}
+
 async function fetchTemplates(): Promise<MasterTemplate[]> {
   if (cache !== null) return cache;
   if (inflightPromise) return inflightPromise;

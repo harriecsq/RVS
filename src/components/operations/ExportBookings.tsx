@@ -62,7 +62,7 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
   const bookings = useMemo<ExportBooking[]>(() => {
     if (!bookingsResult?.success) return [];
     const list = (bookingsResult.data || [])
-      .filter((b: any) => b.booking_type === "Export" || b.shipmentType === "Export" || b.mode === "Export")
+      .filter((b: any) => b.movement === "EXPORT" || b.booking_type === "Export" || b.shipmentType === "Export")
       .map((b: any) => ({
         ...b,
         bookingId: b.id || b.bookingId,
@@ -243,7 +243,7 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
         const seg0: any = (booking as any).segments?.[0];
         const origin = seg0?.origin || (booking as any).origin || "";
         return (
-          <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{origin || "—"}</div>
+          <div style={{ fontSize: "13px", color: "#0A1D4D", textTransform: "uppercase" }}>{origin || "—"}</div>
         );
       },
     },

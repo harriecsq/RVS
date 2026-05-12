@@ -24,7 +24,7 @@ import { FSIDocTemplate } from "../../shared/document-preview/templates/FSIDocTe
 import { ProcessingFeeDocTemplate } from "../../shared/document-preview/templates/ProcessingFeeDocTemplate";
 import { HeartOfExportDocTemplate } from "../../shared/document-preview/templates/HeartOfExportDocTemplate";
 import type { DocumentSettings } from "../../../types/document-settings";
-import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
+import { warmMasterTemplatesCache } from "../../../hooks/useMasterTemplates";
 
 // ── Document type registry ──────────────────────────────────────────
 
@@ -67,9 +67,19 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
   // Persists the applied master so PNG overrides work across all doc tabs
   const [appliedMaster, setAppliedMaster] = useState<MasterTemplate | null>(null);
 
-  // Warm the master-templates cache as soon as the Documents tab opens, so doc tabs
-  // (Sales Contract, Form E, FSI) don't have to wait when the user clicks Create.
-  useMasterTemplates();
+  // Warm the master-templates cache off the critical path. The payload includes
+  // base64 letterhead/stamp PNGs, so doing this on mount blocks the initial paint.
+  // Defer to browser idle (or a short timeout fallback) — it'll be ready well
+  // before the user clicks Create on a doc card.
+  useEffect(() => {
+    const ric: any = (window as any).requestIdleCallback;
+    if (typeof ric === "function") {
+      const handle = ric(() => warmMasterTemplatesCache(), { timeout: 2000 });
+      return () => (window as any).cancelIdleCallback?.(handle);
+    }
+    const t = setTimeout(warmMasterTemplatesCache, 800);
+    return () => clearTimeout(t);
+  }, []);
 
   const handleEditStateChange = useCallback((state: DocumentEditState) => {
     editStateRef.current = state;

@@ -70,7 +70,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
   const bookings = useMemo<BrokerageBooking[]>(() => {
     if (!bookingsResult?.success) return [];
     const list = (bookingsResult.data || [])
-      .filter((b: any) => b.booking_type === "Import" || b.shipmentType === "Import" || b.mode === "Import")
+      .filter((b: any) => b.movement === "IMPORT" || b.booking_type === "Import" || b.shipmentType === "Import")
       .map((b: any) => ({
         ...b,
         bookingId: b.id || b.bookingId,
@@ -268,7 +268,7 @@ export function ImportBookings({ currentUser }: ImportBookingsProps = {}) {
     {
       header: "Destination",
       cell: (booking) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>{booking.pod || booking.destination || "—"}</div>
+        <div style={{ fontSize: "13px", color: "#0A1D4D", textTransform: "uppercase" }}>{booking.pod || booking.destination || "—"}</div>
       ),
     },
     {

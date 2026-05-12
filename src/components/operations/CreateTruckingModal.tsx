@@ -414,7 +414,7 @@ export function CreateTruckingModal({
     if (isOpen) {
       setForm(existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType, prefillSegmentId));
       setAutoFilledFields({});
-      setRefNumber(existingRecord ? (existingRecord.truckingRefNo || "").replace(/^TRK\s*\d{4}-/, "") : "");
+      setRefNumber(existingRecord ? (existingRecord.truckingRefNo || "").replace(/^TRK\s+(?:IMP\s+|EXP\s+)?\d{4}-/, "") : "");
       setNextRefNumber(null);
       setLinkedBookingData(null);
       setExistingTruckingRecords([]);
@@ -424,17 +424,23 @@ export function CreateTruckingModal({
     }
   }, [isOpen, existingRecord, prefillBookingId, prefillBookingType, prefillSegmentId]);
 
-  // Fetch next available trucking ref number
+  // Fetch next available trucking ref number (scoped by import/export movement)
+  const refMovement = (form.linkedBookingType || "").toLowerCase().includes("export")
+    ? "export"
+    : (form.linkedBookingType || "").toLowerCase().includes("import")
+    ? "import"
+    : "";
   useEffect(() => {
-    if (isOpen && !existingRecord) {
-      fetch(`${API_BASE_URL}/next-ref/trucking`, {
+    if (isOpen && !existingRecord && refMovement) {
+      setNextRefNumber(null);
+      fetch(`${API_BASE_URL}/next-ref/trucking?movement=${refMovement}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` },
       })
         .then((r) => r.json())
         .then((d) => { if (d.success) setNextRefNumber(d.nextNumber); })
         .catch(() => {});
     }
-  }, [isOpen, existingRecord]);
+  }, [isOpen, existingRecord, refMovement]);
 
   // Auto-fetch booking details when opened with a prefillBookingId
   useEffect(() => {
@@ -776,7 +782,9 @@ export function CreateTruckingModal({
       const wa = form.warehouseArrivals?.length ? form.warehouseArrivals : [{ date: form.warehouseArrivalDate, time: form.warehouseArrivalTime }];
       const payload = {
         ...form,
-        truckingRefNo: `TRK ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
+        truckingRefNo: refMovement
+          ? `TRK ${refMovement === "export" ? "EXP" : "IMP"} ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`
+          : `TRK ${refYear}-${refNumber.trim() || (nextRefNumber !== null ? String(nextRefNumber) : "1")}`,
         warehouseArrivals: wa,
         warehouseArrivalDate: wa[0]?.date || form.warehouseArrivalDate,
         warehouseArrivalTime: wa[0]?.time || form.warehouseArrivalTime,
@@ -874,7 +882,9 @@ export function CreateTruckingModal({
                 </div>
               </div>
               <p className="text-xs mt-1" style={{ color: "#9CA3AF" }}>
-                {`TRK ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`}
+                {refMovement
+                  ? `TRK ${refMovement === "export" ? "EXP" : "IMP"} ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`
+                  : `TRK ${refYear}-${refNumber || (nextRefNumber !== null ? nextRefNumber : "")}`}
               </p>
             </div>
 

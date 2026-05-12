@@ -618,18 +618,11 @@ function BookingInformationTab({
   const handleFieldSave = async (fieldName: keyof TruckingBooking, value: string, activityName?: string) => {
       try {
           const updates = { [fieldName]: value };
-          
-          // Determine if this is a legacy booking or new
-          const isLegacy = !(booking as any).booking_type;
-          
-          const endpoint = isLegacy 
-            ? `${API_BASE_URL}/bookings/${booking.bookingId}` 
-            : `${API_BASE_URL}/trucking-bookings/${booking.bookingId}`;
-          
-          const method = isLegacy ? "PATCH" : "PUT";
+
+          const endpoint = `${API_BASE_URL}/trucking-bookings/${booking.bookingId}`;
 
           const response = await fetch(endpoint, {
-              method: method,
+              method: "PUT",
               headers: {
                   "Content-Type": "application/json",
                   "Authorization": `Bearer ${publicAnonKey}`

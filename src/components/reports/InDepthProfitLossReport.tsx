@@ -94,32 +94,6 @@ export function InDepthProfitLossReport() {
   const [billings, setBillings] = useState<Billing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const collectBookingIdentifiers = (booking: any, fallbackId: string): Set<string> => {
-    const ids = new Set<string>();
-    if (fallbackId) ids.add(fallbackId);
-    if (booking?.id) ids.add(booking.id);
-    if (booking?.bookingId) ids.add(booking.bookingId);
-    if (booking?.bookingNumber) ids.add(booking.bookingNumber);
-    if (booking?.booking_number) ids.add(booking.booking_number);
-    if (booking?.tracking_number) ids.add(booking.tracking_number);
-    if (booking?.trackingNumber) ids.add(booking.trackingNumber);
-    return ids;
-  };
-
-  const matchesAnyIdentifier = (record: any, identifiers: Set<string>): boolean => {
-    // Single-id fields
-    if (record.bookingId && identifiers.has(record.bookingId)) return true;
-    if (record.booking_id && identifiers.has(record.booking_id)) return true;
-    if (record.bookingNumber && identifiers.has(record.bookingNumber)) return true;
-    if (record.booking_number && identifiers.has(record.booking_number)) return true;
-    // Array fields
-    const arrays = [record.bookingIds, record.linkedBookingIds, record.linked_booking_ids];
-    for (const arr of arrays) {
-      if (Array.isArray(arr) && arr.some((id: string) => identifiers.has(id))) return true;
-    }
-    return false;
-  };
-
   useEffect(() => {
     if (!selectedBookingId) {
       setBookingDetails(null);
@@ -131,30 +105,22 @@ export function InDepthProfitLossReport() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [bookingsJson, expensesJson, billingsJson] = await Promise.all([
-          cachedJSON("/bookings").catch(() => ({ data: [] })),
-          cachedJSON("/expenses").catch(() => ({ data: [] })),
-          cachedJSON("/billings").catch(() => ({ data: [] })),
+        // Fetch the one booking + its expenses + its billings directly. The
+        // server accepts either a UUID or a booking_number for the filters,
+        // so we can pass selectedBookingId through unchanged.
+        const idEncoded = encodeURIComponent(selectedBookingId);
+        const [bookingJson, expensesJson, billingsJson] = await Promise.all([
+          cachedJSON(`/bookings/${idEncoded}`).catch(() => ({ data: null })),
+          cachedJSON(`/expenses?bookingId=${idEncoded}`).catch(() => ({ data: [] })),
+          cachedJSON(`/billings?bookingId=${idEncoded}`).catch(() => ({ data: [] })),
         ]);
 
-        const allBookings = Array.isArray(bookingsJson.data) ? bookingsJson.data : [];
-        const allExpenses = Array.isArray(expensesJson.data) ? expensesJson.data : [];
-        const allBillings = Array.isArray(billingsJson.data) ? billingsJson.data : [];
-
-        const booking = allBookings.find((b: any) =>
-          b.id === selectedBookingId ||
-          b.bookingId === selectedBookingId ||
-          b.bookingNumber === selectedBookingId ||
-          b.booking_number === selectedBookingId ||
-          b.tracking_number === selectedBookingId
-        ) || null;
-
+        const booking = bookingJson?.data ?? null;
         if (!booking) toast.error(`Booking "${selectedBookingId}" not found`);
         setBookingDetails(booking);
 
-        const identifiers = collectBookingIdentifiers(booking, selectedBookingId);
-        setExpenses(allExpenses.filter((e: any) => matchesAnyIdentifier(e, identifiers)));
-        setBillings(allBillings.filter((b: any) => matchesAnyIdentifier(b, identifiers)));
+        setExpenses(Array.isArray(expensesJson.data) ? expensesJson.data : []);
+        setBillings(Array.isArray(billingsJson.data) ? billingsJson.data : []);
       } catch (error) {
         console.error("Error loading report data:", error);
         toast.error("Failed to load report data");

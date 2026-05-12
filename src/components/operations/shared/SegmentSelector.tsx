@@ -58,10 +58,10 @@ export function SegmentSelector({
                 whiteSpace: "nowrap",
               }}
             >
-              <span>{seg.segmentLabel}</span>
+              <span>{(seg.segmentLabel || "").toUpperCase()}</span>
               {route && (
                 <span style={{ fontSize: "11px", color: isActive ? "#0F766E" : "#9CA3AF", fontWeight: 400 }}>
-                  ({route})
+                  ({route.toUpperCase()})
                 </span>
               )}
               {isEditing && segments.length > 1 && onDeleteSegment && (
