@@ -19,7 +19,8 @@ import { SubTabRow } from "./shared/SubTabRow";
 import { ShipmentMilestonesTab } from "./shared/ShipmentMilestonesTab";
 import type { ShipmentMilestonesTabHandle } from "./shared/ShipmentMilestonesTab";
 import type { ShipmentEvent } from "../../types/operations";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { ShippingLineDropdown } from "../shared/ShippingLineDropdown";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { StatusTagBar } from "../shared/StatusTagBar";
@@ -1693,7 +1694,6 @@ function BookingInformationTab({
   const [donePaymentDialog, setDonePaymentDialog] = useState<{ dateValue: string } | null>(null);
 
   // Dropdown visibility states
-  const [showShippingLineDD, setShowShippingLineDD] = useState(false);
   const [showShippingLineStatusDD, setShowShippingLineStatusDD] = useState(false);
   const [showContainerSizeDD, setShowContainerSizeDD] = useState(false);
   const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
@@ -1702,7 +1702,6 @@ function BookingInformationTab({
   const [showStowageUnitDD, setShowStowageUnitDD] = useState(false);
   const [showSectionDD, setShowSectionDD] = useState(false);
   const [sectionSearch, setSectionSearch] = useState("");
-  const [shippingLineSearch, setShippingLineSearch] = useState("");
 
   // Anchor refs for portal dropdowns
   const ddAnchorRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -2641,7 +2640,38 @@ function BookingInformationTab({
               setEditData={setEditData}
             />
             {/* Shipping Line - Dropdown */}
-            {renderEditDropdown("shippingLine", "Shipping Line", SHIPPING_LINE_OPTIONS, showShippingLineDD, setShowShippingLineDD, undefined, true, shippingLineSearch, setShippingLineSearch)}
+            {(() => {
+              const slVal = getFieldVal("shippingLine");
+              const slEmpty = !slVal || slVal.trim() === "";
+              return (
+                <div>
+                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                    Shipping Line
+                  </label>
+                  {isEditing ? (
+                    <ShippingLineDropdown
+                      value={slVal}
+                      onChange={(v) => setEditData({ ...editData, shippingLine: v } as any)}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: "10px 14px",
+                      backgroundColor: slEmpty ? "white" : "#F9FAFB",
+                      border: slEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      color: slEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+                      minHeight: "42px",
+                      display: "flex",
+                      alignItems: "center",
+                      textTransform: slEmpty ? "none" : "uppercase",
+                    }}>
+                      {slEmpty ? "—" : slVal}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {/* Shipping Line Status - Dropdown */}
             {renderEditDropdown("shippingLineStatus", "Shipping Line Status", ["No Billing Yet", "With Billing", "Done Payment"], showShippingLineStatusDD, setShowShippingLineStatusDD)}
           </div>

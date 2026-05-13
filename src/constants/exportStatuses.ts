@@ -1,5 +1,6 @@
 export const EXPORT_STATUS_TEXT_COLORS: Record<string, string> = {
-  "For Lodgement and Portal": "#6B7A76",
+  "Draft": "#6B7A76",
+  "For Lodgement and Portal": "#6366F1",
   "Awaiting for Final": "#FBBC04",
   "Final - For Arrastre Payment": "#B45309",
   "Arrastre Paid": "#10B981",
@@ -15,6 +16,7 @@ export const EXPORT_STATUS_TEXT_COLORS: Record<string, string> = {
 };
 
 export const EXPORT_STATUS_OPTIONS = [
+  "Draft",
   "For Lodgement and Portal",
   "Awaiting for Final",
   "Final - For Arrastre Payment",

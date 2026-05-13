@@ -38,6 +38,7 @@ const LEGACY_EXPORT_STATUS_TO_TAGS: Record<string, string[][]> = {
 };
 
 const EXPORT_STATUS_FILTER_OPTIONS = [
+  "Draft",
   "For Lodgement and Portal",
   "Awaiting for Final",
   "Final - For Arrastre Payment",

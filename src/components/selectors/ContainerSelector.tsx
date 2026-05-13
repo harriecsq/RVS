@@ -42,42 +42,59 @@ function extractSize(s: string): string {
 }
 
 function parseContainersFromBooking(b: any): ContainerInfo[] {
-  // Check segments for container data first (segments are authoritative for export bookings)
-  const seg0 = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : null;
-  const segContainerNos: string[] = seg0?.containerNos ?? [];
-  const segContainerNo: string = seg0?.containerNo ?? "";
-  const segVolume: string = seg0?.volume ?? "";
+  // Aggregate containers from ALL segments so Province legs' containers are also selectable.
+  // Each segment contributes its own containers with its own size (parsed from its volume).
+  const result: ContainerInfo[] = [];
+  const seen = new Set<string>();
 
-  const rawContainers =
-    b.containers ||
-    (segContainerNos.length > 0 ? segContainerNos : undefined) ||
-    segContainerNo ||
-    b.containerNo || b.container_no || b.containerNumber || b.container_number || "";
-  const rawVolume = b.volume_containers || segVolume || b.volume || b.measurement || "";
-
-  if (rawContainers) {
+  const addEntries = (rawContainers: any, rawVolume: string) => {
+    if (!rawContainers) return;
     if (Array.isArray(rawContainers)) {
-      return rawContainers.map((c: any) => ({
-        containerNo: typeof c === "string" ? c : (c.containerNo || c.container_no || c.containerNumber || ""),
-        size: typeof c === "string" ? extractSize(rawVolume) : (c.size || c.containerSize || extractSize(rawVolume)),
-      }));
-    } else if (typeof rawContainers === "string" && rawContainers.trim()) {
-      const parts = rawContainers.split(",").map((s: string) => s.trim()).filter(Boolean);
+      for (const c of rawContainers) {
+        const cn = typeof c === "string" ? c : (c.containerNo || c.container_no || c.containerNumber || "");
+        if (!cn || seen.has(cn)) continue;
+        seen.add(cn);
+        const size = typeof c === "string"
+          ? extractSize(rawVolume)
+          : (c.size || c.containerSize || extractSize(rawVolume));
+        result.push({ containerNo: cn, size });
+      }
+      return;
+    }
+    if (typeof rawContainers === "string" && rawContainers.trim()) {
       const size = extractSize(rawVolume);
-      return parts.map((p: string) => ({ containerNo: p, size }));
+      for (const p of rawContainers.split(",").map((s: string) => s.trim()).filter(Boolean)) {
+        if (seen.has(p)) continue;
+        seen.add(p);
+        result.push({ containerNo: p, size });
+      }
+    }
+  };
+
+  const segments = Array.isArray(b.segments) ? b.segments : [];
+  for (const seg of segments) {
+    const segContainerNos: string[] = Array.isArray(seg?.containerNos) ? seg.containerNos : [];
+    const rawContainers = segContainerNos.length > 0 ? segContainerNos : (seg?.containerNo ?? "");
+    addEntries(rawContainers, seg?.volume ?? "");
+  }
+
+  // Legacy booking-root fallback when no segment yielded any containers.
+  if (result.length === 0) {
+    const rawContainers = b.containers || b.containerNo || b.container_no || b.containerNumber || b.container_number || "";
+    const rawVolume = b.volume_containers || b.volume || b.measurement || "";
+    addEntries(rawContainers, rawVolume);
+
+    if (result.length === 0 && rawVolume) {
+      const match = rawVolume.match(/(\d+)\s*[xX]\s*(.*)/);
+      if (match) {
+        const count = parseInt(match[1], 10);
+        const size = extractSize(match[2]);
+        return Array(count).fill(null).map((_, i) => ({ containerNo: `Container ${i + 1} (TBD)`, size }));
+      }
     }
   }
 
-  if (rawVolume) {
-    const match = rawVolume.match(/(\d+)\s*[xX]\s*(.*)/);
-    if (match) {
-      const count = parseInt(match[1], 10);
-      const size = extractSize(match[2]);
-      return Array(count).fill(null).map((_, i) => ({ containerNo: `Container ${i + 1} (TBD)`, size }));
-    }
-  }
-
-  return [];
+  return result;
 }
 
 function formatRate(rate: string | number | undefined): string {

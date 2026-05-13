@@ -15,11 +15,12 @@ import { NeuronTimePicker } from "./shared/NeuronTimePicker";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
 import { StatusDateDialog, toDateInputValue, dateInputToIso } from "../shared/StatusDateDialog";
 import { TabRowActions } from "../shared/TabRowActions";
-import { SHIPPING_LINE_OPTIONS, CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
+import { CONTAINER_SIZE_OPTIONS, CONTAINER_TYPE_OPTIONS, formatContainerVolume, parseContainerVolume, SECTION_OPTIONS } from "../../utils/truckingTags";
 import { BookingAttachmentsTab } from "../shared/BookingAttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { BookingInfoSubTabs } from "./shared/BookingInfoSubTabs";
 import { PodDropdown } from "../shared/PodDropdown";
+import { ShippingLineDropdown } from "../shared/ShippingLineDropdown";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import type { TagHistoryEntry, BookingSegment, BookingNumberEntry } from "../../types/operations";
 import type { ExportDocuments } from "../../types/export-documents";
@@ -309,7 +310,9 @@ export function ExportBookingDetails({
   // Unified edit handler that delegates to the right component
   const handleTabEdit = () => {
     if (activeTab === "booking-info") {
-      const parsed = parseContainerVolume((editedBooking as any).volume || "");
+      // Prefer the active segment's volume so Province legs don't inherit Manila's size/type.
+      const seedVolume = (activeSegment as any)?.volume || (editedBooking as any).volume || "";
+      const parsed = parseContainerVolume(seedVolume);
       setEditData({ __containerSize: parsed.size, __containerType: parsed.type } as any);
       setIsEditing(true);
     } else {
@@ -549,41 +552,54 @@ export function ExportBookingDetails({
     console.log('[ExportBookingDetails] Saving booking with editData:', editData);
     
     try {
-      // Merge container size/type virtual fields back into volume
+      // Strip virtual size/type fields and route the derived volume to the active segment
+      // (not the booking root) so Province legs keep their own volume independent of Manila.
       const { __containerSize, __containerType, ...cleanEditData } = editData as any;
+      const effectiveSegEdit: Record<string, any> = { ...segmentEditData };
       if (__containerSize !== undefined || __containerType !== undefined) {
-        const size = __containerSize ?? parseContainerVolume((editedBooking as any).volume || "").size;
-        const type = __containerType ?? parseContainerVolume((editedBooking as any).volume || "").type;
-        (cleanEditData as any).volume = formatContainerVolume(size, type);
+        const seedVolume = (activeSegment as any)?.volume || (editedBooking as any).volume || "";
+        const size = __containerSize ?? parseContainerVolume(seedVolume).size;
+        const type = __containerType ?? parseContainerVolume(seedVolume).type;
+        effectiveSegEdit.volume = formatContainerVolume(size, type);
       }
 
       // Merge segment-level edits into local segments before saving
       let finalSegments = currentBooking.segments || [];
-      if (Object.keys(segmentEditData).length > 0 && activeSegment) {
-        Object.keys(segmentEditData).forEach(key => {
+      if (Object.keys(effectiveSegEdit).length > 0 && activeSegment) {
+        Object.keys(effectiveSegEdit).forEach(key => {
           const oldValue = String((activeSegment as any)?.[key] ?? (editedBooking as any)[key] ?? "");
-          const newValue = String(segmentEditData[key] ?? "");
+          const newValue = String(effectiveSegEdit[key] ?? "");
           if (oldValue !== newValue) {
             addActivity(key, oldValue, newValue);
           }
         });
         finalSegments = finalSegments.map(seg =>
           seg.segmentId === activeSegment.segmentId
-            ? { ...seg, ...segmentEditData, updatedAt: new Date().toISOString() }
+            ? { ...seg, ...effectiveSegEdit, updatedAt: new Date().toISOString() }
             : seg
         );
       }
 
-      // Sync containerNo/sealNo (segment fields) into segments[0].containerNos/sealNos arrays
-      // containerNo/sealNo are SEGMENT_FIELDS so they live in segmentEditData, not cleanEditData
-      const seg0 = finalSegments[0] as any;
-      const mergedContainerNo = segmentEditData.containerNo ?? seg0?.containerNo ?? currentBooking.containerNo ?? "";
-      const mergedSealNo = segmentEditData.sealNo ?? seg0?.sealNo ?? currentBooking.sealNo ?? "";
-      if (finalSegments.length > 0) {
-        const containerNos = mergedContainerNo ? mergedContainerNo.split(",").map((s: string) => s.trim()).filter(Boolean) : (seg0?.containerNos || []);
-        const sealNos = mergedSealNo ? mergedSealNo.split(",").map((s: string) => s.trim()).filter(Boolean) : (seg0?.sealNos || []);
+      // Sync containerNo/sealNo string ↔ containerNos/sealNos array on the ACTIVE segment only.
+      // Previously this targeted segments[0] unconditionally, which leaked Province-leg edits into Manila.
+      const activeIdx = activeSegment
+        ? finalSegments.findIndex(s => s.segmentId === activeSegment.segmentId)
+        : -1;
+      if (activeIdx >= 0) {
+        const activeSeg = finalSegments[activeIdx] as any;
+        const isManilaLeg = activeIdx === 0;
+        const mergedContainerNo = segmentEditData.containerNo
+          ?? activeSeg?.containerNo
+          ?? (isManilaLeg ? currentBooking.containerNo : undefined)
+          ?? "";
+        const mergedSealNo = segmentEditData.sealNo
+          ?? activeSeg?.sealNo
+          ?? (isManilaLeg ? currentBooking.sealNo : undefined)
+          ?? "";
+        const containerNos = mergedContainerNo ? mergedContainerNo.split(",").map((s: string) => s.trim()).filter(Boolean) : (activeSeg?.containerNos || []);
+        const sealNos = mergedSealNo ? mergedSealNo.split(",").map((s: string) => s.trim()).filter(Boolean) : (activeSeg?.sealNos || []);
         finalSegments = finalSegments.map((seg, i) =>
-          i === 0 ? { ...seg, containerNos, sealNos, containerNo: mergedContainerNo, sealNo: mergedSealNo } : seg
+          i === activeIdx ? { ...seg, containerNos, sealNos, containerNo: mergedContainerNo, sealNo: mergedSealNo } : seg
         );
       }
 
@@ -648,20 +664,40 @@ export function ExportBookingDetails({
   const activeSegment = currentBooking.segments?.find(s => s.segmentId === activeSegmentId)
     || currentBooking.segments?.[0];
 
-  const handleAddSegment = () => {
+  const handleAddSegment = async () => {
     const existingSegments = currentBooking.segments || [];
     // Auto-label: "Province", "Province 2", "Province 3", etc.
     const provinceCount = existingSegments.filter(s => s.segmentLabel.startsWith("Province")).length;
     const label = provinceCount === 0 ? "Province" : `Province ${provinceCount + 1}`;
-    const newSegment: BookingSegment = {
-      segmentId: crypto.randomUUID(),
-      segmentLabel: label,
-      legOrder: existingSegments.length + 1,
-      containerNos: [],
-    };
-    setCurrentBooking(prev => ({ ...prev, segments: [...(prev.segments || []), newSegment] }));
-    setActiveSegmentId(newSegment.segmentId);
-    toast.success("Province added — save booking to persist");
+
+    try {
+      const encodedId = encodeURIComponent(booking.id || booking.bookingId);
+      const response = await fetch(`${API_BASE_URL}/export-bookings/${encodedId}/segments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify({ segmentLabel: label, containerNos: [] }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to add segment");
+      }
+      const savedSegment: BookingSegment = {
+        segmentLabel: label,
+        containerNos: [],
+        ...result.data,
+      };
+      setCurrentBooking(prev => ({ ...prev, segments: [...(prev.segments || []), savedSegment] }));
+      setEditedBooking(prev => ({ ...prev, segments: [...(prev.segments || []), savedSegment] }));
+      setActiveSegmentId(savedSegment.segmentId);
+      toast.success("Province leg added");
+      onBookingUpdated();
+    } catch (error) {
+      console.error("Error adding segment:", error);
+      toast.error("Failed to add province leg");
+    }
   };
 
   const handleDeleteSegment = (segmentId: string) => {
@@ -1452,6 +1488,8 @@ function PolEditableField({
   isEditing = false,
   editData = {},
   setEditData,
+  fieldName = "origin",
+  selectPlaceholder = "Select POL",
 }: {
   label: string;
   value: string;
@@ -1461,15 +1499,17 @@ function PolEditableField({
   isEditing?: boolean;
   editData?: Partial<ExportBooking>;
   setEditData?: (data: Partial<ExportBooking>) => void;
+  fieldName?: string;
+  selectPlaceholder?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const lockStatus = isFieldLocked("origin", status as ExecutionStatus);
+  const lockStatus = isFieldLocked(fieldName, status as ExecutionStatus);
   const rawValue =
-    (editData as any).origin !== undefined ? String((editData as any).origin || "") : value;
+    (editData as any)[fieldName] !== undefined ? String((editData as any)[fieldName] || "") : value;
   const isEmpty = !rawValue || rawValue.trim() === "";
 
   const handleChange = (newValue: string) => {
-    if (setEditData) setEditData({ origin: newValue } as any);
+    if (setEditData) setEditData({ [fieldName]: newValue } as any);
   };
 
   if (lockStatus.locked) {
@@ -1512,7 +1552,7 @@ function PolEditableField({
           tabIndex={0}
           style={{ width: "100%", padding: "10px 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", color: rawValue ? "#111827" : "#9CA3AF", fontWeight: rawValue ? 500 : 400, backgroundColor: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", outline: "none", minHeight: "40px", boxSizing: "border-box", textTransform: rawValue ? "uppercase" : "none" }}
         >
-          {rawValue || "Select POL"}
+          {rawValue || selectPlaceholder}
           <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
         </div>
         {open && (
@@ -2327,7 +2367,6 @@ function BookingInformationTab({
   const [gatepassTime, setGatepassTime] = useState("");
 
   // Dropdown visibility states
-  const [showShippingLineDD, setShowShippingLineDD] = useState(false);
   const [showShippingLineStatusDD, setShowShippingLineStatusDD] = useState(false);
   const [showContainerSizeDD, setShowContainerSizeDD] = useState(false);
   const [showContainerTypeDD, setShowContainerTypeDD] = useState(false);
@@ -2336,7 +2375,6 @@ function BookingInformationTab({
   const [showGrossWeightUnitDD, setShowGrossWeightUnitDD] = useState(false);
   const [showSectionDD, setShowSectionDD] = useState(false);
   const [sectionSearch, setSectionSearch] = useState("");
-  const [shippingLineSearch, setShippingLineSearch] = useState("");
 
   // Date+Time split states
   const splitDateTime = (val: string | undefined): { date: string; time: string } => {
@@ -3173,44 +3211,112 @@ function BookingInformationTab({
 
         {/* Row 4: Shipping Line */}
         <div style={twoCol}>
-          {renderEditDropdown("shippingLine", "Shipping Line", SHIPPING_LINE_OPTIONS, showShippingLineDD, setShowShippingLineDD, undefined, true, shippingLineSearch, setShippingLineSearch)}
+          {(() => {
+            const slVal = getFieldVal("shippingLine");
+            const slEmpty = !slVal || slVal.trim() === "";
+            return (
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                  Shipping Line
+                </label>
+                {isEditing ? (
+                  <ShippingLineDropdown
+                    value={slVal}
+                    onChange={(v) => setEditData({ ...editData, shippingLine: v } as any)}
+                  />
+                ) : (
+                  <div style={{
+                    padding: "10px 14px",
+                    backgroundColor: slEmpty ? "white" : "#F9FAFB",
+                    border: slEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    color: slEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
+                    minHeight: "42px",
+                    display: "flex",
+                    alignItems: "center",
+                    textTransform: slEmpty ? "none" : "uppercase",
+                  }}>
+                    {slEmpty ? "—" : slVal}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {/* TEMPORARY: logbook module requires this on Export until export-specific workflow is confirmed */}
           {renderEditDropdown("shippingLineStatus", "Shipping Line Status", ["No Billing Yet", "With Billing", "Done Payment"], showShippingLineStatusDD, setShowShippingLineStatusDD)}
         </div>
 
-        {/* Row 4b: Booking Numbers */}
-        {isEditing ? (
-          <BookingNumbersEditField
-            bookingNumbers={(mergedEditData as any).bookingNumbers ?? (mergedBooking as any).bookingNumbers}
-            legacyBookingNumber={(mergedBooking as any).bookingNumber}
-            containerNo={(mergedEditData as any).containerNo ?? (mergedBooking as any).containerNo}
-            setEditData={mergedSetEditData}
-          />
-        ) : (
-          <BookingNumbersViewField
-            bookingNumbers={(mergedBooking as any).bookingNumbers}
-            legacyBookingNumber={(mergedBooking as any).bookingNumber}
-          />
-        )}
+        {/* Row 4b: Booking Numbers — Manila keeps booking-level; Province legs read/write per-segment so they don't inherit Manila's values */}
+        {(() => {
+          const isProvince = activeSegment?.segmentLabel?.startsWith("Province");
+          const valueBN = isProvince
+            ? ((segmentEditData as any).bookingNumbers ?? (activeSegment as any)?.bookingNumbers)
+            : ((mergedEditData as any).bookingNumbers ?? (mergedBooking as any).bookingNumbers);
+          const valueLegacy = isProvince
+            ? ((segmentEditData as any).bookingNumber ?? (activeSegment as any)?.bookingNumber)
+            : (mergedBooking as any).bookingNumber;
+          const provinceSetter = (data: Partial<ExportBooking>) =>
+            parentSetSegmentEditData({ ...segmentEditData, ...data });
+          return isEditing ? (
+            <BookingNumbersEditField
+              bookingNumbers={valueBN}
+              legacyBookingNumber={valueLegacy}
+              containerNo={(mergedEditData as any).containerNo ?? (mergedBooking as any).containerNo}
+              setEditData={isProvince ? provinceSetter : mergedSetEditData}
+            />
+          ) : (
+            <BookingNumbersViewField
+              bookingNumbers={valueBN}
+              legacyBookingNumber={valueLegacy}
+            />
+          );
+        })()}
 
         {/* Row 5: POL + POD */}
         <div style={twoCol}>
-          <PolEditableField
-            label="POL (Port of Loading)"
-            value={(mergedBooking as any).origin || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <PodEditableField
-            label="POD (Port of Destination)"
-            value={(mergedBooking as any).pod || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
+          {activeSegment?.segmentLabel?.startsWith("Province") ? (
+            <>
+              <EditableField
+                fieldName="origin"
+                label="POL (Port of Loading)"
+                value={(mergedBooking as any).origin || ""}
+                status={mergedBooking.status as ExecutionStatus}
+                isEditing={isEditing}
+                editData={mergedEditData}
+                setEditData={mergedSetEditData}
+              />
+              <PolEditableField
+                label="POD (Port of Destination)"
+                value={(mergedBooking as any).pod || ""}
+                status={mergedBooking.status as ExecutionStatus}
+                isEditing={isEditing}
+                editData={mergedEditData}
+                setEditData={mergedSetEditData}
+                fieldName="pod"
+                selectPlaceholder="Select POD"
+              />
+            </>
+          ) : (
+            <>
+              <PolEditableField
+                label="POL (Port of Loading)"
+                value={(mergedBooking as any).origin || ""}
+                status={mergedBooking.status as ExecutionStatus}
+                isEditing={isEditing}
+                editData={mergedEditData}
+                setEditData={mergedSetEditData}
+              />
+              <PodEditableField
+                label="POD (Port of Destination)"
+                value={(mergedBooking as any).pod || ""}
+                status={mergedBooking.status as ExecutionStatus}
+                isEditing={isEditing}
+                editData={mergedEditData}
+                setEditData={mergedSetEditData}
+              />
+            </>
+          )}
         </div>
       </SectionCard>
 

@@ -346,6 +346,7 @@ function settingHandlers(key: string, defaultValue: unknown) {
 const masterTemplates    = settingHandlers("master_templates", []);
 const documentSettings   = settingHandlers("document_settings", {});
 const customPodOptions   = settingHandlers("custom_pod_options", []);
+const customShippingLineOptions = settingHandlers("custom_shipping_line_options", []);
 const packingListMetrics = settingHandlers("packing_list_metrics", {});
 
 route.get("/master-templates", masterTemplates.get);
@@ -354,6 +355,8 @@ route.get("/document-settings", documentSettings.get);
 route.put("/document-settings", documentSettings.put);
 route.get("/custom-pod-options", customPodOptions.get);
 route.put("/custom-pod-options", customPodOptions.put);
+route.get("/custom-shipping-line-options", customShippingLineOptions.get);
+route.put("/custom-shipping-line-options", customShippingLineOptions.put);
 route.get("/packing-list-metrics", packingListMetrics.get);
 route.put("/packing-list-metrics", packingListMetrics.put);
 
@@ -750,7 +753,9 @@ function registerBookingCrud(prefix: "import-bookings" | "export-bookings", move
       const body = await c.req.json().catch(() => ({}));
       const update = bookingApiToRow(body, movement, false);
       if (body.bookingId) update.booking_number = body.bookingId;
-      if (Object.keys(update).length === 0) {
+      // Only short-circuit when there are no booking-level updates AND no segments to reconcile.
+      // Otherwise a segment-only edit (e.g. deleting a Province leg) would silently no-op.
+      if (Object.keys(update).length === 0 && !Array.isArray(body.segments)) {
         const booking = await loadBookingApi(uuid);
         return c.json(ok(booking));
       }
@@ -1360,7 +1365,7 @@ route.get("/trucking-records", async (c) => {
   }
 
   // when filtered by linkedBookingId, enrich with linked tags/history
-  const linked = linkedBookingId && rows.length ? await fetchLinkedBookingState(linkedBookingId) : undefined;
+  const linked = linkedBookingUuid && rows.length ? await fetchLinkedBookingState(linkedBookingUuid) : undefined;
   return c.json(ok(rows.map((r) => {
     const meta = r.linked_booking_id ? bookingMeta.get(r.linked_booking_id) : undefined;
     return truckingRecordRowToApi(r, linked, meta?.movement, meta?.booking_number);
@@ -1461,6 +1466,63 @@ route.delete("/trucking-records/:id", async (c) => {
   const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
   if (!uuid) return c.json({ success: true });
   const { error } = await db().from("trucking_records").delete().eq("id", uuid);
+  if (error) return c.json(fail(error.message, 400), 400);
+  return c.json({ success: true });
+});
+
+// ============================================================================
+// attachments  (file_data is a data: URL the browser produces via readAsDataURL)
+// Download route must register before the parameterized list route or Hono
+// matches "/attachments/download/:id" against "/attachments/:entityType/:entityId".
+// ============================================================================
+route.get("/attachments/download/:attachmentId", async (c) => {
+  const { data, error } = await db()
+    .from("attachments").select("file_data").eq("id", c.req.param("attachmentId")).maybeSingle();
+  if (error) return c.json(fail(error.message, 500), 500);
+  if (!data || !(data as any).file_data) return c.json(fail("File not found", 404), 404);
+  return c.json(ok((data as any).file_data));
+});
+
+route.get("/attachments/:entityType/:entityId", async (c) => {
+  const { data, error } = await db()
+    .from("attachments")
+    .select("id, file_name, file_size, file_type, uploaded_at")
+    .eq("entity_type", c.req.param("entityType"))
+    .eq("entity_id", c.req.param("entityId"))
+    .order("uploaded_at", { ascending: false });
+  if (error) return c.json(fail(error.message, 500), 500);
+  return c.json(ok((data ?? []).map((r: any) => ({
+    id: r.id,
+    fileName: r.file_name,
+    fileSize: r.file_size,
+    fileType: r.file_type,
+    uploadedAt: r.uploaded_at,
+  }))));
+});
+
+route.post("/attachments/:entityType/:entityId", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  if (!body.fileName) return c.json(fail("fileName is required", 400), 400);
+  const { data, error } = await db().from("attachments").insert({
+    entity_type: c.req.param("entityType"),
+    entity_id:   c.req.param("entityId"),
+    file_name:   body.fileName,
+    file_size:   body.fileSize ?? 0,
+    file_type:   body.fileType ?? "application/octet-stream",
+    file_data:   body.fileData ?? null,
+  }).select("id, file_name, file_size, file_type, uploaded_at").single();
+  if (error) return c.json(fail(error.message, 400), 400);
+  return c.json(ok({
+    id: (data as any).id,
+    fileName: (data as any).file_name,
+    fileSize: (data as any).file_size,
+    fileType: (data as any).file_type,
+    uploadedAt: (data as any).uploaded_at,
+  }));
+});
+
+route.delete("/attachments/:entityType/:entityId/:attachmentId", async (c) => {
+  const { error } = await db().from("attachments").delete().eq("id", c.req.param("attachmentId"));
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
 });

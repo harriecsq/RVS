@@ -34,7 +34,7 @@ export function SegmentSelector({
     >
       {sorted.map((seg, idx) => {
         const isActive = seg.segmentId === activeSegmentId;
-        const route = [seg.origin, seg.destination].filter(Boolean).join(" → ");
+        const route = [seg.origin, seg.pod || seg.destination].filter(Boolean).join(" → ");
         return (
           <div key={seg.segmentId} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             {idx > 0 && (

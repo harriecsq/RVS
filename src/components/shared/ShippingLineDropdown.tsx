@@ -1,27 +1,100 @@
-import { useRef, useState } from "react";
-import { ChevronDown, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Plus, Search } from "lucide-react";
 import { PortalDropdown } from "./PortalDropdown";
 import { SHIPPING_LINE_OPTIONS } from "../../utils/truckingTags";
+import { API_BASE_URL } from "../../utils/api-config";
+import { publicAnonKey } from "../../utils/supabase/info";
+
+const HEADERS = { "Content-Type": "application/json", Authorization: `Bearer ${publicAnonKey}` };
+
+async function fetchCustomOptions(): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/custom-shipping-line-options`, { headers: HEADERS });
+    const json = await res.json();
+    return json.success && Array.isArray(json.data) ? json.data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function persistCustomOptions(options: string[]): Promise<void> {
+  await fetch(`${API_BASE_URL}/custom-shipping-line-options`, {
+    method: "PUT",
+    headers: HEADERS,
+    body: JSON.stringify(options),
+  });
+}
+
+function mergeOptions(custom: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of [...SHIPPING_LINE_OPTIONS, ...custom]) {
+    const key = v.toUpperCase();
+    if (!seen.has(key)) { seen.add(key); out.push(v); }
+  }
+  return out;
+}
 
 interface ShippingLineDropdownProps {
   value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
-export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownProps) {
+export function ShippingLineDropdown({ value, onChange, placeholder = "Select shipping line", disabled = false }: ShippingLineDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [customOptions, setCustomOptions] = useState<string[]>([]);
+  const [options, setOptions] = useState<string[]>(SHIPPING_LINE_OPTIONS);
   const triggerRef = useRef<HTMLDivElement>(null);
 
-  const filtered = search
-    ? SHIPPING_LINE_OPTIONS.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
-    : SHIPPING_LINE_OPTIONS;
+  useEffect(() => {
+    fetchCustomOptions().then((custom) => {
+      setCustomOptions(custom);
+      setOptions(mergeOptions(custom));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      fetchCustomOptions().then((custom) => {
+        setCustomOptions(custom);
+        setOptions(mergeOptions(custom));
+      });
+    }
+  }, [open]);
+
+  const trimmed = search.trim();
+  const filtered = trimmed
+    ? options.filter((o) => o.toLowerCase().includes(trimmed.toLowerCase()))
+    : options;
+
+  const canAdd =
+    trimmed.length > 0 &&
+    !options.some((o) => o.toLowerCase() === trimmed.toLowerCase());
+
+  const handleAdd = async () => {
+    if (!canAdd) return;
+    const newOption = trimmed.toUpperCase();
+    const updated = customOptions.some((o) => o.toLowerCase() === newOption.toLowerCase())
+      ? customOptions
+      : [...customOptions, newOption];
+    await persistCustomOptions(updated);
+    setCustomOptions(updated);
+    setOptions(mergeOptions(updated));
+    onChange(newOption);
+    setSearch("");
+    setOpen(false);
+  };
 
   return (
     <div style={{ position: "relative" }}>
       <div
         ref={triggerRef}
-        onClick={() => setOpen(!open)}
+        onClick={() => !disabled && setOpen(!open)}
+        tabIndex={disabled ? -1 : 0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!disabled) setOpen(!open); } }}
         style={{
           width: "100%",
           padding: "10px 12px",
@@ -30,8 +103,8 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
           borderRadius: "6px",
           color: value ? "#0A1D4D" : "#9CA3AF",
           fontWeight: value ? 500 : 400,
-          backgroundColor: "white",
-          cursor: "pointer",
+          backgroundColor: disabled ? "#F9FAFB" : "white",
+          cursor: disabled ? "not-allowed" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -41,7 +114,7 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
           textTransform: value ? "uppercase" : "none",
         }}
       >
-        {value || "Select shipping line"}
+        {value || placeholder}
         <ChevronDown size={16} color="#667085" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
       </div>
 
@@ -53,7 +126,10 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search shipping line..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canAdd) { e.preventDefault(); handleAdd(); }
+              }}
+              placeholder="Search or add shipping line..."
               autoFocus
               onClick={(e) => e.stopPropagation()}
               style={{
@@ -84,7 +160,7 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
               cursor: "pointer",
               color: "#0A1D4D",
               background: value === option ? "#E8F2EE" : "transparent",
-              borderBottom: index < filtered.length - 1 ? "1px solid #E5E9F0" : "none",
+              borderBottom: index < filtered.length - 1 || canAdd ? "1px solid #E5E9F0" : "none",
               transition: "background 0.15s ease",
               textTransform: "uppercase",
             }}
@@ -95,7 +171,29 @@ export function ShippingLineDropdown({ value, onChange }: ShippingLineDropdownPr
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {canAdd && (
+          <div
+            onClick={handleAdd}
+            style={{
+              padding: "10px 14px",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: "pointer",
+              color: "#0F766E",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              transition: "background 0.15s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#F0FDF4"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <Plus size={14} />
+            Add "{trimmed.toUpperCase()}"
+          </div>
+        )}
+
+        {filtered.length === 0 && !canAdd && (
           <div style={{ padding: "12px 14px", fontSize: "13px", color: "#9CA3AF", textAlign: "center" }}>
             No results found
           </div>
