@@ -124,7 +124,13 @@
       "Bash(docker --version)",
       "mcp__plugin_supabase_supabase__list_projects",
       "mcp__plugin_supabase_supabase__deploy_edge_function",
-      "mcp__plugin_supabase_supabase__execute_sql"
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "Bash(git push *)",
+      "PowerShell(wsl --update)",
+      "PowerShell(docker --version)",
+      "PowerShell(wsl --status)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:54321/functions/v1/server-v2/ -H \"Authorization: Bearer sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH\")",
+      "Bash(curl -s -w \"\\\\n[HTTP %{http_code}]\\\\n\" http://127.0.0.1:54321/functions/v1/server-v2/health -H \"Authorization: Bearer sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH\")"
     ]
   }
 }
