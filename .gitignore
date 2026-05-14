@@ -8,3 +8,5 @@ build
 supabase/.new-project-creds.txt
 .env.local
 .env.*.local
+prod-data.sql
+local-push.sql
