@@ -71,12 +71,15 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   useEffect(() => {
     const bookingPortMap = new Map<string, string>();
     (bookingsResult?.data || []).forEach((b: any) => {
-      const serviceType = String(b.booking_type || b.shipmentType || b.mode || "Import");
-      const isImport = serviceType.toLowerCase().includes("import");
+      const movement = String(b.movement || b.booking_type || b.shipmentType || b.mode || "").toLowerCase();
+      const isImport = movement.includes("import") || movement === "imps";
       const seg0 = b.segments?.[0];
-      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      const port = isImport
+        ? (b.destination || b.pod || seg0?.destination || seg0?.pod || "")
+        : (b.origin || seg0?.origin || "");
       if (b.id) bookingPortMap.set(b.id, port);
       if (b.bookingId) bookingPortMap.set(b.bookingId, port);
+      if (b.uuid) bookingPortMap.set(b.uuid, port);
     });
     const billingPortMap = new Map<string, string>();
     (billingsResult?.data || []).forEach((b: any) => {
@@ -84,6 +87,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       const port = bookingId ? (bookingPortMap.get(bookingId) || "") : "";
       if (b.id) billingPortMap.set(b.id, port);
       if (b.billingNumber) billingPortMap.set(b.billingNumber, port);
+      if (b.uuid) billingPortMap.set(b.uuid, port);
     });
     const map = new Map<string, string>();
     (collectionsResult?.data || []).forEach((c: any) => {

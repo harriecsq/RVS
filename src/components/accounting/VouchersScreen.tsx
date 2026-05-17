@@ -71,15 +71,20 @@ export function VouchersScreen() {
 
   useEffect(() => {
     if (!bookingsResult?.success) return;
-    const enrichMap = new Map<string, { serviceType: string; port: string }>();
+    const enrichMap = new Map<string, { serviceType: string; port: string; bookingNumber: string }>();
     (bookingsResult.data || []).forEach((b: any) => {
-      const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
-      const isImport = serviceType.toLowerCase().includes("import");
+      const movement = String(b.movement || b.shipmentType || b.booking_type || b.mode || "").toLowerCase();
+      const isImport = movement.includes("import") || movement === "imps";
+      const serviceType = isImport ? "Import" : "Export";
       const seg0 = b.segments?.[0];
-      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
-      const enrich = { serviceType, port };
+      const port = isImport
+        ? (b.destination || b.pod || seg0?.destination || seg0?.pod || "")
+        : (b.origin || seg0?.origin || "");
+      const bookingNumber = b.bookingId || b.id || "";
+      const enrich = { serviceType, port, bookingNumber };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
+      if (b.uuid) enrichMap.set(b.uuid, enrich);
     });
     bookingEnrichMapRef.current = enrichMap;
   }, [bookingsResult]);
@@ -202,14 +207,26 @@ export function VouchersScreen() {
     },
     {
       header: "Linked Expense",
-      cell: (voucher) =>
-        voucher.expenseNumber ? (
-          <span style={{ fontSize: "13px", fontWeight: 500, color: "#0F766E" }}>
-            {voucher.expenseNumber}
-          </span>
-        ) : (
-          <span style={{ fontSize: "14px", color: "#9CA3AF" }}>—</span>
-        ),
+      cell: (voucher) => {
+        const bookingRef = voucher.bookingId
+          ? (bookingEnrichMapRef.current.get(voucher.bookingId)?.bookingNumber || "")
+          : "";
+        if (!voucher.expenseId && !voucher.expenseNumber && !bookingRef) {
+          return <span style={{ fontSize: "14px", color: "#9CA3AF" }}>—</span>;
+        }
+        return (
+          <div>
+            {voucher.expenseNumber && (
+              <div style={{ fontSize: "13px", fontWeight: 500, color: "#0F766E" }}>{voucher.expenseNumber}</div>
+            )}
+            {bookingRef && (
+              <div style={{ fontSize: "12px", color: "#667085", marginTop: voucher.expenseNumber ? "2px" : 0 }}>
+                Booking: {bookingRef}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Status",

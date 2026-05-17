@@ -301,6 +301,10 @@ route.get("/next-ref/:type", async (c) => {
   const companyCode = c.req.query("companyCode") ?? "RVS";
   const voucherType = c.req.query("voucherType") ?? "CV";
   const year = Number(c.req.query("year") ?? new Date().getFullYear());
+  if (type === "voucher") {
+    const nextNumber = await nextVoucherSeq(companyCode, voucherType, year);
+    return c.json({ success: true, nextNumber });
+  }
   let scope: string;
   let counterYear = year;
   const movement = (c.req.query("movement") ?? "").toLowerCase();
@@ -313,7 +317,6 @@ route.get("/next-ref/:type", async (c) => {
       scope = movement === "import" ? "trucking:Import" : "trucking:Export";
       break;
     case "collection":      scope = "collection";     counterYear = 0; break;
-    case "voucher":         scope = `voucher:${voucherType}`; break;
     case "billing":         scope = `billing:${companyCode}`; break;
     case "export-document": scope = `export-document:${companyCode}`; break;
     default:
@@ -802,6 +805,30 @@ function registerBookingCrud(prefix: "import-bookings" | "export-bookings", move
         }
       }
 
+      // Some flows (e.g. Export "Shipped Out") send shipmentTags directly via
+      // the main PUT instead of the /shipment-tags sub-endpoint. Persist them
+      // so the tag table + tag history stay consistent.
+      if (Array.isArray(body.shipmentTags)) {
+        const newTags: string[] = body.shipmentTags;
+        const { data: existingTagRows } = await db()
+          .from("booking_shipment_tags").select("tag").eq("booking_id", uuid);
+        const oldTags = ((existingTagRows ?? []) as any[]).map((r) => r.tag);
+        await db().from("booking_shipment_tags").delete().eq("booking_id", uuid);
+        if (newTags.length) {
+          await db().from("booking_shipment_tags").insert(
+            newTags.map((tag) => ({ booking_id: uuid, tag })),
+          );
+        }
+        await db().from("booking_tag_history").insert({
+          booking_id: uuid,
+          old_tags: oldTags,
+          new_tags: newTags,
+          change_type: "replace",
+          user_name: body.user ?? "system",
+        });
+      }
+
+      await syncLogbookForBooking(uuid);
       return c.json(ok(await loadBookingApi(uuid)));
     } catch (e: any) {
       return c.json(fail(e.message, 500), 500);
@@ -841,6 +868,21 @@ function registerBookingCrud(prefix: "import-bookings" | "export-bookings", move
       change_type: "replace",
       user_name: user,
     });
+
+    // Persist deliveredAt to bookings.data so the logbook sync can read it.
+    // Body sends explicit null to clear, a string ISO to set; undefined leaves alone.
+    if ("deliveredAt" in body) {
+      const { data: row } = await db().from("bookings").select("data").eq("id", uuid).maybeSingle();
+      const data = { ...((row as any)?.data ?? {}), deliveredAt: body.deliveredAt };
+      await db().from("bookings").update({ data }).eq("id", uuid);
+    } else if (newTags.includes("delivered") && !oldTags.includes("delivered")) {
+      // Tag flipped on without explicit date — stamp now.
+      const { data: row } = await db().from("bookings").select("data").eq("id", uuid).maybeSingle();
+      const data = { ...((row as any)?.data ?? {}), deliveredAt: new Date().toISOString() };
+      await db().from("bookings").update({ data }).eq("id", uuid);
+    }
+
+    await syncLogbookForBooking(uuid);
     return c.json(ok(await loadBookingApi(uuid)));
   });
 }
@@ -959,6 +1001,24 @@ route.get("/bookings", async (c) => {
     const excludeLinked: "billing" | "expense" | null =
       excludeLinkedRaw === "billing" || excludeLinkedRaw === "expense" ? excludeLinkedRaw : null;
 
+    const idsParam = c.req.query("ids");
+    if (idsParam) {
+      const rawIds = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
+      const uuids = await resolveBookingIdsToUuids(rawIds);
+      if (!uuids.length) return c.json({ success: true, data: [], pagination: { total: 0, offset: 0, limit: 0, hasMore: false } });
+      const { data, error } = await db().from("bookings").select("*").in("id", uuids);
+      if (error) return c.json(fail(error.message, 500), 500);
+      const bookingRows = (data ?? []) as any[];
+      const rowsOut = slim
+        ? bookingRows.map((r) => bookingRowToApi(r, {}))
+        : await Promise.all(bookingRows.map(async (r) => bookingRowToApi(r, await fetchBookingChildren(r.id))));
+      return c.json({
+        success: true,
+        data: rowsOut,
+        pagination: { total: rowsOut.length, offset: 0, limit: rowsOut.length, hasMore: false },
+      });
+    }
+
     const { rows, total } = await listBookings({ movement, slim, limit, offset, excludeLinked });
     return c.json({
       success: true,
@@ -1000,6 +1060,23 @@ route.get("/bookings/:id", async (c) => {
   } catch (e: any) {
     return c.json(fail(e.message, 500), 500);
   }
+});
+
+route.get("/bookings/:bookingId/vouchers", async (c) => {
+  const param = c.req.param("bookingId");
+  const bookingUuid = (await resolveRowId("bookings", "booking_number", param)) ?? param;
+  const { data, error } = await db()
+    .from("vouchers").select("*").eq("booking_id", bookingUuid)
+    .order("voucher_date", { ascending: false });
+  if (error) return c.json(fail(error.message, 500), 500);
+  const rows = (data ?? []) as any[];
+  if (!rows.length) return c.json(ok([]));
+  const ids = rows.map((r) => r.id);
+  const { data: items } = await db()
+    .from("voucher_line_items").select("*").in("voucher_id", ids).order("position", { ascending: true });
+  const byVoucher: Record<string, any[]> = {};
+  for (const li of (items ?? []) as any[]) (byVoucher[li.voucher_id] ??= []).push(li);
+  return c.json(ok(rows.map((r) => voucherRowToApi(r, byVoucher[r.id] ?? []))));
 });
 
 route.all("/bookings/*", (c) =>
@@ -1309,17 +1386,24 @@ async function fetchLinkedBookingState(linkedBookingId: string | null | undefine
 route.post("/trucking-records", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const year = new Date().getFullYear();
-  let recordNumber = body.truckingRefNo;
-  if (!recordNumber) {
-    const linkedRaw = body.linkedBookingId ?? body.linked_booking_id;
-    if (!linkedRaw) return c.json(fail("Trucking record requires a linked booking", 400), 400);
-    const linkedUuid = await resolveRowId("bookings", "booking_number", String(linkedRaw));
-    const meta = await fetchBookingMeta(linkedUuid);
-    const movement = meta?.movement;
-    if (movement !== "IMPORT" && movement !== "EXPORT")
-      return c.json(fail("Linked booking has no import/export movement", 400), 400);
-    const scope = movement === "IMPORT" ? "trucking:Import" : "trucking:Export";
-    const label = movement === "IMPORT" ? "IMP" : "EXP";
+  // Always derive prefix from linked booking movement. Format: TRK IMP|EXP YYYY-N.
+  // Client-supplied truckingRefNo is honored only for its numeric suffix.
+  const linkedRaw = body.linkedBookingId ?? body.linked_booking_id;
+  if (!linkedRaw) return c.json(fail("Trucking record requires a linked booking", 400), 400);
+  const linkedUuid = await resolveRowId("bookings", "booking_number", String(linkedRaw));
+  const meta = await fetchBookingMeta(linkedUuid);
+  const movement = meta?.movement;
+  if (movement !== "IMPORT" && movement !== "EXPORT")
+    return c.json(fail("Linked booking has no import/export movement", 400), 400);
+  const scope = movement === "IMPORT" ? "trucking:Import" : "trucking:Export";
+  const label = movement === "IMPORT" ? "IMP" : "EXP";
+
+  let recordNumber: string;
+  const supplied = typeof body.truckingRefNo === "string" ? body.truckingRefNo.trim() : "";
+  const suppliedNumMatch = supplied.match(/(\d+)\s*$/);
+  if (suppliedNumMatch) {
+    recordNumber = `TRK ${label} ${year}-${suppliedNumMatch[1]}`;
+  } else {
     const { data: counter, error: ce } = await db().rpc("next_counter", {
       p_scope: scope, p_year: year,
     });
@@ -1335,8 +1419,8 @@ route.post("/trucking-records", async (c) => {
   row.record_number = recordNumber;
   const { data: inserted, error } = await db().from("trucking_records").insert(row).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
-  const meta = await fetchBookingMeta((inserted as any).linked_booking_id);
-  return c.json(ok(truckingRecordRowToApi(inserted, undefined, meta?.movement, meta?.booking_number)));
+  const insertedMeta = await fetchBookingMeta((inserted as any).linked_booking_id);
+  return c.json(ok(truckingRecordRowToApi(inserted, undefined, insertedMeta?.movement, insertedMeta?.booking_number)));
 });
 
 route.get("/trucking-records", async (c) => {
@@ -1388,6 +1472,23 @@ route.put("/trucking-records/:id", async (c) => {
   if (!uuid) return c.json(fail("Not found", 404), 404);
   const updates = await c.req.json().catch(() => ({}));
   if (updates.truckingRefNo) {
+    // Normalize to TRK IMP|EXP YYYY-N using linked booking movement (existing or in-update).
+    const { data: cur } = await db()
+      .from("trucking_records").select("linked_booking_id").eq("id", uuid).maybeSingle();
+    let linkedUuid: string | null = (cur as any)?.linked_booking_id ?? null;
+    const linkedRaw = updates.linkedBookingId ?? updates.linked_booking_id;
+    if (linkedRaw) linkedUuid = await resolveRowId("bookings", "booking_number", String(linkedRaw));
+    const meta = await fetchBookingMeta(linkedUuid);
+    const movement = meta?.movement;
+    if (movement !== "IMPORT" && movement !== "EXPORT")
+      return c.json(fail("Linked booking has no import/export movement", 400), 400);
+    const label = movement === "IMPORT" ? "IMP" : "EXP";
+    const year = new Date().getFullYear();
+    const m = String(updates.truckingRefNo).match(/(\d{4})\s*-\s*(\d+)/);
+    const yr = m ? m[1] : String(year);
+    const numMatch = String(updates.truckingRefNo).match(/(\d+)\s*$/);
+    if (!numMatch) return c.json(fail("Invalid trucking ref number", 400), 400);
+    updates.truckingRefNo = `TRK ${label} ${yr}-${numMatch[1]}`;
     const { data: dup } = await db()
       .from("trucking_records").select("id")
       .eq("record_number", updates.truckingRefNo).neq("id", uuid).maybeSingle();
@@ -1432,8 +1533,41 @@ route.put("/trucking-records/:id/update-booking-tags", async (c) => {
   const { data: history } = await db()
     .from("booking_tag_history").select("*").eq("booking_id", linkedId)
     .order("timestamp", { ascending: false });
+
+  if (newTags.includes("delivered") && !oldTags.includes("delivered")) {
+    const { data: row } = await db().from("bookings").select("data").eq("id", linkedId).maybeSingle();
+    const data = { ...((row as any)?.data ?? {}), deliveredAt: new Date().toISOString() };
+    await db().from("bookings").update({ data }).eq("id", linkedId);
+  }
+  await syncLogbookForBooking(linkedId);
+
   return c.json({ success: true, data: { shipmentTags: newTags, tagHistory: history ?? [] } });
 });
+
+async function replaceBookingShipmentEvents(bookingUuid: string, events: any[]) {
+  await db().from("booking_shipment_events").delete().eq("booking_id", bookingUuid);
+  if (events.length) {
+    await db().from("booking_shipment_events").insert(events.map((e: any) => ({
+      booking_id: bookingUuid,
+      event_type: e.eventType ?? e.event_type ?? "event",
+      event_date: e.eventDate ?? e.event_date ?? new Date().toISOString(),
+      description: e.description ?? null,
+      data: e,
+    })));
+  }
+}
+
+for (const prefix of ["import-bookings", "export-bookings"] as const) {
+  route.put(`/${prefix}/:id/shipment-events`, async (c) => {
+    const uuid = await resolveRowId("bookings", "booking_number", c.req.param("id"));
+    if (!uuid) return c.json(fail("Booking not found", 404), 404);
+    const body = await c.req.json().catch(() => ({}));
+    const events = Array.isArray(body.shipmentEvents) ? body.shipmentEvents : [];
+    await replaceBookingShipmentEvents(uuid, events);
+    const booking = await loadBookingApi(uuid);
+    return c.json(ok(booking));
+  });
+}
 
 route.put("/trucking-records/:id/update-booking-events", async (c) => {
   const uuid = await resolveRowId("trucking_records", "record_number", c.req.param("id"));
@@ -1615,8 +1749,15 @@ registerFormDocRoutes("fsi",    "fsi_documents");
 const EPS = 0.01;
 
 // ---------- expenses ----------
+const EXPENSE_KNOWN_COLS = new Set([
+  "id","bookingId","booking_id","segmentId","segment_id","amount","currency","status","notes",
+  "charges","created_by","createdBy","created_at","createdAt","updated_at","updatedAt",
+  "uuid",
+]);
+
 function expenseRowToApi(row: any, particulars: any[]) {
   return {
+    ...(row.data ?? {}),
     id: row.id,
     bookingId: row.booking_id,
     segmentId: row.segment_id,
@@ -1632,8 +1773,11 @@ function expenseRowToApi(row: any, particulars: any[]) {
       ...(p.data ?? {}),
     })),
     created_by: row.created_by,
+    createdBy: row.created_by,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -1649,15 +1793,21 @@ async function loadExpenseApi(id: string) {
 
 route.post("/expenses", async (c) => {
   const body = await c.req.json().catch(() => ({}));
+  const bookingIdInput = body.bookingId ?? body.booking_id;
   const row: any = {
-    booking_id: asUuid(body.bookingId ?? body.booking_id),
+    booking_id: bookingIdInput
+      ? (asUuid(bookingIdInput) ?? await resolveRowId("bookings", "booking_number", String(bookingIdInput)))
+      : null,
     segment_id: asUuid(body.segmentId ?? body.segment_id),
     amount: body.amount ?? 0,
     currency: body.currency ?? "PHP",
-    status: body.status ?? "Pending",
+    status: body.status ?? "Draft",
     notes: body.notes ?? null,
     created_by: asUuid(body.created_by ?? body.createdBy),
   };
+  const extras: any = {};
+  for (const [k, v] of Object.entries(body)) if (!EXPENSE_KNOWN_COLS.has(k)) extras[k] = v;
+  if (Object.keys(extras).length) row.data = extras;
   const { data: inserted, error } = await db().from("expenses").insert(row).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
   const expenseId = (inserted as any).id;
@@ -1722,12 +1872,23 @@ route.patch("/expenses/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => ({}));
   const update: any = {};
-  if (body.bookingId !== undefined || body.booking_id !== undefined) update.booking_id = asUuid(body.bookingId ?? body.booking_id);
+  if (body.bookingId !== undefined || body.booking_id !== undefined) {
+    const input = body.bookingId ?? body.booking_id;
+    update.booking_id = input
+      ? (asUuid(input) ?? await resolveRowId("bookings", "booking_number", String(input)))
+      : null;
+  }
   if (body.segmentId !== undefined || body.segment_id !== undefined) update.segment_id = asUuid(body.segmentId ?? body.segment_id);
   if (body.amount !== undefined)   update.amount = body.amount;
   if (body.currency !== undefined) update.currency = body.currency;
   if (body.status !== undefined)   update.status = body.status;
   if (body.notes !== undefined)    update.notes = body.notes;
+  const extras: any = {};
+  for (const [k, v] of Object.entries(body)) if (!EXPENSE_KNOWN_COLS.has(k)) extras[k] = v;
+  if (Object.keys(extras).length) {
+    const { data: existing } = await db().from("expenses").select("data").eq("id", id).maybeSingle();
+    update.data = { ...((existing as any)?.data ?? {}), ...extras };
+  }
   if (Object.keys(update).length) {
     const { error } = await db().from("expenses").update(update).eq("id", id);
     if (error) return c.json(fail(error.message, 400), 400);
@@ -1763,8 +1924,18 @@ route.delete("/expenses/:id", async (c) => {
 });
 
 // ---------- vouchers ----------
+const VOUCHER_KNOWN_COLS = new Set([
+  "id","uuid","voucherNumber","voucher_number","voucherType","voucher_type","voucherYear","voucher_year",
+  "companyCode","company_code","payee","category","bank","checkNo","check_no","referenceNumber",
+  "paymentMethod","payment_method","voucherDate","voucher_date","postingDate","posting_date",
+  "notes","deliveryAddress","delivery_address","loadingAddress","loading_address",
+  "amount","currency","status","bookingId","booking_id","expenseId","expense_id",
+  "lineItems","created_by","createdBy","created_at","createdAt","updated_at","updatedAt",
+]);
+
 function voucherRowToApi(row: any, lineItems: any[]) {
   return {
+    ...(row.data ?? {}),
     id: row.voucher_number,
     uuid: row.id,
     voucherNumber: row.voucher_number,
@@ -1775,7 +1946,13 @@ function voucherRowToApi(row: any, lineItems: any[]) {
     category: row.category,
     bank: row.bank,
     checkNo: row.check_no,
+    referenceNumber: row.check_no,
+    paymentMethod: row.payment_method,
     voucherDate: row.voucher_date,
+    postingDate: row.posting_date,
+    notes: row.notes,
+    deliveryAddress: row.delivery_address,
+    loadingAddress: row.loading_address,
     amount: Number(row.amount ?? 0),
     currency: row.currency,
     status: row.status,
@@ -1804,12 +1981,27 @@ async function loadVoucherApi(id: string) {
   return voucherRowToApi(row, items ?? []);
 }
 
+async function nextVoucherSeq(companyCode: string, voucherType: string, year: number): Promise<number> {
+  const { data } = await db()
+    .from("vouchers")
+    .select("voucher_number")
+    .eq("company_code", companyCode)
+    .eq("voucher_type", voucherType)
+    .eq("voucher_year", year);
+  let max = 0;
+  for (const row of (data ?? []) as any[]) {
+    const m = String(row.voucher_number ?? "").match(/-(\d+)\s*$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!isNaN(n) && n > max) max = n;
+    }
+  }
+  return max + 1;
+}
+
 async function nextVoucherNumber(companyCode: string, voucherType: string, year: number) {
-  const { data, error } = await db().rpc("next_counter", {
-    p_scope: `voucher:${companyCode}:${voucherType}`, p_year: year,
-  });
-  if (error) throw new Error(error.message);
-  return `${companyCode} ${voucherType} ${year}-${data}`;
+  const seq = await nextVoucherSeq(companyCode, voucherType, year);
+  return `${companyCode} ${voucherType} ${year}-${seq}`;
 }
 
 route.get("/vouchers", async (c) => {
@@ -1850,6 +2042,7 @@ route.post("/vouchers", async (c) => {
     .from("vouchers").select("id").eq("voucher_number", voucherNumber).maybeSingle();
   if (dup) return c.json(fail(`Reference number ${voucherNumber} is already in use by another active record.`, 409), 409);
 
+  const bookingIdInput = body.bookingId ?? body.booking_id;
   const row: any = {
     voucher_number: voucherNumber,
     voucher_type: voucherType,
@@ -1858,15 +2051,23 @@ route.post("/vouchers", async (c) => {
     payee: body.payee ?? "",
     category: body.category ?? null,
     bank: body.bank ?? null,
-    check_no: body.checkNo ?? body.check_no ?? null,
+    check_no: body.referenceNumber ?? body.checkNo ?? body.check_no ?? null,
+    payment_method: body.paymentMethod ?? null,
     voucher_date: body.voucherDate ?? new Date().toISOString(),
+    posting_date: body.postingDate ?? null,
+    notes: body.notes ?? null,
+    delivery_address: body.deliveryAddress ?? null,
+    loading_address: body.loadingAddress ?? null,
     amount: body.amount ?? 0,
     currency: body.currency ?? "PHP",
     status: body.status ?? "Draft",
-    booking_id: asUuid(body.bookingId ?? body.booking_id),
+    booking_id: bookingIdInput ? await resolveRowId("bookings", "booking_number", String(bookingIdInput)) : null,
     expense_id: asUuid(body.expenseId ?? body.expense_id),
     created_by: asUuid(body.created_by ?? body.createdBy),
   };
+  const vExtras: any = {};
+  for (const [k, v] of Object.entries(body)) if (!VOUCHER_KNOWN_COLS.has(k)) vExtras[k] = v;
+  if (Object.keys(vExtras).length) row.data = vExtras;
   const { data: inserted, error } = await db().from("vouchers").insert(row).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
   const vid = (inserted as any).id;
@@ -1900,35 +2101,66 @@ route.patch("/vouchers/:id", async (c) => {
   if (body.category !== undefined)     update.category = body.category;
   if (body.bank !== undefined)         update.bank = body.bank;
   if (body.checkNo !== undefined)      update.check_no = body.checkNo;
+  if (body.referenceNumber !== undefined) update.check_no = body.referenceNumber;
+  if (body.paymentMethod !== undefined) update.payment_method = body.paymentMethod;
   if (body.voucherDate !== undefined)  update.voucher_date = body.voucherDate;
+  if (body.postingDate !== undefined)  update.posting_date = body.postingDate || null;
+  if (body.notes !== undefined)        update.notes = body.notes;
+  if (body.deliveryAddress !== undefined) update.delivery_address = body.deliveryAddress;
+  if (body.loadingAddress !== undefined)  update.loading_address = body.loadingAddress;
   if (body.amount !== undefined)       update.amount = body.amount;
   if (body.currency !== undefined)     update.currency = body.currency;
   if (body.status !== undefined)       update.status = body.status;
-  if (body.bookingId !== undefined)    update.booking_id = asUuid(body.bookingId);
+  if (body.bookingId !== undefined)    update.booking_id = body.bookingId
+    ? await resolveRowId("bookings", "booking_number", String(body.bookingId))
+    : null;
   if (body.expenseId !== undefined)    update.expense_id = asUuid(body.expenseId);
   if (body.voucherNumber !== undefined) update.voucher_number = body.voucherNumber;
+  const vExtras: any = {};
+  for (const [k, v] of Object.entries(body)) if (!VOUCHER_KNOWN_COLS.has(k)) vExtras[k] = v;
+  if (Object.keys(vExtras).length) {
+    const { data: existing } = await db().from("vouchers").select("data").eq("id", id).maybeSingle();
+    update.data = { ...((existing as any)?.data ?? {}), ...vExtras };
+  }
   if (Object.keys(update).length) {
     const { error } = await db().from("vouchers").update(update).eq("id", id);
     if (error) return c.json(fail(error.message, 400), 400);
   }
   if (Array.isArray(body.lineItems)) {
-    await db().from("voucher_line_items").delete().eq("voucher_id", id);
-    if (body.lineItems.length) {
-      const itemRows = body.lineItems.map((li: any, i: number) => {
-        const known = new Set(["id","description","amount","currency","expenseParticularId","expense_particular_id"]);
-        const extra: any = {};
-        for (const [k, v] of Object.entries(li)) if (!known.has(k)) extra[k] = v;
-        return {
-          voucher_id: id,
-          expense_particular_id: li.expenseParticularId ?? li.expense_particular_id ?? null,
-          description: li.description ?? "",
-          amount: li.amount ?? 0,
-          currency: li.currency ?? "PHP",
-          data: Object.keys(extra).length ? extra : null,
-          position: i + 1,
-        };
-      });
-      await db().from("voucher_line_items").insert(itemRows);
+    // Preserve line item identity: update rows whose id matches an existing UUID,
+    // insert new rows without an id, and delete only the rows omitted from the payload.
+    // Stable UUIDs keep downstream `sourceVoucherLineItemId` references in expenses intact.
+    const { data: existingRows } = await db()
+      .from("voucher_line_items").select("id").eq("voucher_id", id);
+    const existingIds = new Set(((existingRows ?? []) as any[]).map((r) => r.id));
+    const known = new Set(["id","description","amount","currency","expenseParticularId","expense_particular_id"]);
+    const incomingIds = new Set<string>();
+    for (let i = 0; i < body.lineItems.length; i++) {
+      const li: any = body.lineItems[i];
+      const extra: any = {};
+      for (const [k, v] of Object.entries(li)) if (!known.has(k)) extra[k] = v;
+      const liId: string | undefined =
+        typeof li.id === "string" && UUID_RE.test(li.id) && existingIds.has(li.id) ? li.id : undefined;
+      const rowData = {
+        expense_particular_id: li.expenseParticularId ?? li.expense_particular_id ?? null,
+        description: li.description ?? "",
+        amount: li.amount ?? 0,
+        currency: li.currency ?? "PHP",
+        data: Object.keys(extra).length ? extra : null,
+        position: i + 1,
+      };
+      if (liId) {
+        incomingIds.add(liId);
+        await db().from("voucher_line_items").update(rowData).eq("id", liId);
+      } else {
+        const { data: ins } = await db()
+          .from("voucher_line_items").insert({ voucher_id: id, ...rowData }).select("id").single();
+        if (ins) incomingIds.add((ins as any).id);
+      }
+    }
+    const toDelete = [...existingIds].filter((eid) => !incomingIds.has(eid));
+    if (toDelete.length) {
+      await db().from("voucher_line_items").delete().in("id", toDelete);
     }
   }
   const voucher = await loadVoucherApi(id);
@@ -2015,6 +2247,17 @@ async function loadBillingApi(id: string) {
     ((exs ?? []) as any[]).map((r) => r.expense_id),
     bal ? { collected: Number((bal as any).collected ?? 0), outstanding: Number((bal as any).outstanding_balance ?? 0) } : undefined,
   );
+}
+
+async function resolveBookingIdsToUuids(ids: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const raw of ids) {
+    if (!raw) continue;
+    if (UUID_RE.test(raw)) { out.push(raw); continue; }
+    const uuid = await resolveRowId("bookings", "booking_number", raw);
+    if (uuid) out.push(uuid);
+  }
+  return out;
 }
 
 function billingShipmentFromBody(body: any) {
@@ -2149,10 +2392,15 @@ route.post("/billings", async (c) => {
     await db().from("billing_particulars").insert(partRows);
   }
   if (Array.isArray(body.bookingIds) && body.bookingIds.length) {
-    await db().from("billing_bookings").insert(body.bookingIds.map((b: string) => ({ billing_id: bid, booking_id: b })));
+    const resolved = await resolveBookingIdsToUuids(body.bookingIds);
+    if (resolved.length) {
+      const { error: jErr } = await db().from("billing_bookings").insert(resolved.map((b) => ({ billing_id: bid, booking_id: b })));
+      if (jErr) return c.json(fail(`Failed to link bookings: ${jErr.message}`, 400), 400);
+    }
   }
   if (Array.isArray(body.expenseIds) && body.expenseIds.length) {
-    await db().from("billing_expenses").insert(body.expenseIds.map((e: string) => ({ billing_id: bid, expense_id: e })));
+    const { error: eErr } = await db().from("billing_expenses").insert(body.expenseIds.map((e: string) => ({ billing_id: bid, expense_id: e })));
+    if (eErr) return c.json(fail(`Failed to link expenses: ${eErr.message}`, 400), 400);
   }
   return c.json(ok(await loadBillingApi(bid)));
 });
@@ -2202,7 +2450,11 @@ async function patchBilling(id: string, body: any) {
   if (Array.isArray(body.bookingIds)) {
     await db().from("billing_bookings").delete().eq("billing_id", id);
     if (body.bookingIds.length) {
-      await db().from("billing_bookings").insert(body.bookingIds.map((b: string) => ({ billing_id: id, booking_id: b })));
+      const resolved = await resolveBookingIdsToUuids(body.bookingIds);
+      if (resolved.length) {
+        const { error: jErr } = await db().from("billing_bookings").insert(resolved.map((b) => ({ billing_id: id, booking_id: b })));
+        if (jErr) throw new Error(`Failed to link bookings: ${jErr.message}`);
+      }
     }
   }
   if (Array.isArray(body.expenseIds)) {
@@ -2240,9 +2492,19 @@ route.delete("/billings/:id", async (c) => {
 });
 
 // ---------- collections ----------
+const COLLECTION_KNOWN_COLS = new Set([
+  "id","uuid","collectionNumber","collection_number","clientId","client_id","clientName","client_name",
+  "amount","currency","status","collectionDate","collection_date",
+  "paymentMethod","payment_method","referenceNumber","reference_number",
+  "bankName","bank_name","checkNumber","check_number","notes",
+  "billingId","billingNumber","allocations",
+  "created_by","createdBy","created_at","createdAt","updated_at","updatedAt",
+]);
+
 function collectionRowToApi(row: any, allocations: any[], billingNumbersById: Record<string, string>) {
   const primary = allocations[0];
   return {
+    ...(row.data ?? {}),
     id: row.collection_number,
     uuid: row.id,
     collectionNumber: row.collection_number,
@@ -2359,7 +2621,7 @@ route.post("/collections", async (c) => {
   const { data: dup } = await db().from("collections").select("id").eq("collection_number", collectionNumber).maybeSingle();
   if (dup) return c.json(fail(`Reference number ${collectionNumber} is already in use by another active record.`, 409), 409);
 
-  const row = {
+  const row: any = {
     collection_number: collectionNumber,
     client_id: asUuid(body.clientId) ?? primary.client_id,
     client_name: body.clientName ?? primary.client_name,
@@ -2374,6 +2636,9 @@ route.post("/collections", async (c) => {
     notes: body.notes ?? null,
     created_by: body.created_by ?? body.createdBy ?? null,
   };
+  const cExtras: any = {};
+  for (const [k, v] of Object.entries(body)) if (!COLLECTION_KNOWN_COLS.has(k)) cExtras[k] = v;
+  if (Object.keys(cExtras).length) row.data = cExtras;
   const { data: inserted, error } = await db().from("collections").insert(row).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
   const cid = (inserted as any).id;
@@ -2414,6 +2679,12 @@ route.patch("/collections/:id", async (c) => {
   if (body.bankName !== undefined)         update.bank_name = body.bankName;
   if (body.checkNumber !== undefined)      update.check_number = body.checkNumber;
   if (body.notes !== undefined)            update.notes = body.notes;
+  const cExtras: any = {};
+  for (const [k, v] of Object.entries(body)) if (!COLLECTION_KNOWN_COLS.has(k)) cExtras[k] = v;
+  if (Object.keys(cExtras).length) {
+    const { data: existing } = await db().from("collections").select("data").eq("id", id).maybeSingle();
+    update.data = { ...((existing as any)?.data ?? {}), ...cExtras };
+  }
   if (Object.keys(update).length) {
     const { error } = await db().from("collections").update(update).eq("id", id);
     if (error) return c.json(fail(error.message, 400), 400);
@@ -2443,6 +2714,341 @@ route.delete("/collections/:id", async (c) => {
     }
   }
   return c.json({ success: true });
+});
+
+// ============================================================================
+// /payees
+// ============================================================================
+route.get("/payees", async (c) => {
+  const { data, error } = await db().from("payees").select("*").order("name", { ascending: true });
+  if (error) return c.json(fail(error.message, 500), 500);
+  return c.json(ok(data ?? []));
+});
+
+route.post("/payees", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name) return c.json(fail("Payee name is required", 400), 400);
+  const payload: any = {
+    name,
+    type: body.type ?? "",
+    status: body.status ?? "Active",
+  };
+  const { data, error } = await db().from("payees").insert(payload).select().single();
+  if (error) {
+    if ((error as any).code === "23505") return c.json(fail("Payee already exists", 409), 409);
+    return c.json(fail(error.message, 400), 400);
+  }
+  return c.json(ok(data));
+});
+
+route.delete("/payees/:id", async (c) => {
+  const id = c.req.param("id");
+  if (!UUID_RE.test(id)) return c.json({ success: true });
+  const { error } = await db().from("payees").delete().eq("id", id);
+  if (error) return c.json(fail(error.message, 400), 400);
+  return c.json({ success: true });
+});
+
+// ============================================================================
+// /logbook  — monthly shipment sequence
+// ============================================================================
+function monthKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function shiftMonthKey(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Pick shipping line / vessel / BL / container from booking row + first segment.
+function logbookFieldsFromBooking(row: any, firstSegment: any): {
+  shippingLine: string;
+  vesselVoyage: string;
+  blNumber: string;
+  containerNumber: string;
+} {
+  const data = row.data ?? {};
+  const sd = firstSegment?.data ?? {};
+  const toStr = (v: unknown): string => {
+    if (v == null) return "";
+    if (Array.isArray(v)) return v.filter(Boolean).join(", ");
+    return String(v);
+  };
+  return {
+    shippingLine: toStr(row.carrier ?? data.shippingLine ?? firstSegment?.carrier),
+    vesselVoyage: toStr(data.vesselVoyage ?? sd.vesselVoyage),
+    blNumber: toStr(data.blNumber ?? data.bl_number ?? sd.blNumber),
+    containerNumber: toStr(
+      data.containerNumber ?? data.containerNos ?? sd.containerNumber ?? sd.containerNos,
+    ),
+  };
+}
+
+async function fetchFirstSegment(bookingId: string): Promise<any | null> {
+  const { data } = await db()
+    .from("booking_segments")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .order("leg_order", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
+async function nextLogbookNumber(month: string): Promise<number> {
+  const { data } = await db()
+    .from("logbook_entries")
+    .select("logbook_number")
+    .eq("logbook_month", month)
+    .order("logbook_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return ((data as any)?.logbook_number ?? 0) + 1;
+}
+
+// Renumber the source month to close any gaps (numbers > removed number shift down).
+async function compactMonth(month: string, removedNumber: number): Promise<void> {
+  const { data } = await db()
+    .from("logbook_entries")
+    .select("booking_id, logbook_number")
+    .eq("logbook_month", month)
+    .gt("logbook_number", removedNumber)
+    .order("logbook_number", { ascending: true });
+  for (const row of (data ?? []) as any[]) {
+    await db()
+      .from("logbook_entries")
+      .update({ logbook_number: row.logbook_number - 1 })
+      .eq("booking_id", row.booking_id);
+  }
+}
+
+// Reconcile a booking's logbook entry against its current shippingLineStatus +
+// shipment tags. Called after any booking update or tag change.
+async function syncLogbookForBooking(bookingId: string): Promise<void> {
+  const { data: row } = await db().from("bookings").select("*").eq("id", bookingId).maybeSingle();
+  if (!row) return;
+  const data = (row as any).data ?? {};
+  const movement: string = (row as any).movement;
+  const donePaymentAt: string | undefined = data.donePaymentAt;
+  const deliveredAt: string | null | undefined = data.deliveredAt;
+
+  // Import: shippingLineStatus on booking.data.
+  // Export: shippingLineStatus lives on segment.data — any segment marked
+  // "Done Payment" qualifies the booking for the logbook.
+  let shippingLineStatus: string | undefined = data.shippingLineStatus;
+  if (movement === "EXPORT") {
+    const { data: segs } = await db()
+      .from("booking_segments")
+      .select("data")
+      .eq("booking_id", bookingId);
+    const segStatuses = ((segs ?? []) as any[])
+      .map((s) => s.data?.shippingLineStatus)
+      .filter(Boolean);
+    if (segStatuses.includes("Done Payment")) shippingLineStatus = "Done Payment";
+    else if (segStatuses.length && !shippingLineStatus) shippingLineStatus = segStatuses[0];
+  }
+
+  const { data: tagRows } = await db()
+    .from("booking_shipment_tags")
+    .select("tag")
+    .eq("booking_id", bookingId);
+  const tags: string[] = ((tagRows ?? []) as any[]).map((r) => r.tag);
+  const isDelivered = tags.includes("delivered");
+
+  const { data: existing } = await db()
+    .from("logbook_entries")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  // No entry should exist if status isn't Done Payment or date missing.
+  if (shippingLineStatus !== "Done Payment" || !donePaymentAt) {
+    if (existing) {
+      await db().from("logbook_entries").delete().eq("booking_id", bookingId);
+      await compactMonth((existing as any).logbook_month, (existing as any).logbook_number);
+    }
+    return;
+  }
+
+  const targetMonth = monthKey(donePaymentAt);
+  const status: "yellow" | "green" = isDelivered ? "green" : "yellow";
+  const deliveredIso = isDelivered ? (deliveredAt ?? new Date().toISOString()) : null;
+
+  if (!existing) {
+    const number = await nextLogbookNumber(targetMonth);
+    await db().from("logbook_entries").insert({
+      booking_id: bookingId,
+      logbook_month: targetMonth,
+      logbook_number: number,
+      original_month: targetMonth,
+      status,
+      done_payment_at: donePaymentAt,
+      delivered_at: deliveredIso,
+    });
+  } else {
+    // Don't relocate an existing entry across months on plain edits — only the
+    // explicit /logbook/adjust route moves entries. Backdated donePayment edits
+    // update the timestamp but keep the original sequence intact.
+    await db()
+      .from("logbook_entries")
+      .update({
+        status,
+        done_payment_at: donePaymentAt,
+        delivered_at: deliveredIso,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+  }
+}
+
+route.get("/logbook/:month", async (c) => {
+  const month = c.req.param("month"); // YYYY-MM
+  try {
+    const { data: entries, error } = await db()
+      .from("logbook_entries")
+      .select("*")
+      .eq("logbook_month", month)
+      .order("logbook_number", { ascending: true });
+    if (error) return c.json(fail(error.message, 500), 500);
+
+    const ids = ((entries ?? []) as any[]).map((e) => e.booking_id);
+    let bookingsById: Record<string, any> = {};
+    let segmentsByBooking: Record<string, any> = {};
+    if (ids.length) {
+      const { data: brows } = await db().from("bookings").select("*").in("id", ids);
+      for (const r of (brows ?? []) as any[]) bookingsById[r.id] = r;
+      const { data: srows } = await db()
+        .from("booking_segments")
+        .select("*")
+        .in("booking_id", ids)
+        .order("leg_order", { ascending: true });
+      for (const s of (srows ?? []) as any[]) {
+        if (!segmentsByBooking[s.booking_id]) segmentsByBooking[s.booking_id] = s;
+      }
+    }
+
+    const bookings = ((entries ?? []) as any[]).map((e) => {
+      const b = bookingsById[e.booking_id] ?? {};
+      const seg = segmentsByBooking[e.booking_id] ?? null;
+      const fields = logbookFieldsFromBooking(b, seg);
+      return {
+        bookingRowId: e.booking_id,
+        bookingId: b.booking_number ?? "",
+        logbookNumber: e.logbook_number,
+        client: b.client_name ?? "",
+        shippingLine: fields.shippingLine,
+        vesselVoyage: fields.vesselVoyage,
+        blNumber: fields.blNumber,
+        containerNumber: fields.containerNumber,
+        donePaymentAt: e.done_payment_at,
+        deliveredAt: e.delivered_at,
+        status: e.status,
+        movedIn: e.original_month !== e.logbook_month,
+      };
+    });
+
+    let green = 0, yellow = 0, movedIn = 0;
+    for (const e of (entries ?? []) as any[]) {
+      if (e.status === "green") green++; else yellow++;
+      if (e.original_month !== e.logbook_month) movedIn++;
+    }
+    const thisMonth = (entries ?? []).length - movedIn;
+
+    // movedOut = entries originally landed here but currently sit elsewhere.
+    const { count: movedOutCount } = await db()
+      .from("logbook_entries")
+      .select("booking_id", { count: "exact", head: true })
+      .eq("original_month", month)
+      .neq("logbook_month", month);
+    const movedOut = movedOutCount ?? 0;
+
+    return c.json(ok({
+      bookings,
+      counts: { green, yellow },
+      movement: { thisMonth, movedIn, movedOut, total: thisMonth + movedIn },
+    }));
+  } catch (e: any) {
+    return c.json(fail(e.message, 500), 500);
+  }
+});
+
+route.get("/logbook/history/:month", async (c) => {
+  const month = c.req.param("month");
+  const { data, error } = await db()
+    .from("logbook_adjustments")
+    .select("*, bookings:booking_id (booking_number)")
+    .or(`from_month.eq.${month},to_month.eq.${month}`)
+    .order("created_at", { ascending: false });
+  if (error) return c.json(fail(error.message, 500), 500);
+  const entries = ((data ?? []) as any[]).map((r) => ({
+    id: r.id,
+    bookingId: r.bookings?.booking_number ?? "",
+    fromMonth: r.from_month,
+    fromNumber: r.from_number,
+    toMonth: r.to_month,
+    toNumber: r.to_number,
+    userName: r.user_name,
+    timestamp: r.created_at,
+  }));
+  return c.json(ok(entries));
+});
+
+route.post("/logbook/adjust", async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const bookingIds: string[] = Array.isArray(body.bookingIds) ? body.bookingIds : [];
+    const targetMonth: string = body.targetMonth;
+    const userName: string = body.userName ?? "Unknown";
+    if (!bookingIds.length || !/^\d{4}-\d{2}$/.test(targetMonth)) {
+      return c.json(fail("bookingIds and targetMonth (YYYY-MM) are required", 400), 400);
+    }
+
+    for (const bookingId of bookingIds) {
+      const { data: entry } = await db()
+        .from("logbook_entries")
+        .select("*")
+        .eq("booking_id", bookingId)
+        .maybeSingle();
+      if (!entry) continue;
+      const fromMonth = (entry as any).logbook_month;
+      const fromNumber = (entry as any).logbook_number;
+      if (fromMonth === targetMonth) continue;
+
+      const toNumber = await nextLogbookNumber(targetMonth);
+      // Stash to a sentinel month first so the source-month gap-compaction
+      // doesn't collide with the row we're about to move.
+      await db()
+        .from("logbook_entries")
+        .update({ logbook_month: "__moving__", logbook_number: -fromNumber })
+        .eq("booking_id", bookingId);
+      await compactMonth(fromMonth, fromNumber);
+      await db()
+        .from("logbook_entries")
+        .update({
+          logbook_month: targetMonth,
+          logbook_number: toNumber,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("booking_id", bookingId);
+
+      await db().from("logbook_adjustments").insert({
+        booking_id: bookingId,
+        from_month: fromMonth,
+        from_number: fromNumber,
+        to_month: targetMonth,
+        to_number: toNumber,
+        user_name: userName,
+      });
+    }
+
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json(fail(e.message, 500), 500);
+  }
 });
 
 app.route("/", route);

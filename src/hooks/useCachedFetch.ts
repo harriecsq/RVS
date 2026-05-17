@@ -113,7 +113,9 @@ export function useCachedFetch<T = any>(path: string) {
     try {
       const result = await fetchJSON(path);
       if (mountedRef.current) {
-        setData(result);
+        if (isSuccessPayload(result)) {
+          setData(result);
+        }
         setIsLoading(false);
       }
       return result;

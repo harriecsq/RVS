@@ -86,7 +86,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
 
     // Fetch linked vouchers
     try {
-        const response = await fetch(`${API_BASE_URL}/bookings/${booking.id}/vouchers`, {
+        const response = await fetch(`${API_BASE_URL}/bookings/${encodeURIComponent(booking.id)}/vouchers`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
         });
         const result = await response.json();
@@ -95,11 +95,10 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
         }
     } catch (err) {
         console.error("Failed to fetch vouchers", err);
-        // Fallback or silently fail
     }
 
     // Support both camelCase and snake_case properties
-    const shipmentType = booking.shipmentType || booking.shipment_type || booking.type || "";
+    const shipmentType = booking.shipmentType || booking.shipment_type || booking.type || booking.movement || "";
     let template: "IMPORT" | "EXPORT" | "" = "";
     
     // Robust detection of shipment type

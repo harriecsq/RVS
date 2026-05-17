@@ -111,9 +111,11 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
     const tagMap = new Map<string, string[]>();
     if (bookingsResult?.success) {
       (bookingsResult.data || []).forEach((b: any) => {
-        const isImport = (b.shipmentType || b.booking_type || b.mode || "Import").toLowerCase().includes("import");
+        const typeStr = `${b.movement || ""} ${b.booking_type || ""} ${b.shipmentType || ""} ${b.mode || ""}`.toLowerCase();
+        const isExport = typeStr.includes("export") || typeStr.includes("exps");
+        const isImport = !isExport;
         const seg0 = b.segments?.[0];
-        const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+        const port = isImport ? (b.pod || b.destination || seg0?.pod || "") : (b.origin || seg0?.origin || "");
         const tags: string[] = Array.isArray(b.shipmentTags) ? b.shipmentTags : [];
         const ids = [b.id, b.bookingId].filter(Boolean);
         ids.forEach((id: string) => { portMap.set(id, port); tagMap.set(id, tags); });
@@ -380,7 +382,7 @@ export function TruckingModule({ currentUser, bookingType }: TruckingModuleProps
             {
               header: "Port",
               width: "9%",
-              cell: (r) => <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{bookingPortMap.get(r.linkedBookingId || "") || "—"}</div>,
+              cell: (r) => <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textTransform: "uppercase" }}>{bookingPortMap.get(r.linkedBookingId || "") || "—"}</div>,
             },
             {
               header: "Trucking Vendor",

@@ -12,6 +12,7 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
+import { invalidateCache } from '@/hooks/useCachedFetch';
 
 const COLLECTION_STATUS_COLORS: Record<string, string> = {
   "Draft": "#6B7280",
@@ -49,9 +50,10 @@ interface ViewCollectionScreenProps {
   };
   onBack: () => void;
   onDeleted?: () => void;
+  onUpdated?: () => void;
 }
 
-export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewCollectionScreenProps) {
+export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated }: ViewCollectionScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -142,7 +144,9 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
       }
 
       setCurrentCollection({ ...currentCollection, status: newStatus });
-
+      invalidateCache("/collections");
+      invalidateCache("/billings");
+      if (onUpdated) onUpdated();
       toast.success(`Status updated to ${newStatus}`);
     } catch (error) {
       console.error("Error updating status:", error);
@@ -421,7 +425,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                       { value: "Bank Transfer", label: "Bank Transfer" },
                       { value: "Check", label: "Check" }
                     ]}
-                    onChange={(value) => setEditedCollection({ ...editedCollection, paymentMethod: value, referenceNumber: value.toLowerCase() === "cash" ? "" : editedCollection.referenceNumber })}
+                    onChange={(value) => setEditedCollection({ ...editedCollection, paymentMethod: value, referenceNumber: value.toLowerCase() === "cash" ? "" : editedCollection.referenceNumber, bankName: value.toLowerCase() === "cash" ? "" : editedCollection.bankName })}
                     placeholder="Select payment method"
                   />
 
@@ -445,12 +449,12 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                       />
                   )}
 
-                  {editedCollection.paymentMethod === "Bank Transfer" && (
+                  {editedCollection.paymentMethod && editedCollection.paymentMethod.toLowerCase() !== "cash" && (
                     <StandardInput
-                      label="Bank Name"
+                      label="Bank"
                       value={editedCollection.bankName || ""}
                       onChange={(value) => setEditedCollection({ ...editedCollection, bankName: value })}
-                      placeholder="Enter bank name"
+                      placeholder="Enter bank"
                     />
                   )}
                 </>
@@ -473,9 +477,9 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted }: ViewColl
                     />
                   )}
 
-                  {currentCollection.paymentMethod === "Bank Transfer" && (
-                    <Field 
-                      label="Bank Name" 
+                  {currentCollection.paymentMethod && currentCollection.paymentMethod.toLowerCase() !== "cash" && (
+                    <Field
+                      label="Bank"
                       value={currentCollection.bankName}
                     />
                   )}

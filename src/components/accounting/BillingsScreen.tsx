@@ -78,18 +78,17 @@ export function BillingsScreen() {
     if (!bookingsResult?.success) return;
     const enrichMap = new Map<string, { serviceType: string; port: string }>();
     (bookingsResult.data || []).forEach((b: any) => {
-      const rawType = String(b.booking_type || b.shipmentType || b.mode || "").trim();
-      const rawLower = rawType.toLowerCase();
-      let serviceType: string;
-      if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
-      else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
-      else serviceType = rawType || "Import";
-      const isImport = serviceType === "Import";
+      const movement = String(b.movement || b.booking_type || b.shipmentType || b.mode || "").toLowerCase();
+      const isImport = movement.includes("import") || movement === "imps";
+      const serviceType = isImport ? "Import" : "Export";
       const seg0 = b.segments?.[0];
-      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      const port = isImport
+        ? (b.destination || b.pod || seg0?.destination || seg0?.pod || "")
+        : (b.origin || seg0?.origin || "");
       const enrich = { serviceType, port };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
+      if (b.uuid) enrichMap.set(b.uuid, enrich);
     });
     bookingEnrichMapRef.current = enrichMap;
   }, [bookingsResult]);

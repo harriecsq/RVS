@@ -433,7 +433,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               </label>
               <FilterSingleDropdown
                 value={formData.paymentMethod}
-                onChange={(v) => setFormData({ ...formData, paymentMethod: v, referenceNumber: v.toLowerCase() === "cash" ? "" : formData.referenceNumber })}
+                onChange={(v) => setFormData({ ...formData, paymentMethod: v, referenceNumber: v.toLowerCase() === "cash" ? "" : formData.referenceNumber, bankName: v.toLowerCase() === "cash" ? "" : formData.bankName })}
                 options={PAYMENT_METHODS.map((m) => ({ value: m, label: m }))}
                 placeholder="Select method"
               />
@@ -448,19 +448,33 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
               />
             </div>
 
-            {formData.paymentMethod.toLowerCase() !== "cash" && (
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Reference No.</label>
-                <input
-                  type="text"
-                  value={formData.referenceNumber}
-                  onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                  placeholder="Check # or Transaction ID"
-                  style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
-                />
-              </div>
+            {formData.paymentMethod.toLowerCase() !== "cash" && formData.paymentMethod && (
+              <>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Bank</label>
+                  <input
+                    type="text"
+                    value={formData.bankName}
+                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                    placeholder="Enter bank"
+                    style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "6px" }}>Reference #</label>
+                  <input
+                    type="text"
+                    value={formData.referenceNumber}
+                    onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
+                    placeholder="Check # or Transaction ID"
+                    style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                  />
+                </div>
+              </>
             )}
 
             <div>

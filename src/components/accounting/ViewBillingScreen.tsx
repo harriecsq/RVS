@@ -29,6 +29,7 @@ import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { Paperclip } from "lucide-react";
 import { API_BASE_URL } from '@/utils/api-config';
+import { invalidateCache } from '@/hooks/useCachedFetch';
 
 
 interface ViewBillingScreenProps {
@@ -726,6 +727,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
       if (result.success) {
         toast.success(`Status updated to ${newStatus}`);
+        invalidateCache("/billings");
+        invalidateCache("/collections");
         await fetchBillingDetails();
       } else {
         toast.error("Failed to update status");

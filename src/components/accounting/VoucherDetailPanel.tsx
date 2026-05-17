@@ -75,9 +75,10 @@ export function VoucherDetailPanel({
           display: "flex",
           flexDirection: "column"
         }}>
-          <ViewVoucherScreen 
+          <ViewVoucherScreen
             voucherId={voucherId}
             onBack={handleBack}
+            onUpdated={onVoucherUpdated}
           />
         </div>
       </div>

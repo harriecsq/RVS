@@ -17,6 +17,7 @@ interface Booking {
   booking_number?: string;
   shipmentType?: string;
   mode?: string;
+  [key: string]: any;
 }
 
 interface BookingSelectorProps {
@@ -47,6 +48,82 @@ export function BookingSelector({
   // booking.uuid so we can keep the currently-selected one visible (by `value`).
   const [linkedBookingUuids, setLinkedBookingUuids] = useState<Set<string>>(new Set());
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const fullBookingCache = useRef<Map<string, Booking>>(new Map());
+
+  const normalizeFullBooking = (slim: Booking, full: any): Booking => {
+    const merged: any = { ...slim, ...full };
+    merged.id = slim.id || full.id || full.bookingId;
+
+    // Exports keep vessel/BL/container in first segment; lift to top-level if missing.
+    const seg = Array.isArray(full.segments) && full.segments.length ? full.segments[0] : null;
+    const pick = (k: string) =>
+      merged[k] ?? full[k] ?? (seg ? seg[k] : undefined);
+
+    merged.blNumber =
+      merged.blNumber ||
+      full.blNumber ||
+      full.bl_number ||
+      full.awbBlNo ||
+      full.awb_bl_no ||
+      slim.bl_number ||
+      (seg && (seg.blNumber || seg.bl_number || seg.awbBlNo)) ||
+      "";
+
+    const vv = pick("vesselVoyage") || pick("vessel_voyage");
+    if (vv) merged.vesselVoyage = vv;
+    else {
+      const vessel = pick("vessel");
+      const voyage = pick("voyage");
+      if (vessel || voyage) merged.vesselVoyage = [vessel, voyage].filter(Boolean).join(" / ");
+    }
+
+    const cns = pick("containerNumbers") || pick("containerNos") || pick("container_nos");
+    if (Array.isArray(cns)) merged.containerNumbers = cns;
+    else if (typeof cns === "string") merged.containerNumbers = cns.split(",").map((s: string) => s.trim()).filter(Boolean);
+    const cn = pick("containerNo") || pick("container_no");
+    if (cn) merged.containerNo = cn;
+    else if (Array.isArray(merged.containerNumbers)) merged.containerNo = merged.containerNumbers.join(", ");
+
+    merged.shipper = merged.shipper || pick("shipper") || pick("shipperName") || pick("shipper_name");
+    merged.consignee = merged.consignee || pick("consignee") || pick("consigneeName") || pick("consignee_name");
+    merged.origin = merged.origin || pick("origin") || pick("pol") || pick("portOfLoading") || pick("port_of_loading");
+    merged.destination = merged.destination || pick("destination") || pick("pod") || pick("portOfDestination") || pick("port_of_destination");
+    merged.commodity = merged.commodity || pick("commodity");
+    merged.volume = merged.volume || pick("volume");
+    merged.eta = merged.eta || pick("eta");
+    merged.etd = merged.etd || pick("etd");
+
+    return merged as Booking;
+  };
+
+  const handleSelect = async (booking: Booking) => {
+    setOpen(false);
+    const id = booking.id;
+    if (!id) {
+      onSelect(booking);
+      return;
+    }
+    const cached = fullBookingCache.current.get(id);
+    if (cached) {
+      onSelect(cached);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (!res.ok) throw new Error("fetch failed");
+      const json = await res.json();
+      const full = json?.data ?? json;
+      if (!full || typeof full !== "object") throw new Error("empty payload");
+      const merged = normalizeFullBooking(booking, full);
+      fullBookingCache.current.set(id, merged);
+      onSelect(merged);
+    } catch (err) {
+      console.warn("BookingSelector: full booking fetch failed, using slim record", err);
+      onSelect(booking);
+    }
+  };
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -106,7 +183,7 @@ export function BookingSelector({
             client: b.client || b.clientName || b.customerName || b.customer_name || b.shipper || "Unknown Client",
             status: b.status,
             bl_number: b.bl_number || b.blNumber || b.awbBlNo || b.awb_bl_no || "",
-            shipmentType: b.shipmentType || b.booking_type || "Unknown",
+            shipmentType: b.shipmentType || b.booking_type || b.movement || "Unknown",
           }));
           setBookings(mapped);
         }
@@ -201,7 +278,7 @@ export function BookingSelector({
             return (
               <div
                 key={`${booking.id}-${idx}`}
-                onClick={() => { onSelect(booking); setOpen(false); }}
+                onClick={() => { handleSelect(booking); }}
                 style={{
                   padding: "10px 12px", cursor: "pointer", fontSize: "14px", color: "#12332B",
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",

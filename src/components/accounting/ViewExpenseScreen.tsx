@@ -15,6 +15,7 @@ import { EXPORT_STANDARD_PARTICULARS, getAvailableExportSuggestions } from "./Ex
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
+import { invalidateCache } from '@/hooks/useCachedFetch';
 import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
 import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
 import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
@@ -954,7 +955,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
       const result = await response.json();
       if (result.success && result.data) {
         toast.success(`Status updated to ${newStatus}`);
-
+        invalidateCache("/expenses");
+        invalidateCache("/billings");
         // Refetch expense details
         await fetchExpenseDetails();
         if (onUpdated) onUpdated();
@@ -3238,7 +3240,11 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                 totalAmount={grandTotal}
                 currency={displayedExpense.charges?.[0]?.currency || "PHP"}
                 vouchers={vouchers}
-                onUpdate={fetchExpenseDetails}
+                onUpdate={() => {
+                  fetchExpenseDetails();
+                  const ids = getBookingIds(expense);
+                  if (ids.length > 0) fetchBookingVouchers(ids);
+                }}
               />
             )}
           </div>

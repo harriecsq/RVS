@@ -211,8 +211,9 @@ export function CreateVoucherModal({
   // Header Fields
   const [payee, setPayee] = useState("");
   const [category, setCategory] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [bank, setBank] = useState("");
-  const [checkNo, setCheckNo] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split("T")[0]);
   const [postingDate, setPostingDate] = useState(new Date().toISOString().split("T")[0]);
   
@@ -284,8 +285,9 @@ export function CreateVoucherModal({
       setNextVoucherNumber(null);
       setPayee("");
       setCategory("");
+      setPaymentMethod("");
       setBank("");
-      setCheckNo("");
+      setReferenceNumber("");
       setVoucherDate("");
       setPostingDate("");
       setSelectedBooking(null);
@@ -798,8 +800,9 @@ export function CreateVoucherModal({
         postingDate: postingDate || undefined,
         payee,
         category,
+        paymentMethod,
         bank,
-        checkNo,
+        referenceNumber,
         amount: calculateTotal(),
         status: "Draft", // Default status
         bookingId: selectedBooking?.id || propBookingId,
@@ -972,30 +975,43 @@ export function CreateVoucherModal({
               </div>
 
               <div className="col-span-2 sm:col-span-1">
-                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Bank</Label>
-                <div className="relative">
-                    <Input 
-                        value={bank} 
-                        onChange={e => setBank(e.target.value)} 
-                        placeholder="Enter bank"
-                        style={{ height: '40px', borderRadius: '12px', border: '1px solid #E5E9F0', fontSize: '14px' }}
-                        className="focus-visible:ring-[#0F766E]"
-                    />
-                </div>
+                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Payment Method</Label>
+                <NeuronDropdown
+                  value={paymentMethod}
+                  onChange={(v) => {
+                    setPaymentMethod(v);
+                    if (v.toLowerCase() === "cash") { setBank(""); setReferenceNumber(""); }
+                  }}
+                  options={["Cash", "Check", "Bank Transfer"]}
+                  placeholder="Select method"
+                />
               </div>
 
-              <div className="col-span-2 sm:col-span-1">
-                <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Check No.</Label>
-                <div className="relative">
-                    <Input 
-                        value={checkNo} 
-                        onChange={e => setCheckNo(e.target.value)} 
-                        placeholder="Enter check number"
-                        style={{ height: '40px', borderRadius: '12px', border: '1px solid #E5E9F0', fontSize: '14px' }}
-                        className="focus-visible:ring-[#0F766E]"
+              {paymentMethod && paymentMethod.toLowerCase() !== "cash" && (
+                <>
+                  <div className="col-span-2 sm:col-span-1">
+                    <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Bank</Label>
+                    <Input
+                      value={bank}
+                      onChange={e => setBank(e.target.value)}
+                      placeholder="Enter bank"
+                      style={{ height: '40px', borderRadius: '12px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                      className="focus-visible:ring-[#0F766E]"
                     />
-                </div>
-              </div>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Reference #</Label>
+                    <Input
+                      value={referenceNumber}
+                      onChange={e => setReferenceNumber(e.target.value)}
+                      placeholder="Check # or Transaction ID"
+                      style={{ height: '40px', borderRadius: '12px', border: '1px solid #E5E9F0', fontSize: '14px' }}
+                      className="focus-visible:ring-[#0F766E]"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="col-span-2 sm:col-span-1">
                 <Label className="text-xs font-medium text-[#667085] mb-1.5 block">Creation Date</Label>

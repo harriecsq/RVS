@@ -16,6 +16,7 @@ import { BookingSelector } from "../selectors/BookingSelector";
 import { PayeeSelector } from "../selectors/PayeeSelector";
 import { formatAmount } from "../../utils/formatAmount";
 import { API_BASE_URL } from '@/utils/api-config';
+import { invalidateCache } from '@/hooks/useCachedFetch';
 import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
 import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
 import { VoucherDocTemplate } from "../shared/document-preview/templates/VoucherDocTemplate";
@@ -40,6 +41,7 @@ function computeVolumeSummary(containerNo: string | string[], volume: string): s
 interface ViewVoucherScreenProps {
   voucherId: string;
   onBack: () => void;
+  onUpdated?: () => void;
 }
 
 type VoucherStatus = "Draft" | "For Approval" | "Approved" | "Paid" | "Cancelled";
@@ -78,6 +80,8 @@ interface Voucher {
   category?: string;
   bank?: string;
   checkNo?: string;
+  paymentMethod?: string;
+  referenceNumber?: string;
   status: VoucherStatus;
   voucherDate: string;
   postingDate?: string;
@@ -283,7 +287,7 @@ const TableSection = ({
 );
 
 
-export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps) {
+export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherScreenProps) {
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -304,6 +308,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
   const [distribution, setDistribution] = useState<LineItem[]>([]);
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
   const [manualDeliveryAddress, setManualDeliveryAddress] = useState("");
+  const [manualTruckingRate, setManualTruckingRate] = useState("");
   const [manualLoadingAddress, setManualLoadingAddress] = useState("");
   const [linkedBooking, setLinkedBooking] = useState<any | null>(null);
 
@@ -411,6 +416,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
         // If no saved addresses on the voucher, fall back to trucking record data
         if (!manualDeliveryAddress) setManualDeliveryAddress(deliveryAddress);
         if (!manualLoadingAddress) setManualLoadingAddress(loadingAddress);
+        if (!manualTruckingRate) setManualTruckingRate(String(truckingRate || ""));
       } else {
         setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
       }
@@ -440,6 +446,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
         setEditedVoucher(v);
         setManualDeliveryAddress(v.deliveryAddress || "");
         setManualLoadingAddress(v.loadingAddress || "");
+        setManualTruckingRate(String(v.rate || v.truckingRate || ""));
         if (v.lineItems) {
           setParticulars(v.lineItems.filter((i: LineItem) => !i.type || i.type === 'particulars'));
           setDistribution(v.lineItems.filter((i: LineItem) => i.type === 'distribution'));
@@ -515,6 +522,8 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
           lineItems: combinedLineItems,
           deliveryAddress: manualDeliveryAddress,
           loadingAddress: manualLoadingAddress,
+          rate: manualTruckingRate,
+          truckingRate: manualTruckingRate,
       };
 
       const response = await fetch(`${API_BASE_URL}/vouchers/${voucherId}`, {
@@ -564,7 +573,9 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
       if (result.success && result.data) {
         setVoucher(result.data);
         setEditedVoucher(result.data);
-
+        invalidateCache("/vouchers");
+        invalidateCache("/expenses");
+        if (onUpdated) onUpdated();
         toast.success(`Status updated to ${newStatus}`);
       }
     } catch (error) {
@@ -831,7 +842,9 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
               commodity: bookingShipment.commodity,
               consignee: bookingShipment.consignee,
               bank: voucher.bank,
-              checkNo: voucher.checkNo,
+              checkNo: voucher.referenceNumber || voucher.checkNo,
+              paymentMethod: voucher.paymentMethod,
+              referenceNumber: voucher.referenceNumber || voucher.checkNo,
               lineItems: particulars,
               distribution: distribution,
               totalAmount: voucher.amount,
@@ -920,7 +933,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                           Linked Booking
                         </div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {displayVoucher?.booking?.bookingId || displayVoucher?.bookingId || "—"}
+                          {linkedBooking?.bookingId || displayVoucher?.booking?.bookingId || displayVoucher?.bookingId || "—"}
                         </div>
                       </div>
                     )}
@@ -983,6 +996,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                       </label>
                       <input
                         type="text"
+                        readOnly={!isEditing}
                         value={isExport ? manualLoadingAddress : manualDeliveryAddress}
                         onChange={(e) => isExport ? setManualLoadingAddress(e.target.value) : setManualDeliveryAddress(e.target.value)}
                         placeholder={isExport ? "Enter loading address..." : "Enter delivery address..."}
@@ -992,10 +1006,11 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                           fontSize: "14px",
                           border: "1px solid #E5E9F0",
                           borderRadius: "8px",
-                          backgroundColor: "#FFFFFF",
+                          backgroundColor: isEditing ? "#FFFFFF" : "#F9FAFB",
                           color: "#0A1D4D",
                           outline: "none",
                           boxSizing: "border-box" as const,
+                          cursor: isEditing ? "text" : "default",
                         }}
                       />
                     </div>
@@ -1003,9 +1018,26 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                       <label style={{ fontSize: "13px", fontWeight: 500, color: "#667085", display: "block", marginBottom: "4px" }}>
                         Trucking Rate
                       </label>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500, padding: "10px 14px", border: "1px solid #E5E9F0", borderRadius: "8px", backgroundColor: "#FAFBFC" }}>
-                        {truckingRecordData.truckingRate || displayVoucher?.booking?.rate || displayVoucher?.booking?.truckingRates || "—"}
-                      </div>
+                      <input
+                        type="text"
+                        readOnly={!isEditing}
+                        value={manualTruckingRate || truckingRecordData.truckingRate || displayVoucher?.booking?.rate || displayVoucher?.booking?.truckingRates || ""}
+                        onChange={(e) => setManualTruckingRate(e.target.value)}
+                        placeholder="Enter rate..."
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          fontSize: "14px",
+                          border: "1px solid #E5E9F0",
+                          borderRadius: "8px",
+                          backgroundColor: isEditing ? "#FFFFFF" : "#F9FAFB",
+                          color: "#0A1D4D",
+                          fontWeight: 500,
+                          outline: "none",
+                          boxSizing: "border-box" as const,
+                          cursor: isEditing ? "text" : "default",
+                        }}
+                      />
                     </div>
                   </div>
                 )}
@@ -1074,19 +1106,46 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                    />
                  )}
 
-                 {/* Row 2: Bank & Check No */}
-                 <EditableField 
-                    label="Bank" 
-                    value={isEditing ? (editedVoucher?.bank || "") : (voucher.bank || "")} 
-                    onChange={val => setEditedVoucher(prev => prev ? ({...prev, bank: val}) : null)}
-                    isEditing={isEditing}
-                 />
-                 <EditableField 
-                    label="Check No." 
-                    value={isEditing ? (editedVoucher?.checkNo || "") : (voucher.checkNo || "")} 
-                    onChange={val => setEditedVoucher(prev => prev ? ({...prev, checkNo: val}) : null)}
-                    isEditing={isEditing}
-                 />
+                 {/* Row 2: Payment Method (+ Bank & Reference # when non-cash) */}
+                 {isEditing ? (
+                   <div>
+                     <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
+                       Payment Method
+                     </label>
+                     <NeuronDropdown
+                       value={editedVoucher?.paymentMethod || ""}
+                       onChange={(v) => setEditedVoucher(prev => prev ? ({
+                         ...prev,
+                         paymentMethod: v,
+                         ...(v.toLowerCase() === "cash" ? { bank: "", referenceNumber: "" } : {})
+                       }) : null)}
+                       options={["Cash", "Check", "Bank Transfer"]}
+                       placeholder="Select method"
+                     />
+                   </div>
+                 ) : (
+                   <Field label="Payment Method" value={voucher.paymentMethod || "—"} />
+                 )}
+                 {(() => {
+                   const pm = (isEditing ? editedVoucher?.paymentMethod : voucher.paymentMethod) || "";
+                   if (!pm || pm.toLowerCase() === "cash") return null;
+                   return (
+                     <>
+                       <EditableField
+                          label="Bank"
+                          value={isEditing ? (editedVoucher?.bank || "") : (voucher.bank || "")}
+                          onChange={val => setEditedVoucher(prev => prev ? ({...prev, bank: val}) : null)}
+                          isEditing={isEditing}
+                       />
+                       <EditableField
+                          label="Reference #"
+                          value={isEditing ? (editedVoucher?.referenceNumber || editedVoucher?.checkNo || "") : (voucher.referenceNumber || voucher.checkNo || "")}
+                          onChange={val => setEditedVoucher(prev => prev ? ({...prev, referenceNumber: val, checkNo: val}) : null)}
+                          isEditing={isEditing}
+                       />
+                     </>
+                   );
+                 })()}
 
                  {/* Row 3: Dates */}
                  {isEditing ? (
@@ -1096,7 +1155,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                          Creation Date
                        </label>
                        <SingleDateInput
-                         value={editedVoucher?.voucherDate || ""}
+                         value={(editedVoucher?.voucherDate || "").slice(0, 10)}
                          onChange={(iso) => setEditedVoucher(prev => prev ? ({...prev, voucherDate: iso}) : null)}
                          placeholder="MM/DD/YYYY"
                        />
@@ -1106,7 +1165,7 @@ export function ViewVoucherScreen({ voucherId, onBack }: ViewVoucherScreenProps)
                          Posting Date
                        </label>
                        <SingleDateInput
-                         value={editedVoucher?.postingDate || ""}
+                         value={(editedVoucher?.postingDate || "").slice(0, 10)}
                          onChange={(iso) => setEditedVoucher(prev => prev ? ({...prev, postingDate: iso}) : null)}
                          placeholder="MM/DD/YYYY"
                        />

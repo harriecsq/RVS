@@ -90,10 +90,13 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     if (!bookingsResult?.success) return;
     const enrichMap = new Map<string, BookingDisplayInfo>();
     (bookingsResult.data || []).forEach((b: any) => {
-      const serviceType = b.shipmentType || b.booking_type || b.mode || "Import";
-      const isImport = serviceType.toLowerCase().includes("import");
+      const movement = String(b.movement || b.shipmentType || b.booking_type || b.mode || "").toLowerCase();
+      const isImport = movement.includes("import") || movement === "imps";
+      const serviceType = isImport ? "Import" : "Export";
       const seg0 = b.segments?.[0];
-      const port = isImport ? (b.pod || seg0?.pod || "") : (b.origin || seg0?.origin || "");
+      const port = isImport
+        ? (b.destination || b.pod || seg0?.destination || seg0?.pod || "")
+        : (b.origin || seg0?.origin || "");
       const lines = Array.from(new Set(
         [
           seg0?.consignee ?? b.consignee ?? seg0?.shipper ?? b.shipper,
@@ -112,6 +115,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
+      if (b.uuid) enrichMap.set(b.uuid, enrich);
     });
     bookingEnrichMapRef.current = enrichMap;
   }, [bookingsResult]);
@@ -201,9 +205,14 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     if (!matchesSearch) return false;
 
     if (dateFilterStart || dateFilterEnd) {
-      const expenseISO = new Date(expense.createdAt).toISOString().split("T")[0];
-      if (dateFilterStart && expenseISO < dateFilterStart) return false;
-      if (dateFilterEnd && expenseISO > dateFilterEnd) return false;
+      const d = expense.createdAt ? new Date(expense.createdAt) : null;
+      if (!d || isNaN(d.getTime())) {
+        if (dateFilterStart || dateFilterEnd) return false;
+      } else {
+        const expenseISO = d.toISOString().split("T")[0];
+        if (dateFilterStart && expenseISO < dateFilterStart) return false;
+        if (dateFilterEnd && expenseISO > dateFilterEnd) return false;
+      }
     }
 
     if (statusFilter.length > 0 && !statusFilter.includes(expense.status)) return false;

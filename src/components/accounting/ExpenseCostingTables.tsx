@@ -156,13 +156,7 @@ function generateImportStandardLabel(key: ImportStandardKey, booking: any, truck
     }
     case "TRUCKING": {
       const vendor = truckingVendor || booking?.trucker || booking?.truckingVendor || "N/A";
-      const rawVol = booking?.volume || "";
-      const volMatch = rawVol.match(/^\d+x(.+)$/i);
-      const volumeType = volMatch ? volMatch[1] : rawVol;
-      if (containerCount && containerCount > 0 && volumeType) {
-        return volumeType === "LCL" ? `${vendor} LCL` : `${vendor} ${containerCount}x${volumeType}`;
-      }
-      const addr = booking?.destination || booking?.pod || "N/A";
+      const addr = booking?.deliveryAddress || "N/A";
       return `${vendor} Trucking - ${addr}`;
     }
     case "ARRASTRE_WHARFAGE":
@@ -187,7 +181,7 @@ function generateImportStandardLabel(key: ImportStandardKey, booking: any, truck
 }
 
 function getImportStandardAmount(key: ImportStandardKey, containerCount: number): number {
-  if (key === "BROKER") return 1000 * containerCount;
+  if (key === "BROKER") return 1000;
   return 0;
 }
 
@@ -433,18 +427,19 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 stdItem.sourceVoucherLineItemId = sourceId;
                 matchedKeys.add(matchedKey);
 
-                // For trucking vouchers with linked containers, update label with vendor + container info
-                if (matchedKey === "TRUCKING") {
-                  const linkedContainers = (voucher as any).linkedContainerNos;
-                  const voucherVendor = (voucher as any).payee || truckingVendor || "";
-                  if (Array.isArray(linkedContainers) && linkedContainers.length > 0 && voucherVendor) {
-                    const rawVol = booking?.volume || "";
-                    const volMatch = rawVol.match(/^\d+x(.+)$/i);
-                    const volumeType = volMatch ? volMatch[1] : rawVol;
-                    if (volumeType) {
-                      stdItem.particulars = volumeType === "LCL" ? `${voucherVendor} LCL` : `${voucherVendor} ${linkedContainers.length}x${volumeType}`;
-                    }
+                // SECTION: extract number from voucher desc (e.g. "SOP (MICP-123)" or "Section 42")
+                if (matchedKey === "SECTION") {
+                  const sectionMatch = desc.match(/MICP-?\s*(\d+)/i) || desc.match(/Section\s+(\d+)/i) || desc.match(/SOP[^\d]*(\d+)/i);
+                  if (sectionMatch && sectionMatch[1]) {
+                    stdItem.particulars = `Section ${sectionMatch[1]}`;
                   }
+                }
+
+                // Trucking voucher label: "{Vendor} Trucking - {Address from voucher}"
+                if (matchedKey === "TRUCKING") {
+                  const voucherVendor = (voucher as any).payee || truckingVendor || booking?.trucker || booking?.truckingVendor || "N/A";
+                  const voucherAddr = (voucher as any).deliveryAddress || booking?.deliveryAddress || "N/A";
+                  stdItem.particulars = `${voucherVendor} Trucking - ${voucherAddr}`;
                 }
               } else if (matchedKey && stdItem && matchedKeys.has(matchedKey)) {
                 // Duplicate match — add as additional item in Particulars
@@ -469,7 +464,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   isAutoFilled: true,
                   sourceVoucherLineItemId: sourceId,
                 });
-              } else if (desc.includes("Container Deposit")) {
+              } else if (desc.includes("Container Deposit") && amt > 0) {
                 newRefundable.push({
                   id: Math.random().toString(36).substr(2, 9),
                   particulars: "Container Deposit",
@@ -558,15 +553,18 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     }
   }, [booking, vouchers, lastProcessedState, truckingVendor, isImport]);
 
-  // Update the trucking item label when truckingVendor prop arrives asynchronously
+  // Update the trucking item label when truckingVendor prop arrives asynchronously.
+  // Skip when the item is already bound to a voucher — voucher data is authoritative
+  // (vendor = voucher.payee, address = voucher.deliveryAddress).
   useEffect(() => {
     if (isImport && truckingVendor && booking && tables.particulars.length > 0) {
-      const truckingLabel = generateImportStandardLabel("TRUCKING", booking, truckingVendor, containerCount);
       const truckingItem = tables.particulars.find(i => {
         const lower = i.particulars.toLowerCase();
         return lower.includes("trucking");
       });
-      if (truckingItem && truckingItem.particulars !== truckingLabel) {
+      if (!truckingItem || truckingItem.voucherNo) return;
+      const truckingLabel = generateImportStandardLabel("TRUCKING", booking, truckingVendor, containerCount);
+      if (truckingItem.particulars !== truckingLabel) {
         const newTables = { ...tables };
         newTables.particulars = newTables.particulars.map(item =>
           item.id === truckingItem.id ? { ...item, particulars: truckingLabel } : item
@@ -2349,37 +2347,12 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                     />
                   </td>
                   <td style={{ padding: "8px", width: "15%" }}>
-                    <select
+                    <FilterSingleDropdown
                       value={item.voucherNo || ""}
-                      onChange={(e) => handleUpdate("refundableDeposits", item.id, 'voucherNo', e.target.value)}
-                      style={{
-                        height: "36px",
-                        width: "100%",
-                        border: "1px solid transparent",
-                        borderRadius: "6px",
-                        padding: "0 8px",
-                        fontSize: "13px",
-                        color: "#0A1D4D",
-                        background: "transparent",
-                        outline: "none",
-                        appearance: "none" as const,
-                        cursor: "pointer",
-                        transition: "border-color 0.15s ease",
-                        backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                        backgroundRepeat: "no-repeat",
-                        backgroundPosition: "right 8px center",
-                        backgroundSize: "14px"
-                      }}
-                      onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                      onBlur={(e) => e.currentTarget.style.borderColor = "transparent"}
-                    >
-                      <option value="">Select Voucher</option>
-                      {(vouchers || []).map((v: any) => (
-                        <option key={v.id || v.voucherNumber} value={v.voucherNumber}>
-                          {v.voucherNumber}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => handleUpdate("refundableDeposits", item.id, 'voucherNo', v)}
+                      options={(vouchers || []).map((v: any) => ({ value: v.voucherNumber, label: v.voucherNumber }))}
+                      placeholder="Select Voucher"
+                    />
                   </td>
                   <td style={{ padding: "8px", width: "25%" }}>
                     <input

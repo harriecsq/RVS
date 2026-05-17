@@ -75,10 +75,11 @@ export function CollectionDetailPanel({
           display: "flex",
           flexDirection: "column"
         }}>
-          <ViewCollectionScreen 
+          <ViewCollectionScreen
             collection={collection}
             onBack={handleBack}
             onDeleted={handleDeleted}
+            onUpdated={onCollectionUpdated}
           />
         </div>
       </div>
