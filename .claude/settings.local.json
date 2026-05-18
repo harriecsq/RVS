@@ -167,7 +167,27 @@
       "PowerShell(docker exec supabase_db_RVS ls -la /tmp/seed.sql)",
       "PowerShell(docker exec supabase_db_RVS psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/seed.sql 2>&1)",
       "PowerShell(docker cp .\\\\.tmp_fix.sql supabase_db_RVS:/tmp/fix.sql)",
-      "PowerShell(docker exec supabase_db_RVS psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/fix.sql 2>&1)"
+      "PowerShell(docker exec supabase_db_RVS psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/fix.sql 2>&1)",
+      "Bash(npm --version)",
+      "Bash(docker info *)",
+      "Bash(ls \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\" 2>&1 || echo \"Docker Desktop not at default path\")",
+      "Read(//c/Program Files/Docker/Docker/**)",
+      "Bash(powershell -Command \"Start-Process 'C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe'\")",
+      "Bash(SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN npx supabase projects list)",
+      "Bash(SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN npx supabase start)",
+      "Bash(pg_dump --version)",
+      "Bash(psql --version)",
+      "Bash(SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN npx supabase db reset --no-seed)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(echo \"DUMP_EXIT=$?\")",
+      "Bash(SUPABASE_ACCESS_TOKEN=$SUPABASE_ACCESS_TOKEN npx supabase stop)",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/SKILL.md)",
+      "Bash(curl -fsSL https://api.github.com/repos/JuliusBrussee/caveman/contents/skills/caveman)",
+      "Bash(mkdir -p \"C:/Users/harri/.claude/skills/caveman\")",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/SKILL.md -o \"C:/Users/harri/.claude/skills/caveman/SKILL.md\")",
+      "Bash(curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/README.md -o \"C:/Users/harri/.claude/skills/caveman/README.md\")",
+      "Bash(dir /a .env*)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

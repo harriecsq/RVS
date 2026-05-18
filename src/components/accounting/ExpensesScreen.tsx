@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, CreditCard } from "lucide-react";
 import { useLocation } from "react-router";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -75,20 +75,11 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
-  const bookingEnrichMapRef = useRef<Map<string, BookingDisplayInfo>>(new Map());
   const clientsMasterList = useClientsMasterList();
 
-  useEffect(() => {
-    const state = location.state as { selectedExpenseId?: string } | null;
-    if (state?.selectedExpenseId) {
-      fetchAndSelectExpense(state.selectedExpenseId);
-      window.history.replaceState({}, document.title);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!bookingsResult?.success) return;
+  const bookingEnrichMap = useMemo<Map<string, BookingDisplayInfo>>(() => {
     const enrichMap = new Map<string, BookingDisplayInfo>();
+    if (!bookingsResult?.success) return enrichMap;
     (bookingsResult.data || []).forEach((b: any) => {
       const movement = String(b.movement || b.shipmentType || b.booking_type || b.mode || "").toLowerCase();
       const isImport = movement.includes("import") || movement === "imps";
@@ -117,8 +108,16 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
       if (b.uuid) enrichMap.set(b.uuid, enrich);
     });
-    bookingEnrichMapRef.current = enrichMap;
+    return enrichMap;
   }, [bookingsResult]);
+
+  useEffect(() => {
+    const state = location.state as { selectedExpenseId?: string } | null;
+    if (state?.selectedExpenseId) {
+      fetchAndSelectExpense(state.selectedExpenseId);
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
 
   const getExpenseDisplayInfo = (expense: Expense) => {
     const bookingIds = [
@@ -128,7 +127,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
     ].filter(Boolean);
 
     for (const bookingId of bookingIds) {
-      const bookingInfo = bookingEnrichMapRef.current.get(bookingId);
+      const bookingInfo = bookingEnrichMap.get(bookingId);
       if (bookingInfo?.company || bookingInfo?.client) {
         return {
           company: bookingInfo.company || bookingInfo.client || "",
@@ -221,7 +220,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
 
     if (serviceTypeFilter !== "all" || portFilter.length > 0) {
       const bId = (expense as any).bookingId || ((expense as any).bookingIds)?.[0];
-      const enrich = bId ? bookingEnrichMapRef.current.get(bId) : undefined;
+      const enrich = bId ? bookingEnrichMap.get(bId) : undefined;
       if (serviceTypeFilter !== "all") {
         if (!enrich?.serviceType.toLowerCase().includes(serviceTypeFilter.toLowerCase())) return false;
       }
@@ -249,8 +248,8 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
         if (portFilter.length > 0) {
           const aId = (a as any).bookingId || ((a as any).bookingIds)?.[0];
           const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
-          const aPort = (aId ? bookingEnrichMapRef.current.get(aId)?.port : "") || "";
-          const bPort = (bId ? bookingEnrichMapRef.current.get(bId)?.port : "") || "";
+          const aPort = (aId ? bookingEnrichMap.get(aId)?.port : "") || "";
+          const bPort = (bId ? bookingEnrichMap.get(bId)?.port : "") || "";
           const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
           const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
           const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
@@ -306,6 +305,14 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
             ))}
           </>
         );
+      },
+    },
+    {
+      header: "Port",
+      cell: (expense) => {
+        const bId = (expense as any).bookingId || ((expense as any).bookingIds)?.[0];
+        const port = bId ? bookingEnrichMap.get(bId)?.port : "";
+        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{port || "—"}</div>;
       },
     },
     {

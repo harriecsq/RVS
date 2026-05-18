@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { Plus, DollarSign } from "lucide-react";
 import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -16,7 +16,6 @@ import {
   StandardSearchInput,
   StandardTable,
 } from "../design-system";
-import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { MultiSelectPortalDropdown } from "../shared/MultiSelectPortalDropdown";
 import type { ColumnDef } from "../design-system";
 import { getCurrentMonthRange } from "../../utils/dateRangeDefaults";
@@ -62,13 +61,12 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const [activeTab, setActiveTab] = useState<"all" | "pending" | "collected" | "partial">("all");
   const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
   const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string[]>([]);
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
-  const collectionPortMapRef = useRef<Map<string, string>>(new Map());
   const clientsMasterList = useClientsMasterList();
 
-  useEffect(() => {
+  const collectionPortMap = useMemo<Map<string, string>>(() => {
     const bookingPortMap = new Map<string, string>();
     (bookingsResult?.data || []).forEach((b: any) => {
       const movement = String(b.movement || b.booking_type || b.shipmentType || b.mode || "").toLowerCase();
@@ -100,7 +98,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       if (!port && c.billingNumber) port = billingPortMap.get(c.billingNumber) || "";
       if (c.id) map.set(c.id, port);
     });
-    collectionPortMapRef.current = map;
+    return map;
   }, [collectionsResult, billingsResult, bookingsResult]);
 
   const fetchCollections = () => { invalidateCache("/collections"); refetch(); };
@@ -114,8 +112,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     fetchCollections();
   };
 
-  // Get unique payment methods
-  const uniquePaymentMethods = Array.from(new Set(collections.map(c => c.paymentMethod).filter(Boolean)));
+  const uniquePaymentMethods = ["Cash", "Check", "Bank Transfer"];
 
   // Filter collections by tab first
   const getFilteredByTab = () => {
@@ -156,7 +153,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     if (statusFilter.length > 0 && !statusFilter.includes(collection.status)) return false;
 
     // Payment method filter
-    if (paymentMethodFilter !== "all" && collection.paymentMethod !== paymentMethodFilter) return false;
+    if (paymentMethodFilter.length > 0 && !paymentMethodFilter.includes(collection.paymentMethod || "")) return false;
 
     // Company / client filter
     if (clientSelections.length > 0) {
@@ -166,7 +163,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
 
     // Port filter
     if (portFilter.length > 0) {
-      const port = collectionPortMapRef.current.get(collection.id) || "";
+      const port = collectionPortMap.get(collection.id) || "";
       if (!portFilter.some(p => port.toLowerCase().includes(p.toLowerCase()))) return false;
     }
 
@@ -182,8 +179,8 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           if (d !== 0) return d;
         }
         if (portFilter.length > 0) {
-          const aPort = collectionPortMapRef.current.get(a.id) || "";
-          const bPort = collectionPortMapRef.current.get(b.id) || "";
+          const aPort = collectionPortMap.get(a.id) || "";
+          const bPort = collectionPortMap.get(b.id) || "";
           const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
           const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
           const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
@@ -230,10 +227,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     { value: "Cancelled", label: "Cancelled" },
   ];
 
-  const paymentMethodOptions = [
-    { value: "all", label: "All Payment Methods" },
-    ...uniquePaymentMethods.map(method => ({ value: method as string, label: method as string })),
-  ];
+  const paymentMethodOptions = uniquePaymentMethods.map(method => ({ value: method, label: method }));
 
   const columns: ColumnDef<Collection>[] = [
     {
@@ -254,6 +248,21 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       ),
     },
     {
+      header: "Payment Method",
+      cell: (collection) => (
+        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+          {collection.paymentMethod || "\u2014"}
+        </div>
+      ),
+    },
+    {
+      header: "Port",
+      cell: (collection) => {
+        const port = collectionPortMap.get(collection.id) || "";
+        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{port || "—"}</div>;
+      },
+    },
+    {
       header: "Amount",
       cell: (collection) => {
         const computedAmount = collection.allocations && collection.allocations.length > 0
@@ -265,14 +274,6 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           </div>
         );
       },
-    },
-    {
-      header: "Payment Method",
-      cell: (collection) => (
-        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-          {collection.paymentMethod || "\u2014"}
-        </div>
-      ),
     },
     {
       header: "Linked Billing",
@@ -292,8 +293,8 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
               <span
                 key={i}
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 500,
+                  fontSize: "14px",
+                  fontWeight: 600,
                   color: "#0F766E",
                   display: "inline-block",
                   width: "fit-content",
@@ -380,11 +381,12 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           />
 
           {/* Payment Method Filter */}
-          <FilterSingleDropdown
+          <MultiSelectPortalDropdown
             value={paymentMethodFilter}
             onChange={setPaymentMethodFilter}
-            options={paymentMethodOptions}
             preserveCase
+            options={paymentMethodOptions}
+            placeholder="All Payment Methods"
           />
 
           {/* Port Filter */}

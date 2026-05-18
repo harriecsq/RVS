@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Receipt } from "lucide-react";
 import { useLocation } from "react-router";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -61,22 +61,13 @@ export function BillingsScreen() {
   const [dateFilterStart, setDateFilterStart] = useState(() => getCurrentMonthRange().start);
   const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
-  const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
   const clientsMasterList = useClientsMasterList();
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const state = location.state as { selectedBillingId?: string } | null;
-    if (state?.selectedBillingId) {
-      setSelectedBillingId(state.selectedBillingId);
-      window.history.replaceState({}, document.title);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!bookingsResult?.success) return;
+  const bookingEnrichMap = useMemo<Map<string, { serviceType: string; port: string }>>(() => {
     const enrichMap = new Map<string, { serviceType: string; port: string }>();
+    if (!bookingsResult?.success) return enrichMap;
     (bookingsResult.data || []).forEach((b: any) => {
       const movement = String(b.movement || b.booking_type || b.shipmentType || b.mode || "").toLowerCase();
       const isImport = movement.includes("import") || movement === "imps";
@@ -90,12 +81,20 @@ export function BillingsScreen() {
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
       if (b.uuid) enrichMap.set(b.uuid, enrich);
     });
-    bookingEnrichMapRef.current = enrichMap;
+    return enrichMap;
   }, [bookingsResult]);
 
   useEffect(() => {
+    const state = location.state as { selectedBillingId?: string } | null;
+    if (state?.selectedBillingId) {
+      setSelectedBillingId(state.selectedBillingId);
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
+
+  useEffect(() => {
     filterBillings();
-  }, [searchQuery, statusFilter, serviceTypeFilter, portFilter, dateFilterStart, dateFilterEnd, clientSelections, billings]);
+  }, [searchQuery, statusFilter, serviceTypeFilter, portFilter, dateFilterStart, dateFilterEnd, clientSelections, billings, bookingEnrichMap]);
 
   const fetchBillings = () => { invalidateCache("/billings"); refetchBillings(); };
 
@@ -115,7 +114,7 @@ export function BillingsScreen() {
     if (serviceTypeFilter !== "all" || portFilter.length > 0) {
       filtered = filtered.filter((b) => {
         const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
-        const enrich = bId ? bookingEnrichMapRef.current.get(bId) : undefined;
+        const enrich = bId ? bookingEnrichMap.get(bId) : undefined;
         if (serviceTypeFilter !== "all") {
           if (!enrich?.serviceType.toLowerCase().includes(serviceTypeFilter.toLowerCase())) return false;
         }
@@ -152,8 +151,8 @@ export function BillingsScreen() {
         if (portFilter.length > 0) {
           const aId = (a as any).bookingId || ((a as any).bookingIds)?.[0];
           const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
-          const aPort = (aId ? bookingEnrichMapRef.current.get(aId)?.port : "") || "";
-          const bPort = (bId ? bookingEnrichMapRef.current.get(bId)?.port : "") || "";
+          const aPort = (aId ? bookingEnrichMap.get(aId)?.port : "") || "";
+          const bPort = (bId ? bookingEnrichMap.get(bId)?.port : "") || "";
           const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
           const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
           const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
@@ -210,6 +209,14 @@ export function BillingsScreen() {
             ))}
           </>
         );
+      },
+    },
+    {
+      header: "Port",
+      cell: (b) => {
+        const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
+        const port = bId ? bookingEnrichMap.get(bId)?.port : "";
+        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{port || "—"}</div>;
       },
     },
     {

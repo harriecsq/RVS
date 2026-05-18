@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Plus, Receipt } from "lucide-react";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { useCachedFetch, invalidateCache } from "../../hooks/useCachedFetch";
@@ -63,15 +63,14 @@ export function VouchersScreen() {
   const [dateFilterEnd, setDateFilterEnd] = useState(() => getCurrentMonthRange().end);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const [payeeFilter, setPayeeFilter] = useState<string[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
   const [portFilter, setPortFilter] = useState<string[]>([]);
-  const bookingEnrichMapRef = useRef<Map<string, { serviceType: string; port: string }>>(new Map());
   const clientsMasterList = useClientsMasterList();
 
-  useEffect(() => {
-    if (!bookingsResult?.success) return;
+  const bookingEnrichMap = useMemo<Map<string, { serviceType: string; port: string; bookingNumber: string }>>(() => {
     const enrichMap = new Map<string, { serviceType: string; port: string; bookingNumber: string }>();
+    if (!bookingsResult?.success) return enrichMap;
     (bookingsResult.data || []).forEach((b: any) => {
       const movement = String(b.movement || b.shipmentType || b.booking_type || b.mode || "").toLowerCase();
       const isImport = movement.includes("import") || movement === "imps";
@@ -86,7 +85,7 @@ export function VouchersScreen() {
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
       if (b.uuid) enrichMap.set(b.uuid, enrich);
     });
-    bookingEnrichMapRef.current = enrichMap;
+    return enrichMap;
   }, [bookingsResult]);
 
   const fetchVouchers = () => { invalidateCache("/vouchers"); refetchVouchers(); };
@@ -119,10 +118,10 @@ export function VouchersScreen() {
 
     if (statusFilter.length > 0 && !statusFilter.includes(voucher.status)) return false;
     if (payeeFilter.length > 0 && !payeeFilter.includes(voucher.payee || "")) return false;
-    if (categoryFilter !== "all" && (voucher.category || "") !== categoryFilter) return false;
+    if (categoryFilter.length > 0 && !categoryFilter.includes(voucher.category || "")) return false;
 
     if (serviceTypeFilter !== "all" || portFilter.length > 0) {
-      const enrich = voucher.bookingId ? bookingEnrichMapRef.current.get(voucher.bookingId) : undefined;
+      const enrich = voucher.bookingId ? bookingEnrichMap.get(voucher.bookingId) : undefined;
       if (serviceTypeFilter !== "all") {
         if (!enrich?.serviceType.toLowerCase().includes(serviceTypeFilter.toLowerCase())) return false;
       }
@@ -153,8 +152,8 @@ export function VouchersScreen() {
           if (d !== 0) return d;
         }
         if (portFilter.length > 0) {
-          const aPort = (a.bookingId ? bookingEnrichMapRef.current.get(a.bookingId)?.port : "") || "";
-          const bPort = (b.bookingId ? bookingEnrichMapRef.current.get(b.bookingId)?.port : "") || "";
+          const aPort = (a.bookingId ? bookingEnrichMap.get(a.bookingId)?.port : "") || "";
+          const bPort = (b.bookingId ? bookingEnrichMap.get(b.bookingId)?.port : "") || "";
           const ai = portFilter.findIndex(p => aPort.toLowerCase().includes(p.toLowerCase()));
           const bi = portFilter.findIndex(p => bPort.toLowerCase().includes(p.toLowerCase()));
           const d = (ai === -1 ? Number.MAX_SAFE_INTEGER : ai) - (bi === -1 ? Number.MAX_SAFE_INTEGER : bi);
@@ -174,7 +173,16 @@ export function VouchersScreen() {
       })
     : filteredVouchersRaw;
 
-  const uniqueCategories = Array.from(new Set(vouchers.map(v => v.category).filter(Boolean))).sort() as string[];
+  const uniqueCategories = [
+    "Shipping Line",
+    "Trucking",
+    "Annual Expenses",
+    "Expenses",
+    "Transportation",
+    "Salary",
+    "Benefits",
+    "Utilities",
+  ];
 
   const columns: ColumnDef<Voucher>[] = [
     {
@@ -182,14 +190,6 @@ export function VouchersScreen() {
       cell: (voucher) => (
         <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
           {voucher.voucherNumber}
-        </div>
-      ),
-    },
-    {
-      header: "Amount",
-      cell: (voucher) => (
-        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-          {voucher.currency} {formatAmount(voucher.amount)}
         </div>
       ),
     },
@@ -206,10 +206,25 @@ export function VouchersScreen() {
       ),
     },
     {
+      header: "Port",
+      cell: (voucher) => {
+        const port = voucher.bookingId ? bookingEnrichMap.get(voucher.bookingId)?.port : "";
+        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{port || "—"}</div>;
+      },
+    },
+    {
+      header: "Amount",
+      cell: (voucher) => (
+        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+          {voucher.currency} {formatAmount(voucher.amount)}
+        </div>
+      ),
+    },
+    {
       header: "Linked Expense",
       cell: (voucher) => {
         const bookingRef = voucher.bookingId
-          ? (bookingEnrichMapRef.current.get(voucher.bookingId)?.bookingNumber || "")
+          ? (bookingEnrichMap.get(voucher.bookingId)?.bookingNumber || "")
           : "";
         if (!voucher.expenseId && !voucher.expenseNumber && !bookingRef) {
           return <span style={{ fontSize: "14px", color: "#9CA3AF" }}>—</span>;
@@ -217,11 +232,11 @@ export function VouchersScreen() {
         return (
           <div>
             {voucher.expenseNumber && (
-              <div style={{ fontSize: "13px", fontWeight: 500, color: "#0F766E" }}>{voucher.expenseNumber}</div>
+              <div style={{ fontSize: "14px", fontWeight: 600, color: "#0F766E" }}>{voucher.expenseNumber}</div>
             )}
             {bookingRef && (
-              <div style={{ fontSize: "12px", color: "#667085", marginTop: voucher.expenseNumber ? "2px" : 0 }}>
-                Booking: {bookingRef}
+              <div style={{ fontSize: "14px", fontWeight: 600, color: "#0F766E", marginTop: voucher.expenseNumber ? "2px" : 0 }}>
+                {bookingRef}
               </div>
             )}
           </div>
@@ -234,16 +249,20 @@ export function VouchersScreen() {
     },
     {
       header: "Posting Date",
+      width: "110px",
+      className: "whitespace-nowrap",
       cell: (voucher) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+        <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap" }}>
           {voucher.postingDate ? new Date(voucher.postingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
         </div>
       ),
     },
     {
       header: "Creation Date",
+      width: "110px",
+      className: "whitespace-nowrap",
       cell: (voucher) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+        <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap" }}>
           {voucher.voucherDate ? new Date(voucher.voucherDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
         </div>
       ),
@@ -315,14 +334,12 @@ export function VouchersScreen() {
             searchPlaceholder="Search payees..."
           />
 
-          <FilterSingleDropdown
+          <MultiSelectPortalDropdown
             value={categoryFilter}
             onChange={setCategoryFilter}
-            options={[
-              { value: "all", label: "All Categories" },
-              ...uniqueCategories.map(cat => ({ value: cat, label: cat })),
-            ]}
             preserveCase
+            options={uniqueCategories.map(cat => ({ value: cat, label: cat }))}
+            placeholder="All Categories"
           />
 
           <FilterSingleDropdown

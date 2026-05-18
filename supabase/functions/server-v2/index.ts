@@ -2597,6 +2597,16 @@ route.post("/collections", async (c) => {
     return c.json(fail("Sum of allocations does not match total amount", 400), 400);
   }
 
+  // Allocations may arrive with billingId as either UUID or public billing_number
+  // (the /billings list exposes billing_number as `id`). Resolve to UUIDs first.
+  for (const a of allocations) {
+    const raw = String(a.billingId ?? "");
+    if (!raw) return c.json(fail("Allocation missing billingId", 400), 400);
+    if (UUID_RE.test(raw)) continue;
+    const uuid = await resolveRowId("billings", "billing_number", raw);
+    if (!uuid) return c.json(fail(`Billing ${raw} not found`, 404), 404);
+    a.billingId = uuid;
+  }
   const billingIds = allocations.map((a) => a.billingId);
   const { data: billings } = await db()
     .from("billings").select("id, billing_number, client_id, client_name, total_amount").in("id", billingIds);
