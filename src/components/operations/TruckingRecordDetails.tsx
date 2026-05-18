@@ -1311,6 +1311,30 @@ export function TruckingRecordDetails({
                 <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Booking Details
                 </h3>
+                {(() => {
+                  const segs: any[] = Array.isArray(linkedBookingData?.segments) ? linkedBookingData.segments : [];
+                  const segId = isEditing ? editForm.linkedSegmentId : currentRecord.linkedSegmentId;
+                  const seg = segs.find((s) => s.segmentId === segId);
+                  const hasProvince = segs.some((s) => typeof s?.segmentLabel === "string" && s.segmentLabel.startsWith("Province"));
+                  const label = seg?.segmentLabel || (hasProvince ? "Manila" : null);
+                  if (!label) return null;
+                  const isProvince = label.startsWith("Province");
+                  return (
+                    <span style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      padding: "3px 8px",
+                      borderRadius: "999px",
+                      background: isProvince ? "#237F66" : "#E8F2EE",
+                      color: isProvince ? "#FFFFFF" : "#237F66",
+                      border: `1px solid ${isProvince ? "#1E6D59" : "#BBF7D0"}`,
+                      textTransform: "uppercase" as const,
+                      letterSpacing: "0.04em",
+                    }}>
+                      Leg: {label}
+                    </span>
+                  );
+                })()}
               </div>
               <div style={{ padding: "20px 24px" }}>
                 {/* BookingSelector — only in edit mode */}

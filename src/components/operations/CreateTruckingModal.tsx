@@ -410,6 +410,29 @@ export function CreateTruckingModal({
   const [selectedContainerNos, setSelectedContainerNos] = useState<string[]>([]);
   const hasPrefilled = useRef(false);
 
+  // Use segments from prop (when modal opened from inside a booking) or from linkedBookingData (standalone)
+  const effectiveSegments = (segments && segments.length > 0)
+    ? segments
+    : (Array.isArray(linkedBookingData?.segments) ? linkedBookingData.segments : undefined);
+
+  // Province leg → force segment-only values for all fields except commodity.
+  // Commodity inherits from Manila when segment lacks it (province legs are created with Manila's commodity).
+  function applySegmentOverrides(seg: any | undefined, bookingForCommodity?: any) {
+    if (!seg) return;
+    const vesselVal = seg.vesselVoyage
+      || (seg.vessel && seg.voyage ? `${seg.vessel}/${seg.voyage}` : (seg.vessel || seg.voyage || ""));
+    const src = bookingForCommodity || linkedBookingData;
+    const manilaCommodity = src?.commodityItems || src?.commodity || src?.commodity_items || "";
+    setForm((prev) => ({
+      ...prev,
+      blNumber: seg.blNumber || "",
+      shippingLine: seg.shippingLine || "",
+      vesselVoyage: vesselVal,
+      truckingAddress: seg.loadingAddress || "",
+      commodityItems: seg.commodity || manilaCommodity || prev.commodityItems,
+    }));
+  }
+
   useEffect(() => {
     if (isOpen) {
       setForm(existingRecord ? { ...existingRecord } : makeNewRecord(prefillBookingId, prefillBookingType, prefillSegmentId));
@@ -516,6 +539,14 @@ export function CreateTruckingModal({
       const result = await res.json();
       if (result.success && result.data) {
         applyBookingData(result.data);
+        // If a province segment is preselected, re-apply segment-only overrides
+        const segs = Array.isArray(result.data.segments) ? result.data.segments : [];
+        if (form.linkedSegmentId) {
+          const preSeg = segs.find((s: any) => s.segmentId === form.linkedSegmentId);
+          if (preSeg && preSeg.segmentLabel?.startsWith("Province")) {
+            applySegmentOverrides(preSeg, result.data);
+          }
+        }
       }
     } catch (err) {
       console.error("Error fetching booking details for auto-fill:", err);
@@ -934,11 +965,11 @@ export function CreateTruckingModal({
                 )}
 
                 {/* Leg Selection — shown when booking has multiple segments */}
-                {form.linkedBookingId && !existingRecord && segments && segments.length > 1 && (
+                {form.linkedBookingId && !existingRecord && effectiveSegments && effectiveSegments.length > 1 && (
                   <div style={{ marginBottom: "4px" }}>
                     <Label>Select Leg</Label>
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      {[...segments].sort((a, b) => (a.legOrder || 0) - (b.legOrder || 0)).map((seg) => {
+                      {[...effectiveSegments].sort((a, b) => (a.legOrder || 0) - (b.legOrder || 0)).map((seg) => {
                         const isActive = form.linkedSegmentId === seg.segmentId;
                         return (
                           <button
@@ -949,6 +980,13 @@ export function CreateTruckingModal({
                               // Clear container selection when switching legs
                               setSelectedContainerNos([]);
                               handleContainerSelected([], []);
+                              // Re-fill booking detail fields from selected segment
+                              if (seg.segmentLabel?.startsWith("Province")) {
+                                applySegmentOverrides(seg);
+                              } else if (linkedBookingData) {
+                                // Manila / first leg → revert to booking-root values
+                                applyBookingData(linkedBookingData);
+                              }
                             }}
                             style={{
                               padding: "8px 16px",
@@ -980,8 +1018,8 @@ export function CreateTruckingModal({
                       selectedContainerNos={selectedContainerNos}
                       onSelectionChange={handleContainerSelected}
                       segmentContainerNos={
-                        segments && segments.length > 1 && form.linkedSegmentId
-                          ? segments.find((s) => s.segmentId === form.linkedSegmentId)?.containerNos
+                        effectiveSegments && effectiveSegments.length > 1 && form.linkedSegmentId
+                          ? effectiveSegments.find((s) => s.segmentId === form.linkedSegmentId)?.containerNos
                           : undefined
                       }
                     />
@@ -989,7 +1027,12 @@ export function CreateTruckingModal({
                 )}
 
                 {/* Read-only summary fields — shown when a booking is linked */}
-                {!isLoadingBooking && linkedBookingData && form.linkedBookingId && (
+                {!isLoadingBooking && linkedBookingData && form.linkedBookingId && (() => {
+                  const activeSeg = effectiveSegments?.find((s) => s.segmentId === form.linkedSegmentId);
+                  const isProvinceLeg = !!activeSeg && activeSeg.segmentLabel?.startsWith("Province");
+                  const displayShipper = isProvinceLeg ? ((activeSeg as any).shipper || "—") : (linkedBookingData.shipper || "—");
+                  const displayConsignee = isProvinceLeg ? ((activeSeg as any).consignee || "—") : (linkedBookingData.consignee || "—");
+                  return (
                   <div
                     style={{
                       background: "#FAFBFC",
@@ -1014,9 +1057,7 @@ export function CreateTruckingModal({
                           {(form.linkedBookingType || "").toLowerCase().includes("export") ? "Shipper" : "Consignee"}
                         </div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {(form.linkedBookingType || "").toLowerCase().includes("export")
-                            ? (linkedBookingData.shipper || "—")
-                            : (linkedBookingData.consignee || "—")}
+                          {(form.linkedBookingType || "").toLowerCase().includes("export") ? displayShipper : displayConsignee}
                         </div>
                       </div>
                     </div>
@@ -1064,7 +1105,8 @@ export function CreateTruckingModal({
                       </div>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Copy from existing trucking record — shown after booking details when records exist */}
                 {!existingRecord && form.linkedBookingId && existingTruckingRecords.length > 0 && (

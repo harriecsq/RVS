@@ -1,0 +1,45 @@
+Unable to find image 'postgres:17' locally
+17: Pulling from library/postgres
+891c16122c8f: Pulling fs layer
+0473da898c6b: Pulling fs layer
+7d5f5b30b57d: Pulling fs layer
+3cef98123686: Pulling fs layer
+0b95df53f70a: Pulling fs layer
+ee8322223cd0: Pulling fs layer
+68aa0584745b: Pulling fs layer
+2a18a06e840a: Pulling fs layer
+323b9f3a13a6: Pulling fs layer
+ce2dce9748cd: Pulling fs layer
+a4b310a3cf9f: Pulling fs layer
+dd3560430f3d: Pulling fs layer
+2c7dab76422f: Pulling fs layer
+acb41394b481: Download complete
+0473da898c6b: Download complete
+ee8322223cd0: Download complete
+323b9f3a13a6: Download complete
+891c16122c8f: Download complete
+323b9f3a13a6: Pull complete
+2a18a06e840a: Download complete
+7d5f5b30b57d: Download complete
+68aa0584745b: Download complete
+3cef98123686: Download complete
+cd45602ea0df: Download complete
+dd3560430f3d: Download complete
+ce2dce9748cd: Download complete
+0b95df53f70a: Download complete
+2c7dab76422f: Download complete
+ce2dce9748cd: Pull complete
+2c7dab76422f: Pull complete
+0b95df53f70a: Pull complete
+0473da898c6b: Pull complete
+68aa0584745b: Pull complete
+dd3560430f3d: Pull complete
+a4b310a3cf9f: Download complete
+ee8322223cd0: Pull complete
+a4b310a3cf9f: Pull complete
+891c16122c8f: Pull complete
+2a18a06e840a: Pull complete
+7d5f5b30b57d: Pull complete
+3cef98123686: Pull complete
+Digest: sha256:538bdb8c6b278f2f09070a4d79f04a83363a795ed23ec0d92d6b70cabc398eae
+Status: Downloaded newer image for postgres:17

@@ -270,7 +270,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     onChange(newTables);
   };
 
-  // Export-specific: bulk currency switch for ALL export categories at once
+  // Export-specific: bulk currency switch for ALL export categories + domestic sections at once
   const handleExportGlobalBulkCurrency = (currency: string) => {
     const newTables = { ...tables };
     const cats = { ...(newTables.exportCategories || {}) };
@@ -282,6 +282,24 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
       });
     });
     newTables.exportCategories = cats;
+
+    const currencyMultiplier = (currency === "USD" || currency === "RMB") ? parsedExchangeRate : 1;
+    newTables.domesticSections = (newTables.domesticSections || []).map(sec => {
+      const segContainerCount = sec.containerNos.filter(Boolean).length || 0;
+      return {
+        ...sec,
+        items: sec.items.map(item => {
+          const parsedPrice = parseFloat(String(item.unitPrice || 0)) || 0;
+          const mult = item.multiplyByContainers !== false ? segContainerCount : 1;
+          return {
+            ...item,
+            currency,
+            amount: parsedPrice * currencyMultiplier * mult,
+          };
+        }),
+      };
+    });
+
     setTables(newTables);
     onChange(newTables);
   };
@@ -531,6 +549,41 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
               };
             })
           : [];
+
+        // Auto-fill province-leg voucher line items into matching domestic sections.
+        // Shipping Line vouchers: "Domestic Freight" / "Stripping|Hustling|Stuffing".
+        // Trucking vouchers: "Trucking".
+        if (vouchers && vouchers.length > 0 && domesticSections.length > 0) {
+          const matchDomesticParticular = (desc: string, cat: string): string | null => {
+            const d = (desc || "").toLowerCase();
+            if (cat === "Trucking" && d.includes("trucking")) return "Trucking";
+            if (cat === "Shipping Line") {
+              if (d.includes("domestic freight")) return "Domestic Freight";
+              if (d.includes("strip") || d.includes("hustl") || d.includes("stuff")) return "Stripping/Hustling/Stuffing";
+            }
+            return null;
+          };
+          vouchers.forEach((v: any) => {
+            if (!v.segmentId) return;
+            const section = domesticSections.find(s => s.segmentId === v.segmentId);
+            if (!section) return;
+            (v.lineItems || []).forEach((line: any) => {
+              const label = matchDomesticParticular(line.description || "", v.category || "");
+              if (!label) return;
+              const exists = section.items.some(i => (i.particulars || "").toLowerCase() === label.toLowerCase());
+              if (exists) return;
+              section.items.push({
+                id: Math.random().toString(36).substr(2, 9),
+                particulars: label,
+                amount: line.amount || 0,
+                currency: "PHP",
+                voucherNo: v.voucherNumber,
+                isAutoFilled: true,
+                sourceVoucherLineItemId: line.id,
+              });
+            });
+          });
+        }
 
         const newState: ExpenseTablesData = {
           particulars: [],
@@ -1333,13 +1386,24 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         style={{
                           fontSize: "11px",
                           fontWeight: 500,
-                          color: "#0F766E",
-                          background: "#F0FDFA",
-                          border: "1px solid #0F766E",
+                          color: "#1F2937",
+                          background: "white",
+                          border: "1px solid #E5E9F0",
                           padding: "4px 8px",
                           borderRadius: "4px",
                           cursor: "pointer",
-                          whiteSpace: "nowrap"
+                          whiteSpace: "nowrap",
+                          transition: "all 0.15s ease"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#F0FDFA";
+                          e.currentTarget.style.borderColor = "#0F766E";
+                          e.currentTarget.style.color = "#0F766E";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "white";
+                          e.currentTarget.style.borderColor = "#E5E9F0";
+                          e.currentTarget.style.color = "#1F2937";
                         }}
                       >
                         + Part
@@ -1356,11 +1420,52 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                           padding: "4px 8px",
                           borderRadius: "4px",
                           cursor: "pointer",
-                          whiteSpace: "nowrap"
+                          whiteSpace: "nowrap",
+                          transition: "all 0.15s ease"
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#F0FDFA";
+                          e.currentTarget.style.borderColor = "#0F766E";
+                          e.currentTarget.style.color = "#0F766E";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "white";
+                          e.currentTarget.style.borderColor = "#E5E9F0";
+                          e.currentTarget.style.color = "#1F2937";
                         }}
                       >
                         + Misc
                       </button>
+                      {isImport && (
+                        <button
+                          type="button"
+                          onClick={() => handleAddUnreconciled(item, 'refundableDeposits')}
+                          style={{
+                            fontSize: "11px",
+                            fontWeight: 500,
+                            color: "#1F2937",
+                            background: "white",
+                            border: "1px solid #E5E9F0",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            transition: "all 0.15s ease"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#F0FDFA";
+                            e.currentTarget.style.borderColor = "#0F766E";
+                            e.currentTarget.style.color = "#0F766E";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "white";
+                            e.currentTarget.style.borderColor = "#E5E9F0";
+                            e.currentTarget.style.color = "#1F2937";
+                          }}
+                        >
+                          + Rfnd
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1557,6 +1662,320 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           )}
           </div>
         </div>
+
+        {/* Domestic Sections — one per province segment (render first for exports) */}
+        {!isImport && (tables.domesticSections || []).map((section) => {
+          const sectionTotal = calculateTotal(section.items);
+          const containerLabel = section.containerNos.filter(Boolean).join(", ") || "No containers";
+          const segContainerCount = section.containerNos.filter(Boolean).length || 0;
+          const availableSuggestions = getAvailableDomesticSuggestions(section.items);
+          // Derive volume type from booking for the domestic volume header
+          const rawVol = booking?.volume || "";
+          const volMatch = rawVol.match(/^\d+x(.+)$/i);
+          const volumeType = volMatch ? volMatch[1] : (rawVol || "40'HC");
+          const domesticVolumeLabel = `${segContainerCount}X${volumeType}`;
+
+          return (
+            <div key={section.segmentId}>
+              {/* Domestic Section Title */}
+              <div style={{
+                padding: "12px 16px",
+                background: "#F0F4F3",
+                borderTop: "2px solid #0F766E",
+                borderBottom: "1px solid #E5E9F0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "#0A1D4D",
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.03em"
+                  }}>
+                    Domestic — {containerLabel}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "#667085" }}>
+                    ({section.items.length} item{section.items.length !== 1 ? 's' : ''})
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div ref={showDomesticAddItemDropdown === section.segmentId ? domesticAddItemRef : undefined} style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowDomesticAddItemDropdown(prev => prev === section.segmentId ? null : section.segmentId)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        color: "#0F766E",
+                        fontSize: "12px",
+                        fontWeight: 500,
+                        background: "transparent",
+                        border: "1px solid #0F766E",
+                        cursor: "pointer",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        transition: "all 0.15s ease"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(15,118,110,0.05)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <Plus size={12} /> Add Item <ChevronDown size={12} />
+                    </button>
+                    <PortalDropdown
+                      isOpen={showDomesticAddItemDropdown === section.segmentId}
+                      onClose={() => setShowDomesticAddItemDropdown(null)}
+                      triggerRef={domesticAddItemRef}
+                      minWidth="240px"
+                    >
+                        {availableSuggestions.length > 0 && (
+                          <>
+                            <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
+                              Suggested Items
+                            </div>
+                            {availableSuggestions.map(label => (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => handleDomesticAddSuggestedItem(section.segmentId, label)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  width: "100%",
+                                  padding: "9px 12px",
+                                  fontSize: "13px",
+                                  fontWeight: 500,
+                                  color: "#0A1D4D",
+                                  background: "white",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  textAlign: "left" as const,
+                                  transition: "background 0.1s ease"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
+                                onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                              >
+                                <Plus size={14} color="#0F766E" />
+                                {label}
+                              </button>
+                            ))}
+                            <div style={{ height: "1px", background: "#E5E9F0", margin: "4px 0" }} />
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDomesticAddCustomItem(section.segmentId)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            width: "100%",
+                            padding: "9px 12px",
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            color: "#0F766E",
+                            background: "white",
+                            border: "none",
+                            cursor: "pointer",
+                            textAlign: "left" as const,
+                            transition: "background 0.1s ease"
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                        >
+                          <Plus size={14} color="#0F766E" />
+                          Add Custom Item
+                        </button>
+                    </PortalDropdown>
+                  </div>
+                </div>
+              </div>
+
+              {/* Domestic Column Headers */}
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "30%" }}>Particulars</th>
+                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
+                    <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
+                    <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{domesticVolumeLabel}</th>
+                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
+                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "10%" }}>Voucher Amt</th>
+                    <th style={{ width: "5%" }}></th>
+                  </tr>
+                </thead>
+              </table>
+
+              {/* Domestic Line Items */}
+              {section.items.length === 0 ? (
+                <div style={{ padding: "16px", textAlign: "center", fontSize: "13px", color: "#667085", background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                  No items.{" "}
+                  <button type="button" onClick={() => setShowDomesticAddItemDropdown(section.segmentId)} style={{ color: "#0F766E", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}>
+                    Add one
+                  </button>
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {section.items.map((item) => {
+                      const parsedPrice = parseFloat(String(item.unitPrice || 0)) || 0;
+                      const cur = item.currency || "PHP";
+                      const currencyMultiplier = (cur === "USD" || cur === "RMB") ? parsedExchangeRate : 1;
+                      const mult = item.multiplyByContainers !== false ? segContainerCount : 1;
+                      const volumeAmount = parsedPrice * currencyMultiplier * mult;
+                      return (
+                        <tr
+                          key={item.id}
+                          style={{ borderBottom: "1px solid #E5E9F0", background: "white" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#FAFBFC"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                        >
+                          {/* Particulars */}
+                          <td style={{ padding: "8px 8px 8px 16px", width: "30%" }}>
+                            <input
+                              type="text"
+                              value={item.particulars}
+                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'particulars', e.target.value)}
+                              placeholder="Enter particulars"
+                              style={{
+                                height: "36px", width: "100%", border: "1px solid #E5E9F0", borderRadius: "4px",
+                                padding: "0 10px", fontSize: "14px", color: "#0A1D4D", background: "white",
+                                outline: "none", boxSizing: "border-box" as const, transition: "border-color 0.15s ease"
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                            />
+                          </td>
+                          {/* Unit Price */}
+                          <td style={{ padding: "8px", width: "25%", textAlign: "right" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", justifyContent: "flex-end" }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.unitPrice || ""}
+                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'unitPrice', e.target.value)}
+                                placeholder="0.00"
+                                style={{
+                                  height: "36px", flex: 1, minWidth: 0, border: "1px solid #E5E9F0", borderRadius: "4px",
+                                  padding: "0 6px", fontSize: "13px", color: "#0A1D4D", background: "white",
+                                  outline: "none", textAlign: "right" as const, boxSizing: "border-box" as const,
+                                  transition: "border-color 0.15s ease"
+                                }}
+                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                              />
+                              <select
+                                value={item.currency || "PHP"}
+                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'currency', e.target.value)}
+                                style={{
+                                  height: "36px", width: "58px", border: "1px solid #E5E9F0", borderRadius: "4px",
+                                  padding: "0 2px", fontSize: "11px", fontWeight: 600, color: "#0F766E",
+                                  background: "white", outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
+                                }}
+                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                              >
+                                <option value="PHP">PHP</option>
+                                <option value="USD">USD</option>
+                                <option value="RMB">RMB</option>
+                              </select>
+                              <select
+                                value={item.per || "40"}
+                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'per', e.target.value)}
+                                style={{
+                                  height: "36px", width: "70px", border: "1px solid #E5E9F0", borderRadius: "4px",
+                                  padding: "0 2px", fontSize: "11px", color: "#667085", background: "white",
+                                  outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
+                                }}
+                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
+                              >
+                                <option value="40">PER 40</option>
+                                <option value="20">PER 20</option>
+                                <option value="BL">PER BL</option>
+                              </select>
+                            </div>
+                          </td>
+                          {/* Multiply by containers checkbox */}
+                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={item.multiplyByContainers !== false}
+                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'multiplyByContainers', e.target.checked)}
+                              title={item.multiplyByContainers !== false ? `Multiplied by ${segContainerCount} containers` : "Not multiplied by containers"}
+                              style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "pointer" }}
+                            />
+                          </td>
+                          {/* Volume */}
+                          <td style={{ padding: "8px 16px", width: "13%", textAlign: "right", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, background: "#FAFBFC" }}>
+                            ₱{formatAmount(volumeAmount)}
+                          </td>
+                          {/* Voucher No */}
+                          <td style={{ padding: "8px", width: "15%" }}>
+                            <select
+                              value={item.voucherNo || ""}
+                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'voucherNo', e.target.value)}
+                              style={{
+                                height: "36px", width: "100%", border: "1px solid transparent", borderRadius: "6px",
+                                padding: "0 8px", fontSize: "13px", color: "#0A1D4D", background: "transparent",
+                                outline: "none", appearance: "none" as const, cursor: "pointer",
+                                transition: "border-color 0.15s ease",
+                                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                                backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "14px"
+                              }}
+                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
+                              onBlur={(e) => e.currentTarget.style.borderColor = "transparent"}
+                            >
+                              <option value="">Select Voucher</option>
+                              {(vouchers || []).map((v: any) => (
+                                <option key={v.id || v.voucherNumber} value={v.voucherNumber}>
+                                  {v.voucherNumber}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          {/* Voucher Amount */}
+                          <td style={{ padding: "8px", width: "10%" }}>
+                            <div style={{ padding: "0 10px", fontSize: "14px", color: "#0A1D4D", textAlign: "right", fontWeight: 500, lineHeight: "36px" }}>
+                              ₱{formatAmount(item.amount || 0)}
+                            </div>
+                          </td>
+                          {/* Actions */}
+                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDomesticRemoveItem(section.segmentId, item.id)}
+                              style={{ color: "#D1D5DB", background: "transparent", border: "none", cursor: "pointer", padding: "4px", transition: "color 0.15s ease" }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                              onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#FAFBFC", borderBottom: "1px solid #E5E9F0" }}>
+                      <td colSpan={4} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
+                        Subtotal
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
+                        ₱{formatAmount(sectionTotal)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+          );
+        })}
 
         {/* Column Headers */}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1906,320 +2325,6 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           // EXPORT: Use the 6 fixed export categories
           visibleExportCategories.map((catName, catIndex) => renderExportCategorySection(catName, catIndex))
         )}
-
-        {/* Domestic Sections — one per province segment */}
-        {!isImport && (tables.domesticSections || []).map((section) => {
-          const sectionTotal = calculateTotal(section.items);
-          const containerLabel = section.containerNos.filter(Boolean).join(", ") || "No containers";
-          const segContainerCount = section.containerNos.filter(Boolean).length || 0;
-          const availableSuggestions = getAvailableDomesticSuggestions(section.items);
-          // Derive volume type from booking for the domestic volume header
-          const rawVol = booking?.volume || "";
-          const volMatch = rawVol.match(/^\d+x(.+)$/i);
-          const volumeType = volMatch ? volMatch[1] : (rawVol || "40'HC");
-          const domesticVolumeLabel = `${segContainerCount}X${volumeType}`;
-
-          return (
-            <div key={section.segmentId}>
-              {/* Domestic Section Title */}
-              <div style={{
-                padding: "12px 16px",
-                background: "#F0F4F3",
-                borderTop: "2px solid #0F766E",
-                borderBottom: "1px solid #E5E9F0",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    color: "#0A1D4D",
-                    textTransform: "uppercase" as const,
-                    letterSpacing: "0.03em"
-                  }}>
-                    Domestic — {containerLabel}
-                  </span>
-                  <span style={{ fontSize: "12px", color: "#667085" }}>
-                    ({section.items.length} item{section.items.length !== 1 ? 's' : ''})
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <div ref={showDomesticAddItemDropdown === section.segmentId ? domesticAddItemRef : undefined} style={{ position: "relative" }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowDomesticAddItemDropdown(prev => prev === section.segmentId ? null : section.segmentId)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        color: "#0F766E",
-                        fontSize: "12px",
-                        fontWeight: 500,
-                        background: "transparent",
-                        border: "1px solid #0F766E",
-                        cursor: "pointer",
-                        padding: "4px 10px",
-                        borderRadius: "6px",
-                        transition: "all 0.15s ease"
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(15,118,110,0.05)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <Plus size={12} /> Add Item <ChevronDown size={12} />
-                    </button>
-                    <PortalDropdown
-                      isOpen={showDomesticAddItemDropdown === section.segmentId}
-                      onClose={() => setShowDomesticAddItemDropdown(null)}
-                      triggerRef={domesticAddItemRef}
-                      minWidth="240px"
-                    >
-                        {availableSuggestions.length > 0 && (
-                          <>
-                            <div style={{ padding: "6px 12px 4px", fontSize: "11px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>
-                              Suggested Items
-                            </div>
-                            {availableSuggestions.map(label => (
-                              <button
-                                key={label}
-                                type="button"
-                                onClick={() => handleDomesticAddSuggestedItem(section.segmentId, label)}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "8px",
-                                  width: "100%",
-                                  padding: "9px 12px",
-                                  fontSize: "13px",
-                                  fontWeight: 500,
-                                  color: "#0A1D4D",
-                                  background: "white",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  textAlign: "left" as const,
-                                  transition: "background 0.1s ease"
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
-                                onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                              >
-                                <Plus size={14} color="#0F766E" />
-                                {label}
-                              </button>
-                            ))}
-                            <div style={{ height: "1px", background: "#E5E9F0", margin: "4px 0" }} />
-                          </>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDomesticAddCustomItem(section.segmentId)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            width: "100%",
-                            padding: "9px 12px",
-                            fontSize: "13px",
-                            fontWeight: 500,
-                            color: "#0F766E",
-                            background: "white",
-                            border: "none",
-                            cursor: "pointer",
-                            textAlign: "left" as const,
-                            transition: "background 0.1s ease"
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                        >
-                          <Plus size={14} color="#0F766E" />
-                          Add Custom Item
-                        </button>
-                    </PortalDropdown>
-                  </div>
-                </div>
-              </div>
-
-              {/* Domestic Column Headers */}
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "30%" }}>Particulars</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
-                    <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
-                    <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{domesticVolumeLabel}</th>
-                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "10%" }}>Voucher Amt</th>
-                    <th style={{ width: "5%" }}></th>
-                  </tr>
-                </thead>
-              </table>
-
-              {/* Domestic Line Items */}
-              {section.items.length === 0 ? (
-                <div style={{ padding: "16px", textAlign: "center", fontSize: "13px", color: "#667085", background: "white", borderBottom: "1px solid #E5E9F0" }}>
-                  No items.{" "}
-                  <button type="button" onClick={() => setShowDomesticAddItemDropdown(section.segmentId)} style={{ color: "#0F766E", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: "13px" }}>
-                    Add one
-                  </button>
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <tbody>
-                    {section.items.map((item) => {
-                      const parsedPrice = parseFloat(String(item.unitPrice || 0)) || 0;
-                      const cur = item.currency || "PHP";
-                      const currencyMultiplier = (cur === "USD" || cur === "RMB") ? parsedExchangeRate : 1;
-                      const mult = item.multiplyByContainers !== false ? segContainerCount : 1;
-                      const volumeAmount = parsedPrice * currencyMultiplier * mult;
-                      return (
-                        <tr
-                          key={item.id}
-                          style={{ borderBottom: "1px solid #E5E9F0", background: "white" }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "#FAFBFC"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                        >
-                          {/* Particulars */}
-                          <td style={{ padding: "8px 8px 8px 16px", width: "30%" }}>
-                            <input
-                              type="text"
-                              value={item.particulars}
-                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'particulars', e.target.value)}
-                              placeholder="Enter particulars"
-                              style={{
-                                height: "36px", width: "100%", border: "1px solid #E5E9F0", borderRadius: "4px",
-                                padding: "0 10px", fontSize: "14px", color: "#0A1D4D", background: "white",
-                                outline: "none", boxSizing: "border-box" as const, transition: "border-color 0.15s ease"
-                              }}
-                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                              onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                            />
-                          </td>
-                          {/* Unit Price */}
-                          <td style={{ padding: "8px", width: "25%", textAlign: "right" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", justifyContent: "flex-end" }}>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={item.unitPrice || ""}
-                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'unitPrice', e.target.value)}
-                                placeholder="0.00"
-                                style={{
-                                  height: "36px", flex: 1, minWidth: 0, border: "1px solid #E5E9F0", borderRadius: "4px",
-                                  padding: "0 6px", fontSize: "13px", color: "#0A1D4D", background: "white",
-                                  outline: "none", textAlign: "right" as const, boxSizing: "border-box" as const,
-                                  transition: "border-color 0.15s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                              />
-                              <select
-                                value={item.currency || "PHP"}
-                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'currency', e.target.value)}
-                                style={{
-                                  height: "36px", width: "58px", border: "1px solid #E5E9F0", borderRadius: "4px",
-                                  padding: "0 2px", fontSize: "11px", fontWeight: 600, color: "#0F766E",
-                                  background: "white", outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                              >
-                                <option value="PHP">PHP</option>
-                                <option value="USD">USD</option>
-                                <option value="RMB">RMB</option>
-                              </select>
-                              <select
-                                value={item.per || "40"}
-                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'per', e.target.value)}
-                                style={{
-                                  height: "36px", width: "70px", border: "1px solid #E5E9F0", borderRadius: "4px",
-                                  padding: "0 2px", fontSize: "11px", color: "#667085", background: "white",
-                                  outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                              >
-                                <option value="40">PER 40</option>
-                                <option value="20">PER 20</option>
-                                <option value="BL">PER BL</option>
-                              </select>
-                            </div>
-                          </td>
-                          {/* Multiply by containers checkbox */}
-                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
-                            <input
-                              type="checkbox"
-                              checked={item.multiplyByContainers !== false}
-                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'multiplyByContainers', e.target.checked)}
-                              title={item.multiplyByContainers !== false ? `Multiplied by ${segContainerCount} containers` : "Not multiplied by containers"}
-                              style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "pointer" }}
-                            />
-                          </td>
-                          {/* Volume */}
-                          <td style={{ padding: "8px 16px", width: "13%", textAlign: "right", fontSize: "14px", color: "#0A1D4D", fontWeight: 600, background: "#FAFBFC" }}>
-                            ₱{formatAmount(volumeAmount)}
-                          </td>
-                          {/* Voucher No */}
-                          <td style={{ padding: "8px", width: "15%" }}>
-                            <select
-                              value={item.voucherNo || ""}
-                              onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'voucherNo', e.target.value)}
-                              style={{
-                                height: "36px", width: "100%", border: "1px solid transparent", borderRadius: "6px",
-                                padding: "0 8px", fontSize: "13px", color: "#0A1D4D", background: "transparent",
-                                outline: "none", appearance: "none" as const, cursor: "pointer",
-                                transition: "border-color 0.15s ease",
-                                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                                backgroundRepeat: "no-repeat", backgroundPosition: "right 8px center", backgroundSize: "14px"
-                              }}
-                              onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                              onBlur={(e) => e.currentTarget.style.borderColor = "transparent"}
-                            >
-                              <option value="">Select Voucher</option>
-                              {(vouchers || []).map((v: any) => (
-                                <option key={v.id || v.voucherNumber} value={v.voucherNumber}>
-                                  {v.voucherNumber}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          {/* Voucher Amount */}
-                          <td style={{ padding: "8px", width: "10%" }}>
-                            <div style={{ padding: "0 10px", fontSize: "14px", color: "#0A1D4D", textAlign: "right", fontWeight: 500, lineHeight: "36px" }}>
-                              ₱{formatAmount(item.amount || 0)}
-                            </div>
-                          </td>
-                          {/* Actions */}
-                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
-                            <button
-                              type="button"
-                              onClick={() => handleDomesticRemoveItem(section.segmentId, item.id)}
-                              style={{ color: "#D1D5DB", background: "transparent", border: "none", cursor: "pointer", padding: "4px", transition: "color 0.15s ease" }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
-                              onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ background: "#FAFBFC", borderBottom: "1px solid #E5E9F0" }}>
-                      <td colSpan={4} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
-                        Subtotal
-                      </td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
-                        ₱{formatAmount(sectionTotal)}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              )}
-            </div>
-          );
-        })}
 
         {/* Grand Total — integrated footer */}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>

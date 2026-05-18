@@ -43,6 +43,9 @@ interface Voucher {
   postingDate?: string;
   status: string;
   created_at?: string;
+  // Multi-leg export booking tag (only persisted when booking has province legs)
+  segmentId?: string | null;
+  segmentLabel?: string;
 }
 
 export function VouchersScreen() {

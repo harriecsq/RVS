@@ -223,6 +223,8 @@ export function CreateVoucherModal({
 
   // Booking Link
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  // Leg selector for export bookings ("Manila" or a segmentId)
+  const [selectedLeg, setSelectedLeg] = useState<string>("Manila");
   // Trucking record data derived from linked booking
   const [truckingRecordData, setTruckingRecordData] = useState<{ deliveryAddress: string; loadingAddress: string; truckingRate: string }>({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
   const [manualTruckingRate, setManualTruckingRate] = useState("");
@@ -291,6 +293,7 @@ export function CreateVoucherModal({
       setVoucherDate("");
       setPostingDate("");
       setSelectedBooking(null);
+      setSelectedLeg("Manila");
       setTruckingRecordData({ deliveryAddress: "", loadingAddress: "", truckingRate: "" });
       setManualDeliveryAddress("");
       setManualLoadingAddress("");
@@ -397,22 +400,57 @@ export function CreateVoucherModal({
     }
   }, [manualTruckingRate, selectedTruckingContainerNos.length, category]);
 
+  // Reset leg selector when booking changes
+  useEffect(() => {
+    setSelectedLeg("Manila");
+  }, [selectedBooking?.id]);
+
   // Update items when booking changes (for Shipping Line)
   useEffect(() => {
     if (selectedBooking) {
-        // Populate dynamic fields
+        // Resolve active segment if a province leg is selected
+        const segmentsArr: any[] = Array.isArray(selectedBooking.segments) ? selectedBooking.segments : [];
+        const activeSegment = selectedLeg !== "Manila"
+          ? segmentsArr.find((s: any) => s.segmentId === selectedLeg)
+          : undefined;
+        // Manila segment (the implicit first leg) — used to scope container # on Manila leg
+        const manilaSegment = segmentsArr.find((s: any) => s.segmentLabel === "Manila")
+          || (segmentsArr.length > 0 ? segmentsArr[0] : undefined);
+        // Province leg: use segment's own values directly (empty stays empty so the swap is visible).
+        // Manila / no segment selected: use root values.
+        const segVal = (segKey: string) => activeSegment ? (activeSegment[segKey] ?? "") : undefined;
+        const segContainerNoCombined = activeSegment
+          ? (activeSegment.containerNo
+              || (Array.isArray(activeSegment.containerNos) && activeSegment.containerNos.length
+                  ? activeSegment.containerNos.join(", ")
+                  : ""))
+          : undefined;
+
         setBookingFields({
-            consignee: selectedBooking.consignee || "",
-            vesselVoyage: selectedBooking.vesselVoyage || selectedBooking.vessel_voyage || (selectedBooking.vessel && selectedBooking.voyage ? `${selectedBooking.vessel}/${selectedBooking.voyage}` : (selectedBooking.vessel || selectedBooking.voyage || "")),
-            origin: selectedBooking.origin || selectedBooking.portOfOrigin || "",
-            loadingAddress: selectedBooking.loadingAddress || selectedBooking.origin || "",
-            destination: selectedBooking.destination || selectedBooking.portOfDestination || "",
-            deliveryAddress: selectedBooking.deliveryAddress || selectedBooking.pod || selectedBooking.portOfDestination || "",
-            blNumber: selectedBooking.blNumber || "",
-            volume: selectedBooking.volume || "",
-            containerNo: selectedBooking.containerNo || "",
-            commodity: selectedBooking.commodity || "",
-            shipper: selectedBooking.shipper || selectedBooking.client || "",
+            consignee: activeSegment ? (segVal("consignee") ?? "") : (selectedBooking.consignee || ""),
+            vesselVoyage: activeSegment
+              ? (segVal("vesselVoyage")
+                  || (activeSegment.vessel && activeSegment.voyage
+                      ? `${activeSegment.vessel}/${activeSegment.voyage}`
+                      : (activeSegment.vessel || activeSegment.voyage || ""))
+                  || "")
+              : (selectedBooking.vesselVoyage || selectedBooking.vessel_voyage || (selectedBooking.vessel && selectedBooking.voyage ? `${selectedBooking.vessel}/${selectedBooking.voyage}` : (selectedBooking.vessel || selectedBooking.voyage || ""))),
+            origin: activeSegment ? (segVal("origin") ?? "") : (selectedBooking.origin || selectedBooking.portOfOrigin || ""),
+            loadingAddress: activeSegment ? (segVal("loadingAddress") ?? "") : (selectedBooking.loadingAddress || selectedBooking.origin || ""),
+            destination: activeSegment ? ((activeSegment.destination ?? activeSegment.pod) || "") : (selectedBooking.destination || selectedBooking.portOfDestination || ""),
+            deliveryAddress: activeSegment ? ((activeSegment.pod ?? activeSegment.destination) || "") : (selectedBooking.deliveryAddress || selectedBooking.pod || selectedBooking.portOfDestination || ""),
+            blNumber: activeSegment ? (segVal("blNumber") ?? "") : (selectedBooking.blNumber || ""),
+            volume: activeSegment ? (segVal("volume") ?? "") : (selectedBooking.volume || ""),
+            containerNo: activeSegment
+              ? (segContainerNoCombined || "")
+              : (manilaSegment
+                  ? (manilaSegment.containerNo
+                      || (Array.isArray(manilaSegment.containerNos) && manilaSegment.containerNos.length
+                          ? manilaSegment.containerNos.join(", ")
+                          : ""))
+                  : (selectedBooking.containerNo || "")),
+            commodity: activeSegment ? (segVal("commodity") ?? "") : (selectedBooking.commodity || ""),
+            shipper: activeSegment ? (segVal("shipper") ?? "") : (selectedBooking.shipper || selectedBooking.client || ""),
             rate: selectedBooking.rate || selectedBooking.truckingRates || ""
         });
 
@@ -435,13 +473,26 @@ export function CreateVoucherModal({
 
         // Pre-fill editable address fields for Trucking vouchers
         if (category === "Trucking") {
-          setManualDeliveryAddress(selectedBooking.deliveryAddress || selectedBooking.pod || selectedBooking.portOfDestination || "");
-          setManualLoadingAddress(selectedBooking.loadingAddress || selectedBooking.origin || "");
+          if (activeSegment) {
+            setManualDeliveryAddress((activeSegment.pod ?? activeSegment.destination ?? "") || "");
+            setManualLoadingAddress(activeSegment.loadingAddress ?? "");
+          } else {
+            setManualDeliveryAddress(selectedBooking.deliveryAddress || selectedBooking.pod || selectedBooking.portOfDestination || "");
+            setManualLoadingAddress(selectedBooking.loadingAddress || selectedBooking.origin || "");
+          }
         }
 
         // Parse containers from booking
+        // Province leg → segment.containerNos only (no Manila fallback, even if empty).
+        // Manila leg → manilaSegment.containerNos (not the aggregate across all legs).
         let containers: string[] = [];
-        if (selectedBooking.containerNumbers) {
+        if (activeSegment) {
+            containers = Array.isArray(activeSegment.containerNos)
+              ? activeSegment.containerNos.filter(Boolean)
+              : [];
+        } else if (manilaSegment && Array.isArray(manilaSegment.containerNos) && manilaSegment.containerNos.length > 0) {
+            containers = manilaSegment.containerNos.filter(Boolean);
+        } else if (selectedBooking.containerNumbers) {
             if (Array.isArray(selectedBooking.containerNumbers)) {
                 containers = selectedBooking.containerNumbers;
             } else if (typeof selectedBooking.containerNumbers === 'string') {
@@ -485,6 +536,8 @@ export function CreateVoucherModal({
     if (category === "Shipping Line" && selectedBooking) {
       const isExport = selectedBooking.shipmentType?.toLowerCase().includes("export") || selectedBooking.type?.toLowerCase().includes("export");
       const isImport = !isExport;
+      // Province leg selected on an export booking → reduced shipping-line item set
+      const isExportProvinceLeg = isExport && selectedLeg !== "Manila";
 
       // 1. Handle SOP Logic (Shared)
       // Import bookings store the dropdown value in `pod`. Fall back to other field names for safety.
@@ -508,7 +561,12 @@ export function CreateVoucherModal({
       const newParticulars: VoucherLineItem[] = [];
       let particularItems: string[] = [];
 
-      if (isExport) {
+      if (isExportProvinceLeg) {
+          particularItems = [
+              "Domestic Freight",
+              "Stripping, Hustling, Stuffing"
+          ];
+      } else if (isExport) {
           particularItems = [
               "Ocean Freight",
               "Storage",
@@ -544,8 +602,8 @@ export function CreateVoucherModal({
          });
       });
 
-      // Add Dynamic SOP Row (Only for non-provincial Import Bookings)
-      if (!isExport && !isProvincialImportPod) {
+      // Add Dynamic SOP Row (Only for non-provincial Import Bookings; never for export province legs)
+      if (!isExport && !isProvincialImportPod && !isExportProvinceLeg) {
         const existingSop = particulars.find(p => p.isSopRow);
         const currentSopType = existingSop?.sopType || existingSop?.defaultSop || determinedSop;
 
@@ -576,7 +634,10 @@ export function CreateVoucherModal({
       const newDistribution: VoucherLineItem[] = [];
       let distributionItems: string[] = [];
 
-      if (isExport) {
+      if (isExportProvinceLeg) {
+          // Export province leg: keep Distribution table empty (no defaults)
+          distributionItems = [];
+      } else if (isExport) {
           distributionItems = [
               "Processing Fee",
               "Lodgement Fee",
@@ -605,7 +666,7 @@ export function CreateVoucherModal({
 
       setDistribution(newDistribution);
     }
-  }, [selectedBooking, category]);
+  }, [selectedBooking, category, selectedLeg]);
 
   // --- Helpers ---
   const handleSopUpdate = (id: string, field: 'sopType' | 'sopNumber', value: string) => {
@@ -791,6 +852,21 @@ export function CreateVoucherModal({
             ? `${voucherCompanyCode} ${voucherTypeCode} ${voucherYear}-${voucherRefNumber.trim()}`
             : undefined); // Let server auto-generate
 
+      // Compute leg tag: only persist when booking actually has province leg(s)
+      const segmentsForVoucher: any[] = Array.isArray(selectedBooking?.segments) ? selectedBooking!.segments : [];
+      const bookingHasProvinceLegs = segmentsForVoucher.some((s: any) => typeof s?.segmentLabel === "string" && s.segmentLabel.startsWith("Province"));
+      const activeSegmentForVoucher = selectedLeg !== "Manila" ? segmentsForVoucher.find((s: any) => s.segmentId === selectedLeg) : undefined;
+      const legFields: { segmentId?: string | null; segmentLabel?: string } = {};
+      if (bookingHasProvinceLegs) {
+        if (selectedLeg === "Manila") {
+          legFields.segmentId = null;
+          legFields.segmentLabel = "Manila";
+        } else if (activeSegmentForVoucher) {
+          legFields.segmentId = activeSegmentForVoucher.segmentId;
+          legFields.segmentLabel = activeSegmentForVoucher.segmentLabel;
+        }
+      }
+
       const voucherPayload = {
         voucherNumber: fullVoucherNumber,
         companyCode: voucherCompanyCode,
@@ -824,6 +900,8 @@ export function CreateVoucherModal({
               .filter((r: any) => selectedTruckingContainerNos.includes(r.containerNo || r.containers?.[0]?.containerNo))
               .map((r: any) => r.id)
           : undefined,
+        // Leg tag (only when booking has province legs)
+        ...legFields,
         // Store line items
         lineItems: [
             ...particulars.map(p => ({ ...p, type: 'particulars' })),
@@ -1066,8 +1144,79 @@ export function CreateVoucherModal({
                       />
                     </div>
 
-                    {selectedBooking && (
+                    {selectedBooking && (() => {
+                      const isExportBookingForLeg = selectedBooking.shipmentType?.toLowerCase().includes("export") || selectedBooking.type?.toLowerCase().includes("export");
+                      const segmentsList: any[] = Array.isArray(selectedBooking.segments) ? selectedBooking.segments : [];
+                      const provinceLegs = segmentsList.filter((s: any) => typeof s?.segmentLabel === "string" && s.segmentLabel.startsWith("Province"));
+                      const showLegToggle = !!isExportBookingForLeg;
+                      return (
                       <>
+                        {showLegToggle && (
+                          <div style={{ marginBottom: "16px" }}>
+                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
+                              Leg
+                            </div>
+                            <div style={{ display: "inline-flex", border: "1px solid #E5E9F0", borderRadius: "8px", overflow: "hidden", background: "#FFFFFF" }}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedLeg("Manila")}
+                                style={{
+                                  padding: "8px 14px",
+                                  fontSize: "13px",
+                                  fontWeight: 500,
+                                  cursor: "pointer",
+                                  border: "none",
+                                  background: selectedLeg === "Manila" ? "#237F66" : "transparent",
+                                  color: selectedLeg === "Manila" ? "#FFFFFF" : "#12332B",
+                                }}
+                              >
+                                Manila
+                              </button>
+                              {provinceLegs.length === 0 ? (
+                                <button
+                                  type="button"
+                                  disabled
+                                  title="No province leg on this booking"
+                                  style={{
+                                    padding: "8px 14px",
+                                    fontSize: "13px",
+                                    fontWeight: 500,
+                                    cursor: "not-allowed",
+                                    border: "none",
+                                    borderLeft: "1px solid #E5E9F0",
+                                    background: "#F9FAFB",
+                                    color: "#9CA3AF",
+                                  }}
+                                >
+                                  Province
+                                </button>
+                              ) : (
+                                provinceLegs.map((seg: any) => {
+                                  const active = selectedLeg === seg.segmentId;
+                                  return (
+                                    <button
+                                      key={seg.segmentId}
+                                      type="button"
+                                      onClick={() => setSelectedLeg(seg.segmentId)}
+                                      style={{
+                                        padding: "8px 14px",
+                                        fontSize: "13px",
+                                        fontWeight: 500,
+                                        cursor: "pointer",
+                                        border: "none",
+                                        borderLeft: "1px solid #E5E9F0",
+                                        background: active ? "#237F66" : "transparent",
+                                        color: active ? "#FFFFFF" : "#12332B",
+                                      }}
+                                    >
+                                      {seg.segmentLabel}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        )}
                         {/* Linked info badge */}
                         <div style={{
                           display: "flex",
@@ -1176,7 +1325,8 @@ export function CreateVoucherModal({
                           </div>
                         </div>
                       </>
-                    )}
+                      );
+                    })()}
 
                     {/* Delivery Address (Import) or Loading Address (Export) — editable field outside the box */}
                     {category === "Trucking" && (() => {

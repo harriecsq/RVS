@@ -670,6 +670,11 @@ export function ExportBookingDetails({
     const provinceCount = existingSegments.filter(s => s.segmentLabel.startsWith("Province")).length;
     const label = provinceCount === 0 ? "Province" : `Province ${provinceCount + 1}`;
 
+    // Inherit commodity from Manila leg (explicit segment or booking root)
+    const manilaSegment = existingSegments.find(s => s.segmentLabel === "Manila")
+      || existingSegments[0];
+    const manilaCommodity = (manilaSegment as any)?.commodity || (currentBooking as any).commodity || "";
+
     try {
       const encodedId = encodeURIComponent(booking.id || booking.bookingId);
       const response = await fetch(`${API_BASE_URL}/export-bookings/${encodedId}/segments`, {
@@ -678,7 +683,7 @@ export function ExportBookingDetails({
           "Content-Type": "application/json",
           "Authorization": `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify({ segmentLabel: label, containerNos: [] }),
+        body: JSON.stringify({ segmentLabel: label, containerNos: [], commodity: manilaCommodity }),
       });
       const result = await response.json();
       if (!response.ok || !result.success) {

@@ -56,6 +56,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const location = useLocation();
   const { data: expensesResult, isLoading: isLoadingExpenses, refetch: refetchExpenses } = useCachedFetch<{ success: boolean; data: any[] }>("/expenses");
   const { data: bookingsResult, isLoading: isLoadingBookings } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const { data: vouchersResult } = useCachedFetch<{ success: boolean; data: any[] }>("/vouchers");
   const isLoading = isLoadingExpenses || isLoadingBookings;
   const expenses = useMemo<Expense[]>(() => {
     if (!expensesResult?.success) return [];
@@ -76,6 +77,21 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const clientsMasterList = useClientsMasterList();
+
+  // Map expenseId → distinct voucher segment labels (Manila / Province N)
+  const expenseLegsMap = useMemo<Map<string, string[]>>(() => {
+    const map = new Map<string, string[]>();
+    if (!vouchersResult?.success) return map;
+    (vouchersResult.data || []).forEach((v: any) => {
+      const expenseId = v.expenseId;
+      const label = v.segmentLabel;
+      if (!expenseId || !label) return;
+      const existing = map.get(expenseId) || [];
+      if (!existing.includes(label)) existing.push(label);
+      map.set(expenseId, existing);
+    });
+    return map;
+  }, [vouchersResult]);
 
   const bookingEnrichMap = useMemo<Map<string, BookingDisplayInfo>>(() => {
     const enrichMap = new Map<string, BookingDisplayInfo>();
@@ -283,6 +299,15 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
               {expense.projectNumber && `Project: ${expense.projectNumber}`}
             </div>
           )}
+          {(() => {
+            const legs = expenseLegsMap.get(expense.id) || [];
+            if (legs.length === 0) return null;
+            return (
+              <div style={{ fontSize: "12px", color: "#92400E", marginTop: "2px" }}>
+                Leg{legs.length > 1 ? "s" : ""}: {legs.join(", ")}
+              </div>
+            );
+          })()}
         </div>
       ),
     },

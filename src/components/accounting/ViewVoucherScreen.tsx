@@ -107,6 +107,9 @@ interface Voucher {
   preparedBy?: string;
   checkedBy?: string;
   approvedBy?: string;
+  // Multi-leg export booking tag (set when booking has province legs)
+  segmentId?: string | null;
+  segmentLabel?: string;
 }
 
 // --- Components defined OUTSIDE to prevent re-renders losing focus ---
@@ -881,6 +884,21 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
                 <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
                   Booking Details
                 </h3>
+                {voucher?.segmentLabel && (
+                  <span style={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "999px",
+                    background: voucher.segmentLabel === "Manila" ? "#E8F2EE" : "#237F66",
+                    color: voucher.segmentLabel === "Manila" ? "#237F66" : "#FFFFFF",
+                    border: `1px solid ${voucher.segmentLabel === "Manila" ? "#BBF7D0" : "#1E6D59"}`,
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.04em",
+                  }}>
+                    Leg: {voucher.segmentLabel}
+                  </span>
+                )}
               </div>
 
               <div style={{ padding: "20px 24px" }}>
