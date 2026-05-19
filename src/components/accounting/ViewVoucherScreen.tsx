@@ -22,6 +22,8 @@ import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreview
 import { VoucherDocTemplate } from "../shared/document-preview/templates/VoucherDocTemplate";
 import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
 import type { DocumentSettings } from "../../types/document-settings";
+import { ReorderButtons } from "./ReorderButtons";
+import { swapRows } from "./utils/reorderRow";
 
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
@@ -172,19 +174,21 @@ const TableSection = ({
   items, 
   type, 
   isEditing, 
-  onAddItem, 
-  onRemoveItem, 
-  onUpdateItem, 
-  onSopUpdate 
-}: { 
-  title: string, 
-  items: LineItem[], 
-  type: 'particulars' | 'distribution', 
+  onAddItem,
+  onRemoveItem,
+  onUpdateItem,
+  onSopUpdate,
+  onMoveItem
+}: {
+  title: string,
+  items: LineItem[],
+  type: 'particulars' | 'distribution',
   isEditing: boolean,
   onAddItem: (type: 'particulars' | 'distribution') => void,
   onRemoveItem: (type: 'particulars' | 'distribution', id: string) => void,
   onUpdateItem: (type: 'particulars' | 'distribution', id: string, field: keyof LineItem, value: any) => void,
-  onSopUpdate: (id: string, field: 'sopType' | 'sopNumber', value: string) => void
+  onSopUpdate: (id: string, field: 'sopType' | 'sopNumber', value: string) => void,
+  onMoveItem: (type: 'particulars' | 'distribution', index: number, direction: -1 | 1) => void
 }) => (
   <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
       <div className="bg-[#FAFBFC] px-4 py-3 border-b border-[#E5E9F0] flex justify-between items-center">
@@ -210,11 +214,11 @@ const TableSection = ({
                   <tr className="bg-white border-b border-[#E5E9F0] text-xs text-[#667085] uppercase">
                       <th className="px-4 py-3 text-left font-medium w-3/4">Particulars</th>
                       <th className="px-4 py-3 text-right font-medium w-1/4">Amount</th>
-                      <th className="w-10"></th>
+                      <th className="w-24"></th>
                   </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E9F0]">
-                  {items.map((item) => (
+                  {items.map((item, index) => (
                       <tr key={item.id} className="group bg-white hover:bg-white">
                           <td className="p-2">
                               {isEditing ? (
@@ -270,16 +274,23 @@ const TableSection = ({
                           </td>
                           {isEditing ? (
                               <td className="p-2 text-center">
-                                  <button 
-                                      type="button"
-                                      onClick={() => onRemoveItem(type, item.id)}
-                                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                      <Trash2 className="h-4 w-4" />
-                                  </button>
+                                  <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <ReorderButtons
+                                          index={index}
+                                          total={items.length}
+                                          onMove={(dir) => onMoveItem(type, index, dir)}
+                                      />
+                                      <button
+                                          type="button"
+                                          onClick={() => onRemoveItem(type, item.id)}
+                                          className="text-gray-400 hover:text-red-500"
+                                      >
+                                          <Trash2 className="h-4 w-4" />
+                                      </button>
+                                  </div>
                               </td>
                           ) : (
-                              <td className="w-10"></td>
+                              <td className="w-24"></td>
                           )}
                       </tr>
                   ))}
@@ -626,6 +637,11 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
     else setDistribution(updater(distribution));
   };
   
+  const handleMoveItem = (type: 'particulars' | 'distribution', index: number, direction: -1 | 1) => {
+    if (type === 'particulars') setParticulars(prev => swapRows(prev, index, direction));
+    else setDistribution(prev => swapRows(prev, index, direction));
+  };
+
   const handleSopUpdate = (id: string, field: 'sopType' | 'sopNumber', value: string) => {
     setParticulars(prev => prev.map(item => {
         if (item.id === id) {
@@ -1226,23 +1242,25 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
           <div className="flex flex-col gap-6">
               <TableSection
                   title="Voucher Entries"
-                  items={particulars} 
-                  type="particulars" 
+                  items={particulars}
+                  type="particulars"
                   isEditing={isEditing}
                   onAddItem={handleAddItem}
                   onRemoveItem={handleRemoveItem}
                   onUpdateItem={handleUpdateItem}
                   onSopUpdate={handleSopUpdate}
+                  onMoveItem={handleMoveItem}
               />
-              <TableSection 
-                  title="Distribution of Account" 
-                  items={distribution} 
-                  type="distribution" 
+              <TableSection
+                  title="Distribution of Account"
+                  items={distribution}
+                  type="distribution"
                   isEditing={isEditing}
                   onAddItem={handleAddItem}
                   onRemoveItem={handleRemoveItem}
                   onUpdateItem={handleUpdateItem}
                   onSopUpdate={handleSopUpdate}
+                  onMoveItem={handleMoveItem}
               />
           </div>
 

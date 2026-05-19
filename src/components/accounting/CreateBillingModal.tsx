@@ -13,6 +13,8 @@ import { Card } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { API_BASE_URL } from '@/utils/api-config';
+import { ReorderButtons } from "./ReorderButtons";
+import { swapRows } from "./utils/reorderRow";
 
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
@@ -689,6 +691,31 @@ export function CreateBillingScreen({
                         )}
                       </div>
 
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                        <div>
+                          <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "4px" }}>
+                            Date <span style={{ color: "#EF4444" }}>*</span>
+                          </label>
+                          <SingleDateInput
+                            value={billingDate}
+                            onChange={(iso) => setBillingDate(iso)}
+                            placeholder="MM/DD/YYYY"
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "4px" }}>
+                            Exchange Rate
+                          </label>
+                          <Input
+                            type="number"
+                            value={exchangeRate}
+                            onChange={(e) => setExchangeRate(e.target.value)}
+                            placeholder="0.00"
+                            className="h-11 border-[#E5E9F0]"
+                          />
+                        </div>
+                      </div>
+
                       {/* Linked Expenses badge */}
                       <div style={{ borderTop: "1px solid #E5E9F0", paddingTop: "12px", marginTop: "2px" }}>
                         {expenses.length > 0 ? (
@@ -709,32 +736,6 @@ export function CreateBillingScreen({
               </div>
             </div>
 
-            {/* ── BILLING DATE & EXCHANGE RATE (separate editable fields) ── */}
-            <Card className="p-6 border border-[#E5E9F0] shadow-sm">
-              <h3 className="text-base font-semibold text-[#0A1D4D] mb-5">Billing Settings</h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <Label className="text-[13px] font-medium text-[#667085] mb-2 block">
-                    Date <span className="text-red-500">*</span>
-                  </Label>
-                  <SingleDateInput
-                    value={billingDate}
-                    onChange={(iso) => setBillingDate(iso)}
-                    placeholder="MM/DD/YYYY"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[13px] font-medium text-[#667085] mb-2 block">Exchange Rate</Label>
-                  <Input
-                    type="number"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(e.target.value)}
-                    placeholder="0.00"
-                    className="h-11 border-[#E5E9F0]"
-                  />
-                </div>
-              </div>
-            </Card>
 
             {/* Billing Particulars — table format matching ExpenseCostingTables */}
             <div className="border border-[#E5E9F0] rounded-lg overflow-hidden">
@@ -762,11 +763,11 @@ export function CreateBillingScreen({
                     <th className="px-4 py-3 text-right font-medium w-[15%]">Total</th>
                     <th className="px-4 py-3 text-center font-medium w-[8%]">Ex. Rate</th>
                     <th className="px-4 py-3 text-right font-medium w-[15%]">Amount</th>
-                    <th className="w-[5%]"></th>
+                    <th className="w-[10%]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E5E9F0]">
-                  {billingParticulars.map((particular) => (
+                  {billingParticulars.map((particular, index) => (
                     <tr key={particular.id} className="group hover:bg-gray-50">
                       <td className="p-2 pl-4">
                         <Input
@@ -813,13 +814,20 @@ export function CreateBillingScreen({
                         </div>
                       </td>
                       <td className="p-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeParticular(particular.id)}
-                          className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ReorderButtons
+                            index={index}
+                            total={billingParticulars.length}
+                            onMove={(dir) => setBillingParticulars(prev => swapRows(prev, index, dir))}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeParticular(particular.id)}
+                            className="text-gray-400 hover:text-red-500"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

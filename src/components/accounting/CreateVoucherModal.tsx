@@ -14,6 +14,8 @@ import { Label } from "../ui/label";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { formatAmount } from "../../utils/formatAmount";
 import { API_BASE_URL } from '@/utils/api-config';
+import { ReorderButtons } from "./ReorderButtons";
+import { swapRows } from "./utils/reorderRow";
 
 // ─── Category Dropdown (matches PayeeSelector visual design) ─────────────────
 
@@ -865,6 +867,11 @@ export function CreateVoucherModal({
     }
   };
 
+  const handleMoveItem = (type: 'particulars' | 'distribution', index: number, direction: -1 | 1) => {
+    if (type === 'particulars') setParticulars(prev => swapRows(prev, index, direction));
+    else setDistribution(prev => swapRows(prev, index, direction));
+  };
+
   const handleUpdateItem = (type: 'particulars' | 'distribution', id: string, field: keyof VoucherLineItem, value: any) => {
     const updater = (items: VoucherLineItem[]) => items.map(item => {
       if (item.id === id) return { ...item, [field]: value };
@@ -1471,11 +1478,11 @@ export function CreateVoucherModal({
                             <tr className="bg-white border-b border-[#E5E9F0] text-xs text-[#667085] uppercase">
                                 <th className="px-4 py-3 text-left font-medium w-3/4">Particulars</th>
                                 <th className="px-4 py-3 text-right font-medium w-1/4">Amount</th>
-                                <th className="w-10"></th>
+                                <th className="w-24"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#E5E9F0]">
-                            {particulars.map((item) => (
+                            {particulars.map((item, index) => (
                                 <tr key={item.id} className="group hover:bg-gray-50">
                                     <td className="p-2">
                                         {item.isSopRow ? (
@@ -1520,13 +1527,20 @@ export function CreateVoucherModal({
                                         />
                                     </td>
                                     <td className="p-2 text-center">
-                                        <button 
-                                            type="button"
-                                            onClick={() => handleRemoveItem('particulars', item.id)}
-                                            className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <ReorderButtons
+                                                index={index}
+                                                total={particulars.length}
+                                                onMove={(dir) => handleMoveItem('particulars', index, dir)}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveItem('particulars', item.id)}
+                                                className="text-gray-400 hover:text-red-500"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -1554,11 +1568,11 @@ export function CreateVoucherModal({
                                 <tr className="bg-white border-b border-[#E5E9F0] text-xs text-[#667085] uppercase">
                                     <th className="px-4 py-3 text-left font-medium w-3/4">Particulars</th>
                                     <th className="px-4 py-3 text-right font-medium w-1/4">Amount</th>
-                                    <th className="w-10"></th>
+                                    <th className="w-24"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[#E5E9F0]">
-                                {distribution.map((item) => (
+                                {distribution.map((item, index) => (
                                     <tr key={item.id} className="group hover:bg-gray-50">
                                         <td className="p-2">
                                             <Input
@@ -1578,13 +1592,20 @@ export function CreateVoucherModal({
                                             />
                                         </td>
                                         <td className="p-2 text-center">
-                                            <button 
-                                                type="button"
-                                                onClick={() => handleRemoveItem('distribution', item.id)}
-                                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                            <div className="inline-flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ReorderButtons
+                                                    index={index}
+                                                    total={distribution.length}
+                                                    onMove={(dir) => handleMoveItem('distribution', index, dir)}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveItem('distribution', item.id)}
+                                                    className="text-gray-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

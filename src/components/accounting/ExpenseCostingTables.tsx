@@ -4,6 +4,8 @@ import { Input } from "../ui/input";
 import { formatAmount } from "../../utils/formatAmount";
 import { PortalDropdown } from "../shared/PortalDropdown";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
+import { ReorderButtons } from "./ReorderButtons";
+import { swapRows } from "./utils/reorderRow";
 
 // Types
 export interface ExpenseLineItem {
@@ -781,6 +783,22 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     onChange(newTables);
   };
 
+  const handleMoveExportCategoryItem = (categoryName: string, index: number, direction: -1 | 1) => {
+    const newTables = { ...tables };
+    const cats = { ...(newTables.exportCategories || {}) };
+    cats[categoryName] = swapRows(cats[categoryName] || [], index, direction);
+    newTables.exportCategories = cats;
+    setTables(newTables);
+    onChange(newTables);
+  };
+
+  const handleMoveTableItem = (table: keyof ExpenseTablesData, index: number, direction: -1 | 1) => {
+    const newTables = { ...tables };
+    newTables[table] = swapRows(newTables[table] as ExpenseLineItem[], index, direction) as any;
+    setTables(newTables);
+    onChange(newTables);
+  };
+
   const handleRemoveExportCategoryItem = (categoryName: string, id: string) => {
     const newTables = { ...tables };
     const cats = { ...(newTables.exportCategories || {}) };
@@ -868,6 +886,16 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     const newTables = { ...tables };
     const sections = (newTables.domesticSections || []).map(sec =>
       sec.segmentId === segmentId ? { ...sec, items: sec.items.filter(item => item.id !== id) } : sec
+    );
+    newTables.domesticSections = sections;
+    setTables(newTables);
+    onChange(newTables);
+  };
+
+  const handleDomesticMoveItem = (segmentId: string, index: number, direction: -1 | 1) => {
+    const newTables = { ...tables };
+    const sections = (newTables.domesticSections || []).map(sec =>
+      sec.segmentId === segmentId ? { ...sec, items: swapRows(sec.items, index, direction) } : sec
     );
     newTables.domesticSections = sections;
     setTables(newTables);
@@ -1251,9 +1279,20 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           </div>
         ) : (
           <>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" as const }}>
+              <thead>
+                <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "30%" }}>Particulars</th>
+                  <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
+                  <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
+                  <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{containerCount}X40'HC</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
+                  <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "13%", whiteSpace: "nowrap" }}>Voucher Amt</th>
+                  <th style={{ width: "9%" }}></th>
+                </tr>
+              </thead>
               <tbody>
-                {items.map((item) => {
+                {items.map((item, index) => {
                   const volumeAmount = computeVolumeAmount(item.unitPrice || 0, item.per, item.currency, item.multiplyByContainers);
                   return (
                     <tr
@@ -1400,23 +1439,30 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                         </div>
                       </td>
                       {/* Actions */}
-                      <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExportCategoryItem(categoryName, item.id)}
-                          style={{
-                            color: "#D1D5DB",
-                            background: "transparent",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: "4px",
-                            transition: "color 0.15s ease"
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
-                          onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <td style={{ padding: "8px", width: "10%", textAlign: "center" }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                          <ReorderButtons
+                            index={index}
+                            total={items.length}
+                            onMove={(dir) => handleMoveExportCategoryItem(categoryName, index, dir)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExportCategoryItem(categoryName, item.id)}
+                            style={{
+                              color: "#D1D5DB",
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: "4px",
+                              transition: "color 0.15s ease"
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                            onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1425,7 +1471,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
               {/* Category Subtotal */}
               <tfoot>
                 <tr style={{ background: "#FAFBFC", borderBottom: "1px solid #E5E9F0" }}>
-                  <td colSpan={4} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
+                  <td colSpan={5} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
                     Subtotal
                   </td>
                   <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
@@ -2006,21 +2052,6 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                 </div>
               </div>
 
-              {/* Domestic Column Headers */}
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "30%" }}>Particulars</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
-                    <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
-                    <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{domesticVolumeLabel}</th>
-                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "10%" }}>Voucher Amt</th>
-                    <th style={{ width: "5%" }}></th>
-                  </tr>
-                </thead>
-              </table>
-
               {/* Domestic Line Items */}
               {section.items.length === 0 ? (
                 <div style={{ padding: "16px", textAlign: "center", fontSize: "13px", color: "#667085", background: "white", borderBottom: "1px solid #E5E9F0" }}>
@@ -2030,9 +2061,20 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   </button>
                 </div>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" as const }}>
+                  <thead>
+                    <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                      <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "30%" }}>Particulars</th>
+                      <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
+                      <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
+                      <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{domesticVolumeLabel}</th>
+                      <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
+                      <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "13%", whiteSpace: "nowrap" }}>Voucher Amt</th>
+                      <th style={{ width: "9%" }}></th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {section.items.map((item) => {
+                    {section.items.map((item, index) => {
                       const parsedPrice = parseFloat(String(item.unitPrice || 0)) || 0;
                       const cur = item.currency || "PHP";
                       const currencyMultiplier = (cur === "USD" || cur === "RMB") ? parsedExchangeRate : 1;
@@ -2156,16 +2198,23 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                             </div>
                           </td>
                           {/* Actions */}
-                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
-                            <button
-                              type="button"
-                              onClick={() => handleDomesticRemoveItem(section.segmentId, item.id)}
-                              style={{ color: "#D1D5DB", background: "transparent", border: "none", cursor: "pointer", padding: "4px", transition: "color 0.15s ease" }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
-                              onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                          <td style={{ padding: "8px", width: "10%", textAlign: "center" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              <ReorderButtons
+                                index={index}
+                                total={section.items.length}
+                                onMove={(dir) => handleDomesticMoveItem(section.segmentId, index, dir)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleDomesticRemoveItem(section.segmentId, item.id)}
+                                style={{ color: "#D1D5DB", background: "transparent", border: "none", cursor: "pointer", padding: "4px", transition: "color 0.15s ease" }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                                onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -2173,7 +2222,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   </tbody>
                   <tfoot>
                     <tr style={{ background: "#FAFBFC", borderBottom: "1px solid #E5E9F0" }}>
-                      <td colSpan={4} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
+                      <td colSpan={5} style={{ padding: "10px 16px", textAlign: "right", fontSize: "12px", fontWeight: 600, color: "#667085", textTransform: "uppercase" as const }}>
                         Subtotal
                       </td>
                       <td style={{ padding: "10px 16px", textAlign: "right", fontSize: "14px", fontWeight: 700, color: "#0A1D4D" }}>
@@ -2188,26 +2237,19 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           );
         })}
 
-        {/* Column Headers */}
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
-              <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: isImport ? "50%" : "30%" }}>Particulars</th>
-              {!isImport && (
-                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Unit Price</th>
-              )}
-              {!isImport && (
-                <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "7%", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
-              )}
-              {!isImport && (
-                <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "11%" }}>{containerCount}X40'HC</th>
-              )}
-              <th style={{ padding: "12px 16px", textAlign: isImport ? "left" : "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
-              <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: isImport ? "25%" : "10%" }}>{isImport ? "Amount" : "Voucher Amt"}</th>
-              <th style={{ width: "5%" }}></th>
-            </tr>
-          </thead>
-        </table>
+        {/* Column Headers — IMPORT only (export categories render their own headers per section) */}
+        {isImport && (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "50%" }}>Particulars</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Amount</th>
+                <th style={{ width: "10%" }}></th>
+              </tr>
+            </thead>
+          </table>
+        )}
 
         {/* Category Sections */}
         {isImport ? (
@@ -2492,23 +2534,30 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                             />
                           </td>
                           {/* Actions */}
-                          <td style={{ padding: "8px", width: "5%", textAlign: "center" }}>
-                            <button
-                              type="button"
-                              onClick={() => isParticularsCategory ? handleRemoveParticular(item.id) : handleRemove(cat.key, item.id)}
-                              style={{
-                                color: "#D1D5DB",
-                                background: "transparent",
-                                border: "none",
-                                cursor: "pointer",
-                                padding: "4px",
-                                transition: "color 0.15s ease"
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
-                              onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                          <td style={{ padding: "8px", width: "10%", textAlign: "center" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              <ReorderButtons
+                                index={index}
+                                total={items.length}
+                                onMove={(dir) => handleMoveTableItem(cat.key, index, dir)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => isParticularsCategory ? handleRemoveParticular(item.id) : handleRemove(cat.key, item.id)}
+                                style={{
+                                  color: "#D1D5DB",
+                                  background: "transparent",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: "4px",
+                                  transition: "color 0.15s ease"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                                onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         );
@@ -2630,7 +2679,7 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
               </tr>
             </thead>
             <tbody>
-              {tables.refundableDeposits.map((item) => (
+              {tables.refundableDeposits.map((item, index) => (
                 <tr
                   key={item.id}
                   style={{ borderBottom: "1px solid #E5E9F0", background: "white" }}
@@ -2697,22 +2746,29 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                     />
                   </td>
                   <td style={{ padding: "8px", width: "10%", textAlign: "center" }}>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove("refundableDeposits", item.id)}
-                      style={{
-                        color: "#D1D5DB",
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: "4px",
-                        transition: "color 0.15s ease"
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
-                      onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                      <ReorderButtons
+                        index={index}
+                        total={tables.refundableDeposits.length}
+                        onMove={(dir) => handleMoveTableItem("refundableDeposits", index, dir)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemove("refundableDeposits", item.id)}
+                        style={{
+                          color: "#D1D5DB",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: "4px",
+                          transition: "color 0.15s ease"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

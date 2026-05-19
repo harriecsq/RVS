@@ -28,6 +28,8 @@ import { BookingSelector } from "../selectors/BookingSelector";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { Paperclip } from "lucide-react";
+import { ReorderButtons } from "./ReorderButtons";
+import { swapRows } from "./utils/reorderRow";
 import { API_BASE_URL } from '@/utils/api-config';
 import { invalidateCache } from '@/hooks/useCachedFetch';
 
@@ -1151,62 +1153,43 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                           <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{dCommodity || "—"}</div>
                         </div>
                       </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Date</label>
+                          {isEditing ? (
+                            <SingleDateInput
+                              value={editedBillingDate}
+                              onChange={(iso) => setEditedBillingDate(iso)}
+                              placeholder="Set date"
+                            />
+                          ) : (
+                            <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: billing.billingDate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                              {billing.billingDate ? formatDate(billing.billingDate) : "—"}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Exchange Rate</label>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editedExchangeRate}
+                              onChange={(e) => setEditedExchangeRate(e.target.value)}
+                              placeholder="0.00"
+                              style={{ width: "100%", height: "42px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", boxSizing: "border-box" as const, transition: "border-color 0.15s ease" }}
+                              onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                              onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                            />
+                          ) : (
+                            <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: billing.exchangeRate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                              {billing.exchangeRate || "—"}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     );
                   })()}
-                </div>
-              </div>
-
-              {/* ── EXCHANGE RATE (separate editable field) ── */}
-              <div style={{
-                background: "white",
-                borderRadius: "12px",
-                border: "1px solid #E5E9F0",
-                overflow: "hidden",
-                marginBottom: "24px"
-              }}>
-                <div style={{
-                  padding: "16px 24px",
-                  borderBottom: "1px solid #E5E9F0",
-                  background: "#F9FAFB"
-                }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-                    Billing Settings
-                  </h3>
-                </div>
-                <div style={{ padding: "24px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                    <div>
-                      <div style={NEURON_STYLES.fieldLabel}>Date</div>
-                      {isEditing ? (
-                        <SingleDateInput
-                          value={editedBillingDate}
-                          onChange={(iso) => setEditedBillingDate(iso)}
-                          placeholder="Set date"
-                        />
-                      ) : (
-                        <div style={NEURON_STYLES.readOnlyField}>
-                          {billing.billingDate ? formatDate(billing.billingDate) : "—"}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div style={NEURON_STYLES.fieldLabel}>Exchange Rate</div>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          value={editedExchangeRate}
-                          onChange={(e) => setEditedExchangeRate(e.target.value)}
-                          placeholder="0.00"
-                          style={{ ...NEURON_STYLES.input, width: "100%", boxSizing: "border-box" as const }}
-                        />
-                      ) : (
-                        <div style={NEURON_STYLES.readOnlyField}>
-                          {billing.exchangeRate || "—"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -1305,7 +1288,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                         <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Total</th>
                         <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "8%" }}>Ex. Rate</th>
                         <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Amount</th>
-                        {isEditing && <th style={{ width: "5%" }}></th>}
+                        {isEditing && <th style={{ width: "10%" }}></th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -1558,24 +1541,31 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                             </td>
                             {isEditing && (
                               <td style={{ padding: "8px", textAlign: "center" }}>
-                                <button
-                                  onClick={() => {
-                                    const newParticulars = editedParticulars.filter((_, i) => i !== index);
-                                    setEditedParticulars(newParticulars);
-                                  }}
-                                  style={{
-                                    color: "#D1D5DB",
-                                    background: "transparent",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    padding: "4px",
-                                    transition: "color 0.15s ease"
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
-                                  onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                  <ReorderButtons
+                                    index={index}
+                                    total={editedParticulars.length}
+                                    onMove={(dir) => setEditedParticulars(prev => swapRows(prev, index, dir))}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const newParticulars = editedParticulars.filter((_, i) => i !== index);
+                                      setEditedParticulars(newParticulars);
+                                    }}
+                                    style={{
+                                      color: "#D1D5DB",
+                                      background: "transparent",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      padding: "4px",
+                                      transition: "color 0.15s ease"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = "#EF4444"}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = "#D1D5DB"}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </td>
                             )}
                           </tr>

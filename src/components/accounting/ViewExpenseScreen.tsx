@@ -23,6 +23,7 @@ import { ExpenseDocTemplate } from "../shared/document-preview/templates/Expense
 import { ExportExpenseDocTemplate } from "../shared/document-preview/templates/ExportExpenseDocTemplate";
 import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
 import type { DocumentSettings } from "../../types/document-settings";
+import { ReorderButtons } from "./ReorderButtons";
 
 const EXPENSE_STATUS_COLORS: Record<string, string> = {
   "Draft": "#6B7280",
@@ -1111,14 +1112,31 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
 
   const handleRemoveLineItem = (categoryName: string, itemIndex: number) => {
     if (!editedExpense?.charges) return;
-    
+
     const groupedCharges = groupChargesByCategory(editedExpense.charges);
     const categoryItems = groupedCharges[categoryName];
     if (!categoryItems || !categoryItems[itemIndex]) return;
-    
+
     const itemToRemove = categoryItems[itemIndex];
     const updatedCharges = editedExpense.charges.filter(charge => charge !== itemToRemove);
-    
+
+    setEditedExpense({ ...editedExpense, charges: updatedCharges });
+  };
+
+  const handleMoveLineItem = (categoryName: string, itemIndex: number, direction: -1 | 1) => {
+    if (!editedExpense?.charges) return;
+    const groupedCharges = groupChargesByCategory(editedExpense.charges);
+    const categoryItems = groupedCharges[categoryName];
+    if (!categoryItems) return;
+    const targetIdx = itemIndex + direction;
+    if (targetIdx < 0 || targetIdx >= categoryItems.length) return;
+    const itemA = categoryItems[itemIndex];
+    const itemB = categoryItems[targetIdx];
+    const absA = editedExpense.charges.indexOf(itemA);
+    const absB = editedExpense.charges.indexOf(itemB);
+    if (absA === -1 || absB === -1) return;
+    const updatedCharges = [...editedExpense.charges];
+    [updatedCharges[absA], updatedCharges[absB]] = [updatedCharges[absB], updatedCharges[absA]];
     setEditedExpense({ ...editedExpense, charges: updatedCharges });
   };
 
@@ -1374,13 +1392,22 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
     const isRefundCategory = categoryName === "Refundable Deposits" || categoryName === "Container Deposit";
     const isExportTemplate = expense.documentTemplate !== "IMPORT";
     const exchangeRate = parseFloat(String(editedExpense?.exchangeRate || expense?.exchangeRate || "1")) || 1;
+    const isDomesticCat = (items[0] as any)?.isDomestic === true || /^Domestic - /.test(categoryName);
+    const effContainerCount = isDomesticCat
+      ? ((items[0] as any)?.segContainerCount ?? ((items[0] as any)?.segmentContainers?.length ?? 0))
+      : containerCount;
+    const rawVolBooking = (bookingShipment as any)?.volume || "";
+    const volMatch = String(rawVolBooking).match(/^\d+x(.+)$/i);
+    const volumeType = volMatch ? volMatch[1] : (rawVolBooking || "40'HC");
+    const volumeHeaderLabel = `${effContainerCount}X${isDomesticCat ? volumeType : "40'HC"}`;
+    const segmentContainersLabel = isDomesticCat ? ((items[0] as any)?.segmentContainers?.join(", ") || "") : "";
 
     // Helper to compute volume amount for export line items
     const computeVolumeAmount = (unitPrice: number | string, per: string | undefined, currency: string | undefined, multiplyByContainers?: boolean) => {
       const parsedPrice = parseFloat(String(unitPrice)) || 0;
       const currencyMultiplier = (currency === "USD" || currency === "RMB") ? exchangeRate : 1;
       const isPerBL = per === "BL";
-      const containerMultiplier = (!isPerBL && multiplyByContainers !== false) ? containerCount : 1;
+      const containerMultiplier = (!isPerBL && multiplyByContainers !== false) ? effContainerCount : 1;
       return parsedPrice * currencyMultiplier * containerMultiplier;
     };
 
@@ -1444,7 +1471,9 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                 onClick={() => toggleCategory(categoryName)}
                 style={{ fontSize: "15px", fontWeight: 600, color: "#0A1D4D", textTransform: "uppercase", cursor: "pointer" }}
               >
-                {isExportTemplate ? formatCategoryName(categoryName) : categoryName}
+                {isDomesticCat
+                  ? `DOMESTIC - ${segmentContainersLabel || (items[0] as any)?.segmentLabel || categoryName.replace(/^Domestic - /, "")}`
+                  : (isExportTemplate ? formatCategoryName(categoryName) : categoryName)}
               </span>
             )}
             {!isRefundCategory && (
@@ -1614,7 +1643,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                   <thead>
                     <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                       <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600 }}>Particulars</th>
-                      <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "150px" }}>Voucher No</th>
+                      <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "200px", whiteSpace: "nowrap" }}>Voucher No</th>
                       <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "150px" }}>Amount</th>
                       {(isRefundCategory && !isEditing) && (
                         <>
@@ -1662,16 +1691,18 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                               item.description || "—"
                             )}
                           </td>
-                          <td 
+                          <td
                             onClick={() => isEditing && setLinkingLineItem(item)}
-                            style={{ 
-                              padding: "12px 16px", 
-                              fontSize: "14px", 
-                              color: voucherNo ? "#0F766E" : (isEditing ? "#9CA3AF" : "#667085"), 
-                              textAlign: "center", 
-                              fontWeight: voucherNo ? 500 : 400, 
+                            style={{
+                              padding: "12px 16px",
+                              fontSize: "14px",
+                              color: voucherNo ? "#0F766E" : (isEditing ? "#9CA3AF" : "#667085"),
+                              textAlign: "center",
+                              fontWeight: voucherNo ? 500 : 400,
                               cursor: isEditing ? "pointer" : (tooltip ? "help" : "default"),
-                              transition: "all 0.2s ease"
+                              transition: "all 0.2s ease",
+                              whiteSpace: "nowrap",
+                              width: "200px"
                             }}
                             onMouseEnter={(e) => {
                               if (isEditing) {
@@ -1824,28 +1855,35 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                           )}
                           {isEditing && (
                             <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                              <button
-                                onClick={() => handleRemoveLineItem(categoryName, index)}
-                                style={{
-                                  background: "transparent",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  color: "#EF4444",
-                                  padding: "4px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  borderRadius: "4px"
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = "#FEE2E2";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = "transparent";
-                                }}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                                <ReorderButtons
+                                  index={index}
+                                  total={items.length}
+                                  onMove={(dir) => handleMoveLineItem(categoryName, index, dir)}
+                                />
+                                <button
+                                  onClick={() => handleRemoveLineItem(categoryName, index)}
+                                  style={{
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "#EF4444",
+                                    padding: "4px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderRadius: "4px"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#FEE2E2";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "transparent";
+                                  }}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -1860,8 +1898,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                       <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, width: "35%" }}>Particulars</th>
                       <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600 }}>Unit Price</th>
                       <th style={{ padding: "12px 8px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "60px", whiteSpace: "nowrap" }} title="Multiply unit price by container count">Per Cont.</th>
-                      <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "120px" }}>{containerCount}X40'HC</th>
-                      <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "130px" }}>Voucher No</th>
+                      <th style={{ padding: "12px 8px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "120px" }}>{volumeHeaderLabel}</th>
+                      <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "200px", whiteSpace: "nowrap" }}>Voucher No</th>
                       <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, width: "130px" }}>Voucher Amount</th>
                       {isEditing && <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, width: "80px" }}>Actions</th>}
                     </tr>
@@ -1986,7 +2024,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                                       // so PER 40 ↔ PER BL toggling stays consistent. Stays editable after.
                                       let nextUnitPrice = current.unitPrice;
                                       if (current.linkedVoucherAmount !== undefined) {
-                                        const containers = (current.multiplyByContainers !== false) ? Math.max(containerCount, 1) : 1;
+                                        const containers = (current.multiplyByContainers !== false) ? Math.max(effContainerCount, 1) : 1;
                                         nextUnitPrice = newPer === "BL"
                                           ? current.linkedVoucherAmount
                                           : current.linkedVoucherAmount / containers;
@@ -2049,7 +2087,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                                   setEditedExpense({ ...editedExpense, charges: updatedCharges });
                                 }
                               }}
-                              title={item.multiplyByContainers !== false ? `Multiplied by ${containerCount} containers` : "Not multiplied by containers"}
+                              title={item.multiplyByContainers !== false ? `Multiplied by ${effContainerCount} containers` : "Not multiplied by containers"}
                               style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "pointer" }}
                             />
                           ) : (
@@ -2057,7 +2095,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                               type="checkbox"
                               checked={item.multiplyByContainers !== false}
                               disabled
-                              title={item.multiplyByContainers !== false ? `Multiplied by ${containerCount} containers` : "Not multiplied by containers"}
+                              title={item.multiplyByContainers !== false ? `Multiplied by ${effContainerCount} containers` : "Not multiplied by containers"}
                               style={{ width: "16px", height: "16px", accentColor: "#0F766E", cursor: "default" }}
                             />
                           )}
@@ -2075,17 +2113,19 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                           ₱{formatAmount(volumeAmount)}
                         </td>
                         {/* Voucher No */}
-                        <td 
+                        <td
                           onClick={() => isEditing && setLinkingLineItem(item)}
-                          style={{ 
-                            padding: "12px 16px", 
-                            fontSize: "14px", 
-                            color: voucherNo ? "#0F766E" : (isEditing ? "#9CA3AF" : "#667085"), 
+                          style={{
+                            padding: "12px 16px",
+                            fontSize: "14px",
+                            color: voucherNo ? "#0F766E" : (isEditing ? "#9CA3AF" : "#667085"),
                             textAlign: "center",
                             background: "#FAFBFC",
                             fontWeight: voucherNo ? 500 : 400,
                             cursor: isEditing ? "pointer" : (tooltip ? "help" : "default"),
-                            transition: "all 0.2s ease"
+                            transition: "all 0.2s ease",
+                            whiteSpace: "nowrap",
+                            width: "200px"
                           }}
                           onMouseEnter={(e) => {
                             if (isEditing) {
@@ -2125,28 +2165,35 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                         </td>
                         {isEditing && (
                           <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                            <button
-                              onClick={() => handleRemoveLineItem(categoryName, index)}
-                              style={{
-                                background: "transparent",
-                                border: "none",
-                                cursor: "pointer",
-                                color: "#EF4444",
-                                padding: "4px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                borderRadius: "4px"
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "#FEE2E2";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "transparent";
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              <ReorderButtons
+                                index={index}
+                                total={items.length}
+                                onMove={(dir) => handleMoveLineItem(categoryName, index, dir)}
+                              />
+                              <button
+                                onClick={() => handleRemoveLineItem(categoryName, index)}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  color: "#EF4444",
+                                  padding: "4px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  borderRadius: "4px"
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "#FEE2E2";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "transparent";
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -2451,6 +2498,34 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.origin || "—"}</div>
                       </div>
                     </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Date</label>
+                        {isEditing && editedExpense ? (
+                          <NeuronDatePicker
+                            value={editedExpense.expenseDate || ""}
+                            onChange={(iso) => setEditedExpense({ ...editedExpense, expenseDate: iso })}
+                          />
+                        ) : (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: expense.expenseDate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                            {formatDate(expense.expenseDate) || "—"}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Releasing Date</label>
+                        {isEditing && editedExpense ? (
+                          <NeuronDatePicker
+                            value={editedExpense.releasingDate || ""}
+                            onChange={(iso) => setEditedExpense({ ...editedExpense, releasingDate: iso })}
+                          />
+                        ) : (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: expense.releasingDate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                            {formatDate(expense.releasingDate) || "—"}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </>
                 )}
 
@@ -2486,98 +2561,62 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containers.join(", ") : "—"}</div>
                       </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingLoadingAddress || bookingShipment.loadingAddress || "—"}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>
-                      <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{truckingLoadingAddress || bookingShipment.loadingAddress || "—"}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Date</label>
+                        {isEditing && editedExpense ? (
+                          <NeuronDatePicker
+                            value={editedExpense.expenseDate || ""}
+                            onChange={(iso) => setEditedExpense({ ...editedExpense, expenseDate: iso })}
+                          />
+                        ) : (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: expense.expenseDate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                            {formatDate(expense.expenseDate) || "—"}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Releasing Date</label>
+                        {isEditing && editedExpense ? (
+                          <NeuronDatePicker
+                            value={editedExpense.releasingDate || ""}
+                            onChange={(iso) => setEditedExpense({ ...editedExpense, releasingDate: iso })}
+                          />
+                        ) : (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: expense.releasingDate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                            {formatDate(expense.releasingDate) || "—"}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "4px" }}>Exchange Rate</label>
+                        {isEditing && editedExpense ? (
+                          <input
+                            type="text"
+                            value={editedExpense.exchangeRate || ""}
+                            onChange={(e) => setEditedExpense({ ...editedExpense, exchangeRate: e.target.value })}
+                            placeholder="Enter exchange rate"
+                            style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                          />
+                        ) : (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid #E5E9F0", borderRadius: "6px", fontSize: "14px", color: expense.exchangeRate ? "#0A1D4D" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
+                            {expense.exchangeRate || "—"}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
               </div>
             </div>
           </div>
-
-          {/* ── Dates ── */}
-          <div style={{
-            background: "white",
-            borderRadius: "12px",
-            border: "1px solid #E5E9F0",
-            overflow: "hidden",
-            marginBottom: "24px",
-          }}>
-            <div style={{
-              padding: "16px 24px",
-              borderBottom: "1px solid #E5E9F0",
-              background: "#F9FAFB",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-                Dates
-              </h3>
-            </div>
-            <div style={{ padding: "20px 24px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Date</label>
-                  {isEditing && editedExpense ? (
-                    <NeuronDatePicker
-                      value={editedExpense.expenseDate || ""}
-                      onChange={(iso) => setEditedExpense({ ...editedExpense, expenseDate: iso })}
-                    />
-                  ) : (
-                    <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid var(--neuron-ui-border)", borderRadius: "6px", fontSize: "14px", color: expense.expenseDate ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
-                      {formatDate(expense.expenseDate) || "—"}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>Releasing Date</label>
-                  {isEditing && editedExpense ? (
-                    <NeuronDatePicker
-                      value={editedExpense.releasingDate || ""}
-                      onChange={(iso) => setEditedExpense({ ...editedExpense, releasingDate: iso })}
-                    />
-                  ) : (
-                    <div style={{ padding: "10px 14px", backgroundColor: "#F9FAFB", border: "1px solid var(--neuron-ui-border)", borderRadius: "6px", fontSize: "14px", color: expense.releasingDate ? "var(--neuron-ink-primary)" : "#9CA3AF", minHeight: "42px", display: "flex", alignItems: "center" }}>
-                      {formatDate(expense.releasingDate) || "—"}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── EXCHANGE RATE (separate section, shown for EXPORT expenses) ── */}
-          {expense.documentTemplate === "EXPORT" && (
-            <div style={{
-              background: "white",
-              borderRadius: "12px",
-              overflow: "hidden",
-              marginBottom: "24px",
-              border: "1px solid #E5E9F0",
-            }}>
-              <div style={{
-                padding: "16px 24px",
-                borderBottom: "1px solid #E5E9F0",
-                background: "#F9FAFB",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-                  Exchange Rate
-                </h3>
-              </div>
-              <div style={{ padding: "20px 24px" }}>
-                <div>
-                  <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Exchange Rate</div>
-                  <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{expense.exchangeRate || "—"}</div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Unreconciled Voucher Items Table - Show in Edit Mode OR View Mode if items exist */}
           {(isEditing || unreconciledItems.length > 0) && unreconciledItems.length > 0 && (
@@ -2885,14 +2924,23 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
               )}
 
               {expense.documentTemplate !== "IMPORT"
-                ? /* EXPORT: Render categories in fixed order, then any extras */
+                ? /* EXPORT: Domestic sections first, then fixed export categories, then extras */
                   (() => {
+                    const isDomesticCategory = (cat: string, items?: LineItem[]) =>
+                      /^Domestic - /.test(cat) || (items && (items[0] as any)?.isDomestic === true);
+                    const allCats = Object.keys(filteredChargesByCategory);
+                    const domesticCategories = allCats.filter(cat =>
+                      cat !== "Refundable Deposits" && isDomesticCategory(cat, filteredChargesByCategory[cat])
+                    );
                     const fixedOrder = isEditing
                       ? EXPORT_AVAILABLE_CATEGORIES.filter(cat => !removedExportCategories.includes(cat))
                       : EXPORT_AVAILABLE_CATEGORIES.filter(cat => filteredChargesByCategory[cat] && filteredChargesByCategory[cat].length > 0);
-                    const extraCategories = Object.keys(filteredChargesByCategory)
-                      .filter(cat => cat !== "Refundable Deposits" && !EXPORT_AVAILABLE_CATEGORIES.includes(cat));
-                    return [...fixedOrder, ...extraCategories].map(cat =>
+                    const extraCategories = allCats.filter(cat =>
+                      cat !== "Refundable Deposits"
+                      && !EXPORT_AVAILABLE_CATEGORIES.includes(cat)
+                      && !isDomesticCategory(cat, filteredChargesByCategory[cat])
+                    );
+                    return [...domesticCategories, ...fixedOrder, ...extraCategories].map(cat =>
                       renderCategoryTable(cat, filteredChargesByCategory[cat] || [])
                     );
                   })()

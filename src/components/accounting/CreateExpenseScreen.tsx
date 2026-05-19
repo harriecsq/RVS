@@ -299,6 +299,33 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
             }
           });
         });
+        // EXPORT: Map from domestic sections
+        if (expenseTables.domesticSections) {
+          expenseTables.domesticSections.forEach(section => {
+            const segContainers = (section.containerNos || []).filter(Boolean);
+            const segContainerCount = segContainers.length;
+            section.items.forEach(item => {
+              if (item.particulars || item.amount) {
+                allCharges.push({
+                  description: item.particulars,
+                  amount: item.amount,
+                  currency: item.currency,
+                  unitPrice: item.unitPrice,
+                  per: item.per,
+                  multiplyByContainers: item.multiplyByContainers !== false,
+                  category: `Domestic - ${section.segmentLabel}`,
+                  segmentId: section.segmentId,
+                  segmentLabel: section.segmentLabel,
+                  segmentContainers: segContainers,
+                  segContainerCount,
+                  isDomestic: true,
+                  voucherNo: item.voucherNo,
+                  sourceVoucherLineItemId: item.sourceVoucherLineItemId
+                });
+              }
+            });
+          });
+        }
       } else {
         // IMPORT: Map from traditional categories
         // Map Particulars
@@ -348,9 +375,13 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
         expensePayload.charges = allCharges;
         // Calculate Total Amount (excluding Refundable Deposits)
         if (formData.documentTemplate === "EXPORT" && expenseTables.exportCategories) {
-          expensePayload.amount = Object.values(expenseTables.exportCategories)
+          const exportTotal = Object.values(expenseTables.exportCategories)
             .flat()
             .reduce((sum, i) => sum + (i.amount || 0), 0);
+          const domesticTotal = (expenseTables.domesticSections || [])
+            .flatMap(sec => sec.items)
+            .reduce((sum, i) => sum + (i.amount || 0), 0);
+          expensePayload.amount = exportTotal + domesticTotal;
         } else {
           const totalParticulars = expenseTables.particulars.reduce((sum, i) => sum + (i.amount || 0), 0);
           const totalAdditional = expenseTables.additionalCharges.reduce((sum, i) => sum + (i.amount || 0), 0);
@@ -649,7 +680,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                           </div>
                         </div>
                         {/* Releasing Date — standalone editable field */}
-                        <div style={{ marginTop: "14px" }}>
+                        <div>
                           <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "4px" }}>
                             Releasing Date
                           </label>
@@ -698,6 +729,32 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                             <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.loadingAddress || "—"}</div>
                           </div>
                         </div>
+                        {/* Releasing Date + Exchange Rate */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                          <div>
+                            <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "4px" }}>
+                              Releasing Date
+                            </label>
+                            <NeuronDatePicker
+                              value={formData.releasingDate || ""}
+                              onChange={(iso) => handleFieldChange("releasingDate", iso)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: "13px", fontWeight: 500, color: "#0A1D4D", display: "block", marginBottom: "4px" }}>
+                              Exchange Rate
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.exchangeRate}
+                              onChange={(e) => handleFieldChange("exchangeRate", e.target.value)}
+                              placeholder="Enter exchange rate"
+                              style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
+                              onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+                              onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+                            />
+                          </div>
+                        </div>
                       </>
                     )}
 
@@ -717,45 +774,6 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                 )}
               </div>
             </div>
-
-            {/* ── EXCHANGE RATE (separate section, shown for EXPORT bookings) ── */}
-            {formData.documentTemplate === "EXPORT" && (
-              <div style={{
-                background: "white",
-                borderRadius: "12px",
-                border: "1px solid #E5E9F0",
-                overflow: "hidden",
-              }}>
-                <div style={{
-                  padding: "16px 24px",
-                  borderBottom: "1px solid #E5E9F0",
-                  background: "#F9FAFB",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#0A1D4D", margin: 0 }}>
-                    Exchange Rate
-                  </h3>
-                </div>
-                <div style={{ padding: "20px 24px" }}>
-                  <div>
-                    <div style={{ fontSize: "12px", color: "#0A1D4D", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
-                      Exchange Rate
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.exchangeRate}
-                      onChange={(e) => handleFieldChange("exchangeRate", e.target.value)}
-                      placeholder="Enter exchange rate"
-                      style={{ width: "100%", height: "40px", padding: "0 12px", fontSize: "14px", border: "1px solid #E5E9F0", borderRadius: "6px", outline: "none", backgroundColor: "white", color: "#0A1D4D", transition: "border-color 0.15s ease" }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* SECTION 3: Expense Tables */}
             <ExpenseCostingTables
