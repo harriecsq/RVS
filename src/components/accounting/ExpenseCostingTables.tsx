@@ -17,6 +17,7 @@ export interface ExpenseLineItem {
   isAutoFilled?: boolean;
   sourceVoucherLineItemId?: string; // ID link to the original voucher line item
   multiplyByContainers?: boolean; // Export only: multiply unit price by container count (default true)
+  voucherCategory?: string; // Unreconciled display only: voucher.category (e.g. "Shipping Line", "Trucking")
 }
 
 export interface DomesticSection {
@@ -342,6 +343,10 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
   const [showDomesticAddItemDropdown, setShowDomesticAddItemDropdown] = useState<string | null>(null);
   const domesticAddItemRef = useRef<HTMLDivElement>(null);
 
+  // Unreconciled (Export): track which row's category dropdown is open (by unreconciled item id)
+  const [showUnreconciledCategoryDropdown, setShowUnreconciledCategoryDropdown] = useState<string | null>(null);
+  const unreconciledCategoryRef = useRef<HTMLDivElement>(null);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -393,6 +398,19 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDomesticAddItemDropdown]);
+
+  // Close unreconciled category dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (unreconciledCategoryRef.current && !unreconciledCategoryRef.current.contains(e.target as Node)) {
+        setShowUnreconciledCategoryDropdown(null);
+      }
+    };
+    if (showUnreconciledCategoryDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showUnreconciledCategoryDropdown]);
 
   // Track the last processed state to handle async voucher loading
   const [lastProcessedState, setLastProcessedState] = useState<{bookingId: string, voucherCount: number, wasImport: boolean} | null>(null);
@@ -550,9 +568,29 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
             })
           : [];
 
+        // Helper: build an auto-filled Export line item with unitPrice/per/multiplyByContainers populated.
+        // Per Container is always on. unitPrice = amount / containerCount so the Volume column equals the voucher amount.
+        const buildAutoFilledExportItem = (label: string, line: any, voucherNumber: string): ExpenseLineItem => {
+          const amount = line.amount || 0;
+          const hasContainers = containerCount > 0;
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            particulars: label,
+            amount,
+            currency: "PHP",
+            unitPrice: hasContainers ? amount / containerCount : amount,
+            per: "40",
+            multiplyByContainers: hasContainers,
+            voucherNo: voucherNumber,
+            isAutoFilled: true,
+            sourceVoucherLineItemId: line.id,
+          };
+        };
+
         // Auto-fill province-leg voucher line items into matching domestic sections.
         // Shipping Line vouchers: "Domestic Freight" / "Stripping|Hustling|Stuffing".
         // Trucking vouchers: "Trucking".
+        const matchedMainLegLineIds = new Set<string>();
         if (vouchers && vouchers.length > 0 && domesticSections.length > 0) {
           const matchDomesticParticular = (desc: string, cat: string): string | null => {
             const d = (desc || "").toLowerCase();
@@ -567,16 +605,23 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
             if (!v.segmentId) return;
             const section = domesticSections.find(s => s.segmentId === v.segmentId);
             if (!section) return;
+            // Use this domestic section's own container count, not the Manila-leg count
+            const segContainerCount = section.containerNos.filter(Boolean).length || 0;
+            const hasSegContainers = segContainerCount > 0;
             (v.lineItems || []).forEach((line: any) => {
               const label = matchDomesticParticular(line.description || "", v.category || "");
               if (!label) return;
               const exists = section.items.some(i => (i.particulars || "").toLowerCase() === label.toLowerCase());
               if (exists) return;
+              const amount = line.amount || 0;
               section.items.push({
                 id: Math.random().toString(36).substr(2, 9),
                 particulars: label,
-                amount: line.amount || 0,
+                amount,
                 currency: "PHP",
+                unitPrice: hasSegContainers ? amount / segContainerCount : amount,
+                per: "40",
+                multiplyByContainers: hasSegContainers,
                 voucherNo: v.voucherNumber,
                 isAutoFilled: true,
                 sourceVoucherLineItemId: line.id,
@@ -585,13 +630,62 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           });
         }
 
+        // Auto-categorize main-leg voucher line items whose description matches a standardized
+        // Export particular (case-insensitive + trim) into the appropriate category.
+        const exportCategoryItems: { [categoryName: string]: ExpenseLineItem[] } = Object.fromEntries(
+          EXPORT_CATEGORY_ORDER.map(cat => [cat, []])
+        );
+        if (vouchers && vouchers.length > 0) {
+          // Build lookup: normalized particular name → { categoryName, displayLabel }
+          const standardLookup = new Map<string, { categoryName: string; displayLabel: string }>();
+          Object.entries(EXPORT_STANDARD_PARTICULARS).forEach(([categoryName, names]) => {
+            names.forEach(name => {
+              standardLookup.set(name.trim().toLowerCase(), { categoryName, displayLabel: name });
+            });
+          });
+          vouchers.forEach((v: any) => {
+            // Skip voucher lines that already landed in a domestic section
+            if (v.segmentId) return;
+            (v.lineItems || []).forEach((line: any) => {
+              const key = (line.description || "").trim().toLowerCase();
+              if (!key) return;
+              const hit = standardLookup.get(key);
+              if (!hit) return;
+              const bucket = exportCategoryItems[hit.categoryName];
+              const exists = bucket.some(i => (i.particulars || "").toLowerCase() === hit.displayLabel.toLowerCase());
+              if (exists) return;
+              bucket.push(buildAutoFilledExportItem(hit.displayLabel, line, v.voucherNumber));
+              if (line.id) matchedMainLegLineIds.add(String(line.id));
+            });
+          });
+        }
+
+        // Manila-leg Trucking vouchers: auto-fill ALL line items into the TRUCKING category
+        // (TRUCKING is intentionally omitted from EXPORT_STANDARD_PARTICULARS — handled here instead).
+        if (vouchers && vouchers.length > 0) {
+          const truckingBucket = exportCategoryItems["TRUCKING"];
+          vouchers.forEach((v: any) => {
+            if (v.segmentId) return; // skip province legs
+            if ((v.category || "").toLowerCase() !== "trucking") return;
+            (v.lineItems || []).forEach((line: any) => {
+              if (line.id && matchedMainLegLineIds.has(String(line.id))) return;
+              const label = (line.description || "").trim() || "Trucking";
+              const exists = truckingBucket.some(i =>
+                (i.sourceVoucherLineItemId && line.id && String(i.sourceVoucherLineItemId) === String(line.id))
+                || (i.particulars || "").toLowerCase() === label.toLowerCase()
+              );
+              if (exists) return;
+              truckingBucket.push(buildAutoFilledExportItem(label, line, v.voucherNumber));
+              if (line.id) matchedMainLegLineIds.add(String(line.id));
+            });
+          });
+        }
+
         const newState: ExpenseTablesData = {
           particulars: [],
           additionalCharges: [],
           refundableDeposits: [],
-          exportCategories: Object.fromEntries(
-            EXPORT_CATEGORY_ORDER.map(cat => [cat, []])
-          ),
+          exportCategories: exportCategoryItems,
           domesticSections,
         };
 
@@ -919,7 +1013,8 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
               amount: line.amount || 0,
               currency: "PHP",
               voucherNo: voucher.voucherNumber,
-              sourceVoucherLineItemId: lineId
+              sourceVoucherLineItemId: lineId,
+              voucherCategory: voucher.category || ""
             });
           }
         }
@@ -934,6 +1029,28 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
       (newTables[target] as ExpenseLineItem[]).push(item);
       setTables(newTables);
       onChange(newTables);
+  };
+
+  // Export: route an unreconciled voucher line into a specific Export category, populating
+  // unitPrice/per/multiplyByContainers so Unit Cost + Volume columns render correctly.
+  const handleAddUnreconciledToExportCategory = (item: ExpenseLineItem, categoryName: string) => {
+    const newTables = { ...tables };
+    const next = { ...(newTables.exportCategories || {}) };
+    const amount = item.amount || 0;
+    const hasContainers = containerCount > 0;
+    const enriched: ExpenseLineItem = {
+      ...item,
+      currency: item.currency || "PHP",
+      unitPrice: hasContainers ? amount / containerCount : amount,
+      per: "40",
+      multiplyByContainers: hasContainers,
+      isAutoFilled: false,
+    };
+    next[categoryName] = [...(next[categoryName] || []), enriched];
+    newTables.exportCategories = next;
+    setTables(newTables);
+    onChange(newTables);
+    setShowUnreconciledCategoryDropdown(null);
   };
 
   // Grand total (excluding refundable deposits)
@@ -1352,16 +1469,34 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "white", borderBottom: "1px solid #E5E9F0" }}>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "50%" }}>Particulars</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Voucher No</th>
-                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "25%" }}>Amount</th>
-                <th style={{ width: "10%" }}></th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "32%" }}>Particulars</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "14%" }}>Category</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "14%" }}>Voucher No</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "14%" }}>Amount</th>
+                <th style={{ width: "26%" }}></th>
               </tr>
             </thead>
             <tbody>
               {unreconciledItems.map((item) => (
                 <tr key={item.id} style={{ borderBottom: "1px solid #E5E9F0" }}>
                   <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 500, color: "#0A1D4D" }}>{item.particulars}</td>
+                  <td style={{ padding: "12px 16px" }}>
+                    {item.voucherCategory ? (
+                      <span style={{
+                        background: "#F3F4F6",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        color: "#4B5563",
+                        fontSize: "12px",
+                        fontWeight: 500,
+                        border: "1px solid #E5E9F0"
+                      }}>
+                        {item.voucherCategory}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#9CA3AF", fontSize: "12px" }}>—</span>
+                    )}
+                  </td>
                   <td style={{ padding: "12px 16px" }}>
                     <span style={{
                       background: "#F3F4F6",
@@ -1380,6 +1515,8 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                   </td>
                   <td style={{ padding: "12px 16px", textAlign: "center" }}>
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                      {isImport && (
+                        <>
                       <button
                         type="button"
                         onClick={() => handleAddUnreconciled(item, 'particulars')}
@@ -1436,6 +1573,80 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                       >
                         + Misc
                       </button>
+                        </>
+                      )}
+                      {!isImport && (
+                        <div
+                          ref={showUnreconciledCategoryDropdown === item.id ? unreconciledCategoryRef : undefined}
+                          style={{ position: "relative" }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setShowUnreconciledCategoryDropdown(prev => prev === item.id ? null : item.id)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              fontSize: "11px",
+                              fontWeight: 500,
+                              color: "#1F2937",
+                              background: "white",
+                              border: "1px solid #E5E9F0",
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                              transition: "all 0.15s ease"
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#F0FDFA";
+                              e.currentTarget.style.borderColor = "#0F766E";
+                              e.currentTarget.style.color = "#0F766E";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "white";
+                              e.currentTarget.style.borderColor = "#E5E9F0";
+                              e.currentTarget.style.color = "#1F2937";
+                            }}
+                          >
+                            Add to category <ChevronDown size={11} />
+                          </button>
+                          <PortalDropdown
+                            isOpen={showUnreconciledCategoryDropdown === item.id}
+                            onClose={() => setShowUnreconciledCategoryDropdown(null)}
+                            triggerRef={unreconciledCategoryRef}
+                            minWidth="180px"
+                          >
+                            {EXPORT_CATEGORY_ORDER.map(cat => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => handleAddUnreconciledToExportCategory(item, cat)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  width: "100%",
+                                  padding: "9px 12px",
+                                  fontSize: "13px",
+                                  fontWeight: 500,
+                                  color: "#0A1D4D",
+                                  background: "white",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  textAlign: "left" as const,
+                                  transition: "background 0.1s ease"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
+                                onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                              >
+                                <Plus size={14} color="#0F766E" />
+                                {formatExportCategoryName(cat)}
+                              </button>
+                            ))}
+                          </PortalDropdown>
+                        </div>
+                      )}
                       {isImport && (
                         <button
                           type="button"

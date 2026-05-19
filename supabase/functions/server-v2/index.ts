@@ -1419,6 +1419,13 @@ route.post("/trucking-records", async (c) => {
   row.record_number = recordNumber;
   const { data: inserted, error } = await db().from("trucking_records").insert(row).select().single();
   if (error) return c.json(fail(error.message, 400), 400);
+  // Keep id_counters in sync with the actual record number — the supplied-ref
+  // branch above skips next_counter, so peekCounter would otherwise drift.
+  const issuedNum = parseInt(recordNumber.replace(/^.*-/, ""), 10);
+  if (Number.isFinite(issuedNum)) {
+    const { error: ae } = await db().rpc("advance_counter", { p_scope: scope, p_year: year, p_to_value: issuedNum });
+    if (ae) console.warn(`advance_counter(${scope}, ${year}, ${issuedNum}) failed:`, ae.message);
+  }
   const insertedMeta = await fetchBookingMeta((inserted as any).linked_booking_id);
   return c.json(ok(truckingRecordRowToApi(inserted, undefined, insertedMeta?.movement, insertedMeta?.booking_number)));
 });

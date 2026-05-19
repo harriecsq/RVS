@@ -270,7 +270,7 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           : collection.amount;
         return (
           <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-            {"\u20B1"}{formatAmount(computedAmount)}
+            PHP {formatAmount(computedAmount)}
           </div>
         );
       },

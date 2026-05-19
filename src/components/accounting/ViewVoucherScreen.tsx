@@ -647,23 +647,46 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
   // Use editedVoucher for display when editing, otherwise use saved voucher
   const displayVoucher = isEditing ? editedVoucher : voucher;
 
-  // Live booking-derived shipment fields. Merge segments[0] over root for exports.
+  // Shipment fields shown on the detail screen. Prefer the snapshot that was
+  // saved on the voucher at creation time so the detail view matches the
+  // creation form exactly (e.g. only the containers the user selected, and the
+  // volume that was computed from that selection). Fall back to the live
+  // booking — and within it, the segment matching the voucher's leg tag —
+  // only when the voucher has no saved value for a field.
   const bookingShipment = (() => {
     const b: any = linkedBooking || {};
-    const seg: any = Array.isArray(b.segments) && b.segments.length > 0 ? b.segments[0] : {};
-    const containerRaw = seg.containerNo ?? b.containerNo ?? b.containerNos ?? "";
-    const containers: string[] = Array.isArray(containerRaw)
-      ? containerRaw.filter(Boolean)
-      : (typeof containerRaw === "string" ? containerRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
+    const v: any = displayVoucher || {};
+    const segments: any[] = Array.isArray(b.segments) ? b.segments : [];
+    const matchingSeg = v.segmentId
+      ? segments.find((s: any) => s.segmentId === v.segmentId)
+      : null;
+    const seg: any = matchingSeg ?? (segments.length > 0 ? segments[0] : {});
+
+    const voucherContainers: string[] = Array.isArray(v.containerNumbers)
+      ? v.containerNumbers.filter(Boolean)
+      : (typeof v.containerNumbers === "string"
+          ? v.containerNumbers.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : []);
+
+    let containers: string[];
+    if (voucherContainers.length > 0) {
+      containers = voucherContainers;
+    } else {
+      const containerRaw = seg.containerNo ?? b.containerNo ?? b.containerNos ?? "";
+      containers = Array.isArray(containerRaw)
+        ? containerRaw.filter(Boolean)
+        : (typeof containerRaw === "string" ? containerRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
+    }
+
     return {
-      blNumber: seg.blNumber ?? b.blNumber ?? "",
-      vesselVoy: seg.vesselVoyage ?? b.vesselVoyage ?? seg.vessel ?? b.vessel ?? "",
-      origin: seg.origin ?? b.origin ?? b.pol ?? b.pickup ?? "",
-      destination: seg.destination ?? b.destination ?? seg.pod ?? b.pod ?? "",
-      shipper: seg.shipper ?? b.shipper ?? "",
-      consignee: seg.consignee ?? b.consignee ?? "",
-      volume: seg.volume ?? b.volume ?? "",
-      commodity: seg.commodity ?? b.commodity ?? "",
+      blNumber: v.blNumber ?? seg.blNumber ?? b.blNumber ?? "",
+      vesselVoy: v.vesselVoy ?? seg.vesselVoyage ?? b.vesselVoyage ?? seg.vessel ?? b.vessel ?? "",
+      origin: v.origin ?? seg.origin ?? b.origin ?? b.pol ?? b.pickup ?? "",
+      destination: v.destination ?? seg.destination ?? b.destination ?? seg.pod ?? b.pod ?? "",
+      shipper: v.shipper ?? seg.shipper ?? b.shipper ?? "",
+      consignee: v.consignee ?? seg.consignee ?? b.consignee ?? "",
+      volume: v.volume ?? seg.volume ?? b.volume ?? "",
+      commodity: v.commodity ?? seg.commodity ?? b.commodity ?? "",
       containers,
     };
   })();

@@ -1417,19 +1417,37 @@ export function TruckingRecordDetails({
                     );
                   }
 
-                  const rawClient = linkedBookingData?.contactPersonName
-                    || linkedBookingData?.contact_person_name
-                    || linkedBookingData?.customerName
-                    || linkedBookingData?.client_name
-                    || linkedBookingData?.clientName
-                    || "";
-                  const lbShipper = linkedBookingData?.shipper || "";
-                  const lbConsignee = linkedBookingData?.consignee || "";
+                  // For exports, the only reliable signal for "client" is an explicit
+                  // contact person — customerName/clientName legacy data was contaminated
+                  // with the shipper's company name. For imports, fall back to customerName.
+                  const rawClient = isExportBooking
+                    ? (linkedBookingData?.contactPersonName
+                        || linkedBookingData?.contact_person_name
+                        || "")
+                    : (linkedBookingData?.contactPersonName
+                        || linkedBookingData?.contact_person_name
+                        || linkedBookingData?.customerName
+                        || linkedBookingData?.client_name
+                        || linkedBookingData?.clientName
+                        || "");
+                  const norm = (s: string) => (s || "").trim().toLowerCase();
+                  // For exports, shipper/consignee are SEGMENT_FIELDS in the booking edit model.
+                  // Prefer the linked segment's value, then the first segment, then booking root.
+                  const segs = Array.isArray(linkedBookingData?.segments) ? linkedBookingData.segments : [];
+                  const linkedSeg = r.linkedSegmentId ? segs.find((s: any) => s.segmentId === r.linkedSegmentId) : undefined;
+                  const firstSeg = segs.length > 0
+                    ? [...segs].sort((a: any, b: any) => (a.legOrder || 0) - (b.legOrder || 0))[0]
+                    : undefined;
+                  const segShipper = (linkedSeg as any)?.shipper || (firstSeg as any)?.shipper || "";
+                  const segConsignee = (linkedSeg as any)?.consignee || (firstSeg as any)?.consignee || "";
+                  const lbShipper = segShipper || linkedBookingData?.shipper || "";
+                  const lbConsignee = segConsignee || linkedBookingData?.consignee || "";
                   const lbCompany = linkedBookingData?.companyName || linkedBookingData?.company_name || "";
-                  const hasDistinctClient = !!rawClient
-                    && rawClient !== lbShipper
-                    && rawClient !== lbConsignee
-                    && rawClient !== lbCompany;
+                  const nClient = norm(rawClient);
+                  const hasDistinctClient = !!nClient
+                    && nClient !== norm(lbShipper)
+                    && nClient !== norm(lbConsignee)
+                    && nClient !== norm(lbCompany);
                   const clientVal = rawClient;
 
                   return (
@@ -1450,7 +1468,7 @@ export function TruckingRecordDetails({
                         <div style={{ display: "grid", gridTemplateColumns: hasDistinctClient ? "1fr 1fr" : "1fr", gap: "16px" }}>
                           <SummaryField
                             label={isExportBooking ? "Shipper" : "Consignee"}
-                            value={isExportBooking ? (linkedBookingData.shipper || "—") : (linkedBookingData.consignee || "—")}
+                            value={isExportBooking ? (lbShipper || "—") : (lbConsignee || "—")}
                           />
                           {hasDistinctClient && (
                             <SummaryField label="Client" value={clientVal} />

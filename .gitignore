@@ -10,3 +10,5 @@ supabase/.new-project-creds.txt
 .env.*.local
 prod-data.sql
 local-push.sql
+local-mirror.sql
+pgdump.err

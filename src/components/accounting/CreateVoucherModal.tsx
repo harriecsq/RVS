@@ -232,6 +232,10 @@ export function CreateVoucherModal({
   const [manualLoadingAddress, setManualLoadingAddress] = useState("");
   const [selectedTruckingContainerNos, setSelectedTruckingContainerNos] = useState<string[]>([]);
   const [truckingRecordsForBooking, setTruckingRecordsForBooking] = useState<any[]>([]);
+  // Containers already attached to another Trucking-category voucher on the same
+  // booking — must be disabled in the picker so the same container can't be
+  // billed twice. Populated from /bookings/:id/vouchers when category=Trucking.
+  const [containersOnOtherTruckingVouchers, setContainersOnOtherTruckingVouchers] = useState<string[]>([]);
   
   // Dynamic Booking Fields State
   const [bookingFields, setBookingFields] = useState({
@@ -324,20 +328,24 @@ export function CreateVoucherModal({
       const bookingId = selectedBooking.bookingId || selectedBooking.bookingNumber || selectedBooking.booking_number || selectedBooking.id;
       if (bookingId) {
         fetchTruckingRecordsForBooking(bookingId);
+        fetchExistingTruckingVoucherContainers(bookingId);
       } else {
         setTruckingRecordsForBooking([]);
+        setContainersOnOtherTruckingVouchers([]);
       }
     } else {
       setTruckingRecordsForBooking([]);
       setSelectedTruckingContainerNos([]);
+      setContainersOnOtherTruckingVouchers([]);
     }
   }, [selectedBooking, category]);
 
   const fetchTruckingRecordsForBooking = async (bookingId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/trucking-records?linkedBookingId=${encodeURIComponent(bookingId)}`,
+        { headers: { Authorization: `Bearer ${publicAnonKey}` } },
+      );
       if (!response.ok) return;
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
@@ -347,6 +355,34 @@ export function CreateVoucherModal({
       }
     } catch (error) {
       console.error("Error fetching trucking records:", error);
+    }
+  };
+
+  // Containers that already appear on another Trucking voucher for this booking.
+  // Used as alreadyLinkedContainerNos on the picker so the user can't double-bill
+  // the same container.
+  const fetchExistingTruckingVoucherContainers = async (bookingId: string) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/bookings/${encodeURIComponent(bookingId)}/vouchers`,
+        { headers: { Authorization: `Bearer ${publicAnonKey}` } },
+      );
+      if (!response.ok) return;
+      const result = await response.json();
+      if (!result.success || !Array.isArray(result.data)) {
+        setContainersOnOtherTruckingVouchers([]);
+        return;
+      }
+      const taken = new Set<string>();
+      for (const v of result.data as any[]) {
+        if (v?.category !== "Trucking") continue;
+        const arr = Array.isArray(v.linkedContainerNos) ? v.linkedContainerNos : [];
+        for (const cn of arr) if (typeof cn === "string" && cn) taken.add(cn);
+      }
+      setContainersOnOtherTruckingVouchers(Array.from(taken));
+    } catch (error) {
+      console.error("Error fetching existing trucking vouchers:", error);
+      setContainersOnOtherTruckingVouchers([]);
     }
   };
 
@@ -370,14 +406,14 @@ export function CreateVoucherModal({
       return;
     }
     const first = selectedRecords[0];
-    const addresses = (first.deliveryAddresses || []).map((a: any) => a.address).filter(Boolean);
-    const deliveryAddress = addresses.join("; ");
-    const loadingAddress = first.truckingAddress || "";
+    // "Full Address" in both the export Loading Address card and the import Delivery Address card
+    // is stored as deliveryAddresses[*].address — single source for both manual fields.
+    const fullAddresses = (first.deliveryAddresses || []).map((a: any) => a.address).filter(Boolean).join("; ");
     const singleRate = parseFloat(String(first.truckingRate || "0").replace(/,/g, "")) || 0;
-    setTruckingRecordData({ deliveryAddress, loadingAddress, truckingRate: String(singleRate) });
+    setTruckingRecordData({ deliveryAddress: fullAddresses, loadingAddress: fullAddresses, truckingRate: String(singleRate) });
     setManualTruckingRate(singleRate ? String(singleRate) : "");
-    setManualDeliveryAddress(deliveryAddress);
-    setManualLoadingAddress(loadingAddress);
+    setManualDeliveryAddress(fullAddresses);
+    setManualLoadingAddress(fullAddresses);
   }, [selectedTruckingContainerNos, truckingRecordsForBooking]);
 
   // Auto-fill voucher entries amount: rate × container count
@@ -404,6 +440,26 @@ export function CreateVoucherModal({
   useEffect(() => {
     setSelectedLeg("Manila");
   }, [selectedBooking?.id]);
+
+  // Clear trucking container selection when leg changes — containers are leg-scoped,
+  // so selections from a different leg must not survive the swap.
+  useEffect(() => {
+    setSelectedTruckingContainerNos([]);
+  }, [selectedLeg]);
+
+  // Compute the container numbers available for the currently selected leg.
+  // Used to restrict ContainerSelector for trucking vouchers linked to export bookings.
+  const legContainerNos: string[] | undefined = (() => {
+    if (!selectedBooking) return undefined;
+    const segmentsArr: any[] = Array.isArray(selectedBooking.segments) ? selectedBooking.segments : [];
+    if (segmentsArr.length === 0) return undefined;
+    if (selectedLeg !== "Manila") {
+      const seg = segmentsArr.find((s: any) => s.segmentId === selectedLeg);
+      return Array.isArray(seg?.containerNos) ? seg.containerNos.filter(Boolean) : [];
+    }
+    const manilaSeg = segmentsArr.find((s: any) => s.segmentLabel === "Manila") || segmentsArr[0];
+    return Array.isArray(manilaSeg?.containerNos) ? manilaSeg.containerNos.filter(Boolean) : [];
+  })();
 
   // Update items when booking changes (for Shipping Line)
   useEffect(() => {
@@ -1243,8 +1299,10 @@ export function CreateVoucherModal({
                             <ContainerSelector
                               bookingId={selectedBooking.bookingId || selectedBooking.bookingNumber || selectedBooking.id}
                               mode="multi"
+                              alreadyLinkedContainerNos={containersOnOtherTruckingVouchers}
                               selectedContainerNos={selectedTruckingContainerNos}
                               onSelectionChange={(nos) => setSelectedTruckingContainerNos(nos)}
+                              segmentContainerNos={legContainerNos}
                             />
                           </div>
                         )}

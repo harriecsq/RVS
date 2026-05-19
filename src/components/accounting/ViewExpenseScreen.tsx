@@ -610,33 +610,18 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
     }
   }, [expense?.bookingIds, expense?.linkedBookingIds]); // React to changes in booking links
 
-  // Fetch trucking record loading address for export bookings
+  // Derive Loading Address from linked trucking vouchers (joined by " / " if multiple)
   useEffect(() => {
-    if (expense && expense.documentTemplate === "EXPORT") {
-      const ids = getBookingIds(expense);
-      if (ids.length > 0) {
-        (async () => {
-          for (const bookingId of ids) {
-            try {
-              const res = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${bookingId}`, {
-                headers: { Authorization: `Bearer ${publicAnonKey}` },
-              });
-              const result = await res.json();
-              if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-                const truckingAddr = result.data[0].truckingAddress || result.data[0].trucking_address || "";
-                if (truckingAddr) {
-                  setTruckingLoadingAddress(truckingAddr);
-                  return; // Found one, stop looking
-                }
-              }
-            } catch (err) {
-              console.error("Error fetching trucking record for loading address:", err);
-            }
-          }
-        })();
-      }
+    if (!expense || expense.documentTemplate !== "EXPORT" || !Array.isArray(vouchers) || vouchers.length === 0) {
+      setTruckingLoadingAddress("");
+      return;
     }
-  }, [expense?.documentTemplate, expense?.bookingIds, expense?.linkedBookingIds]);
+    const addresses = vouchers
+      .filter((v: any) => String(v.category || "").toLowerCase() === "trucking")
+      .map((v: any) => v.loadingAddress || v.loading_address || "")
+      .filter(Boolean);
+    setTruckingLoadingAddress(addresses.join(" / "));
+  }, [vouchers, expense?.documentTemplate]);
 
   const fetchBookingVouchers = async (bookingIds: string[]) => {
     try {
@@ -1268,16 +1253,16 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
       origin: seg.origin ?? b.origin ?? b.pol ?? b.pickup ?? "",
       destination: seg.destination || b.destination || seg.pod || b.pod || "",
       pod: seg.pod ?? b.pod ?? seg.destination ?? b.destination ?? "",
-      shipper: seg.shipper ?? b.shipper ?? "",
-      consignee: seg.consignee ?? b.consignee ?? "",
+      shipper: (seg.shipper || b.shipper || ""),
+      consignee: (seg.consignee || b.consignee || ""),
       commodity: seg.commodity ?? b.commodity ?? "",
       containers,
       weight: seg.weight ?? b.weight ?? b.grossWeight ?? b.gross_weight ?? "",
       loadingAddress: seg.loadingAddress ?? b.loadingAddress ?? "",
       volume: b.volume ?? seg.volume ?? "",
-      clientName: b.customerName ?? b.customer_name ?? b.clientName ?? b.client_name ?? "",
+      clientName: (seg.customerName || seg.clientName || b.customerName || b.customer_name || b.clientName || b.client_name || ""),
       companyName: b.companyName ?? b.company_name ?? "",
-      contactPersonName: b.contactPersonName ?? b.contact_person_name ?? "",
+      contactPersonName: (b.contactPersonName || b.contact_person_name || seg.customerName || seg.clientName || b.customerName || b.customer_name || ""),
     };
   })();
 
@@ -2475,14 +2460,12 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Shipper</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.shipper || bookingShipment.companyName || bookingShipment.clientName || "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.shipper || bookingShipment.companyName || "—"}</div>
                       </div>
-                      {bookingShipment.contactPersonName && (
-                        <div>
-                          <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName}</div>
-                        </div>
-                      )}
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.contactPersonName || bookingShipment.clientName || "—"}</div>
+                      </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Vessel/Voyage</div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.vesselVoyage || "—"}</div>

@@ -3095,7 +3095,7 @@ function BookingInformationTab({
         {/* Row 2: Company/Contact */}
         <div>
             <CompanyContactSelector
-              companyId={((isEditing && (mergedEditData as any).clientId !== undefined) ? (mergedEditData as any).clientId : (mergedBooking as any).clientId) || ""}
+              companyId={((isEditing && (mergedEditData as any).shipperId !== undefined) ? (mergedEditData as any).shipperId : ((mergedBooking as any).shipperId ?? (mergedBooking as any).clientId)) || ""}
               contactId={((isEditing && (mergedEditData as any).contactId !== undefined) ? (mergedEditData as any).contactId : (mergedBooking as any).contactId) || ""}
               disabled={!isEditing}
               showContact={true}
@@ -3103,25 +3103,24 @@ function BookingInformationTab({
               companyLabel="Shipper"
               contactLabel="Client"
               onSelect={({ company, contact }) => {
-                const updates: any = {};
                 const cName = company ? (company.name || company.company_name || "") : "";
-                updates.companyName = cName;
-                updates.shipper = cName;
-                if (company) {
-                  updates.clientId = company.id;
-                } else {
-                  updates.clientId = "";
-                }
-                if (contact) {
-                  updates.contactId = contact.id;
-                  updates.contactPersonName = contact.name;
-                  updates.customerName = contact.name;
-                } else {
-                  updates.contactId = "";
-                  updates.contactPersonName = "";
-                  updates.customerName = cName;
-                }
-                mergedSetEditData(updates as any);
+                const contactName = contact ? contact.name : "";
+                // shipper/customerName are SEGMENT_FIELDS, but we also mirror them to
+                // booking-root so external readers (trucking modal reading
+                // linkedBookingData.shipper, list views) stay in sync with the segment.
+                parentSetEditData({
+                  ...editData,
+                  shipper: cName,
+                  shipperId: company ? company.id : "",
+                  customerName: contactName,
+                  contactId: contact ? contact.id : "",
+                  contactPersonName: contactName,
+                } as any);
+                parentSetSegmentEditData({
+                  ...segmentEditData,
+                  shipper: cName,
+                  customerName: contactName,
+                });
               }}
             />
         </div>
@@ -3137,22 +3136,20 @@ function BookingInformationTab({
             companyLabel="Consignee"
             contactLabel="Client"
             onSelect={({ company, contact }) => {
-              const updates: any = {};
               const cName = company ? (company.name || company.company_name || "") : "";
-              updates.consignee = cName;
-              if (company) {
-                updates.consigneeId = company.id;
-              } else {
-                updates.consigneeId = "";
-              }
-              if (contact) {
-                updates.consigneeContactId = contact.id;
-                updates.consigneeContactName = contact.name;
-              } else {
-                updates.consigneeContactId = "";
-                updates.consigneeContactName = "";
-              }
-              mergedSetEditData(updates as any);
+              // consignee is a SEGMENT_FIELDS-tracked field — mirror to booking-root
+              // so external readers (trucking modal, list views) stay in sync.
+              parentSetEditData({
+                ...editData,
+                consignee: cName,
+                consigneeId: company ? company.id : "",
+                consigneeContactId: contact ? contact.id : "",
+                consigneeContactName: contact ? contact.name : "",
+              } as any);
+              parentSetSegmentEditData({
+                ...segmentEditData,
+                consignee: cName,
+              });
             }}
           />
         </div>

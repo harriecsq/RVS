@@ -187,7 +187,12 @@
       "Bash(curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/SKILL.md -o \"C:/Users/harri/.claude/skills/caveman/SKILL.md\")",
       "Bash(curl -fsSL https://raw.githubusercontent.com/JuliusBrussee/caveman/main/skills/caveman/README.md -o \"C:/Users/harri/.claude/skills/caveman/README.md\")",
       "Bash(dir /a .env*)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -c \"SELECT proname FROM pg_proc WHERE proname IN \\('advance_counter','next_counter'\\);\")",
+      "PowerShell(docker exec supabase_db_RVS psql -U postgres -d postgres -c \"SELECT proname FROM pg_proc WHERE proname IN \\('advance_counter','next_counter'\\);\" 2>&1)",
+      "PowerShell(docker exec -i supabase_db_RVS psql -U postgres -d postgres 2>&1)",
+      "PowerShell(docker exec supabase_db_RVS psql -U postgres -d postgres -c \"SELECT scope, year, value FROM id_counters WHERE scope LIKE 'trucking:%' ORDER BY scope; SELECT record_number FROM trucking_records WHERE record_number ~ '^TRK \\(IMP|EXP\\)' ORDER BY record_number;\" 2>&1)"
     ]
   }
 }

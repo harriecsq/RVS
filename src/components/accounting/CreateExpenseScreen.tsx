@@ -85,17 +85,26 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
     }
 
     // Fetch linked vouchers
+    let linkedVouchersData: any[] = [];
     try {
         const response = await fetch(`${API_BASE_URL}/bookings/${encodeURIComponent(booking.id)}/vouchers`, {
             headers: { Authorization: `Bearer ${publicAnonKey}` }
         });
         const result = await response.json();
         if (result.success) {
-            setLinkedVouchers(result.data || []);
+            linkedVouchersData = result.data || [];
+            setLinkedVouchers(linkedVouchersData);
         }
     } catch (err) {
         console.error("Failed to fetch vouchers", err);
     }
+
+    // Derive Loading Address from linked trucking vouchers (joined by " / " if multiple)
+    const truckingVoucherLoadingAddress = linkedVouchersData
+      .filter((v: any) => String(v.category || "").toLowerCase() === "trucking")
+      .map((v: any) => v.loadingAddress || v.loading_address || "")
+      .filter(Boolean)
+      .join(" / ");
 
     // Support both camelCase and snake_case properties
     const shipmentType = booking.shipmentType || booking.shipment_type || booking.type || booking.movement || "";
@@ -125,9 +134,17 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
 
     // Mark fields as auto-filled if they have values
     const newAutoFilledFields: Record<string, boolean> = {};
-    const clientVal = booking.contactPersonName || booking.contact_person_name || booking.customerName || booking.customer_name || "";
-    // Consignee/Shipper = Company field. Fall back to customerName (which IS the company in merged mode)
-    const companyVal = booking.companyName || booking.company_name || booking.customerName || booking.customer_name || "";
+    // For Export bookings, shipper/customerName may live on the first segment (mirrored to root, but mirror may be stale).
+    const seg: any = Array.isArray(booking.segments) && booking.segments.length > 0 ? booking.segments[0] : {};
+    const clientVal = booking.contactPersonName || booking.contact_person_name
+      || seg.customerName || seg.clientName
+      || booking.customerName || booking.customer_name
+      || booking.clientName || booking.client_name
+      || "";
+    // Consignee/Shipper = Company field. EXPORT → `shipper`; IMPORT → `consignee`. Fall through to companyName/clientName.
+    const companyVal = template === "EXPORT"
+      ? (seg.shipper || booking.shipper || booking.companyName || booking.company_name || booking.customerName || booking.customer_name || "")
+      : (booking.consignee || seg.consignee || booking.companyName || booking.company_name || booking.customerName || booking.customer_name || "");
     if (clientVal) newAutoFilledFields["client"] = true;
     if (companyVal) newAutoFilledFields["shipperConsignee"] = true;
     if (booking.bl_number || booking.blNumber) newAutoFilledFields["blNumber"] = true;
@@ -136,7 +153,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
     if (booking.origin || booking.pol || booking.pickup) newAutoFilledFields["origin"] = true;
     if (booking.destination || booking.pod || booking.dropoff) newAutoFilledFields["destination"] = true;
     if (booking.pod || booking.dropoff) newAutoFilledFields["pod"] = true;
-    if (booking.pickup || booking.loading_address) newAutoFilledFields["loadingAddress"] = true;
+    if (truckingVoucherLoadingAddress || booking.pickup || booking.loading_address) newAutoFilledFields["loadingAddress"] = true;
     if (booking.containerNo || (containers.length > 0 && containers[0] !== "")) newAutoFilledFields["containerNo"] = true;
     if (booking.weight || booking.grossWeight || booking.gross_weight) newAutoFilledFields["weight"] = true;
     
@@ -155,13 +172,13 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
       origin: booking.origin || booking.pol || booking.pickup || "",
       destination: booking.destination || booking.pod || booking.dropoff || "",
       pod: booking.pod || booking.dropoff || "",
-      loadingAddress: booking.pickup || booking.loading_address || "",
+      loadingAddress: truckingVoucherLoadingAddress || booking.pickup || booking.loading_address || "",
       weight: booking.weight || booking.grossWeight || booking.gross_weight || "",
       containerNumbers: containers,
       containerNo: containers.join(', ') // Keep string version synced
     }));
 
-    // Fetch trucking record for this booking to get Loading Address from trucking tab
+    // Fetch trucking record for this booking to get the trucking vendor name
     try {
       const truckingRes = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${booking.id}`, {
         headers: { Authorization: `Bearer ${publicAnonKey}` }
@@ -169,18 +186,13 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
       const truckingResult = await truckingRes.json();
       if (truckingResult.success && Array.isArray(truckingResult.data) && truckingResult.data.length > 0) {
         const truckingRecord = truckingResult.data[0];
-        const truckingAddr = truckingRecord.truckingAddress || truckingRecord.trucking_address || "";
-        if (truckingAddr) {
-          setFormData(prev => ({ ...prev, loadingAddress: truckingAddr }));
-          setAutoFilledFields(prev => ({ ...prev, loadingAddress: true }));
-        }
         const vendorName = truckingRecord.vendorName || truckingRecord.vendor_name || truckingRecord.truckingVendor || truckingRecord.trucker || "";
         if (vendorName) {
           setTruckingVendorForExpense(vendorName);
         }
       }
     } catch (err) {
-      console.error("Failed to fetch trucking record for loading address:", err);
+      console.error("Failed to fetch trucking record for vendor name:", err);
     }
   };
 

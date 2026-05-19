@@ -415,6 +415,18 @@ export function CreateTruckingModal({
     ? segments
     : (Array.isArray(linkedBookingData?.segments) ? linkedBookingData.segments : undefined);
 
+  // New records must always carry a linkedSegmentId so the booking trucking tab
+  // (which filters/groups by segment) can find them. Default to the first
+  // segment when none was prefilled; user can still switch via the leg picker.
+  useEffect(() => {
+    if (existingRecord) return;
+    if (form.linkedSegmentId) return;
+    if (!effectiveSegments || effectiveSegments.length === 0) return;
+    const sorted = [...effectiveSegments].sort((a: any, b: any) => (a.legOrder || 0) - (b.legOrder || 0));
+    const firstId = sorted[0]?.segmentId;
+    if (firstId) setForm((prev) => ({ ...prev, linkedSegmentId: firstId }));
+  }, [effectiveSegments, existingRecord, form.linkedSegmentId]);
+
   // Province leg → force segment-only values for all fields except commodity.
   // Commodity inherits from Manila when segment lacks it (province legs are created with Manila's commodity).
   function applySegmentOverrides(seg: any | undefined, bookingForCommodity?: any) {
@@ -492,19 +504,33 @@ export function CreateTruckingModal({
     }
   }, [isOpen, existingRecord]);
 
-  // Fetch existing trucking records for this booking to populate ContainerSelector
+  // Fetch existing trucking records for this booking to populate ContainerSelector.
+  // Any container that already has a trucking record must be disabled in the picker.
   useEffect(() => {
     if (isOpen && form.linkedBookingId && !existingRecord) {
       (async () => {
         try {
-          const res = await fetch(`${API_BASE_URL}/trucking-records?linkedBookingId=${form.linkedBookingId}`, {
-            headers: { Authorization: `Bearer ${publicAnonKey}` },
-          });
+          const res = await fetch(
+            `${API_BASE_URL}/trucking-records?linkedBookingId=${encodeURIComponent(form.linkedBookingId)}`,
+            { headers: { Authorization: `Bearer ${publicAnonKey}` } },
+          );
           const result = await res.json();
           if (result.success && Array.isArray(result.data)) {
             setExistingTruckingRecords(result.data);
-            const linked = result.data.map((r: any) => r.containerNo || r.containers?.[0]?.containerNo).filter(Boolean);
-            setAlreadyLinkedContainerNos(linked);
+            // Collect EVERY container linked to any existing record — both the
+            // primary `containerNo` and every entry in the `containers` array,
+            // so multi-container records don't leak unlinked containers.
+            const linked = new Set<string>();
+            for (const r of result.data as any[]) {
+              if (r.containerNo) linked.add(r.containerNo);
+              if (Array.isArray(r.containers)) {
+                for (const c of r.containers) {
+                  const cn = typeof c === "string" ? c : (c?.containerNo || c?.container_no);
+                  if (cn) linked.add(cn);
+                }
+              }
+            }
+            setAlreadyLinkedContainerNos(Array.from(linked));
           }
         } catch (err) {
           console.error("Error fetching existing trucking records:", err);
@@ -557,8 +583,11 @@ export function CreateTruckingModal({
 
   function applyBookingData(b: any) {
     setLinkedBookingData(b);
-    // Also update linkedBookingType from the fetched data if available
-    const detectedType = b.shipmentType || b.booking_type || b.mode || b.type || "";
+    // Also update linkedBookingType from the fetched data if available.
+    // Priority: movement (authoritative: "IMPORT"/"EXPORT") → shipmentType → booking_type.
+    // Do NOT fall back to `mode` ("Sea"/"Air") — it doesn't carry the import/export axis
+    // and would corrupt the BookingSelector filter, refMovement, and status options.
+    const detectedType = b.movement || b.shipmentType || b.booking_type || "";
     if (detectedType) {
       setForm((prev) => {
         const nextType = detectedType || prev.linkedBookingType;
@@ -628,7 +657,8 @@ export function CreateTruckingModal({
       return;
     }
 
-    const nextType = booking.shipmentType || booking.booking_type || booking.mode || "";
+    // Same priority as applyBookingData — avoid b.mode ("Sea") clobbering the import/export axis.
+    const nextType = booking.movement || booking.shipmentType || booking.booking_type || "";
     setForm((prev) => {
       const nextOptions = getTruckingStatusOptions(nextType);
       const statusValid = prev.truckingStatus && (nextOptions as readonly string[]).includes(prev.truckingStatus);
@@ -1030,8 +1060,39 @@ export function CreateTruckingModal({
                 {!isLoadingBooking && linkedBookingData && form.linkedBookingId && (() => {
                   const activeSeg = effectiveSegments?.find((s) => s.segmentId === form.linkedSegmentId);
                   const isProvinceLeg = !!activeSeg && activeSeg.segmentLabel?.startsWith("Province");
-                  const displayShipper = isProvinceLeg ? ((activeSeg as any).shipper || "—") : (linkedBookingData.shipper || "—");
-                  const displayConsignee = isProvinceLeg ? ((activeSeg as any).consignee || "—") : (linkedBookingData.consignee || "—");
+                  // For exports, `shipper` is a SEGMENT_FIELDS-tracked value — segment-level
+                  // is authoritative. Fall back to booking root only if the segment is empty
+                  // (covers legacy data where shipper was stored at root only).
+                  const firstSeg = effectiveSegments && effectiveSegments.length > 0
+                    ? [...effectiveSegments].sort((a: any, b: any) => (a.legOrder || 0) - (b.legOrder || 0))[0]
+                    : undefined;
+                  const segShipper = isProvinceLeg ? (activeSeg as any)?.shipper : ((activeSeg as any)?.shipper || (firstSeg as any)?.shipper);
+                  const segConsignee = isProvinceLeg ? (activeSeg as any)?.consignee : ((activeSeg as any)?.consignee || (firstSeg as any)?.consignee);
+                  const displayShipper = segShipper || linkedBookingData.shipper || "—";
+                  const displayConsignee = segConsignee || linkedBookingData.consignee || "—";
+                  const isExport = (form.linkedBookingType || "").toLowerCase().includes("export");
+                  // For exports, the only reliable signal for "client" is an explicit
+                  // contact person — customerName/clientName legacy data was contaminated
+                  // with the shipper's company name. For imports, fall back to customerName.
+                  const rawClient = isExport
+                    ? ((linkedBookingData as any).contactPersonName
+                        || (linkedBookingData as any).contact_person_name
+                        || "")
+                    : ((linkedBookingData as any).contactPersonName
+                        || (linkedBookingData as any).contact_person_name
+                        || linkedBookingData.customerName
+                        || (linkedBookingData as any).client_name
+                        || (linkedBookingData as any).clientName
+                        || "");
+                  const norm = (s: string) => (s || "").trim().toLowerCase();
+                  const lbShipper = linkedBookingData.shipper || "";
+                  const lbConsignee = linkedBookingData.consignee || "";
+                  const lbCompany = (linkedBookingData as any).companyName || (linkedBookingData as any).company_name || "";
+                  const nClient = norm(rawClient);
+                  const hasDistinctClient = !!nClient
+                    && nClient !== norm(lbShipper)
+                    && nClient !== norm(lbConsignee)
+                    && nClient !== norm(lbCompany);
                   return (
                   <div
                     style={{
@@ -1044,22 +1105,24 @@ export function CreateTruckingModal({
                       gap: "14px",
                     }}
                   >
-                    {/* Client + Consignee/Shipper */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {linkedBookingData.customerName || linkedBookingData.client_name || linkedBookingData.clientName || "—"}
-                        </div>
-                      </div>
+                    {/* Shipper/Consignee + (optional) Client */}
+                    <div className={hasDistinctClient ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
-                          {(form.linkedBookingType || "").toLowerCase().includes("export") ? "Shipper" : "Consignee"}
+                          {isExport ? "Shipper" : "Consignee"}
                         </div>
                         <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
-                          {(form.linkedBookingType || "").toLowerCase().includes("export") ? displayShipper : displayConsignee}
+                          {isExport ? displayShipper : displayConsignee}
                         </div>
                       </div>
+                      {hasDistinctClient && (
+                        <div>
+                          <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Client</div>
+                          <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                            {rawClient}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Divider */}

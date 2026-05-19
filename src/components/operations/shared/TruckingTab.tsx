@@ -9,9 +9,10 @@ import { Plus, Truck } from "lucide-react";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { toast } from "../../ui/toast-utils";
 import { CreateTruckingModal } from "../CreateTruckingModal";
-import { TruckingRecordDetails } from "../TruckingRecordDetails";
+import { TruckingRecordDetailPanel } from "../TruckingRecordDetailPanel";
 import type { TruckingRecord } from "../CreateTruckingModal";
 import { TRUCKING_VENDORS, hexToRgba } from "../../../utils/truckingTags";
+import { formatAmount } from "../../../utils/formatAmount";
 import { API_BASE_URL } from "@/utils/api-config";
 import type { BookingSegment } from "../../../types/operations";
 
@@ -97,7 +98,8 @@ function RecordTable({
             const containerSize = r.containerSize || (r as any).containers?.[0]?.size || "—";
             const driverPlate = [r.driverHelperName, r.plateNo].filter(Boolean).join(" / ") || "—";
             const firstAddr = r.deliveryAddresses?.[0]?.address || r.truckingAddress || "—";
-            const rate = r.truckingRate || "—";
+            const rateNum = typeof r.truckingRate === "string" ? parseFloat(r.truckingRate) : (r.truckingRate as number | undefined);
+            const rate = rateNum !== undefined && !isNaN(rateNum as number) ? `PHP ${formatAmount(rateNum)}` : "—";
 
             return (
               <tr
@@ -186,45 +188,17 @@ export function TruckingTab({
 
   const handleSelectRecord = (r: TruckingRecord) => {
     setSelectedRecord(r);
-    onRecordSelected?.(true);
+  };
+
+  const handleClosePanel = () => {
+    setSelectedRecord(null);
+    fetchRecords();
   };
 
   const handleOpenCreate = (prefillSeg?: string) => {
     setCreatePrefillSegmentId(prefillSeg);
     setShowCreate(true);
   };
-
-  // Detail view — show selected record inline
-  if (selectedRecord) {
-    return (
-      <>
-        <TruckingRecordDetails
-          record={selectedRecord}
-          onBack={() => {
-            setSelectedRecord(null);
-            fetchRecords();
-            onRecordSelected?.(false);
-          }}
-          onUpdate={fetchRecords}
-          currentUser={currentUser}
-          embedded
-          onBookingTagsUpdated={onBookingTagsUpdated}
-          externalEdit={externalEdit}
-          onEditStateChange={onEditStateChange}
-          externalSaveCounter={externalSaveCounter}
-        />
-        <CreateTruckingModal
-          isOpen={showCreate}
-          onClose={() => { setShowCreate(false); setCreatePrefillSegmentId(undefined); }}
-          onSaved={handleSaved}
-          prefillBookingId={bookingId}
-          prefillBookingType={bookingType}
-          prefillSegmentId={createPrefillSegmentId || segmentId}
-          segments={segments}
-        />
-      </>
-    );
-  }
 
   // Loading state
   if (isLoading) {
@@ -365,6 +339,18 @@ export function TruckingTab({
         prefillBookingType={bookingType}
         prefillSegmentId={createPrefillSegmentId || segmentId}
         segments={segments}
+      />
+
+      {/* Detail Side Panel */}
+      <TruckingRecordDetailPanel
+        record={selectedRecord}
+        isOpen={selectedRecord !== null}
+        onClose={handleClosePanel}
+        onUpdate={() => {
+          fetchRecords();
+          onBookingTagsUpdated?.();
+        }}
+        currentUser={currentUser}
       />
     </div>
   );
