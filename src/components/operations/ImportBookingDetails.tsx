@@ -832,6 +832,7 @@ export function BrokerageBookingDetails({
             <TruckingTab
               bookingId={booking.bookingId}
               bookingType="import"
+              shipmentTags={(booking as any).shipmentTags}
               currentUser={currentUser}
               onBookingTagsUpdated={fetchBookingDetails}
               externalEdit={activeTab === "trucking" ? subTabEditRequest : undefined}

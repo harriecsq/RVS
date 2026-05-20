@@ -65,8 +65,8 @@ export function BillingsScreen() {
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState<string | null>(null);
 
-  const bookingEnrichMap = useMemo<Map<string, { serviceType: string; port: string }>>(() => {
-    const enrichMap = new Map<string, { serviceType: string; port: string }>();
+  const bookingEnrichMap = useMemo<Map<string, { serviceType: string; port: string; party: string }>>(() => {
+    const enrichMap = new Map<string, { serviceType: string; port: string; party: string }>();
     if (!bookingsResult?.success) return enrichMap;
     (bookingsResult.data || []).forEach((b: any) => {
       const movement = String(b.movement || b.booking_type || b.shipmentType || b.mode || "").toLowerCase();
@@ -76,7 +76,10 @@ export function BillingsScreen() {
       const port = isImport
         ? (b.destination || b.pod || seg0?.destination || seg0?.pod || "")
         : (b.origin || seg0?.origin || "");
-      const enrich = { serviceType, port };
+      const party = isImport
+        ? (b.consignee || seg0?.consignee || "")
+        : (b.shipper || seg0?.shipper || "");
+      const enrich = { serviceType, port, party };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
       if (b.uuid) enrichMap.set(b.uuid, enrich);
@@ -194,8 +197,10 @@ export function BillingsScreen() {
     {
       header: "Company / Client",
       cell: (b) => {
+        const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
+        const enrich = bId ? bookingEnrichMap.get(bId) : undefined;
         const lines = Array.from(new Set(
-          [b.companyName, b.clientName]
+          [b.companyName, b.clientName, enrich?.party]
             .map(v => (v || "").trim())
             .filter(Boolean)
         ));

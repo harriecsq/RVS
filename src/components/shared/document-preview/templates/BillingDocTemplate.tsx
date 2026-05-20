@@ -18,6 +18,9 @@ interface BillingDocTemplateProps {
     billingDate?: string;
     clientName?: string;
     companyName?: string;
+    shipper?: string;
+    consignee?: string;
+    shipmentType?: "import" | "export" | "";
     currency?: string;
     particulars?: BillingParticular[];
     totalAmount?: number;
@@ -111,6 +114,12 @@ export function BillingDocTemplate({ data, settings }: BillingDocTemplateProps) 
         <div>{data.clientName || ""}</div>
         {data.companyName && data.companyName !== data.clientName && (
           <div>{data.companyName}</div>
+        )}
+        {data.shipmentType === "export" && data.shipper && (
+          <div style={{ lineHeight: 1 }}>{data.shipper}</div>
+        )}
+        {data.shipmentType === "import" && data.consignee && (
+          <div style={{ lineHeight: 1 }}>{data.consignee}</div>
         )}
       </div>
 

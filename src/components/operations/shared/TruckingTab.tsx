@@ -15,6 +15,9 @@ import { TRUCKING_VENDORS, hexToRgba } from "../../../utils/truckingTags";
 import { formatAmount } from "../../../utils/formatAmount";
 import { API_BASE_URL } from "@/utils/api-config";
 import type { BookingSegment } from "../../../types/operations";
+import { DROP_CYCLE_STATUSES, getTruckingStatusColors } from "../../../constants/truckingStatuses";
+import { NeuronStatusPill } from "../../NeuronStatusPill";
+import { getTagByKey } from "../../../utils/statusTags";
 
 interface TruckingTabProps {
   bookingId: string;
@@ -27,6 +30,7 @@ interface TruckingTabProps {
   onEditStateChange?: (editing: boolean) => void;
   onRecordSelected?: (hasSelection: boolean) => void;
   externalSaveCounter?: number;
+  shipmentTags?: string[];
 }
 
 function VendorPill({ vendor }: { vendor: string }) {
@@ -54,9 +58,13 @@ function VendorPill({ vendor }: { vendor: string }) {
 function RecordTable({
   records,
   onSelectRecord,
+  bookingType,
+  shipmentTags,
 }: {
   records: TruckingRecord[];
   onSelectRecord: (r: TruckingRecord) => void;
+  bookingType: string;
+  shipmentTags?: string[];
 }) {
   const cellStyle: React.CSSProperties = {
     padding: "14px 16px",
@@ -68,14 +76,35 @@ function RecordTable({
     maxWidth: "200px",
   };
 
+  const isExport = (bookingType || "").toLowerCase().includes("export");
+  const columns: { label: string; width: string }[] = isExport
+    ? [
+        { label: "Container #", width: "22%" },
+        { label: "Vendor", width: "18%" },
+        { label: "Rate", width: "18%" },
+        { label: "Status", width: "22%" },
+        { label: "Created", width: "20%" },
+      ]
+    : [
+        { label: "Container #", width: "16%" },
+        { label: "Vendor", width: "14%" },
+        { label: "Rate", width: "14%" },
+        { label: "Container Status", width: "22%" },
+        { label: "Status", width: "18%" },
+        { label: "Created", width: "16%" },
+      ];
+
   return (
     <div style={{ border: "1px solid #E5E9F0", borderRadius: "12px", overflow: "hidden", backgroundColor: "#FFFFFF" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <colgroup>
+          {columns.map((c) => (<col key={c.label} style={{ width: c.width }} />))}
+        </colgroup>
         <thead>
           <tr style={{ borderBottom: "1px solid #E5E9F0", backgroundColor: "#F9FAFB" }}>
-            {["Container #", "Size", "Vendor", "Driver / Plate", "Delivery Address", "Rate"].map((col) => (
+            {columns.map((col) => (
               <th
-                key={col}
+                key={col.label}
                 style={{
                   padding: "12px 16px",
                   textAlign: "left",
@@ -87,7 +116,7 @@ function RecordTable({
                   whiteSpace: "nowrap",
                 }}
               >
-                {col}
+                {col.label}
               </th>
             ))}
           </tr>
@@ -95,11 +124,15 @@ function RecordTable({
         <tbody>
           {records.map((r) => {
             const containerNo = r.containerNo || (r as any).containers?.[0]?.containerNo || "—";
-            const containerSize = r.containerSize || (r as any).containers?.[0]?.size || "—";
-            const driverPlate = [r.driverHelperName, r.plateNo].filter(Boolean).join(" / ") || "—";
-            const firstAddr = r.deliveryAddresses?.[0]?.address || r.truckingAddress || "—";
             const rateNum = typeof r.truckingRate === "string" ? parseFloat(r.truckingRate) : (r.truckingRate as number | undefined);
             const rate = rateNum !== undefined && !isNaN(rateNum as number) ? `PHP ${formatAmount(rateNum)}` : "—";
+            const status = r.truckingStatus || "Awaiting Trucking";
+            const colorMap = getTruckingStatusColors(r.linkedBookingType);
+            const statusLabel = (DROP_CYCLE_STATUSES as readonly string[]).includes(r.truckingStatus || "")
+              ? `${r.truckingStatus} - Drop ${r.currentDrop || 1} of ${r.deliveryDrops?.length || 1}`
+              : status;
+            const createdRaw = (r as any).truckingDate || (r as any).createdAt || (r as any).created_at;
+            const created = createdRaw ? new Date(createdRaw).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—";
 
             return (
               <tr
@@ -114,13 +147,40 @@ function RecordTable({
                 onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "transparent"; }}
               >
                 <td style={{ ...cellStyle, fontWeight: 600 }}>{containerNo}</td>
-                <td style={cellStyle}>{containerSize}</td>
                 <td style={{ ...cellStyle, overflow: "visible" }}>
                   <VendorPill vendor={r.truckingVendor} />
                 </td>
-                <td style={cellStyle}>{driverPlate}</td>
-                <td style={cellStyle} title={firstAddr !== "—" ? firstAddr : undefined}>{firstAddr}</td>
                 <td style={cellStyle}>{rate}</td>
+                {!isExport && (
+                  <td style={{ ...cellStyle, overflow: "visible" }}>
+                    {(shipmentTags && shipmentTags.length > 0) ? (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                        {shipmentTags.map((t) => {
+                          const tag = getTagByKey(t);
+                          const isDanger = tag?.color === "danger";
+                          return (
+                            <span key={t} style={{
+                              display: "inline-flex", alignItems: "center", justifyContent: "center",
+                              height: "32px", padding: "0 12px", borderRadius: "var(--neuron-radius-l)",
+                              fontSize: "14px", fontWeight: 500, lineHeight: "20px", whiteSpace: "nowrap",
+                              backgroundColor: isDanger ? "#FEE2E2" : "#E8F5F3",
+                              color: isDanger ? "#991B1B" : "#12332B",
+                              border: isDanger ? "1px solid #FECACA" : "1px solid #C1D9CC",
+                            }}>
+                              {tag?.label ?? t}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: "13px", color: "#9CA3AF" }}>—</span>
+                    )}
+                  </td>
+                )}
+                <td style={{ ...cellStyle, overflow: "visible" }}>
+                  <NeuronStatusPill color={colorMap[status]}>{statusLabel}</NeuronStatusPill>
+                </td>
+                <td style={cellStyle}>{created}</td>
               </tr>
             );
           })}
@@ -141,6 +201,7 @@ export function TruckingTab({
   onEditStateChange,
   onRecordSelected,
   externalSaveCounter,
+  shipmentTags,
 }: TruckingTabProps) {
   const [records, setRecords] = useState<TruckingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -307,7 +368,7 @@ export function TruckingTab({
                     </p>
                   </div>
                 ) : (
-                  <RecordTable records={segRecords} onSelectRecord={handleSelectRecord} />
+                  <RecordTable records={segRecords} onSelectRecord={handleSelectRecord} bookingType={bookingType} shipmentTags={shipmentTags} />
                 )}
               </div>
             );
@@ -325,7 +386,7 @@ export function TruckingTab({
               </p>
             </div>
           ) : (
-            <RecordTable records={records} onSelectRecord={handleSelectRecord} />
+            <RecordTable records={records} onSelectRecord={handleSelectRecord} bookingType={bookingType} shipmentTags={shipmentTags} />
           )}
         </>
       )}

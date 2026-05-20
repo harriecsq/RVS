@@ -41,8 +41,10 @@ function schedulePersist() {
 export function invalidateCache(path?: string) {
   if (path) {
     cache.delete(path);
+    inflight.delete(path);
   } else {
     cache.clear();
+    inflight.clear();
   }
   schedulePersist();
 }

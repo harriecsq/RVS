@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, DollarSign } from "lucide-react";
 import { formatAmount } from "../../utils/formatAmount";
 import { NeuronStatusPill } from "../NeuronStatusPill";
@@ -48,12 +48,18 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const { data: collectionsResult, isLoading, refetch } = useCachedFetch<{ success: boolean; data: any[] }>("/collections");
   const { data: billingsResult } = useCachedFetch<{ success: boolean; data: any[] }>("/billings");
   const { data: bookingsResult } = useCachedFetch<{ success: boolean; data: any[] }>("/bookings");
+  const [optimisticCollections, setOptimisticCollections] = useState<any[]>([]);
   const collections = useMemo<Collection[]>(() => {
-    if (!collectionsResult?.success || !Array.isArray(collectionsResult.data)) return [];
-    const data = [...collectionsResult.data];
-    data.sort((a: any, b: any) => String(b.collectionNumber || "").localeCompare(String(a.collectionNumber || ""), undefined, { numeric: true }));
-    return data;
-  }, [collectionsResult]);
+    const base = (collectionsResult?.success && Array.isArray(collectionsResult.data)) ? collectionsResult.data : [];
+    const seen = new Set(base.map((c: any) => c.id || c.uuid || c.collectionNumber));
+    const merged = [...base];
+    for (const c of optimisticCollections) {
+      const key = c.id || c.uuid || c.collectionNumber;
+      if (!seen.has(key)) merged.unshift(c);
+    }
+    merged.sort((a: any, b: any) => String(b.collectionNumber || "").localeCompare(String(a.collectionNumber || ""), undefined, { numeric: true }));
+    return merged;
+  }, [collectionsResult, optimisticCollections]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,7 +107,22 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
     return map;
   }, [collectionsResult, billingsResult, bookingsResult]);
 
-  const fetchCollections = () => { invalidateCache("/collections"); refetch(); };
+  const fetchCollections = () => {
+    invalidateCache("/collections");
+    invalidateCache("/billings");
+    invalidateCache("/bookings");
+    refetch();
+  };
+
+  useEffect(() => {
+    if (!collectionsResult?.success || !Array.isArray(collectionsResult.data)) return;
+    if (optimisticCollections.length === 0) return;
+    const baseKeys = new Set(collectionsResult.data.map((c: any) => c.id || c.uuid || c.collectionNumber));
+    setOptimisticCollections((prev) => prev.filter((c) => {
+      const key = c.id || c.uuid || c.collectionNumber;
+      return !baseKeys.has(key);
+    }));
+  }, [collectionsResult]);
 
   const handleViewCollection = (collectionId: string) => {
     setSelectedCollectionId(collectionId);
@@ -231,19 +252,10 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
 
   const columns: ColumnDef<Collection>[] = [
     {
-      header: "Collection Details",
+      header: "Collection Number",
       cell: (collection) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div>
-            <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D", marginBottom: "2px" }}>
-              {collection.collectionNumber}
-            </div>
-            {collection.customerName && (
-              <div style={{ fontSize: "13px", color: "#667085" }}>
-                {collection.customerName}
-              </div>
-            )}
-          </div>
+        <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
+          {collection.collectionNumber}
         </div>
       ),
     },
@@ -256,13 +268,6 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       ),
     },
     {
-      header: "Port",
-      cell: (collection) => {
-        const port = collectionPortMap.get(collection.id) || "";
-        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{port || "—"}</div>;
-      },
-    },
-    {
       header: "Amount",
       cell: (collection) => {
         const computedAmount = collection.allocations && collection.allocations.length > 0
@@ -272,40 +277,6 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
           <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
             PHP {formatAmount(computedAmount)}
           </div>
-        );
-      },
-    },
-    {
-      header: "Linked Billing",
-      cell: (collection) => {
-        const linkedBillingNumbers: string[] = [];
-        if (collection.allocations && collection.allocations.length > 0) {
-          collection.allocations.forEach((a: any) => {
-            if (a.billingNumber) linkedBillingNumbers.push(a.billingNumber);
-          });
-        } else if (collection.billingNumber) {
-          linkedBillingNumbers.push(collection.billingNumber);
-        }
-
-        return linkedBillingNumbers.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {linkedBillingNumbers.map((bn, i) => (
-              <span
-                key={i}
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "#0F766E",
-                  display: "inline-block",
-                  width: "fit-content",
-                }}
-              >
-                {bn}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <span style={{ fontSize: "14px", color: "#9CA3AF" }}>{"\u2014"}</span>
         );
       },
     },
@@ -431,8 +402,11 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
       <CreateCollectionPanel
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSuccess={() => {
+        onSuccess={(newCollection) => {
           setShowCreateModal(false);
+          if (newCollection) {
+            setOptimisticCollections((prev) => [newCollection, ...prev]);
+          }
           fetchCollections();
         }}
       />

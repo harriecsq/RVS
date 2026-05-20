@@ -45,6 +45,8 @@ interface ViewBillingScreenProps {
   onEditStateChange?: (editing: boolean) => void;
   /** Increment to trigger save from parent. */
   externalSaveCounter?: number;
+  onDeleted?: () => void;
+  onUpdated?: () => void;
 }
 
 type BillingStatus = "Draft" | "For Approval" | "Approved" | "Completed" | "Partially Collected" | "Cancelled";
@@ -156,7 +158,7 @@ interface Expense {
   amount: number;
 }
 
-export function ViewBillingScreen({ billingId, onBack, embedded = false, externalEdit, onEditStateChange, externalSaveCounter }: ViewBillingScreenProps) {
+export function ViewBillingScreen({ billingId, onBack, embedded = false, externalEdit, onEditStateChange, externalSaveCounter, onDeleted, onUpdated }: ViewBillingScreenProps) {
   const [billing, setBilling] = useState<Billing | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -285,7 +287,10 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
   // Determine shipment type from linked bookings
   const primaryBooking = linkedBookings.length > 0 ? linkedBookings[0] : null;
-  const shipmentType = (primaryBooking as any)?.shipmentType?.toLowerCase() || (primaryBooking as any)?.deliveryType?.toLowerCase() || "";
+  const shipmentType = (primaryBooking as any)?.shipmentType?.toLowerCase()
+    || (primaryBooking as any)?.deliveryType?.toLowerCase()
+    || (primaryBooking as any)?.movement?.toLowerCase()
+    || "";
   const isImport = shipmentType === "import";
   const isExport = shipmentType === "export";
 
@@ -666,12 +671,11 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
       if (result.success) {
         toast.success("Billing updated successfully!");
-        
-        // Exit edit mode
         setIsEditing(false);
-        
-        // Refetch billing data to show updated values
+        invalidateCache("/billings");
+        invalidateCache("/collections");
         await fetchBillingDetails();
+        if (onUpdated) onUpdated();
       } else {
         toast.error(result.error || "Failed to save billing");
       }
@@ -703,6 +707,9 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
       toast.success("Billing deleted successfully");
       setShowDeleteConfirm(false);
+      invalidateCache("/billings");
+      invalidateCache("/collections");
+      if (onDeleted) onDeleted();
       if (onBack) onBack(); // Go back to list view
     } catch (error) {
       console.error("Error deleting billing:", error);
@@ -966,6 +973,9 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
               billingDate: billing.billingDate,
               clientName: bookingShipment.clientName || billing.clientName,
               companyName: bookingShipment.companyName || billing.companyName,
+              shipper: bookingShipment.shipper,
+              consignee: bookingShipment.consignee,
+              shipmentType: isExport ? "export" : isImport ? "import" : "",
               currency: billing.currency,
               particulars: billing.particulars,
               totalAmount: billing.totalAmount,
@@ -1098,6 +1108,18 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
                     return (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      {/* Linked Booking */}
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>
+                          Linked Booking
+                        </div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>
+                          {linkedBookings.length > 0
+                            ? ((linkedBookings[0] as any).bookingId || (linkedBookings[0] as any).bookingNumber || (linkedBookings[0] as any).booking_number || "—")
+                            : "—"}
+                        </div>
+                      </div>
+
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                         {/* Row 1: Shipper/Consignee (conditional) | Client Name */}
                         {isExport && (
@@ -1714,10 +1736,10 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                         <thead>
                           <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                             <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Collection Number</th>
-                            <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
                             <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payment Method</th>
-                            <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Allocated</th>
+                            <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
                             <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                            <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Created</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1740,11 +1762,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                               </td>
                               <td style={{ padding: "16px 24px" }}>
                                 <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                                  {formatDate(collection.collectionDate)}
-                                </div>
-                              </td>
-                              <td style={{ padding: "16px 24px" }}>
-                                <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                                   {collection.paymentMethod || "—"}
                                 </div>
                               </td>
@@ -1755,6 +1772,11 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                               </td>
                               <td style={{ padding: "16px 24px", textAlign: "left" }}>
                                 <NeuronStatusPill status={collection.status} />
+                              </td>
+                              <td style={{ padding: "16px 24px" }}>
+                                <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                                  {formatDate(collection.collectionDate)}
+                                </div>
                               </td>
                             </tr>
                           ))}

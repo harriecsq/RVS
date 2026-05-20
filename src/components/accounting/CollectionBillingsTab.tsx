@@ -36,11 +36,40 @@ interface CollectionBillingsTabProps {
 export function CollectionBillingsTab({ collectionId, collectionNumber, allocations }: CollectionBillingsTabProps) {
   const [billings, setBillings] = useState<Billing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [bookingPartyMap, setBookingPartyMap] = useState<Map<string, string>>(new Map());
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchBillings();
+    fetchBookings();
   }, [allocations]);
+
+  const fetchBookings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings?slim=1`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        const map = new Map<string, string>();
+        for (const b of result.data as any[]) {
+          const movement = String(b.movement || b.shipmentType || "").toLowerCase();
+          const isImport = movement.includes("import") || movement === "imps";
+          const seg0 = b.segments?.[0];
+          const party = isImport
+            ? (b.consignee || seg0?.consignee || "")
+            : (b.shipper || seg0?.shipper || "");
+          if (!party) continue;
+          if (b.uuid) map.set(b.uuid, party);
+          if (b.id) map.set(b.id, party);
+          if (b.bookingId) map.set(b.bookingId, party);
+        }
+        setBookingPartyMap(map);
+      }
+    } catch (err) {
+      console.error("Error fetching bookings:", err);
+    }
+  };
 
   const fetchBillings = async () => {
     if (!allocations || allocations.length === 0) {
@@ -68,12 +97,13 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
             allocatedAmountMap.set(a.billingId, (allocatedAmountMap.get(a.billingId) || 0) + a.amount);
           });
 
-          // Filter for only billings that are in this collection's allocations
+          // Filter for only billings that are in this collection's allocations.
+          // Allocation billingId is a UUID; billing list exposes UUID as `uuid` and billing_number as `id`.
           const linkedBillings = result.data
-            .filter((b: any) => allocationBillingIds.has(b.id))
+            .filter((b: any) => allocationBillingIds.has(b.uuid) || allocationBillingIds.has(b.id))
             .map((b: any) => ({
               ...b,
-              allocatedAmount: allocatedAmountMap.get(b.id) || 0,
+              allocatedAmount: allocatedAmountMap.get(b.uuid) ?? allocatedAmountMap.get(b.id) ?? 0,
             }));
 
           setBillings(linkedBillings);
@@ -172,11 +202,11 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
               <thead>
                 <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Billing Number</th>
-                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
-                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Client</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Company / Client</th>
                   <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Total Amount</th>
                   <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Allocated</th>
                   <th style={{ padding: "12px 24px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -201,14 +231,25 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px" }}>
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {formatDate(billing.billingDate || billing.created_at)}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px 24px" }}>
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {billing.clientName || "—"}
-                      </div>
+                      {(() => {
+                        const bId = billing.bookingId || (billing.bookingIds || [])[0];
+                        const party = bId ? bookingPartyMap.get(bId) : undefined;
+                        const lines = Array.from(new Set(
+                          [billing.companyName, billing.clientName, party]
+                            .map((v: any) => (v || "").trim())
+                            .filter(Boolean)
+                        ));
+                        if (lines.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
+                        const [primary, ...rest] = lines;
+                        return (
+                          <>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{primary}</div>
+                            {rest.map((line, i) => (
+                              <div key={i} style={{ fontSize: "12px", color: "#667085", marginTop: "2px" }}>{line}</div>
+                            ))}
+                          </>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: "16px 24px", textAlign: "right" }}>
                       <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>
@@ -227,6 +268,11 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
                     </td>
                     <td style={{ padding: "16px 24px", textAlign: "center" }}>
                       <NeuronStatusPill status={billing.status} />
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                        {formatDate(billing.billingDate || billing.created_at)}
+                      </div>
                     </td>
                   </tr>
                 ))}

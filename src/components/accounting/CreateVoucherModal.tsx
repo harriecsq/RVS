@@ -24,7 +24,7 @@ const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
   { label: "General Expenses", items: ["Annual Expenses", "Expenses", "Transportation", "Salary", "Benefits", "Utilities"] },
 ];
 
-function CategoryDropdown({
+export function CategoryDropdown({
   value,
   onChange,
   options,
@@ -569,17 +569,6 @@ export function CreateVoucherModal({
         // Pre-fill editable list for Shipping Line with these containers
         setVoucherContainers(containers.length > 0 ? containers : [""]);
 
-        // Auto-fill Payee based on Category
-        if (category === "Trucking" && selectedBooking.trucker) {
-             setPayee(selectedBooking.trucker);
-        } else if (category === "Shipping Line" && selectedBooking.shippingLine) {
-             setPayee(selectedBooking.shippingLine);
-        } else if (selectedBooking.trucker && !payee) {
-             // Legacy fallback or default behavior if no category selected yet but likely trucking?
-             // Or maybe we shouldn't auto-fill if category mismatch?
-             // Keeping original behavior partially for safety but prioritizing category match
-             if (category === "Trucking") setPayee(selectedBooking.trucker);
-        }
     }
 
     if (category === "Trucking" && selectedBooking) {

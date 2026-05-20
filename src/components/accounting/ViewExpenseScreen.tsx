@@ -233,6 +233,10 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
   const [showExportAddItemDropdown, setShowExportAddItemDropdown] = useState<string | null>(null);
   const exportAddItemRef = useRef<HTMLDivElement>(null);
 
+  // Unreconciled (Export): track which row's category dropdown is open (by unreconciled item id)
+  const [showUnreconciledCategoryDropdown, setShowUnreconciledCategoryDropdown] = useState<string | null>(null);
+  const unreconciledCategoryRef = useRef<HTMLDivElement>(null);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -258,6 +262,19 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showExportAddItemDropdown]);
+
+  // Close unreconciled category dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (unreconciledCategoryRef.current && !unreconciledCategoryRef.current.contains(e.target as Node)) {
+        setShowUnreconciledCategoryDropdown(null);
+      }
+    };
+    if (showUnreconciledCategoryDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showUnreconciledCategoryDropdown]);
 
   const handleOpenRefundPopover = (e: React.MouseEvent<HTMLButtonElement>, item: LineItem) => {
     if (!expense?.charges) return;
@@ -483,6 +500,36 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
     }));
     
     toast.success(`Added to ${categoryName}`);
+  };
+
+  // Export: route an unreconciled voucher line into a specific Export category, populating
+  // unitPrice/per/multiplyByContainers so Unit Cost + Volume columns render correctly.
+  const handleAddUnreconciledToExportCategory = (item: any, categoryName: string) => {
+    if (!editedExpense) return;
+    const amount = item.amount || 0;
+    const contCount = editedExpense.containerNumbers?.length || bookingShipment.containers.length || 0;
+    const hasContainers = contCount > 0;
+    const newItem: LineItem = {
+      category: categoryName,
+      description: item.description || "Unreconciled Item",
+      amount,
+      currency: "PHP",
+      unitPrice: hasContainers ? amount / contCount : amount,
+      per: "40",
+      multiplyByContainers: hasContainers,
+      voucherNo: item.voucherNumber,
+      sourceVoucherLineItemId: item.id,
+    };
+
+    const updatedCharges = [...(editedExpense.charges || []), newItem];
+    setEditedExpense({ ...editedExpense, charges: updatedCharges });
+
+    // Un-remove the category if it was removed, and expand it
+    setRemovedExportCategories(prev => prev.filter(c => c !== categoryName));
+    setExpandedCategories(prev => ({ ...prev, [categoryName]: true }));
+
+    setShowUnreconciledCategoryDropdown(null);
+    toast.success(`Added to ${formatCategoryName(categoryName)}`);
   };
 
   const handleLinkVoucherItem = (voucherItem: any) => {
@@ -2661,64 +2708,138 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                       <td style={{ padding: "12px", textAlign: "right" }}>
                         {isEditing ? (
                           <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", flexWrap: "wrap" }}>
-                            <button
-                              type="button"
-                              onClick={() => handleAddUnreconciledItem(item, "Particulars")}
-                              title="Add to Particulars"
-                              style={{
-                                padding: "6px 10px",
-                                fontSize: "11px",
-                                fontWeight: 500,
-                                color: "#0F766E",
-                                background: "#F0FDFA",
-                                border: "1px solid #0F766E",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              + Particulars
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleAddUnreconciledItem(item, "Additional Charges")}
-                              title="Add to Additional Charges"
-                              style={{
-                                padding: "6px 10px",
-                                fontSize: "11px",
-                                fontWeight: 500,
-                                color: "#1F2937",
-                                background: "white",
-                                border: "1px solid #E5E9F0",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              + Add. Charges
-                            </button>
                             {expense.documentTemplate === "IMPORT" && (
-                            <button
-                              type="button"
-                              onClick={() => handleAddUnreconciledItem(item, "Refundable Deposits")}
-                              title="Add to Refundable Deposits"
-                              style={{
-                                padding: "6px 10px",
-                                fontSize: "11px",
-                                fontWeight: 500,
-                                color: "#B45309",
-                                background: "#FFFBEB",
-                                border: "1px solid #FCD34D",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              + Refundable
-                            </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddUnreconciledItem(item, "Particulars")}
+                                  title="Add to Particulars"
+                                  style={{
+                                    padding: "6px 10px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#0F766E",
+                                    background: "#F0FDFA",
+                                    border: "1px solid #0F766E",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease",
+                                    whiteSpace: "nowrap"
+                                  }}
+                                >
+                                  + Particulars
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddUnreconciledItem(item, "Additional Charges")}
+                                  title="Add to Additional Charges"
+                                  style={{
+                                    padding: "6px 10px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#1F2937",
+                                    background: "white",
+                                    border: "1px solid #E5E9F0",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease",
+                                    whiteSpace: "nowrap"
+                                  }}
+                                >
+                                  + Add. Charges
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddUnreconciledItem(item, "Refundable Deposits")}
+                                  title="Add to Refundable Deposits"
+                                  style={{
+                                    padding: "6px 10px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#B45309",
+                                    background: "#FFFBEB",
+                                    border: "1px solid #FCD34D",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease",
+                                    whiteSpace: "nowrap"
+                                  }}
+                                >
+                                  + Refundable
+                                </button>
+                              </>
+                            )}
+                            {expense.documentTemplate !== "IMPORT" && (
+                              <div
+                                ref={showUnreconciledCategoryDropdown === item.id ? unreconciledCategoryRef : undefined}
+                                style={{ position: "relative" }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => setShowUnreconciledCategoryDropdown(prev => prev === item.id ? null : item.id)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    padding: "6px 10px",
+                                    fontSize: "11px",
+                                    fontWeight: 500,
+                                    color: "#1F2937",
+                                    background: "white",
+                                    border: "1px solid #E5E9F0",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                    transition: "all 0.15s ease"
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "#F0FDFA";
+                                    e.currentTarget.style.borderColor = "#0F766E";
+                                    e.currentTarget.style.color = "#0F766E";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "white";
+                                    e.currentTarget.style.borderColor = "#E5E9F0";
+                                    e.currentTarget.style.color = "#1F2937";
+                                  }}
+                                >
+                                  Add to category <ChevronDown size={11} />
+                                </button>
+                                <PortalDropdown
+                                  isOpen={showUnreconciledCategoryDropdown === item.id}
+                                  onClose={() => setShowUnreconciledCategoryDropdown(null)}
+                                  triggerRef={unreconciledCategoryRef}
+                                  minWidth="180px"
+                                >
+                                  {EXPORT_AVAILABLE_CATEGORIES.map(cat => (
+                                    <button
+                                      key={cat}
+                                      type="button"
+                                      onClick={() => handleAddUnreconciledToExportCategory(item, cat)}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        width: "100%",
+                                        padding: "9px 12px",
+                                        fontSize: "13px",
+                                        fontWeight: 500,
+                                        color: "#0A1D4D",
+                                        background: "white",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        textAlign: "left" as const,
+                                        transition: "background 0.1s ease"
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = "#F0FDFA"}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                                    >
+                                      <Plus size={14} color="#0F766E" />
+                                      {formatCategoryName(cat)}
+                                    </button>
+                                  ))}
+                                </PortalDropdown>
+                              </div>
                             )}
                           </div>
                         ) : (

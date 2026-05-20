@@ -79,6 +79,7 @@ export function VoucherDetailPanel({
             voucherId={voucherId}
             onBack={handleBack}
             onUpdated={onVoucherUpdated}
+            onDeleted={handleDeleted}
           />
         </div>
       </div>

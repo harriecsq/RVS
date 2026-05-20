@@ -305,8 +305,32 @@ route.get("/next-ref/:type", async (c) => {
     const nextNumber = await nextVoucherSeq(companyCode, voucherType, year);
     return c.json({ success: true, nextNumber });
   }
+  // Billing and collection peek from the actual table so deletes don't leave the counter stale.
+  if (type === "billing") {
+    const { data: rows } = await db()
+      .from("billings").select("billing_number")
+      .eq("billing_company_code", companyCode).eq("billing_year", year);
+    let max = 0;
+    for (const r of (rows ?? []) as any[]) {
+      const n = parseInt(((r.billing_number as string) || "").split("-").pop() ?? "0", 10);
+      if (!isNaN(n) && n > max) max = n;
+    }
+    return c.json({ success: true, nextNumber: max + 1 });
+  }
+  if (type === "collection") {
+    const { data: rows } = await db()
+      .from("collections").select("collection_number")
+      .ilike("collection_number", `COL ${year}-%`);
+    let max = 0;
+    for (const r of (rows ?? []) as any[]) {
+      const n = parseInt(((r.collection_number as string) || "").split("-").pop() ?? "0", 10);
+      if (!isNaN(n) && n > max) max = n;
+    }
+    return c.json({ success: true, nextNumber: max + 1 });
+  }
+
   let scope: string;
-  let counterYear = year;
+  const counterYear = year;
   const movement = (c.req.query("movement") ?? "").toLowerCase();
   switch (type) {
     case "import":          scope = "booking:Import"; break;
@@ -316,8 +340,6 @@ route.get("/next-ref/:type", async (c) => {
         return c.json(fail("movement query param must be 'import' or 'export' for trucking", 400), 400);
       scope = movement === "import" ? "trucking:Import" : "trucking:Export";
       break;
-    case "collection":      scope = "collection";     counterYear = 0; break;
-    case "billing":         scope = `billing:${companyCode}`; break;
     case "export-document": scope = `export-document:${companyCode}`; break;
     default:
       return c.json(fail(`Unknown ref type: ${type}`, 400), 400);
@@ -567,7 +589,7 @@ async function fetchBookingChildren(bookingId: string) {
   return {
     tags: (tagsRes.data ?? []).map((r: any) => r.tag),
     history: historyRes.data ?? [],
-    events: eventsRes.data ?? [],
+    events: (eventsRes.data ?? []).map((r: any) => r.data ?? r),
     segments: (segmentsRes.data ?? []).map(segmentRowToApi),
     documents,
   };
@@ -2493,6 +2515,10 @@ route.put("/billings/:id", async (c) => {
 route.delete("/billings/:id", async (c) => {
   const uuid = await resolveRowId("billings", "billing_number", c.req.param("id"));
   if (!uuid) return c.json({ success: true });
+  await db().from("collection_allocations").delete().eq("billing_id", uuid);
+  await db().from("billing_particulars").delete().eq("billing_id", uuid);
+  await db().from("billing_bookings").delete().eq("billing_id", uuid);
+  await db().from("billing_expenses").delete().eq("billing_id", uuid);
   const { error } = await db().from("billings").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   return c.json({ success: true });
@@ -2561,12 +2587,37 @@ async function nextCollectionNumber(year: number) {
 }
 
 route.get("/collections", async (c) => {
-  const billingId = c.req.query("billingId");
+  const billingIdParam = c.req.query("billingId");
+  const bookingIdParam = c.req.query("bookingId");
   let collectionIds: string[] | undefined;
-  if (billingId) {
+  if (billingIdParam) {
+    let billingUuid = billingIdParam;
+    if (!UUID_RE.test(billingIdParam)) {
+      const resolved = await resolveRowId("billings", "billing_number", billingIdParam);
+      if (!resolved) return c.json(ok([]));
+      billingUuid = resolved;
+    }
     const { data: allocs } = await db()
-      .from("collection_allocations").select("collection_id").eq("billing_id", billingId);
+      .from("collection_allocations").select("collection_id").eq("billing_id", billingUuid);
     collectionIds = Array.from(new Set(((allocs ?? []) as any[]).map((a) => a.collection_id)));
+    if (collectionIds.length === 0) return c.json(ok([]));
+  }
+  if (bookingIdParam) {
+    let bookingUuid = bookingIdParam;
+    if (!UUID_RE.test(bookingIdParam)) {
+      const resolved = await resolveRowId("bookings", "booking_number", bookingIdParam);
+      if (!resolved) return c.json(ok([]));
+      bookingUuid = resolved;
+    }
+    const { data: links } = await db()
+      .from("billing_bookings").select("billing_id").eq("booking_id", bookingUuid);
+    const matchedBillingIds = Array.from(new Set(((links ?? []) as any[]).map((r) => r.billing_id)));
+    if (matchedBillingIds.length === 0) return c.json(ok([]));
+    const { data: allocs } = await db()
+      .from("collection_allocations").select("collection_id").in("billing_id", matchedBillingIds);
+    const fromBooking = Array.from(new Set(((allocs ?? []) as any[]).map((a) => a.collection_id)));
+    if (fromBooking.length === 0) return c.json(ok([]));
+    collectionIds = collectionIds ? collectionIds.filter((id) => fromBooking.includes(id)) : fromBooking;
     if (collectionIds.length === 0) return c.json(ok([]));
   }
   let q = db().from("collections").select("*").order("created_at", { ascending: false });
@@ -2714,8 +2765,9 @@ route.patch("/collections/:id", async (c) => {
 route.delete("/collections/:id", async (c) => {
   const uuid = await resolveRowId("collections", "collection_number", c.req.param("id"));
   if (!uuid) return c.json({ success: true });
-  // capture affected billings to refresh status
+  // capture affected billings before deleting allocations
   const { data: allocs } = await db().from("collection_allocations").select("billing_id").eq("collection_id", uuid);
+  await db().from("collection_allocations").delete().eq("collection_id", uuid);
   const { error } = await db().from("collections").delete().eq("id", uuid);
   if (error) return c.json(fail(error.message, 400), 400);
   const billingIds = Array.from(new Set(((allocs ?? []) as any[]).map((a) => a.billing_id)));

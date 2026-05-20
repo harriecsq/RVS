@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, X, Check, FileText, Receipt, Plus, Paperclip } from "lucide-react";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
 import { TabRowActions } from "../shared/TabRowActions";
@@ -13,6 +13,8 @@ import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
 import { invalidateCache } from '@/hooks/useCachedFetch';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const COLLECTION_STATUS_COLORS: Record<string, string> = {
   "Draft": "#6B7280",
@@ -62,6 +64,52 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated 
   const [editedAllocations, setEditedAllocations] = useState(collection.allocations || []);
   const [showTimeline, setShowTimeline] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "billings" | "attachments">("overview");
+  const [billingBookingMap, setBillingBookingMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [billingsRes, bookingsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/billings`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+          fetch(`${API_BASE_URL}/bookings`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        ]);
+        if (!billingsRes.ok || !bookingsRes.ok) return;
+        const [billingsJson, bookingsJson] = await Promise.all([billingsRes.json(), bookingsRes.json()]);
+        if (cancelled) return;
+        if (!billingsJson.success || !bookingsJson.success) return;
+
+        // booking uuid -> public ref (e.g., "IMP 2026-1")
+        const bookingRefByUuid = new Map<string, string>();
+        (bookingsJson.data || []).forEach((bk: any) => {
+          const ref = bk.bookingId || bk.id || bk.booking_number;
+          if (bk.uuid && ref) bookingRefByUuid.set(bk.uuid, ref);
+        });
+
+        // any plausible billing key (uuid / billing_number / billingNumber) -> booking ref
+        const map = new Map<string, string>();
+        (billingsJson.data || []).forEach((b: any) => {
+          const bookingUuid: string | undefined = (b.bookingIds && b.bookingIds[0]) || b.bookingId;
+          const ref = (bookingUuid && bookingRefByUuid.get(bookingUuid)) || (b.bookingId && !UUID_RE.test(b.bookingId) ? b.bookingId : "");
+          if (!ref) return;
+          if (b.uuid) map.set(b.uuid, ref);
+          if (b.id) map.set(b.id, ref);
+          if (b.billingNumber) map.set(b.billingNumber, ref);
+        });
+        setBillingBookingMap(map);
+      } catch (e) {
+        console.error("Error fetching billings/bookings for booking resolution:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const resolveBooking = (alloc: { billingId?: string; billingNumber?: string; bookingNumber?: string; projectNumber?: string }) =>
+    alloc.bookingNumber
+      || (alloc.billingId ? billingBookingMap.get(alloc.billingId) : undefined)
+      || (alloc.billingNumber ? billingBookingMap.get(alloc.billingNumber) : undefined)
+      || alloc.projectNumber
+      || "";
 
   // Approval / Sign-off fields
   const [editedPreparedBy, setEditedPreparedBy] = useState((collection as any).preparedBy || "");
@@ -590,7 +638,7 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated 
                       <td style={{ padding: "12px 24px" }}>
                         <input
                           type="text"
-                          value={alloc.bookingNumber || alloc.projectNumber || ""}
+                          value={resolveBooking(alloc)}
                           onChange={(e) => {
                             const updated = [...editedAllocations];
                             updated[index] = { ...updated[index], bookingNumber: e.target.value };
@@ -677,8 +725,8 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated 
                       <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>
                         {alloc.billingNumber}
                       </td>
-                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0F766E" }}>
-                        {alloc.bookingNumber || alloc.projectNumber || "—"}
+                      <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0F766E", fontWeight: 700 }}>
+                        {resolveBooking(alloc) || "—"}
                       </td>
                       <td style={{ padding: "16px 24px", fontSize: "14px", color: "#0A1D4D", textAlign: "right" }}>
                         ₱{formatAmount(alloc.amount)}

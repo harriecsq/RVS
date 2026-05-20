@@ -11,7 +11,7 @@ import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 
 interface CreateCollectionScreenProps {
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (newCollection?: any) => void;
   preSelectedBillingId?: string;
 }
 
@@ -40,7 +40,8 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   const isMountedRef = useRef(true);
 
   const [billings, setBillings] = useState<Billing[]>([]);
-  
+  const [bookingRefMap, setBookingRefMap] = useState<Map<string, string>>(new Map());
+
   // Map of billingId -> amount to pay
   const [selectedAllocations, setSelectedAllocations] = useState<Map<string, number>>(new Map());
   // Track raw input strings for amount fields (so empty = blank, not 0)
@@ -92,7 +93,28 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
   // Fetch billings on mount
   useEffect(() => {
     fetchBillings();
+    fetchBookingRefs();
   }, []);
+
+  const fetchBookingRefs = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bookings?slim=1`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      const result = await response.json();
+      if (isMountedRef.current && result.success && Array.isArray(result.data)) {
+        const map = new Map<string, string>();
+        for (const b of result.data as any[]) {
+          const ref = b.bookingId || b.bookingNumber || b.booking_number || b.id;
+          if (b.uuid && ref) map.set(b.uuid, ref);
+          if (b.id && ref) map.set(b.id, ref);
+        }
+        setBookingRefMap(map);
+      }
+    } catch (err) {
+      console.error("Error fetching booking refs:", err);
+    }
+  };
 
   // Filter billings using all search/filter controls
   const filteredBillings = useMemo(() => {
@@ -236,24 +258,34 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
     e.preventDefault();
 
     if (selectedAllocations.size === 0) {
-      toast.error("Please select at least one invoice");
+      toast.error("Please select at least one invoice", { position: "bottom-left" });
       return;
     }
 
+    // Block empty / zero / NaN allocation inputs before totals
+    for (const billingId of selectedAllocations.keys()) {
+      const raw = (allocationInputs.get(billingId) ?? "").trim();
+      const parsed = parseFloat(raw);
+      if (raw === "" || isNaN(parsed) || parsed <= 0) {
+        toast.error("Unable to create collection — payment amount cannot be empty or zero", { position: "bottom-left" });
+        return;
+      }
+    }
+
     if (totalAmount <= 0) {
-      toast.error("Total amount must be greater than 0");
+      toast.error("Unable to create collection — payment amount cannot be empty or zero", { position: "bottom-left" });
       return;
     }
 
     if (!formData.paymentMethod) {
-      toast.error("Please select a payment method");
+      toast.error("Please select a payment method", { position: "bottom-left" });
       return;
     }
 
     // Validate amounts
     for (const [billingId, amount] of selectedAllocations.entries()) {
         if (amount <= 0) {
-            toast.error("Allocation amount must be greater than 0");
+            toast.error("Unable to create collection — payment amount cannot be empty or zero", { position: "bottom-left" });
             return;
         }
         const billing = billings.find(b => b.id === billingId);
@@ -301,7 +333,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
 
       if (result.success) {
         toast.success("Collection created successfully");
-        onSuccess();
+        onSuccess(result.data);
       } else {
         toast.error(result.error || "Failed to create collection");
       }
@@ -323,18 +355,22 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
     });
   };
 
+  const resolveBookingRef = (id: string): string => bookingRefMap.get(id) || id;
+
   const getBookingDisplay = (billing: Billing) => {
     if (billing.bookingNumber && billing.bookingNumber !== "undefined" && billing.bookingNumber !== "null") {
       return `Booking: ${billing.bookingNumber}`;
     }
     if (billing.bookingIds && Array.isArray(billing.bookingIds) && billing.bookingIds.length > 0) {
-       const validIds = billing.bookingIds.filter(id => id && id !== "undefined");
-       if (validIds.length > 0) {
-           return `Booking: ${validIds.join(", ")}`;
+       const validRefs = billing.bookingIds
+         .filter(id => id && id !== "undefined")
+         .map(resolveBookingRef);
+       if (validRefs.length > 0) {
+           return `Booking: ${validRefs.join(", ")}`;
        }
     }
     if (billing.bookingId && billing.bookingId !== "undefined" && billing.bookingId !== "null") {
-      return `Booking: ${billing.bookingId}`;
+      return `Booking: ${resolveBookingRef(billing.bookingId)}`;
     }
     return "No Booking";
   };
@@ -630,8 +666,7 @@ export function CreateCollectionScreen({ onBack, onSuccess, preSelectedBillingId
                 <button
                   type="button"
                   onClick={() => {
-                    setCompanyFilter(null);
-                    setClientFilter(null);
+                    setClientSelections([]);
                     setBillingSearch("");
                     setBookingSearch("");
                   }}

@@ -15,6 +15,7 @@ interface Voucher {
   expenseId?: string;
   expenseNumber?: string;
   payee?: string;
+  category?: string;
   voucherDate: string;
   postingDate?: string;
   status: string;
@@ -73,7 +74,7 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
     });
   };
@@ -81,6 +82,10 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
   const formatCurrency = (amount: number, currency: string = "PHP") => {
     const symbol = currency === "PHP" ? "\u20B1" : currency === "USD" ? "$" : currency;
     return `${symbol}${formatAmount(amount || 0)}`;
+  };
+
+  const formatAmountListStyle = (amount: number, currency: string = "PHP") => {
+    return `${currency} ${formatAmount(amount || 0)}`;
   };
 
   const handleVoucherCreated = () => {
@@ -200,12 +205,12 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                 <thead>
                   <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Voucher Number</th>
-                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Creation Date</th>
-                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Posting Date</th>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payee</th>
-                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Linked Expense</th>
-                    <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
-                    <th style={{ padding: "12px 24px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Category</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Posting Date</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Creation Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,42 +233,31 @@ export function BookingVouchersTab({ bookingId, bookingNumber, onUpdate }: Booki
                       </td>
                       <td style={{ padding: "16px 24px" }}>
                         <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                          {formatDate(voucher.voucherDate || voucher.created_at || "")}
-                        </div>
-                      </td>
-                      <td style={{ padding: "16px 24px" }}>
-                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                          {voucher.postingDate ? formatDate(voucher.postingDate) : "\u2014"}
-                        </div>
-                      </td>
-                      <td style={{ padding: "16px 24px" }}>
-                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {voucher.payee || "\u2014"}
                         </div>
                       </td>
                       <td style={{ padding: "16px 24px" }}>
-                        {voucher.expenseNumber ? (
-                          <span
-                            style={{
-                              fontSize: "13px",
-                              fontWeight: 500,
-                              color: "#0F766E",
-                              display: "inline-block",
-                            }}
-                          >
-                            {voucher.expenseNumber}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: "14px", color: "#9CA3AF" }}>{"\u2014"}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "16px 24px", textAlign: "right" }}>
                         <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                          {formatCurrency(voucher.amount, voucher.currency)}
+                          {voucher.category || "\u2014"}
                         </div>
                       </td>
-                      <td style={{ padding: "16px 24px", textAlign: "center" }}>
+                      <td style={{ padding: "16px 24px" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                          {formatAmountListStyle(voucher.amount, voucher.currency)}
+                        </div>
+                      </td>
+                      <td style={{ padding: "16px 24px" }}>
                         <NeuronStatusPill status={voucher.status} />
+                      </td>
+                      <td style={{ padding: "16px 24px" }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap" }}>
+                          {voucher.postingDate ? formatDate(voucher.postingDate) : "\u2014"}
+                        </div>
+                      </td>
+                      <td style={{ padding: "16px 24px" }}>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap" }}>
+                          {voucher.voucherDate ? formatDate(voucher.voucherDate) : "\u2014"}
+                        </div>
                       </td>
                     </tr>
                   ))}

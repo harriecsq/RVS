@@ -15,6 +15,7 @@ interface Voucher {
   currency: string;
   lineItemIds?: string[];
   payee?: string;
+  category?: string;
   shipper?: string;
   vesselVoy?: string;
   volume?: string;
@@ -83,7 +84,7 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
-      month: "long",
+      month: "short",
       day: "numeric",
     });
   };
@@ -91,6 +92,10 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
   const formatCurrency = (amount: number, curr: string) => {
     const symbol = currency === "PHP" ? "₱" : currency === "USD" ? "$" : currency;
     return `${symbol}${formatAmount(amount || 0)}`;
+  };
+
+  const formatAmountListStyle = (amount: number, curr?: string) => {
+    return `${curr || currency} ${formatAmount(amount || 0)}`;
   };
 
   return (
@@ -205,11 +210,12 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
               <thead>
                 <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Voucher Number</th>
-                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Creation Date</th>
-                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Posting Date</th>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payee</th>
-                  <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
-                  <th style={{ padding: "12px 24px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Category</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Posting Date</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Creation Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,26 +238,31 @@ export function VouchersTab({ expenseId, expenseNumber, totalAmount, currency, v
                     </td>
                     <td style={{ padding: "16px 24px" }}>
                       <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {formatDate(voucher.voucherDate)}
+                        {voucher.payee || "—"}
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px" }}>
                       <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                        {voucher.category || "—"}
+                      </div>
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                        {formatAmountListStyle(voucher.amount, voucher.currency)}
+                      </div>
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <NeuronStatusPill status={voucher.status} />
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap" }}>
                         {voucher.postingDate ? formatDate(voucher.postingDate) : "—"}
                       </div>
                     </td>
                     <td style={{ padding: "16px 24px" }}>
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {voucher.payee || "—"}
+                      <div style={{ fontSize: "13px", color: "#0A1D4D", whiteSpace: "nowrap" }}>
+                        {voucher.voucherDate ? formatDate(voucher.voucherDate) : "—"}
                       </div>
-                    </td>
-                    <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                      <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                        {formatCurrency(voucher.amount, voucher.currency)}
-                      </div>
-                    </td>
-                    <td style={{ padding: "16px 24px", textAlign: "center" }}>
-                      <NeuronStatusPill status={voucher.status} />
                     </td>
                   </tr>
                 ))}

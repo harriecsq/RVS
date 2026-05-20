@@ -226,11 +226,10 @@ export function CollectionsListTab({ billingId, billingNumber, bookingId, onUpda
                 <thead>
                   <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Collection Number</th>
-                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
                     <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Payment Method</th>
-                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Linked Billing</th>
-                    <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
-                    <th style={{ padding: "12px 24px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Amount</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Created</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -264,43 +263,21 @@ export function CollectionsListTab({ billingId, billingNumber, bookingId, onUpda
                       </td>
                       <td style={{ padding: "16px 24px" }}>
                         <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
-                          {formatDate(collection.collectionDate || collection.createdAt)}
-                        </div>
-                      </td>
-                      <td style={{ padding: "16px 24px" }}>
-                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {collection.paymentMethod || "\u2014"}
                         </div>
                       </td>
                       <td style={{ padding: "16px 24px" }}>
-                        {linkedBillingNumbers.length > 0 ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {linkedBillingNumbers.map((bn, i) => (
-                              <span
-                                key={i}
-                                style={{
-                                  fontSize: "13px",
-                                  fontWeight: 500,
-                                  color: "#0F766E",
-                                  display: "inline-block",
-                                  width: "fit-content",
-                                }}
-                              >
-                                {bn}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: "14px", color: "#9CA3AF" }}>{"\u2014"}</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "16px 24px", textAlign: "right" }}>
                         <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
                           {formatCurrency(collection.amount)}
                         </div>
                       </td>
-                      <td style={{ padding: "16px 24px", textAlign: "center" }}>
+                      <td style={{ padding: "16px 24px" }}>
                         <NeuronStatusPill status={collection.status} />
+                      </td>
+                      <td style={{ padding: "16px 24px" }}>
+                        <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
+                          {formatDate(collection.collectionDate || collection.createdAt)}
+                        </div>
                       </td>
                     </tr>
                     );

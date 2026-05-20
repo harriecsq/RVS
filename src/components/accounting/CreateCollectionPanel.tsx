@@ -5,7 +5,7 @@ import { PanelBackdrop } from "../shared/PanelBackdrop";
 interface CreateCollectionPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (newCollection?: any) => void;
   preSelectedBillingId?: string;
 }
 
@@ -32,8 +32,8 @@ export function CreateCollectionPanel({
       >
         <CreateCollectionScreen
           onBack={onClose}
-          onSuccess={() => {
-            onSuccess();
+          onSuccess={(newCollection) => {
+            onSuccess(newCollection);
             onClose();
           }}
           preSelectedBillingId={preSelectedBillingId}

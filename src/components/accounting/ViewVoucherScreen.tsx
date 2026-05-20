@@ -24,6 +24,7 @@ import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
 import type { DocumentSettings } from "../../types/document-settings";
 import { ReorderButtons } from "./ReorderButtons";
 import { swapRows } from "./utils/reorderRow";
+import { CategoryDropdown } from "./CreateVoucherModal";
 
 /** Compute volume summary from containers: "2x40HC" */
 function computeVolumeSummary(containerNo: string | string[], volume: string): string {
@@ -44,6 +45,7 @@ interface ViewVoucherScreenProps {
   voucherId: string;
   onBack: () => void;
   onUpdated?: () => void;
+  onDeleted?: () => void;
 }
 
 type VoucherStatus = "Draft" | "For Approval" | "Approved" | "Paid" | "Cancelled";
@@ -301,7 +303,7 @@ const TableSection = ({
 );
 
 
-export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherScreenProps) {
+export function ViewVoucherScreen({ voucherId, onBack, onUpdated, onDeleted }: ViewVoucherScreenProps) {
   const [voucher, setVoucher] = useState<Voucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -506,6 +508,9 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
 
       toast.success("Voucher deleted successfully");
       setShowDeleteConfirm(false);
+      invalidateCache("/vouchers");
+      invalidateCache("/expenses");
+      if (onDeleted) onDeleted();
       onBack();
     } catch (error) {
       console.error("Error deleting voucher:", error);
@@ -559,7 +564,9 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
         setVoucher(result.data);
         setEditedVoucher(result.data);
         setIsEditing(false);
-
+        invalidateCache("/vouchers");
+        invalidateCache("/expenses");
+        if (onUpdated) onUpdated();
       } else {
         toast.error("Failed to update voucher");
       }
@@ -1131,28 +1138,12 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated }: ViewVoucherS
                      <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
                        Category
                      </label>
-                     <div className="relative">
-                       <select
-                         value={editedVoucher?.category || ""}
-                         onChange={(e) => setEditedVoucher(prev => prev ? ({...prev, category: e.target.value}) : null)}
-                         className="w-full h-[42px] px-3 rounded-md border border-[#E5E9F0] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:border-transparent text-[#0A1D4D]"
-                       >
-                         <option value="" disabled>Select Category</option>
-                         <optgroup label="Booking Costing">
-                           <option value="Shipping Line">Shipping Line</option>
-                           <option value="Trucking">Trucking</option>
-                         </optgroup>
-                         <optgroup label="General Expenses">
-                           <option value="Annual Expenses">Annual Expenses</option>
-                           <option value="Expenses">Expenses</option>
-                           <option value="Transportation">Transportation</option>
-                           <option value="Salary">Salary</option>
-                           <option value="Benefits">Benefits</option>
-                           <option value="Utilities">Utilities</option>
-                         </optgroup>
-                       </select>
-                       <ChevronDown className="absolute right-3 top-3 h-4 w-4 text-gray-500 pointer-events-none" />
-                     </div>
+                     <CategoryDropdown
+                       value={editedVoucher?.category || ""}
+                       onChange={(val) => setEditedVoucher(prev => prev ? ({...prev, category: val}) : null)}
+                       options={["Shipping Line", "Trucking", "Annual Expenses", "Expenses", "Transportation", "Salary", "Benefits", "Utilities"]}
+                       placeholder="Select Category"
+                     />
                    </div>
                  ) : (
                    <EditableField 
