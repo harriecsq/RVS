@@ -86,20 +86,12 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
   const [portFilter, setPortFilter] = useState<string[]>([]);
   const clientsMasterList = useClientsMasterList();
   const [selectedBooking, setSelectedBooking] = useState<ExportBooking | null>(null);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | undefined>(undefined);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [legViews, setLegViews] = useState<string[]>([]);
 
   const location = useLocation();
   const navigate = useNavigate();
-
-  if (selectedBooking) {
-    return (
-      <ExportBookingDetails
-        booking={selectedBooking}
-        onBack={() => { setSelectedBooking(null); fetchBookings(); }}
-        onBookingUpdated={fetchBookings}
-        currentUser={currentUser}
-      />
-    );
-  }
 
   const getExportMatchedStatusIndex = (shipmentTags: string[], bookingStatus: string | undefined): number => {
     if (activeTab.length === 0) return -1;
@@ -112,21 +104,52 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     return -1;
   };
 
-  const filteredBookingsRaw = bookings.filter(booking => {
+  const provinceSegments = (booking: ExportBooking): any[] =>
+    ((booking as any).segments || []).filter((s: any) =>
+      typeof s?.segmentLabel === "string" && s.segmentLabel.toLowerCase().startsWith("province")
+    );
+
+  const childMatchesFilters = (booking: ExportBooking, seg: any): boolean => {
+    const q = searchTerm.toLowerCase();
+    if (q) {
+      const containerHit = (seg.containerNos || []).some((c: string) => (c || "").toLowerCase().includes(q));
+      const originHit = (seg.origin || "").toLowerCase().includes(q);
+      const destHit = (seg.destination || "").toLowerCase().includes(q);
+      const statusHit = (seg.status || "").toLowerCase().includes(q);
+      const tagsHit = (Array.isArray(seg.shipmentTags) ? getStatusSummary(seg.shipmentTags) : "").toLowerCase().includes(q);
+      const blHit = (seg.blNumber || "").toLowerCase().includes(q);
+      if (!(containerHit || originHit || destHit || statusHit || tagsHit || blHit)) return false;
+    }
+    const createdISO = new Date(seg.createdAt || booking.createdAt).toISOString().split("T")[0];
+    if (dateFilterStart && createdISO < dateFilterStart) return false;
+    if (dateFilterEnd && createdISO > dateFilterEnd) return false;
+    if (activeTab.length > 0) {
+      const segTags: string[] = Array.isArray(seg.shipmentTags) ? seg.shipmentTags : [];
+      if (getExportMatchedStatusIndex(segTags, seg.status) === -1) return false;
+    }
+    if (portFilter.length > 0) {
+      const port = seg.origin || seg.destination || "";
+      if (!portFilter.some(p => port.toLowerCase().includes(p.toLowerCase()))) return false;
+    }
+    return true;
+  };
+
+  const parentMatchesFilters = (booking: ExportBooking): boolean => {
     const shipmentTags = getBookingShipmentTags(booking);
     const shipmentStatusSummary = shipmentTags.length > 0 ? getStatusSummary(shipmentTags) : (booking.status || "");
-    const matchesSearch =
-      booking.bookingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ((booking as any).companyName && (booking as any).companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (booking.mblMawb && booking.mblMawb.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      ((booking as any).blNumber && (booking as any).blNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      ((booking as any).segments || []).some((seg: any) => (seg?.blNumber || "").toLowerCase().includes(searchTerm.toLowerCase())) ||
-      ((booking as any).containerNo && (booking as any).containerNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    const q = searchTerm.toLowerCase();
+    const matchesSearch = !q ||
+      booking.bookingId.toLowerCase().includes(q) ||
+      booking.customerName.toLowerCase().includes(q) ||
+      ((booking as any).companyName && (booking as any).companyName.toLowerCase().includes(q)) ||
+      (booking.mblMawb && booking.mblMawb.toLowerCase().includes(q)) ||
+      ((booking as any).blNumber && (booking as any).blNumber.toLowerCase().includes(q)) ||
+      ((booking as any).segments || []).some((seg: any) => (seg?.blNumber || "").toLowerCase().includes(q)) ||
+      ((booking as any).containerNo && (booking as any).containerNo.toLowerCase().includes(q)) ||
       ((booking as any).bookingNumbers || []).some((bn: any) =>
-        (bn.containerNos || []).some((c: string) => (c || "").toLowerCase().includes(searchTerm.toLowerCase()))
+        (bn.containerNos || []).some((c: string) => (c || "").toLowerCase().includes(q))
       ) ||
-      shipmentStatusSummary.toLowerCase().includes(searchTerm.toLowerCase());
+      shipmentStatusSummary.toLowerCase().includes(q);
     if (!matchesSearch) return false;
 
     if (dateFilterStart || dateFilterEnd) {
@@ -150,6 +173,28 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     }
 
     return true;
+  };
+
+  // Mode B: keep booking if parent matches OR any province leg matches.
+  const filterMatches = new Map<string, { parent: boolean; childIds: Set<string> }>();
+  const manilaSelected = legViews.includes("manila");
+  const provinceSelected = legViews.includes("province");
+  const onlyProvinceSelected = provinceSelected && !manilaSelected;
+  const onlyManilaSelected = manilaSelected && !provinceSelected;
+
+  const filteredBookingsRaw = bookings.filter(booking => {
+    const legs = provinceSegments(booking);
+    if (onlyProvinceSelected && legs.length === 0) return false;
+    const parentOk = parentMatchesFilters(booking);
+    const childIds = new Set<string>();
+    for (const seg of legs) {
+      if (childMatchesFilters(booking, seg)) childIds.add(seg.segmentId);
+    }
+    if (parentOk || childIds.size > 0) {
+      filterMatches.set(booking.bookingId, { parent: parentOk, childIds });
+      return true;
+    }
+    return false;
   });
 
   const filteredBookings = (activeTab.length > 0 || portFilter.length > 0 || clientSelections.length > 0)
@@ -182,18 +227,126 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
       })
     : filteredBookingsRaw;
 
-  const columns: ColumnDef<ExportBooking>[] = [
+  type RowItem =
+    | { kind: "parent"; key: string; booking: ExportBooking; hasLegs: boolean; isExpanded: boolean; legCount: number }
+    | { kind: "child"; key: string; parent: ExportBooking; segment: any; provinceIndex: number };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Seed auto-expand into expandedIds when filter produces child matches,
+  // so user can manually collapse afterwards.
+  const childMatchKey = Array.from(filterMatches.entries())
+    .filter(([, v]) => v.childIds.size > 0)
+    .map(([k]) => k)
+    .sort()
+    .join("|");
+  useEffect(() => {
+    if (!childMatchKey) return;
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      for (const id of childMatchKey.split("|")) next.add(id);
+      return next;
+    });
+  }, [childMatchKey]);
+
+  // When "All Province" view selected (alone), auto-expand visible bookings once.
+  useEffect(() => {
+    if (!onlyProvinceSelected) return;
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      for (const b of filteredBookingsRaw) next.add(b.bookingId);
+      return next;
+    });
+  }, [onlyProvinceSelected]);
+
+  if (selectedBooking) {
+    return (
+      <ExportBookingDetails
+        booking={selectedBooking}
+        initialSegmentId={selectedSegmentId}
+        onBack={() => { setSelectedBooking(null); setSelectedSegmentId(undefined); fetchBookings(); }}
+        onBookingUpdated={fetchBookings}
+        currentUser={currentUser}
+      />
+    );
+  }
+
+  const tableRows: RowItem[] = [];
+  for (const booking of filteredBookings) {
+    const legs = provinceSegments(booking);
+    const isExpanded = onlyManilaSelected ? false : expandedIds.has(booking.bookingId);
+    tableRows.push({
+      kind: "parent",
+      key: booking.bookingId,
+      booking,
+      hasLegs: !onlyManilaSelected && legs.length > 0,
+      isExpanded,
+      legCount: legs.length,
+    });
+    if (!onlyManilaSelected && legs.length > 0 && isExpanded) {
+      legs.forEach((seg: any, i: number) => {
+        tableRows.push({
+          kind: "child",
+          key: `${booking.bookingId}::${seg.segmentId}`,
+          parent: booking,
+          segment: seg,
+          provinceIndex: i + 1,
+        });
+      });
+    }
+  }
+
+  const columns: ColumnDef<RowItem>[] = [
     {
       header: "Booking Ref #",
-      cell: (booking) => (
-        <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>{booking.bookingId}</div>
-      ),
+      cell: (row) => {
+        if (row.kind === "child") {
+          return (
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "#0A1D4D", paddingLeft: "24px" }}>
+              └─ PROVINCE-{String(row.provinceIndex).padStart(2, "0")}
+            </div>
+          );
+        }
+        const b = row.booking;
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {row.hasLegs ? (
+              <span
+                onClick={(e) => { e.stopPropagation(); toggleExpanded(b.bookingId); }}
+                style={{ display: "inline-flex", width: "28px", height: "28px", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: "20px", lineHeight: 1, color: "#237F66", borderRadius: "6px" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#E8F2EE"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                aria-label={row.isExpanded ? "Collapse" : "Expand"}
+              >
+                {row.isExpanded ? "▾" : "▸"}
+              </span>
+            ) : (
+              <span style={{ display: "inline-block", width: "28px" }} />
+            )}
+            <div style={{ fontSize: "14px", fontWeight: 600, color: "#0A1D4D" }}>
+              {b.bookingId}
+              {row.hasLegs && (
+                <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 500, color: "#6B7A76" }}>
+                  +{row.legCount} {row.legCount === 1 ? "leg" : "legs"}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      },
     },
     {
       header: "BL Number",
-      cell: (booking) => {
-        const seg0: any = (booking as any).segments?.[0];
-        const blNumber = seg0?.blNumber || booking.blNumber || "";
+      cell: (row) => {
+        const blNumber = row.kind === "child"
+          ? (row.segment.blNumber || "")
+          : ((row.booking as any).segments?.[0]?.blNumber || row.booking.blNumber || "");
         return (
           <div title={blNumber} style={{ fontSize: "14px", color: "#0A1D4D", maxWidth: "120px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {blNumber || "—"}
@@ -203,13 +356,18 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     },
     {
       header: "Container #",
-      cell: (booking) => {
-        const seg0: any = (booking as any).segments?.[0];
-        const segContainers: string[] = Array.isArray(seg0?.containerNos) ? seg0.containerNos.filter(Boolean) : [];
-        const rawContainerNo: string = seg0?.containerNo || booking.containerNo || "";
-        const containers = segContainers.length > 0
-          ? segContainers
-          : (rawContainerNo ? rawContainerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : []);
+      cell: (row) => {
+        let containers: string[] = [];
+        if (row.kind === "child") {
+          containers = Array.isArray(row.segment.containerNos) ? row.segment.containerNos.filter(Boolean) : [];
+        } else {
+          const seg0: any = (row.booking as any).segments?.[0];
+          const segContainers: string[] = Array.isArray(seg0?.containerNos) ? seg0.containerNos.filter(Boolean) : [];
+          const rawContainerNo: string = seg0?.containerNo || row.booking.containerNo || "";
+          containers = segContainers.length > 0
+            ? segContainers
+            : (rawContainerNo ? rawContainerNo.split(",").map((c: string) => c.trim()).filter(Boolean) : []);
+        }
         if (containers.length === 0) return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>—</div>;
         return (
           <div style={{ fontSize: "14px", color: "#0A1D4D", display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -220,9 +378,19 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     },
     {
       header: "Shipper / Client",
-      cell: (booking) => {
+      cell: (row) => {
+        if (row.kind === "child") {
+          const dest = row.segment.destination || "";
+          return (
+            <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+              <span style={{ fontSize: "11px", color: "#6B7A76", marginRight: "6px" }}>To:</span>
+              {dest ? <span style={{ textTransform: "uppercase" }}>{dest}</span> : "—"}
+            </div>
+          );
+        }
+        const b = row.booking;
         const lines = Array.from(new Set(
-          [booking.shipper, booking.customerName, (booking as any).companyName]
+          [b.shipper, b.customerName, (b as any).companyName]
             .map((v: any) => (v || "").trim())
             .filter(Boolean)
         ));
@@ -240,9 +408,10 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     },
     {
       header: "Origin",
-      cell: (booking) => {
-        const seg0: any = (booking as any).segments?.[0];
-        const origin = seg0?.origin || (booking as any).origin || "";
+      cell: (row) => {
+        const origin = row.kind === "child"
+          ? (row.segment.origin || "")
+          : ((row.booking as any).segments?.[0]?.origin || (row.booking as any).origin || "");
         return (
           <div style={{ fontSize: "13px", color: "#0A1D4D", textTransform: "uppercase" }}>{origin || "—"}</div>
         );
@@ -250,8 +419,10 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     },
     {
       header: "Status",
-      cell: (booking) => {
-        const status = booking.status || "—";
+      cell: (row) => {
+        const status = row.kind === "child"
+          ? (row.segment.status || "—")
+          : (row.booking.status || "—");
         return (
           <NeuronStatusPill
             status={status}
@@ -262,11 +433,16 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     },
     {
       header: "Created",
-      cell: (booking) => (
-        <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
-          {new Date(booking.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </div>
-      ),
+      cell: (row) => {
+        const iso = row.kind === "child"
+          ? (row.segment.createdAt || row.parent.createdAt)
+          : row.booking.createdAt;
+        return (
+          <div style={{ fontSize: "13px", color: "#0A1D4D" }}>
+            {new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+        );
+      },
     },
   ];
 
@@ -340,20 +516,42 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
               onChange={setClientSelections}
               placeholder="All Companies"
             />
+
+            <MultiSelectPortalDropdown
+              value={legViews}
+              onChange={setLegViews}
+              options={[
+                { value: "manila", label: "All Manila" },
+                { value: "province", label: "All Province" },
+              ]}
+              placeholder="All Bookings"
+              preserveCase
+            />
           </div>
+
         </div>
 
         <div style={{ padding: "0 48px 48px 48px" }}>
-          <StandardTable
-            data={filteredBookings}
+          <StandardTable<RowItem>
+            data={tableRows}
             columns={columns}
-            rowKey={(b) => b.bookingId}
+            rowKey={(r) => r.key}
             isLoading={isLoading}
-            onRowClick={(b) => setSelectedBooking(b)}
+            rowClassName={(r) => r.kind === "child" ? "neuron-province-leg-row" : ""}
+            onRowClick={(r) => {
+              if (r.kind === "child") {
+                setSelectedSegmentId(r.segment.segmentId);
+                setSelectedBooking(r.parent);
+              } else {
+                setSelectedSegmentId(undefined);
+                setSelectedBooking(r.booking);
+              }
+            }}
             emptyTitle={searchTerm || activeTab.length > 0 ? "No bookings match your filters" : "No export bookings yet"}
             emptyDescription={searchTerm || activeTab.length > 0 ? undefined : "Create your first booking to get started"}
             emptyIcon={<Package size={24} />}
           />
+          <style>{`tr.neuron-province-leg-row td { background-color: #F7FAF9; }`}</style>
         </div>
       </div>
 

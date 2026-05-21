@@ -321,6 +321,11 @@ export interface BookingSegment {
   containerNos: string[];
   sealNos?: string[];
 
+  // Per-segment status (Manila vs Province leg independent)
+  status?: ExecutionStatus;
+  shipmentTags?: string[];
+  tagHistory?: TagHistoryEntry[];
+
   // Client / Parties
   customerName?: string;
   consignee?: string;

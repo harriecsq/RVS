@@ -226,12 +226,17 @@ export function VouchersScreen() {
     {
       header: "Linked Expense",
       cell: (voucher) => {
-        if (!voucher.expenseId && !voucher.expenseNumber) {
+        const linkedRef =
+          voucher.expenseNumber ||
+          (voucher.bookingId ? bookingEnrichMap.get(voucher.bookingId)?.bookingNumber : "") ||
+          voucher.bookingId ||
+          "";
+        if (!linkedRef) {
           return <span style={{ fontSize: "14px", color: "#9CA3AF", fontStyle: "italic" }}>Not Linked</span>;
         }
         return (
           <div style={{ fontSize: "14px", fontWeight: 600, color: "#0F766E" }}>
-            {voucher.expenseNumber || ""}
+            {linkedRef}
           </div>
         );
       },

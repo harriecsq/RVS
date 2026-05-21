@@ -158,6 +158,7 @@ interface ExportBookingDetailsProps {
   onBack: () => void;
   onBookingUpdated: () => void;
   currentUser?: { name: string; email: string; department: string } | null;
+  initialSegmentId?: string;
 }
 
 type DetailTab = "booking-info" | "trucking" | "billings" | "expenses" | "attachments";
@@ -272,7 +273,8 @@ export function ExportBookingDetails({
   booking,
   onBack,
   onBookingUpdated,
-  currentUser
+  currentUser,
+  initialSegmentId,
 }: ExportBookingDetailsProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>("booking-info");
   const [showTimeline, setShowTimeline] = useState(false);
@@ -345,7 +347,7 @@ export function ExportBookingDetails({
 
   // Multi-leg segment state
   const [activeSegmentId, setActiveSegmentId] = useState<string>(() =>
-    booking.segments?.[0]?.segmentId || ""
+    initialSegmentId || booking.segments?.[0]?.segmentId || ""
   );
   const [segmentEditData, setSegmentEditData] = useState<Record<string, any>>({});
 
@@ -363,6 +365,15 @@ export function ExportBookingDetails({
       setActiveSegmentId(booking.segments[0].segmentId);
     }
   }, [booking]);
+
+  // Honor initialSegmentId when it changes (e.g., user opens a Province leg from list view).
+  useEffect(() => {
+    if (!initialSegmentId) return;
+    const segments = booking.segments || [];
+    if (segments.some(s => s.segmentId === initialSegmentId)) {
+      setActiveSegmentId(initialSegmentId);
+    }
+  }, [initialSegmentId, booking]);
 
   const fetchBookingDetails = async () => {
     try {
@@ -485,6 +496,53 @@ export function ExportBookingDetails({
 
     if (currentBooking.status === newStatus) return;
     await persistStatusChange(newStatus);
+  };
+
+  const persistSegmentStatusChange = async (
+    segmentId: string,
+    newStatus: string,
+  ) => {
+    const segment = currentBooking.segments?.find(s => s.segmentId === segmentId);
+    if (!segment) return;
+    try {
+      const endpoint = `${API_BASE_URL}/export-bookings/${currentBooking.id || currentBooking.bookingId}/segments/${segmentId}`;
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify({ ...segment, status: newStatus }),
+      });
+      if (!response.ok) throw new Error("Failed to update segment status");
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || "Failed to update segment status");
+      const updatedSegment = result.data;
+      setCurrentBooking(prev => ({
+        ...prev,
+        segments: (prev.segments || []).map(s => s.segmentId === segmentId ? updatedSegment : s),
+      }));
+      setEditedBooking(prev => ({
+        ...prev,
+        segments: (prev.segments || []).map(s => s.segmentId === segmentId ? updatedSegment : s),
+      }));
+      toast.success(`Status updated to ${newStatus}`);
+      onBookingUpdated();
+    } catch (error) {
+      console.error("Error updating segment status:", error);
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleSegmentStatusChange = async (newStatus: string) => {
+    const isProvince = !!activeSegment && typeof activeSegment.segmentLabel === "string"
+      && activeSegment.segmentLabel.toLowerCase().startsWith("province");
+    if (!isProvince) {
+      await handleStatusChange(newStatus);
+      return;
+    }
+    if (activeSegment!.status === newStatus) return;
+    await persistSegmentStatusChange(activeSegment!.segmentId, newStatus);
   };
 
   const confirmSailingDate = async () => {
@@ -836,22 +894,41 @@ export function ExportBookingDetails({
         {/* Right Side: Status Only */}
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           {!isEditing && (() => {
-            const sailedAt = (currentBooking as any).deliveredAt as string | null | undefined;
+            const isProvinceActive = !!activeSegment && typeof activeSegment.segmentLabel === "string"
+              && activeSegment.segmentLabel.toLowerCase().startsWith("province");
+            const provinceLegs = (currentBooking.segments || []).filter(s =>
+              typeof s.segmentLabel === "string" && s.segmentLabel.toLowerCase().startsWith("province")
+            );
+            const provinceIdx = isProvinceActive
+              ? provinceLegs.findIndex(s => s.segmentId === activeSegment!.segmentId)
+              : -1;
+            const segmentName = isProvinceActive
+              ? `PROVINCE-${String(provinceIdx + 1).padStart(2, "0")}`
+              : "MANILA";
+            const effectiveStatus = isProvinceActive
+              ? (activeSegment!.status || "Draft")
+              : currentBooking.status;
+            const sailedAt = isProvinceActive ? null : ((currentBooking as any).deliveredAt as string | null | undefined);
             const sailedSuffix =
-              currentBooking.status === "Shipped Out" && sailedAt
+              !isProvinceActive && currentBooking.status === "Shipped Out" && sailedAt
                 ? new Date(sailedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
                 : null;
             const displayLabel = sailedSuffix
               ? `Shipped Out · ${sailedSuffix}`
               : undefined;
             return (
-              <HeaderStatusDropdown
-                currentStatus={currentBooking.status}
-                displayLabel={displayLabel}
-                statusOptions={EXPORT_STATUS_OPTIONS}
-                statusColorMap={EXPORT_STATUS_TEXT_COLORS}
-                onStatusChange={handleStatusChange}
-              />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "#6B7A76", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                  Status · {segmentName}
+                </div>
+                <HeaderStatusDropdown
+                  currentStatus={effectiveStatus}
+                  displayLabel={displayLabel}
+                  statusOptions={EXPORT_STATUS_OPTIONS}
+                  statusColorMap={EXPORT_STATUS_TEXT_COLORS}
+                  onStatusChange={handleSegmentStatusChange}
+                />
+              </div>
             );
           })()}
         </div>

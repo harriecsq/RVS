@@ -427,6 +427,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
   const fetchCollections = async () => {
     setIsLoadingCollections(true);
+    invalidateCache("/collections");
+    invalidateCache("/billings");
     try {
       const response = await fetch(`${API_BASE_URL}/collections?billingId=${billingId}`, {
         headers: {
