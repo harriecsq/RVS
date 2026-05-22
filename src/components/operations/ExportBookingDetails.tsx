@@ -661,6 +661,26 @@ export function ExportBookingDetails({
         );
       }
 
+      // Mirror POD/POL changes onto root + segments[0] so downstream consumers
+      // (billings view, polPod display) read a consistent value.
+      const mirrorToSeg0Export = (patch: Record<string, any>) => {
+        if (finalSegments.length > 0) {
+          finalSegments = finalSegments.map((s: any, i: number) =>
+            i === 0 ? { ...s, ...patch } : s
+          );
+        }
+      };
+      if ((cleanEditData as any).pod !== undefined) {
+        const newPod = (cleanEditData as any).pod;
+        (cleanEditData as any).destination = newPod;
+        mirrorToSeg0Export({ destination: newPod, pod: newPod });
+      }
+      if ((cleanEditData as any).origin !== undefined) {
+        const newOrigin = (cleanEditData as any).origin;
+        (cleanEditData as any).pol = newOrigin;
+        mirrorToSeg0Export({ origin: newOrigin, pol: newOrigin });
+      }
+
       const payload = {
         ...cleanEditData,
         segments: finalSegments,

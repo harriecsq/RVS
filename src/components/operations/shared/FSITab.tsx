@@ -5,7 +5,7 @@ import { PortalDropdown } from "../../shared/PortalDropdown";
 import { toast } from "../../ui/toast-utils";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
-import type { FSI, FSIContainer, SalesContract, PackingList, DocPngSettings } from "../../../types/export-documents";
+import type { FSI, FSIContainer, SalesContract, PackingList, DocPngSettings, DocPngStamp } from "../../../types/export-documents";
 import { applyTemplate } from "../../../utils/export-document-autofill";
 import { usePackingMetrics } from "../../../hooks/usePackingMetrics";
 import { useMasterTemplates } from "../../../hooks/useMasterTemplates";
@@ -308,7 +308,7 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
     try {
       const id = encodeURIComponent(bookingId);
       const [fsiRes, docsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/fsi?${new URLSearchParams({ bookingId })}`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
+        fetch(`${API_BASE_URL}/fsi?${new URLSearchParams({ bookingId: booking?.uuid ?? bookingId })}`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
         fetch(`${API_BASE_URL}/export-bookings/${id}/documents`, { headers: { Authorization: `Bearer ${publicAnonKey}` } }),
       ]);
       const fsiResult = await fsiRes.json();
@@ -336,9 +336,11 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
       setIsLoading(false);
       return;
     }
+    // Wait until booking UUID is available; server's /fsi GET expects UUID
+    if (!booking?.uuid) return;
     fetchDocument();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId, bundleLoaded, initialDocument, initialSalesContract, initialPackingList]);
+  }, [bookingId, booking?.uuid, bundleLoaded, initialDocument, initialSalesContract, initialPackingList]);
 
   const buildDefaults = (): Partial<FSI> => {
     // Containers from booking containerNo/sealNo (comma-separated) + volume as volumeType
@@ -401,7 +403,20 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
     const fsiTemplateFields = initialDraftData || masterTemplate?.fsi || null;
     if (fsiTemplateFields) { merged = applyTemplate(merged, fsiTemplateFields, "fsi"); }
     if (templateFields) { merged = applyTemplate(merged, templateFields, "fsi"); }
-    const seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    let seededSettings: DocPngSettings | undefined = (initialDraftData as any)?.settings;
+    if (!seededSettings && masterTemplate) {
+      const stamps: Record<string, DocPngStamp> = {};
+      if (masterTemplate.stamps) {
+        for (const [k, v] of Object.entries(masterTemplate.stamps)) {
+          if (v) stamps[k] = { pngData: v };
+        }
+      }
+      seededSettings = {
+        logoPng: masterTemplate.letterhead,
+        shippingLinePng: masterTemplate.shippingLineLetterhead,
+        stamps: Object.keys(stamps).length > 0 ? stamps : undefined,
+      };
+    }
     setEditData({ ...merged, settings: seededSettings } as Partial<FSI>);
     setIsCreating(true);
     setIsEditing(true);
@@ -432,7 +447,7 @@ export function FSITab({ bookingId, booking, currentUser, onDocumentUpdated, onE
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const payload = { ...editDataRef.current, createdBy: currentUser?.name || "Unknown" };
+      const payload = { ...editDataRef.current, bookingId: booking?.uuid ?? bookingId, createdBy: currentUser?.name || "Unknown" };
 
       let res: Response;
       if (isCreating) {

@@ -72,6 +72,34 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
   const [clientSelections, setClientSelections] = useState<ClientSelection[]>([]);
   const clientsMasterList = useClientsMasterList();
 
+  const billingNumberById = useMemo<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    (billingsResult?.data || []).forEach((b: any) => {
+      const num = b.billingNumber || "";
+      if (!num) return;
+      if (b.id) map.set(b.id, num);
+      if (b.uuid) map.set(b.uuid, num);
+    });
+    return map;
+  }, [billingsResult]);
+
+  const getLinkedBillingNumbers = (collection: Collection): string[] => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const push = (n?: string) => {
+      const v = (n || "").trim();
+      if (!v || seen.has(v)) return;
+      seen.add(v);
+      out.push(v);
+    };
+    const allocations: any[] = Array.isArray(collection.allocations) ? collection.allocations : [];
+    for (const a of allocations) {
+      push(a?.billingNumber || (a?.billingId ? billingNumberById.get(a.billingId) : ""));
+    }
+    if (out.length === 0) push(collection.billingNumber);
+    return out;
+  };
+
   const collectionPortMap = useMemo<Map<string, string>>(() => {
     const bookingPortMap = new Map<string, string>();
     (bookingsResult?.data || []).forEach((b: any) => {
@@ -276,6 +304,24 @@ export function CollectionsScreen({ currentUser }: CollectionsScreenProps) {
         return (
           <div style={{ fontSize: "14px", color: "#0A1D4D" }}>
             PHP {formatAmount(computedAmount)}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Linked Billings",
+      cell: (collection) => {
+        const refs = getLinkedBillingNumbers(collection);
+        if (refs.length === 0) {
+          return <span style={{ fontSize: "14px", color: "#9CA3AF", fontStyle: "italic" }}>Not Linked</span>;
+        }
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            {refs.map((ref) => (
+              <div key={ref} style={{ fontSize: "14px", fontWeight: 600, color: "#0F766E" }}>
+                {ref}
+              </div>
+            ))}
           </div>
         );
       },

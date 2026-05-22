@@ -36,6 +36,8 @@ interface Billing {
   expenseAmount: number;
   totalAmount: number;
   pendingAmount?: number;
+  balance?: number;
+  collected?: number;
   currency: string;
   status: BillingStatus;
   billingDate: string;
@@ -65,8 +67,8 @@ export function BillingsScreen() {
   const [showCreateScreen, setShowCreateScreen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState<string | null>(null);
 
-  const bookingEnrichMap = useMemo<Map<string, { serviceType: string; port: string; party: string }>>(() => {
-    const enrichMap = new Map<string, { serviceType: string; port: string; party: string }>();
+  const bookingEnrichMap = useMemo<Map<string, { serviceType: string; port: string; party: string; bl: string }>>(() => {
+    const enrichMap = new Map<string, { serviceType: string; port: string; party: string; bl: string }>();
     if (!bookingsResult?.success) return enrichMap;
     (bookingsResult.data || []).forEach((b: any) => {
       const movement = String(b.movement || b.booking_type || b.shipmentType || b.mode || "").toLowerCase();
@@ -79,7 +81,8 @@ export function BillingsScreen() {
       const party = isImport
         ? (b.consignee || seg0?.consignee || "")
         : (b.shipper || seg0?.shipper || "");
-      const enrich = { serviceType, port, party };
+      const bl = b.blNumber || b.bl_number || b.awbBlNo || seg0?.blNumber || seg0?.bl_number || "";
+      const enrich = { serviceType, port, party, bl };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
       if (b.uuid) enrichMap.set(b.uuid, enrich);
@@ -104,12 +107,18 @@ export function BillingsScreen() {
   const filterBillings = () => {
     let filtered = billings;
     if (searchQuery) {
-      filtered = filtered.filter(
-        (b) =>
-          (b.billingNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (b.voucherNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (b.clientName || "").toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter((b) => {
+        const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
+        const enrichBl = bId ? bookingEnrichMap.get(bId)?.bl : "";
+        const bl = (b as any).blNumber || (b as any).bl_number || enrichBl || "";
+        return (
+          (b.billingNumber || "").toLowerCase().includes(q) ||
+          (b.voucherNumber || "").toLowerCase().includes(q) ||
+          (b.clientName || "").toLowerCase().includes(q) ||
+          bl.toLowerCase().includes(q)
+        );
+      });
     }
     if (statusFilter.length > 0) {
       filtered = filtered.filter((b) => statusFilter.includes(b.status));
@@ -217,6 +226,14 @@ export function BillingsScreen() {
       },
     },
     {
+      header: "BL Number",
+      cell: (b) => {
+        const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
+        const bl = (b as any).blNumber || (b as any).bl_number || (bId ? bookingEnrichMap.get(bId)?.bl : "") || "";
+        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{bl || "—"}</div>;
+      },
+    },
+    {
       header: "Port",
       cell: (b) => {
         const bId = (b as any).bookingId || ((b as any).bookingIds)?.[0];
@@ -229,11 +246,15 @@ export function BillingsScreen() {
       cell: (b) => (
         <>
           <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{formatCurrency(b.totalAmount, b.currency)}</div>
-          {(b.pendingAmount ?? b.totalAmount) > 0 && (
-            <div style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444", marginTop: "2px" }}>
-              Pending: ₱{formatAmount(b.pendingAmount ?? b.totalAmount)}
-            </div>
-          )}
+          {(() => {
+            const pending = b.pendingAmount ?? b.balance ?? b.totalAmount;
+            if (pending <= 0) return null;
+            return (
+              <div style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444", marginTop: "2px" }}>
+                Pending: ₱{formatAmount(pending)}
+              </div>
+            );
+          })()}
         </>
       ),
     },
@@ -269,7 +290,7 @@ export function BillingsScreen() {
           <StandardSearchInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search by billing number, voucher, or client..."
+            placeholder="Search by billing number, voucher, client, or BL number..."
             style={{ marginBottom: "16px" }}
           />
 

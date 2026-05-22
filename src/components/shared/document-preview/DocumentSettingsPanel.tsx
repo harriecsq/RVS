@@ -33,7 +33,7 @@ export function DocumentSettingsPanel({ settings, onChange, stampSlots, showShip
             <GalleryLetterheadSlot
               value={settings.logoPng}
               onOpenPicker={() => setPickerOpen(true)}
-              onClear={() => onChange({ logoPng: undefined })}
+              onClear={() => { onChange({ logoPng: undefined }); setLastUsedLetterheadId(null); }}
               readOnly={readOnly}
             />
           ) : (

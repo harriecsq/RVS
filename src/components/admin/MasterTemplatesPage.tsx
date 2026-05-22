@@ -507,15 +507,21 @@ export function MasterTemplatesPage() {
   const { templates, save, remove } = useMasterTemplates();
   const [editing, setEditing] = useState<Partial<MasterTemplate> & { name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmTpl, setConfirmTpl] = useState<MasterTemplate | null>(null);
 
   const handleNew = () => setEditing({ ...emptyTemplate() });
   const handleEdit = (t: MasterTemplate) => setEditing({ ...t });
 
   const handleDelete = (t: MasterTemplate, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Delete "${t.name}"? This cannot be undone.`)) return;
-    remove(t.id);
+    setConfirmTpl(t);
+  };
+
+  const confirmDelete = () => {
+    if (!confirmTpl) return;
+    remove(confirmTpl.id);
     toast.success("Template deleted");
+    setConfirmTpl(null);
   };
 
   const handleSave = (data: any) => {
@@ -608,13 +614,96 @@ export function MasterTemplatesPage() {
               </div>
               <button
                 onClick={(e) => handleDelete(t, e)}
-                style={{ padding: "6px", border: "none", background: "transparent", cursor: "pointer", color: "#9CA3AF", flexShrink: 0 }}
+                style={{
+                  padding: "6px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "#9CA3AF",
+                  flexShrink: 0,
+                  borderRadius: "6px",
+                  transition: "color 0.15s, background 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#EF4444";
+                  e.currentTarget.style.background = "#FEE2E2";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#9CA3AF";
+                  e.currentTarget.style.background = "transparent";
+                }}
                 title="Delete template"
               >
                 <Trash2 size={16} />
               </button>
             </button>
           ))}
+        </div>
+      )}
+
+      {confirmTpl && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1100,
+          }}
+          onClick={() => setConfirmTpl(null)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "32px",
+              maxWidth: "440px",
+              width: "90%",
+              border: "1px solid #E5E9F0",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: "18px", fontWeight: 600, color: "#0A1D4D", marginBottom: "12px" }}>
+              Delete Template
+            </h3>
+            <p style={{ fontSize: "14px", color: "#667085", marginBottom: "24px", lineHeight: 1.5 }}>
+              Are you sure you want to delete <strong>{confirmTpl.name}</strong>? This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setConfirmTpl(null)}
+                style={{
+                  padding: "8px 16px",
+                  border: "1px solid #E5ECE9",
+                  borderRadius: "8px",
+                  background: "white",
+                  color: "#12332B",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  padding: "8px 16px",
+                  border: "1px solid #EF4444",
+                  borderRadius: "8px",
+                  background: "#EF4444",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

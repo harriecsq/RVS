@@ -388,6 +388,9 @@ export function SalesContractTab({ bookingId, booking, currentUser, onDocumentUp
         marksAndNos: sc.marksAndNos || defaults.marksAndNos || "",
         portOfLoading: sc.portOfLoading || defaults.portOfLoading || "",
         portOfDestination: sc.portOfDestination || defaults.portOfDestination || "",
+        commodityDescription: sc.commodityDescription || defaults.commodityDescription || "",
+        buyerName: sc.buyerName || defaults.buyerName || "",
+        supplierName: sc.supplierName || defaults.supplierName || "",
         masterTemplateId: master.id,
         settings: seededSettings,
       };

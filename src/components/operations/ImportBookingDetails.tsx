@@ -416,6 +416,29 @@ export function BrokerageBookingDetails({
         (cleanEditData as any).volume = formatContainerVolume(size, type);
       }
 
+      // Mirror POD/POL changes onto root + segments[0] so downstream consumers
+      // (billings view, polPod display, exports) read a consistent value.
+      const mirrorToSeg0 = (patch: Record<string, any>) => {
+        const baseSegments: any[] = Array.isArray((cleanEditData as any).segments)
+          ? (cleanEditData as any).segments
+          : (Array.isArray((editedBooking as any).segments) ? (editedBooking as any).segments : []);
+        if (baseSegments.length > 0) {
+          (cleanEditData as any).segments = baseSegments.map((s: any, i: number) =>
+            i === 0 ? { ...s, ...patch } : s
+          );
+        }
+      };
+      if ((cleanEditData as any).pod !== undefined) {
+        const newPod = (cleanEditData as any).pod;
+        (cleanEditData as any).destination = newPod;
+        mirrorToSeg0({ destination: newPod, pod: newPod });
+      }
+      if ((cleanEditData as any).origin !== undefined) {
+        const newOrigin = (cleanEditData as any).origin;
+        (cleanEditData as any).pol = newOrigin;
+        mirrorToSeg0({ origin: newOrigin, pol: newOrigin });
+      }
+
       const payload = {
         ...cleanEditData,
         updatedAt: new Date().toISOString()

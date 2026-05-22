@@ -50,6 +50,7 @@ type BookingDisplayInfo = {
   port: string;
   company: string;
   client: string;
+  bl: string;
 };
 
 export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
@@ -114,11 +115,13 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
           .map((v: any) => (v || "").trim())
           .filter(Boolean)
       ));
+      const bl = b.blNumber || b.bl_number || b.awbBlNo || seg0?.blNumber || seg0?.bl_number || "";
       const enrich = {
         serviceType,
         port,
         company: lines[0] || "",
         client: lines[1] || "",
+        bl,
       };
       if (b.id) enrichMap.set(b.id, enrich);
       if (b.bookingId) enrichMap.set(b.bookingId, enrich);
@@ -210,13 +213,16 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
 
   const filteredExpensesRaw = expenses.filter(expense => {
     const term = searchTerm.toLowerCase();
+    const bIdForBl = (expense as any).bookingId || ((expense as any).bookingIds)?.[0];
+    const blValue = (expense as any).blNumber || (expense as any).bl_number || (bIdForBl ? bookingEnrichMap.get(bIdForBl)?.bl : "") || "";
     const matchesSearch =
       (expense.expenseNumber || "").toLowerCase().includes(term) ||
       (expense.category || "").toLowerCase().includes(term) ||
       (expense.clientName || "").toLowerCase().includes(term) ||
       (expense.vendor || "").toLowerCase().includes(term) ||
       (expense.bookingNumber || "").toLowerCase().includes(term) ||
-      (expense.projectNumber || "").toLowerCase().includes(term);
+      (expense.projectNumber || "").toLowerCase().includes(term) ||
+      blValue.toLowerCase().includes(term);
     if (!matchesSearch) return false;
 
     if (dateFilterStart || dateFilterEnd) {
@@ -333,6 +339,14 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
       },
     },
     {
+      header: "BL Number",
+      cell: (expense) => {
+        const bId = (expense as any).bookingId || ((expense as any).bookingIds)?.[0];
+        const bl = (expense as any).blNumber || (expense as any).bl_number || (bId ? bookingEnrichMap.get(bId)?.bl : "") || "";
+        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{bl || "—"}</div>;
+      },
+    },
+    {
       header: "Port",
       cell: (expense) => {
         const bId = (expense as any).bookingId || ((expense as any).bookingIds)?.[0];
@@ -392,7 +406,7 @@ export function ExpensesScreen({ currentUser }: ExpensesScreenProps) {
           <StandardSearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Search by Expense Number, Client, Vendor, Booking, or Project Number..."
+            placeholder="Search by Expense Number, Client, Vendor, Booking, Project Number, or BL Number..."
           />
         </div>
 

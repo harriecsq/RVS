@@ -16,9 +16,13 @@ import { useClientsMasterList } from '../../hooks/useClientsMasterList';
 
 interface Booking {
   id: string;
+  uuid?: string;
   bookingId?: string;
   bookingNumber?: string;
-  bookingDate: string;
+  bookingDate?: string;
+  date?: string;
+  createdAt?: string;
+  etd?: string;
   customerName?: string; // Client
   clientName?: string;
   client?: string;
@@ -31,10 +35,12 @@ interface Booking {
   mode?: string; // Import/Export
   shipmentType?: string;
   notes?: string;
+  segments?: any[];
 }
 
 interface Billing {
   id: string;
+  uuid?: string;
   bookingId?: string;
   bookingIds?: string[];
   soaNumber?: string;
@@ -51,6 +57,7 @@ interface ExpenseLineItem {
 
 interface Expense {
   id: string;
+  uuid?: string;
   bookingId?: string;
   bookingIds?: string[];
   linkedBookingIds?: string[];
@@ -65,6 +72,7 @@ interface Collection {
   billingId?: string;
   allocations?: { billingId: string }[];
   paymentMethod: string;
+  referenceNumber?: string;
   checkNo?: string;
   checkNumber?: string;
   bankName?: string;
@@ -140,6 +148,16 @@ function KPICard({ label, value, color = "var(--neuron-brand-green)" }: { label:
     </div>
   );
 }
+
+// Legacy bookings (CreateBooking.tsx) stored full city names ("Cagayan de Oro");
+// newer forms store short codes ("CDO"). Match any alias.
+const PORT_ALIASES: Record<string, string[]> = {
+  "Manila North": ["manila north"],
+  "Manila South": ["manila south"],
+  "CDO": ["cdo", "cagayan de oro", "cagayan"],
+  "Iloilo": ["iloilo"],
+  "Davao": ["davao"],
+};
 
 function StatusPill({ status }: { status: "PAID" | "UNPAID" }) {
   const bg = status === "PAID" ? "#DEF7EC" : "#FDE8E8";
@@ -254,46 +272,36 @@ export function FinalShipmentCostReport() {
          });
       });
 
-      // Map Collection by Invoice ID (Billing ID)
-      // A billing (invoice) might be paid by multiple collections (partial payment), or one collection pays multiple invoices
+      // Map Collection by Invoice ID (Billing ID).
+      // Server emits alloc.billingId = billing UUID and (sometimes) alloc.billingNumber = public number.
+      // Billings come back with id = billing_number and uuid = UUID — index both so booking-side lookup
+      // (which has billing.uuid OR billing.id as candidates) resolves either way.
       const collectionMap = new Map<string, Collection[]>();
+      const addCollectionToBillingKey = (key: string | undefined | null, c: Collection) => {
+        if (!key) return;
+        if (!collectionMap.has(key)) collectionMap.set(key, []);
+        const list = collectionMap.get(key)!;
+        if (!list.includes(c)) list.push(c);
+      };
       collections.forEach(c => {
-        // Handle allocations (new format)
         if (c.allocations && Array.isArray(c.allocations)) {
-            c.allocations.forEach(alloc => {
-                if (alloc.billingId) {
-                    if (!collectionMap.has(alloc.billingId)) collectionMap.set(alloc.billingId, []);
-                    collectionMap.get(alloc.billingId)?.push(c);
-                }
-            });
+          c.allocations.forEach(alloc => {
+            addCollectionToBillingKey(alloc.billingId, c);
+            addCollectionToBillingKey((alloc as any).billingNumber, c);
+          });
         }
-        
-        // Handle legacy billingId
-        if (c.billingId) {
-             if (!collectionMap.has(c.billingId)) collectionMap.set(c.billingId, []);
-             // Avoid duplicates if already added via allocations
-             const list = collectionMap.get(c.billingId);
-             if (list && !list.includes(c)) {
-                 list.push(c);
-             }
-        }
-        
-        // Fallback: Check invoiceIds (if it exists in some legacy data, though not seen in code)
+        addCollectionToBillingKey(c.billingId, c);
         if (c.invoiceIds && Array.isArray(c.invoiceIds)) {
-            c.invoiceIds.forEach(invId => {
-                if (!collectionMap.has(invId)) collectionMap.set(invId, []);
-                const list = collectionMap.get(invId);
-                if (list && !list.includes(c)) {
-                    list.push(c);
-                }
-            });
+          c.invoiceIds.forEach(invId => addCollectionToBillingKey(invId, c));
         }
       });
 
       // Process Rows
       const processedRows: FinalShipmentRow[] = bookings.map(booking => {
-        // Collect all possible identifiers for this booking
+        // Collect all possible identifiers for this booking — include uuid since billing/expense
+        // junction tables reference bookings by UUID.
         const identifiers = new Set<string>();
+        if (booking.uuid) identifiers.add(booking.uuid);
         if (booking.id) identifiers.add(booking.id);
         if (booking.bookingId) identifiers.add(booking.bookingId);
         if (booking.bookingNumber) identifiers.add(booking.bookingNumber);
@@ -353,32 +361,43 @@ export function FinalShipmentCostReport() {
         let depositDates: string[] = [];
         let rawDepositDates: string[] = [];
 
-        // Check if ANY of the linked billings have a collection
-        const hasCollection = linkedBillings.some(b => {
-             const linkedCollections = collectionMap.get(b.id);
-             if (linkedCollections && linkedCollections.length > 0) {
-                 // Aggregate details
-                 linkedCollections.forEach(c => {
-                     const checkNum = c.checkNumber || c.checkNo;
-                     const detail = checkNum ? `${c.bankName || 'Bank'} / ${checkNum}` : (c.paymentMethod || "Cash");
-                     if (!bankDetailsParts.includes(detail)) bankDetailsParts.push(detail);
-                 });
-                 return true;
-             }
-             return false;
+        // billing.id = billing_number, billing.uuid = UUID. collectionMap keys can be either,
+        // so try both when looking up.
+        const collectionsForBilling = (b: Billing): Collection[] => {
+          const out: Collection[] = [];
+          const seen = new Set<string>();
+          [b.uuid, b.id].forEach(key => {
+            if (!key) return;
+            (collectionMap.get(key) || []).forEach(c => {
+              if (!seen.has(c.id)) { seen.add(c.id); out.push(c); }
+            });
+          });
+          return out;
+        };
+
+        linkedBillings.forEach(b => {
+          collectionsForBilling(b).forEach(c => {
+            const method = (c.paymentMethod || "").toLowerCase();
+            const isCheckOrBank = method.includes("check") || method.includes("bank");
+            let detail: string;
+            if (isCheckOrBank) {
+              detail = c.referenceNumber || c.checkNumber || c.checkNo || c.paymentMethod || "—";
+            } else {
+              detail = c.paymentMethod || "Cash";
+            }
+            if (!bankDetailsParts.includes(detail)) bankDetailsParts.push(detail);
+          });
         });
-        
-        // Deduplicate collections for details
+
         const uniqueCollections = new Set<string>();
         const collectionsForBooking: Collection[] = [];
         linkedBillings.forEach(b => {
-            const cols = collectionMap.get(b.id);
-            cols?.forEach(c => {
-                if (!uniqueCollections.has(c.id)) {
-                    uniqueCollections.add(c.id);
-                    collectionsForBooking.push(c);
-                }
-            });
+          collectionsForBilling(b).forEach(c => {
+            if (!uniqueCollections.has(c.id)) {
+              uniqueCollections.add(c.id);
+              collectionsForBooking.push(c);
+            }
+          });
         });
 
         if (collectionsForBooking.length > 0) {
@@ -411,16 +430,22 @@ export function FinalShipmentCostReport() {
         // Remarks logic
         const remarks = booking.notes || ""; 
 
+        const bookingIdStr = String(booking.id || booking.bookingId || booking.bookingNumber || "").toUpperCase();
         const rawType = String((booking as any).booking_type || booking.shipmentType || booking.mode || "").trim();
         const rawLower = rawType.toLowerCase();
         let serviceType: string;
         if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
         else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
+        else if (bookingIdStr.startsWith("EXP")) serviceType = "Export";
+        else if (bookingIdStr.startsWith("IMP")) serviceType = "Import";
         else serviceType = rawType || "Import";
         const isImport = serviceType === "Import";
+        // Port column = PH port only.
+        //  Import → POD: booking.pod (modern) or booking.destination (legacy CreateBooking.tsx) or seg fallback.
+        //  Export → POL: booking.origin (modern + legacy) or seg fallback.
         const seg0 = (booking as any).segments?.[0];
         const port = isImport
-          ? ((booking as any).pod || seg0?.pod || "")
+          ? ((booking as any).pod || (booking as any).destination || seg0?.pod || seg0?.destination || "")
           : ((booking as any).origin || seg0?.origin || "");
 
         return {
@@ -440,7 +465,7 @@ export function FinalShipmentCostReport() {
             depositDate,
             rawDepositDates,
             referenceStatus,
-            date: booking.bookingDate || "",
+            date: booking.date || booking.bookingDate || booking.etd || (booking.createdAt ? String(booking.createdAt).slice(0, 10) : ""),
             serviceType,
             port,
             status: booking.status || "Ongoing",
@@ -484,9 +509,14 @@ export function FinalShipmentCostReport() {
         if (!item.serviceType.toLowerCase().includes(filters.serviceType.toLowerCase())) return false;
     }
 
-    // Port (multi-select)
+    // Port (multi-select) — alias-aware so "CDO" matches "Cagayan de Oro" stored on legacy bookings.
     if (filters.port.length > 0) {
-        if (!filters.port.some(p => item.port.toLowerCase().includes(p.toLowerCase()))) return false;
+        const portLc = item.port.toLowerCase();
+        const matched = filters.port.some(p => {
+          const aliases = PORT_ALIASES[p] || [p.toLowerCase()];
+          return aliases.some(a => portLc.includes(a));
+        });
+        if (!matched) return false;
     }
 
     // Client
@@ -500,19 +530,13 @@ export function FinalShipmentCostReport() {
         if (!targets.includes(item.referenceStatus)) return false;
     }
     
-    // Date Range (Deposit Date)
+    // Date Range (Shipment Date) — filters by booking date so unpaid bookings are still visible.
+    // Previously used rawDepositDates which excluded every booking without a collection.
     if (filters.dateStart || filters.dateEnd) {
-        // If no deposit dates, it doesn't match a date range filter
-        if (!item.rawDepositDates || item.rawDepositDates.length === 0) return false;
-        
-        // Check if ANY deposit date falls within the range
-        const hasMatchingDate = item.rawDepositDates.some(d => {
-            if (filters.dateStart && d < filters.dateStart) return false;
-            if (filters.dateEnd && d > filters.dateEnd) return false;
-            return true;
-        });
-        
-        if (!hasMatchingDate) return false;
+        const d = item.date;
+        if (!d) return false;
+        if (filters.dateStart && d < filters.dateStart) return false;
+        if (filters.dateEnd && d > filters.dateEnd) return false;
     }
 
     return true;

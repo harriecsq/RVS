@@ -150,6 +150,30 @@ export function ProfitLossPeriodReport() {
     return String(id).trim().toLowerCase();
   };
 
+  const getBookingRegion = (bk: any): "CDO" | "Luzon" => {
+    if (!bk) return "Luzon";
+    const haystack = [
+      bk.origin, bk.destination, bk.port, bk.pol, bk.pod,
+      bk.branch, bk.region, bk.originPort, bk.destinationPort,
+    ]
+      .map((v) => String(v || "").toLowerCase())
+      .join(" ");
+    if (/\bcdo\b|cagayan/.test(haystack)) return "CDO";
+    return "Luzon";
+  };
+
+  const isExportBooking = (bk: any): boolean => {
+    if (!bk) return false;
+    const mv = String(bk.movement || "").toUpperCase();
+    if (mv === "EXPORT") return true;
+    if (mv === "IMPORT") return false;
+    const sType = String(bk.shipmentType || bk.shipment_type || "").toUpperCase();
+    if (sType === "EXPS" || sType === "EXPORT") return true;
+    if (sType === "IMPS" || sType === "IMPORT") return false;
+    const mode = String(bk.mode || "").toLowerCase();
+    return mode === "export";
+  };
+
   const parseAmount = (amount: any): number => {
     if (amount === undefined || amount === null) return 0;
     if (typeof amount === 'number') return amount;
@@ -181,6 +205,7 @@ export function ProfitLossPeriodReport() {
       const bookingLookup = new Map<string, Booking>();
       bookings.forEach(b => {
           if (b.id) bookingLookup.set(normalizeId(b.id), b);
+          if ((b as any).uuid) bookingLookup.set(normalizeId((b as any).uuid), b);
           if (b.bookingId) bookingLookup.set(normalizeId(b.bookingId), b);
           if (b.booking_id) bookingLookup.set(normalizeId(b.booking_id), b);
           if (b.bookingNumber) bookingLookup.set(normalizeId(b.bookingNumber), b);
@@ -226,10 +251,9 @@ export function ProfitLossPeriodReport() {
                  if (linkedBooking) {
                      // Add to Revenue based on Booking Type/Region
                      const amount = parseAmount(b.totalAmount || b.total_amount);
-                     
-                     const sType = linkedBooking.shipmentType || linkedBooking.shipment_type;
-                     const type = (sType === "EXPS" || linkedBooking.mode === "Export") ? "Export" : "Import";
-                     const region = "Luzon"; // Hardcoded for now
+
+                     const type = isExportBooking(linkedBooking) ? "Export" : "Import";
+                     const region = getBookingRegion(linkedBooking);
 
                      if (region === "Luzon") {
                          if (type === "Import") luzonImport += amount;
@@ -291,9 +315,8 @@ export function ProfitLossPeriodReport() {
                      }
 
                      // Subtract from Revenue (or rather, sum as Cost)
-                     const sType = linkedBooking.shipmentType || linkedBooking.shipment_type;
-                     const type = (sType === "EXPS" || linkedBooking.mode === "Export") ? "Export" : "Import";
-                     const region = "Luzon"; 
+                     const type = isExportBooking(linkedBooking) ? "Export" : "Import";
+                     const region = getBookingRegion(linkedBooking);
 
                      if (region === "Luzon") {
                          if (type === "Import") luzonImport -= validAmount;

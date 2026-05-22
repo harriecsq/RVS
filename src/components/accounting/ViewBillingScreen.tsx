@@ -965,7 +965,10 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
             <BillingLetterheadPanel
               currentDataUrl={billingDocSettings.logoPng}
               onOpenPicker={() => setLetterheadPickerOpen(true)}
-              onClear={() => setBillingDocSettings({ ...billingDocSettings, logoPng: undefined })}
+              onClear={() => {
+                setBillingDocSettings({ ...billingDocSettings, logoPng: undefined });
+                setLastUsedLetterheadId(null);
+              }}
             />
           }
         >

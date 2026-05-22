@@ -1312,6 +1312,18 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
     const containers: string[] = Array.isArray(containerRaw)
       ? containerRaw.filter(Boolean)
       : (typeof containerRaw === "string" ? containerRaw.split(",").map((s: string) => s.trim()).filter(Boolean) : []);
+    const provinceSegments: any[] = Array.isArray(b.segments)
+      ? b.segments.slice(1).filter((s: any) => typeof s?.segmentLabel === "string" && s.segmentLabel.startsWith("Province"))
+      : [];
+    const provinceContainers: string[] = provinceSegments.flatMap((s: any) => {
+      const raw = s?.containerNo ?? "";
+      if (Array.isArray(raw)) return raw.filter(Boolean);
+      if (typeof raw === "string") return raw.split(",").map((x: string) => x.trim()).filter(Boolean);
+      return [];
+    });
+    const containersDisplay = (provinceContainers.length > 0
+      ? `${containers.join(", ")} / ${provinceContainers.join(", ")}`
+      : containers.join(", ")).toUpperCase();
     return {
       blNumber: seg.blNumber ?? b.blNumber ?? "",
       vesselVoyage: seg.vesselVoyage ?? b.vesselVoyage ?? seg.vessel ?? b.vessel ?? "",
@@ -1322,6 +1334,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
       consignee: (seg.consignee || b.consignee || ""),
       commodity: seg.commodity ?? b.commodity ?? "",
       containers,
+      provinceContainers,
+      containersDisplay,
       weight: seg.weight ?? b.weight ?? b.grossWeight ?? b.gross_weight ?? "",
       loadingAddress: seg.loadingAddress ?? b.loadingAddress ?? "",
       volume: b.volume ?? seg.volume ?? "",
@@ -2372,8 +2386,8 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                 destination: bookingShipment.destination,
                 commodity: bookingShipment.commodity,
                 blNumber: bookingShipment.blNumber,
-                containerNo: bookingShipment.containers.join(", "),
-                loadingAddress: bookingShipment.loadingAddress,
+                containerNo: bookingShipment.containersDisplay,
+                loadingAddress: truckingLoadingAddress || bookingShipment.loadingAddress,
                 exchangeRate: expense.exchangeRate,
                 volume: bookingShipment.volume,
                 charges: expense.charges,
@@ -2401,6 +2415,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                 exchangeRate: expense.exchangeRate,
                 charges: expense.charges,
                 totalAmount: expense.amount,
+                billingAmount: expense.billing_amount,
                 preparedBy: (expense as any).preparedBy,
                 checkedBy: (expense as any).checkedBy,
                 approvedBy: (expense as any).approvedBy,
@@ -2530,7 +2545,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containers.join(", ") : "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containersDisplay : "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Weight</div>
@@ -2606,7 +2621,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containers.join(", ") : "—"}</div>
+                        <div style={{ fontSize: "13px", color: "#0A1D4D", fontWeight: 500 }}>{bookingShipment.containers.length > 0 ? bookingShipment.containersDisplay : "—"}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>

@@ -31,6 +31,7 @@ interface VoucherDocTemplateProps {
     consignee?: string;
     bank?: string;
     checkNo?: string;
+    paymentMethod?: string;
     distributionAccount?: string;
     lineItems?: LineItem[];
     distribution?: DistributionItem[];
@@ -83,6 +84,9 @@ export function VoucherDocTemplate({ data }: VoucherDocTemplateProps) {
   const currency = data.currency || "";
 
   const totalAmount = data.totalAmount ?? particulars.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  const isCash = (data.paymentMethod || "").trim().toLowerCase() === "cash";
+  const bankDisplay = isCash ? "CASH" : (data.bank || "");
+  const checkNoDisplay = isCash ? "" : (data.checkNo || "");
 
   // 10 rows standardized (including title/header row) → 9 data rows
   const STANDARD_ROWS = 9;
@@ -273,11 +277,11 @@ export function VoucherDocTemplate({ data }: VoucherDocTemplateProps) {
           <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
             <div style={{ flex: "1 1 50%", display: "flex", alignItems: "baseline", gap: "6px" }}>
               <span style={{ fontWeight: 600 }}>Bank</span>
-              <span style={{ flex: 1, borderBottom: B, paddingBottom: "1px" }}>{data.bank || ""}</span>
+              <span style={{ flex: 1, borderBottom: B, paddingBottom: "1px" }}>{bankDisplay}</span>
             </div>
             <div style={{ flex: "1 1 50%", display: "flex", alignItems: "baseline", gap: "6px" }}>
               <span style={{ fontWeight: 600 }}>Check No.</span>
-              <span style={{ flex: 1, borderBottom: B, paddingBottom: "1px" }}>{data.checkNo || ""}</span>
+              <span style={{ flex: 1, borderBottom: B, paddingBottom: "1px" }}>{checkNoDisplay}</span>
             </div>
           </div>
 

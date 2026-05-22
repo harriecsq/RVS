@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { FileText, Plus, CheckCircle, Settings, Sparkles } from "lucide-react";
+import { FileText, Plus, CheckCircle, Settings, Sparkles, Trash2 } from "lucide-react";
+import { StandardButton } from "../../design-system";
 import { TemplateManagementView } from "./TemplateManagementView";
 import { publicAnonKey } from "../../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
@@ -62,6 +63,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
   const [editState, setEditState] = useState<DocumentEditState | null>(null);
   const editStateRef = useRef<DocumentEditState | null>(null);
   const [fsiId, setFsiId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // In-memory draft pre-fill from a master template (never persisted)
   const [draftDocs, setDraftDocs] = useState<Partial<Record<DocKey, any>>>({});
   // Persists the applied master so PNG overrides work across all doc tabs
@@ -118,14 +120,16 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
     }
   }, []);
 
+  const bookingUuid = (booking as any)?.uuid;
   const fetchDocumentStatus = useCallback(async () => {
+    if (!bookingUuid) return;
     try {
       const id = encodeURIComponent(bookingId);
       const [docsRes, fsiRes] = await Promise.all([
         fetch(`${API_BASE_URL}/export-bookings/${id}/documents`, {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
         }),
-        fetch(`${API_BASE_URL}/fsi?${new URLSearchParams({ bookingId })}`, {
+        fetch(`${API_BASE_URL}/fsi?${new URLSearchParams({ bookingId: bookingUuid })}`, {
           headers: { Authorization: `Bearer ${publicAnonKey}` },
         }),
       ]);
@@ -143,7 +147,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
     } finally {
       setIsLoading(false);
     }
-  }, [bookingId]);
+  }, [bookingId, bookingUuid]);
 
   useEffect(() => { fetchDocumentStatus(); }, [fetchDocumentStatus]);
 
@@ -186,7 +190,6 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
     if (!activePanelKey) return;
     const doc = DOCUMENT_TYPES.find((d) => d.key === activePanelKey);
     if (!doc) return;
-    if (!confirm(`Delete this ${doc.label}? This cannot be undone.`)) return;
 
     try {
       let res: Response;
@@ -207,6 +210,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
       const result = await res.json();
       if (result.success) {
         toast.success(`${doc.label} deleted`);
+        setShowDeleteConfirm(false);
         setActivePanelKey(null);
         fetchDocumentStatus();
         onDocumentUpdated?.();
@@ -218,6 +222,11 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
       toast.error(`Failed to delete ${doc.label}`);
     }
   }, [activePanelKey, bookingId, fsiId]);
+
+  const requestDelete = useCallback(() => {
+    if (!activePanelKey) return;
+    setShowDeleteConfirm(true);
+  }, [activePanelKey]);
 
   const activeDoc = DOCUMENT_TYPES.find((d) => d.key === activePanelKey);
 
@@ -394,7 +403,7 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
           title={panelTitle}
           documentExists={activePanelKey ? docStatus[activePanelKey] : false}
           editState={editState}
-          onDelete={handleDelete}
+          onDelete={requestDelete}
           renderPdfPreview={renderPdfPreview}
           overrideSettings={overrideSettings}
           stampSlots={stampSlots}
@@ -449,6 +458,43 @@ export function DocumentsSubTab({ bookingId, booking, currentUser, onDocumentUpd
             );
           })()}
         </DocumentSidePanel>
+      )}
+
+      {showDeleteConfirm && activeDoc && (
+        <div
+          onClick={() => setShowDeleteConfirm(false)}
+          style={{
+            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+            background: "rgba(18, 51, 43, 0.15)", backdropFilter: "blur(2px)",
+            display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1100,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white", width: "480px", padding: "32px",
+              borderRadius: "12px", border: "1px solid var(--neuron-ui-border)",
+              boxShadow: "0 4px 24px rgba(18, 51, 43, 0.12)",
+            }}
+          >
+            <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", marginBottom: "12px" }}>
+              Delete {activeDoc.label}?
+            </h2>
+            <p style={{ fontSize: "14px", color: "#667085", marginBottom: "24px", lineHeight: "1.5" }}>
+              Are you sure you want to delete this <strong>{activeDoc.label}</strong>
+              {editState?.refNo ? <> (<strong>{editState.refNo}</strong>)</> : null}
+              ? This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <StandardButton variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </StandardButton>
+              <StandardButton variant="danger" onClick={handleDelete} icon={<Trash2 size={16} />}>
+                Delete {activeDoc.label}
+              </StandardButton>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

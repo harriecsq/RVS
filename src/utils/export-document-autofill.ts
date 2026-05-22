@@ -30,6 +30,26 @@ interface BookingForAutoFill {
   }[];
 }
 
+/** Compose marks & nos as "{count}x{volume}" (e.g. "4x40'HC"). LCL stays "LCL". */
+function composeMarksAndNos(booking: BookingForAutoFill): string {
+  const seg0 = booking.segments?.[0];
+  const volume = booking.volume || seg0?.volume || "";
+  if (!volume) return "";
+  if (volume.trim() === "LCL") return "LCL";
+  let count = 0;
+  if (booking.containerNo) {
+    count = booking.containerNo.split(",").map((s) => s.trim()).filter(Boolean).length;
+  } else if (seg0?.containerNos?.length) {
+    count = seg0.containerNos.length;
+  }
+  if (!count && booking.containerQty) {
+    const n = typeof booking.containerQty === "number" ? booking.containerQty : parseInt(String(booking.containerQty), 10);
+    if (!isNaN(n) && n > 0) count = n;
+  }
+  if (!count) count = 1;
+  return `${count}x${volume}`;
+}
+
 /** Build default Sales Contract fields from the export booking. */
 export function buildSalesContractDefaults(booking: BookingForAutoFill): Partial<SalesContract> {
   const seg0 = booking.segments?.[0];
@@ -37,7 +57,7 @@ export function buildSalesContractDefaults(booking: BookingForAutoFill): Partial
     portOfLoading: booking.pol || booking.origin || seg0?.origin || "",
     portOfDestination: booking.pod || booking.destination || seg0?.pod || "",
     vesselVoyage: booking.vesselVoyage || seg0?.vesselVoyage || "",
-    marksAndNos: booking.volume || seg0?.volume || "",
+    marksAndNos: composeMarksAndNos(booking),
     commodityDescription: booking.commodity || seg0?.commodity || "",
     buyerName: booking.consignee || seg0?.consignee || "",
     supplierName: booking.shipper || seg0?.shipper || "",

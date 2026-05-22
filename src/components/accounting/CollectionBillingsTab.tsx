@@ -37,6 +37,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
   const [billings, setBillings] = useState<Billing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [bookingPartyMap, setBookingPartyMap] = useState<Map<string, string>>(new Map());
+  const [bookingBlMap, setBookingBlMap] = useState<Map<string, string>>(new Map());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
       const result = await response.json();
       if (result.success && Array.isArray(result.data)) {
         const map = new Map<string, string>();
+        const blMap = new Map<string, string>();
         for (const b of result.data as any[]) {
           const movement = String(b.movement || b.shipmentType || "").toLowerCase();
           const isImport = movement.includes("import") || movement === "imps";
@@ -59,12 +61,20 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
           const party = isImport
             ? (b.consignee || seg0?.consignee || "")
             : (b.shipper || seg0?.shipper || "");
-          if (!party) continue;
-          if (b.uuid) map.set(b.uuid, party);
-          if (b.id) map.set(b.id, party);
-          if (b.bookingId) map.set(b.bookingId, party);
+          const bl = b.blNumber || b.bl_number || b.awbBlNo || seg0?.blNumber || seg0?.bl_number || "";
+          if (party) {
+            if (b.uuid) map.set(b.uuid, party);
+            if (b.id) map.set(b.id, party);
+            if (b.bookingId) map.set(b.bookingId, party);
+          }
+          if (bl) {
+            if (b.uuid) blMap.set(b.uuid, bl);
+            if (b.id) blMap.set(b.id, bl);
+            if (b.bookingId) blMap.set(b.bookingId, bl);
+          }
         }
         setBookingPartyMap(map);
+        setBookingBlMap(blMap);
       }
     } catch (err) {
       console.error("Error fetching bookings:", err);
@@ -203,6 +213,7 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
                 <tr style={{ background: "#FAFAFA", borderBottom: "1px solid #E5E9F0" }}>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Billing Number</th>
                   <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Company / Client</th>
+                  <th style={{ padding: "12px 24px", textAlign: "left", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>BL Number</th>
                   <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Total Amount</th>
                   <th style={{ padding: "12px 24px", textAlign: "right", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Allocated</th>
                   <th style={{ padding: "12px 24px", textAlign: "center", fontSize: "12px", color: "#667085", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
@@ -249,6 +260,13 @@ export function CollectionBillingsTab({ collectionId, collectionNumber, allocati
                             ))}
                           </>
                         );
+                      })()}
+                    </td>
+                    <td style={{ padding: "16px 24px" }}>
+                      {(() => {
+                        const bId = billing.bookingId || (billing.bookingIds || [])[0];
+                        const bl = billing.blNumber || billing.bl_number || (bId ? bookingBlMap.get(bId) : "") || "";
+                        return <div style={{ fontSize: "14px", color: "#0A1D4D" }}>{bl || "—"}</div>;
                       })()}
                     </td>
                     <td style={{ padding: "16px 24px", textAlign: "right" }}>

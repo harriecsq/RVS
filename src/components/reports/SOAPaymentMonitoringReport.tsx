@@ -17,6 +17,7 @@ import { StandardInput } from '../design-system/StandardInput';
 
 interface Booking {
   id: string;
+  uuid?: string;
   bookingId?: string;
   bookingNumber?: string;
   customerName?: string;
@@ -33,11 +34,19 @@ interface Booking {
   origin?: string; // POL for export
   pod?: string;    // POD for import
   destination?: string;
-  segments?: { origin?: string; pod?: string; destination?: string }[];
+  segments?: {
+    segmentLabel?: string;
+    origin?: string;
+    pod?: string;
+    destination?: string;
+    containerNo?: string;
+    containerNos?: string[];
+  }[];
 }
 
 interface Billing {
   id: string;
+  uuid?: string;
   bookingId?: string;
   bookingIds?: string[];
   bookingNumber?: string;
@@ -48,10 +57,16 @@ interface Billing {
   billingDate: string;
   currency?: string;
   status?: string;
+  // shipment JSONB fields spread by server billingRowToApi
+  commodity?: string;
+  containerNumbers?: string[];
+  origin?: string;
+  destination?: string;
+  category?: string;
 }
 
 interface CollectionAllocation {
-  billingId: string;
+  billingId: string; // UUID from server
   billingNumber?: string;
   amount: number;
 }
@@ -141,6 +156,16 @@ const PORT_OPTIONS = [
   { value: "Davao", label: "Davao" },
 ];
 
+// Aliases per port option — legacy bookings (CreateBooking.tsx) wrote full city
+// names ("Cagayan de Oro"), newer forms write short codes ("CDO"). Match any.
+const PORT_ALIASES: Record<string, string[]> = {
+  "Manila North": ["manila north"],
+  "Manila South": ["manila south"],
+  "CDO": ["cdo", "cagayan de oro", "cagayan"],
+  "Iloilo": ["iloilo"],
+  "Davao": ["davao"],
+};
+
 const SERVICE_TYPE_OPTIONS = [
   { value: "All", label: "All Types" },
   { value: "Import", label: "Import" },
@@ -183,45 +208,44 @@ export function SOAPaymentMonitoringReport() {
       const billings: Billing[] = billingsData.success ? billingsData.data : [];
       const collections: Collection[] = collectionsData.success ? collectionsData.data : [];
 
-      // --- Build booking lookup map (by id and bookingId) ---
+      // --- Build booking lookup map (by uuid, public id, bookingId, bookingNumber) ---
+      // Server v2 emits booking.id = booking_number (e.g. "EXP 2026-1") and booking.uuid = the row UUID.
+      // billing.bookingIds[] from server are UUIDs, so we MUST index by uuid as well.
       const bookingMap = new Map<string, Booking>();
       bookings.forEach(b => {
+        if (b.uuid) bookingMap.set(b.uuid, b);
         if (b.id) bookingMap.set(b.id, b);
         if (b.bookingId) bookingMap.set(b.bookingId, b);
         if (b.bookingNumber) bookingMap.set(b.bookingNumber, b);
       });
 
       // --- Build collection-to-billing lookup ---
+      // Server emits alloc.billingId = billing UUID and alloc.billingNumber = public number.
+      // billing.id = billing_number; billing.uuid = UUID. Index both keys to be safe.
       const collectionsByBillingId = new Map<string, { collection: Collection; allocationAmount: number }[]>();
+      const addCollectionLink = (key: string | undefined | null, entry: { collection: Collection; allocationAmount: number }) => {
+        if (!key) return;
+        if (!collectionsByBillingId.has(key)) collectionsByBillingId.set(key, []);
+        const list = collectionsByBillingId.get(key)!;
+        if (!list.some(e => e.collection.id === entry.collection.id)) list.push(entry);
+      };
 
       collections.forEach(c => {
         if (c.allocations && Array.isArray(c.allocations)) {
           c.allocations.forEach(alloc => {
-            if (alloc.billingId) {
-              if (!collectionsByBillingId.has(alloc.billingId)) collectionsByBillingId.set(alloc.billingId, []);
-              collectionsByBillingId.get(alloc.billingId)!.push({
-                collection: c,
-                allocationAmount: Number(alloc.amount) || 0
-              });
-            }
+            const entry = { collection: c, allocationAmount: Number(alloc.amount) || 0 };
+            addCollectionLink(alloc.billingId, entry);
+            addCollectionLink((alloc as any).billingNumber, entry);
           });
         }
 
         if (c.billingId) {
-          if (!collectionsByBillingId.has(c.billingId)) collectionsByBillingId.set(c.billingId, []);
-          const list = collectionsByBillingId.get(c.billingId)!;
-          if (!list.some(entry => entry.collection.id === c.id)) {
-            list.push({ collection: c, allocationAmount: Number(c.amount) || 0 });
-          }
+          addCollectionLink(c.billingId, { collection: c, allocationAmount: Number(c.amount) || 0 });
         }
 
         if (c.invoiceIds && Array.isArray(c.invoiceIds)) {
           c.invoiceIds.forEach(invId => {
-            if (!collectionsByBillingId.has(invId)) collectionsByBillingId.set(invId, []);
-            const list = collectionsByBillingId.get(invId)!;
-            if (!list.some(entry => entry.collection.id === c.id)) {
-              list.push({ collection: c, allocationAmount: Number(c.amount) || 0 });
-            }
+            addCollectionLink(invId, { collection: c, allocationAmount: Number(c.amount) || 0 });
           });
         }
       });
@@ -242,34 +266,79 @@ export function SOAPaymentMonitoringReport() {
           (booking ? (booking.customerName || booking.clientName || booking.client || booking.shipper) : null) ||
           "—";
 
-        const commodity = booking?.commodity || "—";
+        const commodity = billing.commodity || booking?.commodity || "—";
+
+        // Service type: prefer booking-level type (booking_type / shipmentType / mode),
+        // fall back to billing.category (CreateBillingModal stores "Import"/"Export"),
+        // and finally infer from booking-number prefix ("IMP …" / "EXP …").
+        const bookingIdStr = String(booking?.id || booking?.bookingId || billing.bookingId || (billing.bookingIds?.[0] ?? "") || "").toUpperCase();
+        const rawType = String(
+          booking?.booking_type || booking?.shipmentType || booking?.mode || billing.category || ""
+        ).trim();
+        const rawLower = rawType.toLowerCase();
+        let serviceType: string;
+        if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
+        else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
+        else if (bookingIdStr.startsWith("EXP")) serviceType = "Export";
+        else if (bookingIdStr.startsWith("IMP")) serviceType = "Import";
+        else serviceType = rawType || "Import";
+        const isImport = serviceType === "Import";
+
+        // Container numbers:
+        //  - Export: only Manila-leg containers. By convention segments[0] is the Manila leg
+        //    and segments[1..] are Province legs (older bookings may not have segmentLabel set,
+        //    so fall back to segments[0] when no explicit "Manila" label is found).
+        //  - Import: top-level booking fields (containerNumbers / containers / containerNo CSV).
+        const segmentContainers = (segs: NonNullable<Booking["segments"]>) => {
+          const fromArrays = segs.flatMap(s => Array.isArray(s.containerNos) ? s.containerNos : []).filter(Boolean);
+          const fromCsv = segs.flatMap(s => (s.containerNo || "").split(',').map(x => x.trim()).filter(Boolean));
+          return Array.from(new Set([...fromArrays, ...fromCsv]));
+        };
         let containerNumbers: string[] = [];
         if (booking) {
-          if (booking.containerNumbers && Array.isArray(booking.containerNumbers)) {
-            containerNumbers = booking.containerNumbers;
-          } else if (booking.containers && Array.isArray(booking.containers)) {
+          if (!isImport) {
+            const segments = booking.segments || [];
+            const manilaSegments = segments.filter(
+              s => String(s?.segmentLabel || "").toLowerCase().includes("manila")
+            );
+            const targetSegments = manilaSegments.length
+              ? manilaSegments
+              : (segments[0] ? [segments[0]] : []);
+            containerNumbers = segmentContainers(targetSegments);
+            if (!containerNumbers.length) {
+              if (Array.isArray(booking.containerNumbers)) containerNumbers = booking.containerNumbers.filter(Boolean);
+              else if (Array.isArray(booking.containers)) containerNumbers = booking.containers.map((c: any) => c.containerNumber || c.container_number).filter(Boolean);
+              else if (booking.containerNo) containerNumbers = booking.containerNo.split(',').map(s => s.trim()).filter(Boolean);
+            }
+          } else if (Array.isArray(booking.containerNumbers)) {
+            containerNumbers = booking.containerNumbers.filter(Boolean);
+          } else if (Array.isArray(booking.containers)) {
             containerNumbers = booking.containers.map((c: any) => c.containerNumber || c.container_number).filter(Boolean);
           } else if (booking.containerNo) {
             containerNumbers = booking.containerNo.split(',').map((s: string) => s.trim()).filter(Boolean);
           }
         }
-
-        const rawType = String(booking?.booking_type || booking?.shipmentType || booking?.mode || "").trim();
-        const rawLower = rawType.toLowerCase();
-        let serviceType: string;
-        if (rawLower.includes("export") || rawLower === "exps") serviceType = "Export";
-        else if (rawLower.includes("import") || rawLower === "imps") serviceType = "Import";
-        else serviceType = rawType || "Import";
-        const isImport = serviceType === "Import";
+        // Fall back to billing-level containerNumbers (CreateBillingModal stores them on billing shipment).
+        if (!containerNumbers.length && Array.isArray(billing.containerNumbers)) {
+          containerNumbers = billing.containerNumbers.filter(Boolean);
+        }
+        // Port column = PH port only.
+        //  Import → POD (port of discharge): booking.pod (modern) or booking.destination (legacy CreateBooking.tsx) or segment fallback.
+        //  Export → POL (port of loading):  booking.origin (modern + legacy) or segment fallback.
+        //  Never cross over: for Export, pod/destination is the foreign POD; for Import, origin is the foreign POL.
         const seg0 = booking?.segments?.[0];
         const port = isImport
-          ? (booking?.pod || booking?.destination || seg0?.pod || (seg0 as any)?.destination || "—")
-          : (booking?.origin || booking?.pod || booking?.destination || seg0?.origin || seg0?.pod || "—");
+          ? (booking?.pod || booking?.destination || seg0?.pod || (seg0 as any)?.destination || billing.destination || "—")
+          : (booking?.origin || seg0?.origin || billing.origin || "—");
 
         const soaNumber = billing.billingNumber || billing.soaNumber || "—";
         const soaAmount = Number(billing.totalAmount) || 0;
 
-        const linkedCollections = collectionsByBillingId.get(billing.id) || [];
+        const linkedCollections =
+          (billing.uuid && collectionsByBillingId.get(billing.uuid)) ||
+          collectionsByBillingId.get(billing.id) ||
+          (billing.billingNumber && collectionsByBillingId.get(billing.billingNumber)) ||
+          [];
 
         let nameCheckParts: string[] = [];
         let checkAmountTotal = 0;
@@ -337,7 +406,12 @@ export function SOAPaymentMonitoringReport() {
     }
 
     if (filters.port.length > 0) {
-      if (!filters.port.some(p => item.port.toLowerCase().includes(p.toLowerCase()))) return false;
+      const portLc = item.port.toLowerCase();
+      const matched = filters.port.some(p => {
+        const aliases = PORT_ALIASES[p] || [p.toLowerCase()];
+        return aliases.some(a => portLc.includes(a));
+      });
+      if (!matched) return false;
     }
 
     if (filters.clientSelections.length > 0) {

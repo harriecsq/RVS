@@ -11,6 +11,10 @@ interface LineItem {
   currency?: string;
   voucherNo?: string;
   linkedVoucherAmount?: number;
+  isDomestic?: boolean;
+  segContainerCount?: number;
+  segmentContainers?: string[];
+  segmentLabel?: string;
 }
 
 interface ExportExpenseDocTemplateProps {
@@ -79,12 +83,34 @@ function volumeHeader(volumeRaw: string | undefined, containerNoRaw: string | un
 
 export function ExportExpenseDocTemplate({ data, settings }: ExportExpenseDocTemplateProps) {
   const charges = data.charges || [];
-  const groups = groupChargesPreserveOrder(charges);
+  const allGroups = groupChargesPreserveOrder(charges);
+  const isDomesticGroup = (g: { category: string; items: LineItem[] }) =>
+    g.items[0]?.isDomestic === true || /^DOMESTIC - /.test(g.category);
+  const domesticGroups = allGroups.filter(isDomesticGroup);
+  const mainGroups = allGroups.filter((g) => !isDomesticGroup(g));
   const B = "1px solid #000";
   const totalAmount =
     data.totalAmount ?? charges.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
 
-  const qtyHeader = volumeHeader(data.volume, data.containerNo);
+  const mainQtyHeader = volumeHeader(data.volume, data.containerNo);
+
+  // Volume header for a domestic group derived from its own segment containers
+  const domesticQtyHeader = (items: LineItem[]): string => {
+    const first = items[0];
+    const count = first?.segContainerCount ?? first?.segmentContainers?.length ?? 1;
+    const { type } = parseVolume(data.volume);
+    const t = type || "40'HC";
+    return `${Math.max(count, 1)}X${t}`;
+  };
+
+  const domesticLabel = (group: { category: string; items: LineItem[] }): string => {
+    const first = group.items[0];
+    const containersLabel =
+      first?.segmentContainers?.join(", ") ||
+      first?.segmentLabel ||
+      group.category.replace(/^DOMESTIC - /i, "");
+    return containersLabel ? `DOMESTIC - ${containersLabel.toUpperCase()}` : "DOMESTIC";
+  };
 
   const headerFields: Array<{ en: string; zh: string; value: string }> = [
     { en: "DATE", zh: "日期", value: formatDateLetters(data.expenseDate || "") },
@@ -95,7 +121,7 @@ export function ExportExpenseDocTemplate({ data, settings }: ExportExpenseDocTem
     { en: "COMMODITY", zh: "商品", value: data.commodity || "" },
     { en: "BL NUMBER", zh: "提单号/订舱号", value: data.blNumber || "" },
     { en: "CONTAINER NUMBER", zh: "柜号", value: data.containerNo || "" },
-    { en: "LOADING ADDRESS", zh: "装柜地址", value: data.loadingAddress || "" },
+    { en: "LOADING ADDRESS", zh: "装柜地址", value: (data.loadingAddress || "").toUpperCase() },
     { en: "EXCHANGE RATE", zh: "兑换率", value: data.exchangeRate || "" },
   ];
 
@@ -121,15 +147,8 @@ export function ExportExpenseDocTemplate({ data, settings }: ExportExpenseDocTem
       </table>
 
       {/* Charges table */}
-      <table style={{ width: "100%", borderCollapse: "collapse", border: B, tableLayout: "fixed", fontSize: "11px" }}>
-        <colgroup>
-          <col style={{ width: "38%" }} />
-          <col style={{ width: "16%" }} />
-          <col style={{ width: "14%" }} />
-          <col style={{ width: "14%" }} />
-          <col style={{ width: "18%" }} />
-        </colgroup>
-        <thead>
+      {(() => {
+        const colHeader = (qtyHeader: string) => (
           <tr>
             {[
               { en: "PARTICULARS", zh: "描述" },
@@ -138,90 +157,119 @@ export function ExportExpenseDocTemplate({ data, settings }: ExportExpenseDocTem
               { en: "VOUCHER NO", zh: "账本号" },
               { en: "VOUCHER AMOUNT", zh: "账额" },
             ].map((h, i) => (
-              <th key={i} style={{
-                padding: cellPad, borderBottom: B, borderRight: i < 4 ? B : "none",
+              <td key={i} style={{
+                padding: cellPad, borderBottom: B, borderTop: B, borderRight: i < 4 ? B : "none",
                 textAlign: "center", fontWeight: 700, fontSize: "10.5px", verticalAlign: "middle",
                 lineHeight: "1.1",
               }}>
                 <div style={{ lineHeight: "1.1" }}>{h.en}</div>
                 {h.zh && <div style={{ fontFamily: "'SimSun', 'Arial', sans-serif", fontWeight: 400, lineHeight: "1.1" }}>{h.zh}</div>}
-              </th>
+              </td>
             ))}
           </tr>
-        </thead>
-        <tbody>
-          {groups.length === 0 && (
+        );
+
+        const renderGroup = (group: { category: string; items: LineItem[] }, labelOverride?: string) => (
+          <React.Fragment key={`grp-${group.category}`}>
             <tr>
-              <td colSpan={5} style={{ padding: "20px 8px", textAlign: "center", color: "#9CA3AF" }}>
-                No charges added.
+              <td style={{ padding: cellPad, borderBottom: B, borderRight: B, fontWeight: 700, fontSize: "11px" }}>
+                {labelOverride ?? group.category}
               </td>
+              <td style={{ padding: cellPad, borderBottom: B, borderRight: B }}>&nbsp;</td>
+              <td style={{ padding: cellPad, borderBottom: B, borderRight: B }}>&nbsp;</td>
+              <td style={{ padding: cellPad, borderBottom: B, borderRight: B }}>&nbsp;</td>
+              <td style={{ padding: cellPad, borderBottom: B }}>&nbsp;</td>
             </tr>
-          )}
-          {groups.map((group) => (
-            <React.Fragment key={`grp-${group.category}`}>
-              {/* Category header row */}
+            {group.items.map((item, idx) => {
+              const unit = item.unitPrice !== undefined && item.unitPrice !== "" ? item.unitPrice : "";
+              const per = item.per || "";
+              const unitText = unit !== "" ? (per ? `${unit} PER ${per}` : String(unit)) : "";
+              const qtyAmount = Number(item.amount) || 0;
+              const voucherAmt = item.voucherNo
+                ? (item.linkedVoucherAmount ?? (Number(item.amount) || 0))
+                : Number(item.amount) || 0;
+              return (
+                <tr key={`${group.category}-${idx}`}>
+                  <td style={{ padding: cellPad, borderBottom: B, borderRight: B, height: rowHeight }}>
+                    {idx + 1}. {item.description}
+                  </td>
+                  <td style={{ padding: cellPad, borderBottom: B, borderRight: B, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+                    {unitText}
+                  </td>
+                  <td style={{ padding: cellPad, borderBottom: B, borderRight: B, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    {qtyAmount ? formatAmount(qtyAmount) : ""}
+                  </td>
+                  <td style={{ padding: cellPad, borderBottom: B, borderRight: B, textAlign: "center" }}>
+                    {item.voucherNo || ""}
+                  </td>
+                  <td style={{ padding: cellPad, borderBottom: B, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    {voucherAmt ? formatAmount(voucherAmt) : ""}
+                  </td>
+                </tr>
+              );
+            })}
+          </React.Fragment>
+        );
+
+        return (
+          <table style={{ width: "100%", borderCollapse: "collapse", border: B, tableLayout: "fixed", fontSize: "11px" }}>
+            <colgroup>
+              <col style={{ width: "38%" }} />
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "18%" }} />
+            </colgroup>
+            <tbody>
+              {allGroups.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ padding: "20px 8px", textAlign: "center", color: "#9CA3AF" }}>
+                    No charges added.
+                  </td>
+                </tr>
+              )}
+
+              {/* Domestic blocks — each with its own column header (own volume) */}
+              {domesticGroups.map((group) => (
+                <React.Fragment key={`dom-${group.category}`}>
+                  {colHeader(domesticQtyHeader(group.items))}
+                  {renderGroup(group, domesticLabel(group))}
+                </React.Fragment>
+              ))}
+
+              {/* Main block — single column header for all non-domestic groups */}
+              {mainGroups.length > 0 && (
+                <>
+                  {colHeader(mainQtyHeader)}
+                  {mainGroups.map((group) => renderGroup(group))}
+                </>
+              )}
+
+              {/* TOTAL row */}
               <tr>
-                <td style={{ padding: cellPad, borderBottom: B, borderRight: B, fontWeight: 700, fontSize: "11px" }}>
-                  {group.category}
+                <td style={{ padding: cellPad, borderRight: B }}>&nbsp;</td>
+                <td style={{ padding: cellPad, borderRight: B }}>&nbsp;</td>
+                <td style={{ padding: cellPad, borderRight: B }}>&nbsp;</td>
+                <td style={{ padding: cellPad, borderRight: B, textAlign: "right", fontWeight: 700 }}>
+                  TOTAL
                 </td>
-                <td style={{ padding: cellPad, borderBottom: B, borderRight: B }}>&nbsp;</td>
-                <td style={{ padding: cellPad, borderBottom: B, borderRight: B }}>&nbsp;</td>
-                <td style={{ padding: cellPad, borderBottom: B, borderRight: B }}>&nbsp;</td>
-                <td style={{ padding: cellPad, borderBottom: B }}>&nbsp;</td>
+                <td style={{ padding: cellPad, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                  {formatAmount(totalAmount)}
+                </td>
               </tr>
-              {group.items.map((item, idx) => {
-                const unit = item.unitPrice !== undefined && item.unitPrice !== "" ? item.unitPrice : "";
-                const per = item.per || "";
-                const unitText = unit !== "" ? (per ? `${unit} PER ${per}` : String(unit)) : "";
-                const qtyAmount = Number(item.amount) || 0;
-                const voucherAmt = item.voucherNo
-                  ? (item.linkedVoucherAmount ?? (Number(item.amount) || 0))
-                  : Number(item.amount) || 0;
-                return (
-                  <tr key={`${group.category}-${idx}`}>
-                    <td style={{ padding: cellPad, borderBottom: B, borderRight: B, height: rowHeight }}>
-                      {idx + 1}. {item.description}
-                    </td>
-                    <td style={{ padding: cellPad, borderBottom: B, borderRight: B, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
-                      {unitText}
-                    </td>
-                    <td style={{ padding: cellPad, borderBottom: B, borderRight: B, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {qtyAmount ? formatAmount(qtyAmount) : ""}
-                    </td>
-                    <td style={{ padding: cellPad, borderBottom: B, borderRight: B, textAlign: "center" }}>
-                      {item.voucherNo || ""}
-                    </td>
-                    <td style={{ padding: cellPad, borderBottom: B, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      {voucherAmt ? formatAmount(voucherAmt) : ""}
-                    </td>
-                  </tr>
-                );
-              })}
-            </React.Fragment>
-          ))}
-          {/* TOTAL row */}
-          <tr>
-            <td style={{ padding: cellPad, borderRight: B }}>&nbsp;</td>
-            <td style={{ padding: cellPad, borderRight: B }}>&nbsp;</td>
-            <td style={{ padding: cellPad, borderRight: B }}>&nbsp;</td>
-            <td style={{ padding: cellPad, borderRight: B, textAlign: "right", fontWeight: 700 }}>
-              TOTAL
-            </td>
-            <td style={{ padding: cellPad, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-              {formatAmount(totalAmount)}
-            </td>
-          </tr>
-          {/* AMOUNT FOR BILLING row */}
-          <tr>
-            <td colSpan={4} style={{ padding: cellPad, borderTop: B, borderRight: B, textAlign: "right", fontWeight: 700 }}>
-              AMOUNT FOR BILLING <span style={{ fontFamily: "'SimSun', 'Arial', sans-serif", fontWeight: 400 }}>账单金额</span>
-            </td>
-            <td style={{ padding: cellPad, borderTop: B, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-              {data.billingAmount !== undefined && data.billingAmount !== null ? formatAmount(data.billingAmount) : ""}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              {/* AMOUNT FOR BILLING row */}
+              <tr>
+                <td colSpan={4} style={{ padding: cellPad, borderTop: B, borderRight: B, textAlign: "right", fontWeight: 700 }}>
+                  AMOUNT FOR BILLING <span style={{ fontFamily: "'SimSun', 'Arial', sans-serif", fontWeight: 400 }}>账单金额</span>
+                </td>
+                <td style={{ padding: cellPad, borderTop: B, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                  {data.billingAmount !== undefined && data.billingAmount !== null ? formatAmount(data.billingAmount) : ""}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        );
+      })()}
 
       {/* Three signature blocks */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "32px", gap: "16px" }}>

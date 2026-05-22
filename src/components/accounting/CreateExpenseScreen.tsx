@@ -58,6 +58,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
     loadingAddress: "",
     exchangeRate: "",
     containerNumbers: [""],
+    provinceContainerNumbers: [] as string[],
   });
 
   // Helper to clear auto-filled state on user interaction
@@ -132,6 +133,17 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
     }
     if (containers.length === 0) containers = [""];
 
+    // Province leg containers (segments[1..] with segmentLabel starting "Province")
+    const provinceSegments: any[] = Array.isArray(booking.segments)
+      ? booking.segments.slice(1).filter((s: any) => typeof s?.segmentLabel === "string" && s.segmentLabel.startsWith("Province"))
+      : [];
+    const provinceContainerList: string[] = provinceSegments.flatMap((s: any) => {
+      const raw = s?.containerNo ?? "";
+      if (Array.isArray(raw)) return raw.filter(Boolean);
+      if (typeof raw === "string") return raw.split(",").map((x: string) => x.trim()).filter(Boolean);
+      return [];
+    });
+
     // Mark fields as auto-filled if they have values
     const newAutoFilledFields: Record<string, boolean> = {};
     // For Export bookings, shipper/customerName may live on the first segment (mirrored to root, but mirror may be stale).
@@ -175,7 +187,8 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
       loadingAddress: truckingVoucherLoadingAddress || booking.pickup || booking.loading_address || "",
       weight: booking.weight || booking.grossWeight || booking.gross_weight || "",
       containerNumbers: containers,
-      containerNo: containers.join(', ') // Keep string version synced
+      containerNo: containers.join(', '), // Keep string version synced
+      provinceContainerNumbers: provinceContainerList,
     }));
 
     // Fetch trucking record for this booking to get the trucking vendor name
@@ -275,6 +288,7 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
         expensePayload.loadingAddress = formData.loadingAddress;
         expensePayload.exchangeRate = formData.exchangeRate;
         expensePayload.containerNumbers = formData.containerNumbers.filter(Boolean);
+        expensePayload.releasingDate = formData.releasingDate;
       }
 
       // Add charges from ExpenseTables
@@ -664,7 +678,12 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                           </div>
                           <div>
                             <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.containerNumbers.filter(Boolean).join(", ") || "—"}</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{(() => {
+                              const manila = formData.containerNumbers.filter(Boolean).join(", ");
+                              const province = (formData.provinceContainerNumbers || []).filter(Boolean).join(", ");
+                              const combined = province ? `${manila} / ${province}` : manila;
+                              return combined ? combined.toUpperCase() : "—";
+                            })()}</div>
                           </div>
                           <div>
                             <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Origin</div>
@@ -722,7 +741,12 @@ export function CreateExpenseScreen({ onBack, onSuccess, prefillBookingId, prefi
                           </div>
                           <div>
                             <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Container No</div>
-                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{formData.containerNumbers.filter(Boolean).join(", ") || "—"}</div>
+                            <div style={{ fontSize: "14px", color: "#0A1D4D", fontWeight: 500 }}>{(() => {
+                              const manila = formData.containerNumbers.filter(Boolean).join(", ");
+                              const province = (formData.provinceContainerNumbers || []).filter(Boolean).join(", ");
+                              const combined = province ? `${manila} / ${province}` : manila;
+                              return combined ? combined.toUpperCase() : "—";
+                            })()}</div>
                           </div>
                           <div>
                             <div style={{ fontSize: "12px", color: "#667085", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "2px" }}>Loading Address</div>

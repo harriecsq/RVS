@@ -28,6 +28,7 @@ interface ExpenseDocTemplateProps {
     exchangeRate?: string;
     charges?: LineItem[];
     totalAmount?: number;
+    billingAmount?: number;
     preparedBy?: string;
     checkedBy?: string;
     approvedBy?: string;
@@ -199,6 +200,15 @@ function ImportSOATemplate({ data, settings: _settings }: ExpenseDocTemplateProp
               {formatAmount(grandTotal)}
             </td>
             <td style={{ padding: "0 8px", lineHeight: "1" }}>&nbsp;</td>
+          </tr>
+          <tr>
+            <td style={{ padding: "0 8px", lineHeight: "1", textAlign: "center", fontWeight: 700, fontSize: "12px", borderTop: B, borderRight: B }}>
+              AMOUNT FOR BILLING <span style={{ fontWeight: 400 }}>账单金额</span>
+            </td>
+            <td style={{ padding: "0 8px", lineHeight: "1", textAlign: "center", fontWeight: 700, fontSize: "12px", fontVariantNumeric: "tabular-nums", borderTop: B, borderRight: B }}>
+              {data.billingAmount !== undefined && data.billingAmount !== null ? formatAmount(data.billingAmount) : ""}
+            </td>
+            <td style={{ padding: "0 8px", lineHeight: "1", borderTop: B }}>&nbsp;</td>
           </tr>
         </tbody>
       </table>

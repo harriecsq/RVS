@@ -97,10 +97,12 @@ function buildEmpty(booking: any, truckingVendors = "", truckingContainers = "")
     loadingSchedule: booking?.loadingSchedule || "",
     referenceNo: "",
     containerNumber: (() => {
-      // Collect all container numbers across all segments
+      // Collect container numbers from Manila leg only (exclude Province segments)
       const allNos: string[] = [];
       const segs: any[] = Array.isArray(booking?.segments) ? booking.segments : [];
-      for (const seg of segs) {
+      const manilaSegs = segs.filter((s: any) =>
+        typeof s?.segmentLabel !== "string" || !s.segmentLabel.toLowerCase().startsWith("province"));
+      for (const seg of manilaSegs) {
         if (Array.isArray(seg.containerNos) && seg.containerNos.filter(Boolean).length > 0) {
           seg.containerNos.filter(Boolean).forEach((n: string) => allNos.push(n));
         } else if (seg.containerNo) {
