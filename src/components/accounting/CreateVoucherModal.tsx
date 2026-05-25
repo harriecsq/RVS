@@ -640,12 +640,25 @@ export function CreateVoucherModal({
           ];
       }
 
+      // Seed amount from booking field when no existing voucher line amount is set.
+      const parseMoney = (v: any): number => {
+        const n = parseFloat(String(v ?? "").replace(/,/g, ""));
+        return isFinite(n) ? n : 0;
+      };
+      const seedFromBooking = (desc: string): number => {
+        if (isImport && desc === "Arrastre") {
+          return parseMoney((selectedBooking as any).arrastreAmount);
+        }
+        return 0;
+      };
+
       // Add Standard Particulars
       particularItems.forEach(desc => {
+         const existing = getExistingAmount(desc);
          newParticulars.push({
             id: Date.now().toString() + Math.random(),
             description: desc,
-            amount: getExistingAmount(desc)
+            amount: existing || seedFromBooking(desc)
          });
       });
 
@@ -664,10 +677,11 @@ export function CreateVoucherModal({
 
         const finalSopDesc = finalSopNum ? `${finalSopType} ${finalSopNum}` : finalSopType;
 
+        const otSeed = parseMoney((selectedBooking as any).ot);
         newParticulars.push({
             id: existingSop?.id || (Date.now().toString() + Math.random()),
             description: finalSopDesc,
-            amount: existingSop?.amount || 0,
+            amount: existingSop?.amount || otSeed,
             isSopRow: true,
             defaultSop: determinedSop,
             sopType: finalSopType,
