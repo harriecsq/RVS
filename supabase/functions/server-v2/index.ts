@@ -2868,23 +2868,30 @@ async function fetchFirstSegment(bookingId: string): Promise<any | null> {
   return data ?? null;
 }
 
+// Numbering is year-scoped: the sequence runs across all months of a year and
+// resets on January 1. The screen still displays month-by-month, so a January
+// view may show #1..#N while February continues from #N+1.
+function yearOf(month: string): string {
+  return month.slice(0, 4);
+}
+
 async function nextLogbookNumber(month: string): Promise<number> {
   const { data } = await db()
     .from("logbook_entries")
     .select("logbook_number")
-    .eq("logbook_month", month)
+    .like("logbook_month", `${yearOf(month)}-%`)
     .order("logbook_number", { ascending: false })
     .limit(1)
     .maybeSingle();
   return ((data as any)?.logbook_number ?? 0) + 1;
 }
 
-// Renumber the source month to close any gaps (numbers > removed number shift down).
-async function compactMonth(month: string, removedNumber: number): Promise<void> {
+// Renumber the source year to close any gaps (numbers > removed number shift down).
+async function compactYear(year: string, removedNumber: number): Promise<void> {
   const { data } = await db()
     .from("logbook_entries")
     .select("booking_id, logbook_number")
-    .eq("logbook_month", month)
+    .like("logbook_month", `${year}-%`)
     .gt("logbook_number", removedNumber)
     .order("logbook_number", { ascending: true });
   for (const row of (data ?? []) as any[]) {
@@ -2938,7 +2945,7 @@ async function syncLogbookForBooking(bookingId: string): Promise<void> {
   if (shippingLineStatus !== "Done Payment" || !donePaymentAt) {
     if (existing) {
       await db().from("logbook_entries").delete().eq("booking_id", bookingId);
-      await compactMonth((existing as any).logbook_month, (existing as any).logbook_number);
+      await compactYear(yearOf((existing as any).logbook_month), (existing as any).logbook_number);
     }
     return;
   }
@@ -3087,14 +3094,16 @@ route.post("/logbook/adjust", async (c) => {
       const fromNumber = (entry as any).logbook_number;
       if (fromMonth === targetMonth) continue;
 
-      const toNumber = await nextLogbookNumber(targetMonth);
-      // Stash to a sentinel month first so the source-month gap-compaction
+      // Stash to a sentinel month first so the source-year gap-compaction
       // doesn't collide with the row we're about to move.
       await db()
         .from("logbook_entries")
         .update({ logbook_month: "__moving__", logbook_number: -fromNumber })
         .eq("booking_id", bookingId);
-      await compactMonth(fromMonth, fromNumber);
+      await compactYear(yearOf(fromMonth), fromNumber);
+      // Compute target number AFTER the compact so within-year moves don't
+      // leave a gap (year-wide sequence stays dense).
+      const toNumber = await nextLogbookNumber(targetMonth);
       await db()
         .from("logbook_entries")
         .update({
