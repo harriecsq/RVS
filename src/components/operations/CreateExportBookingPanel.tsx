@@ -157,6 +157,7 @@ export function CreateExportBookingPanel({
   const [commodity, setCommodity] = useState(prefillData?.commodity || "");
   const [sealNumbers, setSealNumbers] = useState<string[]>([""]);
   const [shippingLine, setShippingLine] = useState(prefillData?.shipping_line || "");
+  const [shippingLineStatus, setShippingLineStatus] = useState("");
   const [bookingNumbers, setBookingNumbers] = useState<{ id: string; bookingNumber: string; containerNos: string[] }[]>([
     { id: crypto.randomUUID(), bookingNumber: "", containerNos: [] }
   ]);
@@ -357,7 +358,7 @@ export function CreateExportBookingPanel({
           containerNo: containerNumbers.filter((c) => c.trim()).join(", "),
           sealNo: sealNumbers.filter((s) => s.trim()).join(", "),
           origin, pod, destination: pod,
-          vesselVoyage, shippingLine,
+          vesselVoyage, shippingLine, shippingLineStatus,
           etd, etdTime, atd, atdTime, eta, etaTime, vesselStatus,
           lctEdArrastre, lctEdArrastreTime, lctCargo, lctCargoTime,
           blNumber, mblMawb: "",
@@ -718,10 +719,21 @@ export function CreateExportBookingPanel({
               </div>
             </div>
 
-            {/* Shipping Line */}
-            <div>
-              <label style={labelStyle}>Shipping Line</label>
-              <ShippingLineDropdown value={shippingLine} onChange={setShippingLine} />
+            {/* Shipping Line | Shipping Line Status */}
+            <div style={twoCol}>
+              <div>
+                <label style={labelStyle}>Shipping Line</label>
+                <ShippingLineDropdown value={shippingLine} onChange={setShippingLine} />
+              </div>
+              <div>
+                <label style={labelStyle}>Shipping Line Status</label>
+                <NeuronDropdown
+                  value={shippingLineStatus}
+                  options={["No Billing Yet", "With Billing", "Done Payment"]}
+                  onChange={setShippingLineStatus}
+                  placeholder="Select shipping line status"
+                />
+              </div>
             </div>
 
             {/* Booking Numbers */}
