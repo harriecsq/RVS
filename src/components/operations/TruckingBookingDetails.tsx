@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, MoreVertical, Lock, Edit3, Clock, ChevronRight } from "lucide-react";
 import type { TruckingBooking, ExecutionStatus } from "../../types/operations";
 import { BillingsTab } from "./shared/BillingsTab";
@@ -8,6 +8,7 @@ import { StandardTabs } from "../design-system/StandardTabs";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import { API_BASE_URL } from '@/utils/api-config';
+import { fetchEntityActivity } from "../../utils/activityLog";
 
 interface TruckingBookingDetailsProps {
   booking: TruckingBooking;
@@ -43,15 +44,6 @@ interface ActivityLogEntry {
   note?: string;
 }
 
-const initialActivityLog: ActivityLogEntry[] = [
-  {
-    id: "init-1",
-    timestamp: new Date(),
-    user: "System",
-    action: "created"
-  },
-];
-
 // Field locking rules based on status
 // NOTE: All fields are now editable regardless of status since changes are tracked in activity log
 function isFieldLocked(fieldName: string, status: ExecutionStatus): { locked: boolean; reason: string } {
@@ -67,8 +59,21 @@ export function TruckingBookingDetails({
 }: TruckingBookingDetailsProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>("booking-info");
   const [showTimeline, setShowTimeline] = useState(false);
-  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(initialActivityLog);
+  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [editedBooking, setEditedBooking] = useState<TruckingBooking>(booking);
+
+  // Load real activity history (entity_id matches the booking_number used on PUT).
+  const refreshActivity = useCallback(() => {
+    const id = (booking as any).bookingId || (booking as any).id;
+    if (id) fetchEntityActivity("trucking-bookings", String(id)).then(setActivityLog as any);
+  }, [booking]);
+  useEffect(() => { refreshActivity(); }, [refreshActivity]);
+  useEffect(() => { if (showTimeline) refreshActivity(); }, [showTimeline, refreshActivity]);
+  useEffect(() => {
+    if (!showTimeline) return;
+    const id = window.setInterval(refreshActivity, 4000);
+    return () => clearInterval(id);
+  }, [showTimeline, refreshActivity]);
 
   const tabs = [
     { id: "booking-info", label: "Booking Information" },

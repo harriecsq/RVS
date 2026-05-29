@@ -15,6 +15,8 @@ import { EXPORT_STANDARD_PARTICULARS, getAvailableExportSuggestions } from "./Ex
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
+import { ActivityTimeline } from "../operations/shared/ActivityTimeline";
+import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
 import { invalidateCache } from '@/hooks/useCachedFetch';
 import { NeuronDatePicker } from "../operations/shared/NeuronDatePicker";
 import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
@@ -180,6 +182,17 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
 
   const [editedExpense, setEditedExpense] = useState<ExpenseData | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
+  useEffect(() => {
+    if (expenseId) fetchEntityActivity("expenses", String(expenseId)).then(setActivityLog);
+  }, [expenseId, showTimeline]);
+  useEffect(() => {
+    if (!showTimeline || !expenseId) return;
+    const t = window.setInterval(() => {
+      fetchEntityActivity("expenses", String(expenseId)).then(setActivityLog);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [showTimeline, expenseId]);
   const [expandedCategories, setExpandedCategories] = useState<{ [key: string]: boolean }>({});
   const [activeTab, setActiveTab] = useState<"overview" | "vouchers" | "attachments">("overview");
   const [expenseView, setExpenseView] = useState<"form" | "pdf">("form");
@@ -2426,12 +2439,17 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
         </DocumentPreviewShell>
       )}
 
-      {/* Content */}
+      {/* Content + Activity Sidebar */}
+      <div style={{
+        flex: 1,
+        display: expenseView === "pdf" ? "none" : "flex",
+        minHeight: 0,
+      }}>
       <div style={{
         background: "#F9FAFB",
-        flex: 1,
+        flex: showTimeline ? "0 0 65%" : "1",
         overflow: "auto",
-        display: expenseView === "pdf" ? "none" : undefined
+        transition: "flex 0.3s ease",
       }}>
         <div style={{ display: (embedded || activeTab === "overview") ? undefined : "none", padding: "32px 48px" }}>
             <div>
@@ -3425,6 +3443,17 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                 entityId={expenseId}
               />
             )}
+          </div>
+        )}
+      </div>
+        {showTimeline && (
+          <div style={{
+            flex: "0 0 35%",
+            borderLeft: "1px solid var(--neuron-ui-border)",
+            backgroundColor: "#FAFBFC",
+            overflow: "auto",
+          }}>
+            <ActivityTimeline activities={activityLog} />
           </div>
         )}
       </div>

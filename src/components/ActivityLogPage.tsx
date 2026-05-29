@@ -37,7 +37,7 @@ export function ActivityLogPage() {
   // Filters
   const [entityTypeFilter, setEntityTypeFilter] = useState("all");
   const [actionTypeFilter, setActionTypeFilter] = useState("all");
-  const [departmentFilter, setDepartmentFilter] = useState(actualRole === "director" ? "all" : effectiveDepartment);
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [userFilter, setUserFilter] = useState("");
   const [usersInDepartment, setUsersInDepartment] = useState<Array<{id: string, name: string}>>([]);
   const [dateFrom, setDateFrom] = useState(() => {
@@ -54,8 +54,8 @@ export function ActivityLogPage() {
   const intervalRef = useRef<number | null>(null);
   const latestTimestampRef = useRef<string | null>(null);
   
-  // Check if user has access
-  const hasAccess = actualRole === "director" || actualRole === "manager";
+  // RBAC disabled for beta — every account has full access to the activity log.
+  const hasAccess = true;
   
   // Fetch users when department filter changes
   useEffect(() => {

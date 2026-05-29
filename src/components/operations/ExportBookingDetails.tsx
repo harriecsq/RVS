@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, MoreVertical, Lock, ChevronRight, Trash2, Plus, ChevronDown, Check } from "lucide-react";
 import { BillingsSubTabs } from "./shared/BillingsSubTabs";
@@ -25,6 +25,8 @@ import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
 import type { TagHistoryEntry, BookingSegment, BookingNumberEntry } from "../../types/operations";
 import type { ExportDocuments } from "../../types/export-documents";
 import { API_BASE_URL } from '@/utils/api-config';
+import { fetchEntityActivity, fetchActivityForIds, collectEntityIds, type UIActivityEntry } from "../../utils/activityLog";
+import { ActivityTimeline } from "./shared/ActivityTimeline";
 import { EXPORT_STATUS_OPTIONS, EXPORT_STATUS_TEXT_COLORS } from "../../constants/exportStatuses";
 
 export type ExecutionStatus = 
@@ -163,30 +165,6 @@ interface ExportBookingDetailsProps {
 
 type DetailTab = "booking-info" | "trucking" | "billings" | "expenses" | "attachments";
 
-// Activity Timeline Data Structure
-interface ActivityLogEntry {
-  id: string;
-  timestamp: Date;
-  user: string;
-  action: "field_updated" | "status_changed" | "created" | "note_added";
-  fieldName?: string;
-  oldValue?: string;
-  newValue?: string;
-  statusFrom?: ExecutionStatus;
-  statusTo?: ExecutionStatus;
-  note?: string;
-}
-
-// Initial mock activity data
-const initialActivityLog: ActivityLogEntry[] = [
-  {
-    id: "init-1",
-    timestamp: new Date(),
-    user: "System",
-    action: "created"
-  },
-];
-
 // Field locking rules based on status
 // NOTE: All fields are now editable regardless of status since changes are tracked in activity log
 function isFieldLocked(fieldName: string, status: ExecutionStatus): { locked: boolean; reason: string } {
@@ -278,7 +256,7 @@ export function ExportBookingDetails({
 }: ExportBookingDetailsProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>("booking-info");
   const [showTimeline, setShowTimeline] = useState(false);
-  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(initialActivityLog);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
   const [editedBooking, setEditedBooking] = useState<ExportBooking>(booking);
   const [currentBooking, setCurrentBooking] = useState<ExportBooking>(booking);
   const [shipmentTags, setShipmentTags] = useState<string[]>([]);
@@ -297,6 +275,41 @@ export function ExportBookingDetails({
   const [subTabEditRequest, setSubTabEditRequest] = useState(false);
   const [subTabSaveCounter, setSubTabSaveCounter] = useState(0);
   const [bookingInfoSubTab, setBookingInfoSubTab] = useState<"booking-details" | "documents">("booking-details");
+
+  // Tab-aware activity: the panel reflects whatever the active tab represents.
+  // Detail tabs → the booking's own log; list tabs → aggregated activity of all
+  // linked children (incl. ones created from other modules).
+  const refreshActivity = useCallback(async () => {
+    const bid = currentBooking?.bookingId || booking.bookingId;
+    const uid = currentBooking?.id || booking.id;
+    const auth = { headers: { Authorization: `Bearer ${publicAnonKey}` } };
+    const aggregate = async (entityType: string, listUrl: string) => {
+      try {
+        const res = await fetch(listUrl, auth);
+        const json = await res.json();
+        const ids = (json?.data ?? []).flatMap(collectEntityIds);
+        return await fetchActivityForIds(entityType, ids);
+      } catch { return []; }
+    };
+    if (activeTab === "trucking" && bid) {
+      setActivityLog(await aggregate("trucking-records", `${API_BASE_URL}/trucking-records?linkedBookingId=${encodeURIComponent(bid)}`));
+    } else if (activeTab === "billings" && bid) {
+      setActivityLog(await aggregate("billings", `${API_BASE_URL}/billings?bookingId=${encodeURIComponent(bid)}`));
+    } else if (activeTab === "expenses" && bid) {
+      setActivityLog(await aggregate("expenses", `${API_BASE_URL}/expenses?bookingId=${encodeURIComponent(bid)}`));
+    } else {
+      const id = uid || bid;
+      if (id) setActivityLog(await fetchEntityActivity("export-bookings", String(id)));
+    }
+  }, [activeTab, currentBooking?.id, currentBooking?.bookingId, booking.id, booking.bookingId]);
+
+  useEffect(() => { refreshActivity(); }, [refreshActivity]);
+  useEffect(() => { if (showTimeline) refreshActivity(); }, [showTimeline, refreshActivity]);
+  useEffect(() => {
+    if (!showTimeline) return;
+    const id = window.setInterval(refreshActivity, 4000);
+    return () => clearInterval(id);
+  }, [showTimeline, refreshActivity]);
 
   // Get context-aware edit label based on active tab
   const getEditLabel = (): string | null => {
@@ -587,24 +600,6 @@ export function ExportBookingDetails({
     fetchProjects();
   }, []);
 
-  const addActivity = (
-    fieldName: string,
-    oldValue: string,
-    newValue: string
-  ) => {
-    const newActivity: ActivityLogEntry = {
-      id: `activity-${Date.now()}-${Math.random()}`,
-      timestamp: new Date(),
-      user: currentUser?.name || "Current User",
-      action: "field_updated",
-      fieldName,
-      oldValue,
-      newValue
-    };
-
-    setActivityLog(prev => [newActivity, ...prev]);
-  };
-
   const handleSave = async () => {
     setIsSaving(true);
     console.log('[ExportBookingDetails] Saving booking with editData:', editData);
@@ -624,13 +619,6 @@ export function ExportBookingDetails({
       // Merge segment-level edits into local segments before saving
       let finalSegments = currentBooking.segments || [];
       if (Object.keys(effectiveSegEdit).length > 0 && activeSegment) {
-        Object.keys(effectiveSegEdit).forEach(key => {
-          const oldValue = String((activeSegment as any)?.[key] ?? (editedBooking as any)[key] ?? "");
-          const newValue = String(effectiveSegEdit[key] ?? "");
-          if (oldValue !== newValue) {
-            addActivity(key, oldValue, newValue);
-          }
-        });
         finalSegments = finalSegments.map(seg =>
           seg.segmentId === activeSegment.segmentId
             ? { ...seg, ...effectiveSegEdit, updatedAt: new Date().toISOString() }
@@ -704,15 +692,6 @@ export function ExportBookingDetails({
       if (!response.ok || !result.success) {
         throw new Error(result.error || "Failed to save booking");
       }
-
-      // Track changes for activity log (booking-level)
-      Object.keys(editData).forEach(key => {
-        const oldValue = String((editedBooking as any)[key] || "");
-        const newValue = String((editData as any)[key] || "");
-        if (oldValue !== newValue) {
-          addActivity(key, oldValue, newValue);
-        }
-      });
 
       setIsEditing(false);
       setEditData({});
@@ -1021,7 +1000,6 @@ export function ExportBookingDetails({
               <BookingInformationTab
                 booking={editedBooking}
                 onBookingUpdated={onBookingUpdated}
-                addActivity={addActivity}
                 setEditedBooking={setEditedBooking}
                 isEditing={isEditing}
                 editData={editData}
@@ -1095,6 +1073,7 @@ export function ExportBookingDetails({
             backgroundColor: "#FAFBFC",
             overflow: "auto"
           }}>
+            <ActivityTimeline activities={activityLog} />
             <TagHistoryTimeline history={tagHistory} />
           </div>
         )}
@@ -1186,132 +1165,6 @@ export function ExportBookingDetails({
         );
       })()}
 
-    </div>
-  );
-}
-
-// Activity Timeline Component
-function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
-  return (
-    <div style={{ padding: "24px" }}>
-      <h3 style={{
-        fontSize: "16px",
-        fontWeight: 600,
-        color: "var(--neuron-brand-green)",
-        marginBottom: "20px"
-      }}>
-        Activity Timeline
-      </h3>
-
-      <div style={{ position: "relative" }}>
-        {/* Timeline Line */}
-        <div style={{
-          position: "absolute",
-          left: "15px",
-          top: "0",
-          bottom: "0",
-          width: "2px",
-          backgroundColor: "#E5E9F0"
-        }} />
-
-        {/* Activity Items */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {activities.map((activity) => (
-            <div key={activity.id} style={{ position: "relative", paddingLeft: "40px" }}>
-              {/* Timeline Dot */}
-              <div style={{
-                position: "absolute",
-                left: "8px",
-                top: "4px",
-                width: "16px",
-                height: "16px",
-                borderRadius: "50%",
-                backgroundColor: activity.action === "status_changed" ? "#0F766E" :
-                               activity.action === "created" ? "#6B7280" :
-                               activity.action === "field_updated" ? "#3B82F6" : "#F59E0B",
-                border: "3px solid #FAFBFC"
-              }} />
-
-              {/* Activity Content */}
-              <div style={{
-                backgroundColor: "white",
-                border: "1px solid var(--neuron-ui-border)",
-                borderRadius: "8px",
-                padding: "12px 16px"
-              }}>
-                {/* Timestamp */}
-                <div style={{
-                  fontSize: "12px",
-                  color: "var(--neuron-ink-muted)",
-                  marginBottom: "6px"
-                }}>
-                  {activity.timestamp.toLocaleString()}
-                </div>
-
-                {/* Action Description */}
-                {activity.action === "field_updated" && (
-                  <div>
-                    <div style={{
-                      fontSize: "13px",
-                      color: "var(--neuron-ink-base)",
-                      marginBottom: "4px"
-                    }}>
-                      <span style={{ fontWeight: 600 }}>{activity.fieldName}</span> updated
-                    </div>
-                    {activity.oldValue && activity.newValue && (
-                      <div style={{
-                        fontSize: "12px",
-                        color: "var(--neuron-ink-secondary)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        marginTop: "6px"
-                      }}>
-                        <span style={{
-                          padding: "2px 8px",
-                          backgroundColor: "#FEE2E2",
-                          borderRadius: "4px",
-                          textDecoration: "line-through",
-                          color: "#EF4444"
-                        }}>
-                          {activity.oldValue || "(empty)"}
-                        </span>
-                        <ChevronRight size={12} />
-                        <span style={{
-                          padding: "2px 8px",
-                          backgroundColor: "#D1FAE5",
-                          borderRadius: "4px",
-                          color: "#10B981"
-                        }}>
-                          {activity.newValue}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activity.action === "created" && (
-                  <div style={{
-                    fontSize: "13px",
-                    color: "var(--neuron-ink-base)"
-                  }}>
-                    Booking created
-                  </div>
-                )}
-
-                {/* User */}
-                <div style={{
-                  fontSize: "12px",
-                  color: "var(--neuron-ink-muted)",
-                  marginTop: "8px"
-                }}>
-                  by {activity.user}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -2377,7 +2230,6 @@ function SectionCard({ title, children, lastUpdated }: { title: string; children
 function BookingInformationTab({
   booking,
   onBookingUpdated,
-  addActivity,
   setEditedBooking,
   isEditing,
   editData,
@@ -2392,7 +2244,6 @@ function BookingInformationTab({
 }: {
   booking: ExportBooking;
   onBookingUpdated: () => void;
-  addActivity: (fieldName: string, oldValue: string, newValue: string) => void;
   setEditedBooking: (booking: ExportBooking) => void;
   isEditing: boolean;
   editData: Partial<ExportBooking>;

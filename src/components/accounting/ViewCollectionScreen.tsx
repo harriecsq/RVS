@@ -12,6 +12,8 @@ import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
 import { API_BASE_URL } from '@/utils/api-config';
+import { ActivityTimeline } from "../operations/shared/ActivityTimeline";
+import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
 import { invalidateCache } from '@/hooks/useCachedFetch';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,6 +65,17 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated 
   const [editedCollection, setEditedCollection] = useState(collection);
   const [editedAllocations, setEditedAllocations] = useState(collection.allocations || []);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
+  useEffect(() => {
+    if (currentCollection?.id) fetchEntityActivity("collections", String(currentCollection.id)).then(setActivityLog);
+  }, [currentCollection?.id, showTimeline]);
+  useEffect(() => {
+    if (!showTimeline || !currentCollection?.id) return;
+    const t = window.setInterval(() => {
+      fetchEntityActivity("collections", String(currentCollection.id)).then(setActivityLog);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [showTimeline, currentCollection?.id]);
   const [activeTab, setActiveTab] = useState<"overview" | "billings" | "attachments">("overview");
   const [billingBookingMap, setBillingBookingMap] = useState<Map<string, string>>(new Map());
 
@@ -417,8 +430,13 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated 
         }
       />
 
-      {/* Content Area */}
-      <div style={{ flex: 1, overflow: "auto", background: "#F9FAFB" }}>
+      {/* Content Area + Activity Sidebar */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        minHeight: 0,
+      }}>
+      <div style={{ flex: showTimeline ? "0 0 65%" : "1", overflow: "auto", background: "#F9FAFB", transition: "flex 0.3s ease" }}>
         
         <div style={{ display: activeTab === "overview" ? undefined : "none", padding: "32px 48px" }}>
             {/* Collection Information */}
@@ -787,6 +805,17 @@ export function ViewCollectionScreen({ collection, onBack, onDeleted, onUpdated 
             entityId={currentCollection.id}
           />
         </div>
+      </div>
+        {showTimeline && (
+          <div style={{
+            flex: "0 0 35%",
+            borderLeft: "1px solid var(--neuron-ui-border)",
+            backgroundColor: "#FAFBFC",
+            overflow: "auto",
+          }}>
+            <ActivityTimeline activities={activityLog} />
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

@@ -22,6 +22,8 @@ import { NotesSection } from "../shared/NotesSection";
 import { HeaderStatusDropdown } from "../shared/HeaderStatusDropdown";
 import { TabRowActions } from "../shared/TabRowActions";
 import { TagHistoryTimeline } from "../shared/TagHistoryTimeline";
+import { ActivityTimeline } from "./shared/ActivityTimeline";
+import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
 import { StatusTagBar } from "../shared/StatusTagBar";
 import { NeuronDatePicker } from "./shared/NeuronDatePicker";
 import { NeuronTimePicker } from "./shared/NeuronTimePicker";
@@ -664,6 +666,7 @@ export function TruckingRecordDetails({
 }: TruckingRecordDetailsProps) {
   const [activeTab, setActiveTab] = useState<"trucking-info" | "attachments">("trucking-info");
   const [showActivity, setShowActivity] = useState(false);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
   const [currentRecord, setCurrentRecord] = useState<TruckingRecord>(normalizeRecord(record) as TruckingRecord);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [linkedShipmentTags, setLinkedShipmentTags] = useState<string[]>(
@@ -679,6 +682,18 @@ export function TruckingRecordDetails({
     ((record as any).linkedBookingDeliveredAt as string | null) ?? null,
   );
   const [isShipmentTagsSaving, setIsShipmentTagsSaving] = useState(false);
+
+  // Load real activity history (entity_id matches the :id used on PUT).
+  const refreshActivity = useCallback(() => {
+    if (currentRecord?.id) fetchEntityActivity("trucking-records", String(currentRecord.id)).then(setActivityLog);
+  }, [currentRecord?.id]);
+  useEffect(() => { refreshActivity(); }, [refreshActivity]);
+  useEffect(() => { if (showActivity) refreshActivity(); }, [showActivity, refreshActivity]);
+  useEffect(() => {
+    if (!showActivity) return;
+    const id = window.setInterval(refreshActivity, 4000);
+    return () => clearInterval(id);
+  }, [showActivity, refreshActivity]);
 
   // ── Inline edit state ──
   const [isEditing, setIsEditingInternal] = useState(false);
@@ -1281,17 +1296,17 @@ export function TruckingRecordDetails({
       <div style={{
         background: "#F9FAFB",
         flex: 1,
-        overflow: "auto",
+        display: "flex",
+        minHeight: 0,
       }}>
+        <div style={{
+          flex: showActivity ? "0 0 65%" : "1",
+          overflow: "auto",
+          transition: "flex 0.3s ease",
+        }}>
         {(embedded || activeTab === "trucking-info") && (
         <div style={{ padding: "32px 48px" }}>
           <div>
-            {showActivity && (
-              <InfoCard title="Shipment Tag History">
-                <TagHistoryTimeline history={linkedTagHistory} maxEntries={20} />
-              </InfoCard>
-            )}
-
             {/* ── Booking Details (unified summary card) ── */}
             <div style={{
               background: "white",
@@ -2353,6 +2368,20 @@ export function TruckingRecordDetails({
             entityType="trucking-record"
             entityId={currentRecord.id}
           />
+        )}
+        </div>
+
+        {/* Activity Sidebar */}
+        {showActivity && (
+          <div style={{
+            flex: "0 0 35%",
+            borderLeft: "1px solid var(--neuron-ui-border)",
+            backgroundColor: "#FAFBFC",
+            overflow: "auto",
+          }}>
+            <ActivityTimeline activities={activityLog} />
+            <TagHistoryTimeline history={linkedTagHistory} maxEntries={20} />
+          </div>
         )}
       </div>
 

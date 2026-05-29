@@ -60,36 +60,25 @@ const DocumentSettingsPage = lazy(() => import("./components/admin/DocumentSetti
 
 // App entry point
 function LoginPage() {
-  const { setUser } = useUser();
+  const { login } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Default user - always log in as Executive for demo purposes
-    // User can change their role in Settings using the account overrider
-    const mockUser = {
-      id: "user-executive-001",
-      email: email || "user@neuron.ph",
-      name: "Ana Garcia",
-      department: "Executive" as const,
-      role: "manager" as const,
-      created_at: new Date().toISOString(),
-      is_active: true
-    };
-    
-    // Small delay to simulate loading
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Store user in localStorage AND update state directly (no reload needed)
-    localStorage.setItem('neuron_user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    
+    setLoginError("");
+
+    const result = await login(email, password);
+
     setIsLoading(false);
-    toast.success('Welcome to Neuron OS!');
+    if (result.success) {
+      toast.success('Welcome to Neuron OS!');
+    } else {
+      setLoginError(result.error || 'Login failed');
+    }
   };
 
   const isDisabled = !email || !password || isLoading;
@@ -208,6 +197,12 @@ function LoginPage() {
               disabled={isLoading}
             />
           </div>
+
+          {loginError && (
+            <p style={{ color: "#DC2626", fontSize: "13px", margin: 0 }}>
+              {loginError}
+            </p>
+          )}
 
           {/* Login Button */}
           <button

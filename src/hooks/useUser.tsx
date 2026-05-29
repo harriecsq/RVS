@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { publicAnonKey } from '../utils/supabase/info';
 import { runServerInitialization } from '../utils/startup';
+import { API_BASE_URL } from '../utils/api-config';
 
 export interface User {
   id: string;

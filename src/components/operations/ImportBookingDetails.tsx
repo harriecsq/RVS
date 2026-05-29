@@ -8,6 +8,8 @@ import { TruckingTab } from "./shared/TruckingTab";
 import { CompanyContactSelector } from "../selectors/CompanyContactSelector";
 import { DocsTimelineStepper, DocsTimelineStep } from "./shared/DocsTimelineStepper";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
+import { fetchEntityActivity, fetchActivityForIds, collectEntityIds, type UIActivityEntry } from "../../utils/activityLog";
+import { ActivityTimeline } from "./shared/ActivityTimeline";
 import { StandardButton } from "../design-system/StandardButton";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { DateInput } from "../ui/DateInput";
@@ -41,28 +43,6 @@ interface BrokerageBookingDetailsProps {
 }
 
 type DetailTab = "booking-info" | "trucking" | "billings" | "expenses" | "attachments";
-
-// Activity Timeline Data Structure
-interface ActivityLogEntry {
-  id: string;
-  timestamp: Date;
-  user: string;
-  action: "field_updated" | "created" | "note_added";
-  fieldName?: string;
-  oldValue?: string;
-  newValue?: string;
-  note?: string;
-}
-
-// Initial mock activity data
-const initialActivityLog: ActivityLogEntry[] = [
-  {
-    id: "init-1",
-    timestamp: new Date(),
-    user: "System",
-    action: "created"
-  },
-];
 
 const validateDate = (dateStr: string): boolean => {
   if (dateStr.length !== 10) return false;
@@ -139,7 +119,7 @@ export function BrokerageBookingDetails({
   const [activeTab, setActiveTab] = useState<DetailTab>("booking-info");
   const [activeBookingSubTab, setActiveBookingSubTab] = useState<"booking-details" | "shipment-milestones">("booking-details");
   const [showTimeline, setShowTimeline] = useState(false);
-  const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>(initialActivityLog);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
   const [editedBooking, setEditedBooking] = useState<BrokerageBooking>(booking);
   const [currentBooking, setCurrentBooking] = useState<BrokerageBooking>(booking);
   const [shipmentTags, setShipmentTags] = useState<string[]>([]);
@@ -153,6 +133,40 @@ export function BrokerageBookingDetails({
   const [bookingView, setBookingView] = useState<"form" | "pdf">("form");
   const [pdfTruckingRecords, setPdfTruckingRecords] = useState<any[]>([]);
   const [pdfBillingNumbers, setPdfBillingNumbers] = useState<string[]>([]);
+
+  // Tab-aware activity: detail tabs → the booking's own log; list tabs →
+  // aggregated activity of all linked children (incl. cross-module records).
+  const refreshActivity = useCallback(async () => {
+    const bid = currentBooking?.bookingId || booking.bookingId;
+    const uid = (currentBooking as any)?.id || (booking as any).id;
+    const auth = { headers: { Authorization: `Bearer ${publicAnonKey}` } };
+    const aggregate = async (entityType: string, listUrl: string) => {
+      try {
+        const res = await fetch(listUrl, auth);
+        const json = await res.json();
+        const ids = (json?.data ?? []).flatMap(collectEntityIds);
+        return await fetchActivityForIds(entityType, ids);
+      } catch { return []; }
+    };
+    if (activeTab === "trucking" && bid) {
+      setActivityLog(await aggregate("trucking-records", `${API_BASE_URL}/trucking-records?linkedBookingId=${encodeURIComponent(bid)}`));
+    } else if (activeTab === "billings" && bid) {
+      setActivityLog(await aggregate("billings", `${API_BASE_URL}/billings?bookingId=${encodeURIComponent(bid)}`));
+    } else if (activeTab === "expenses" && bid) {
+      setActivityLog(await aggregate("expenses", `${API_BASE_URL}/expenses?bookingId=${encodeURIComponent(bid)}`));
+    } else {
+      const id = bid || uid;
+      if (id) setActivityLog(await fetchEntityActivity("import-bookings", String(id)));
+    }
+  }, [activeTab, currentBooking?.bookingId, booking.bookingId]);
+
+  useEffect(() => { refreshActivity(); }, [refreshActivity]);
+  useEffect(() => { if (showTimeline) refreshActivity(); }, [showTimeline, refreshActivity]);
+  useEffect(() => {
+    if (!showTimeline) return;
+    const id = window.setInterval(refreshActivity, 4000);
+    return () => clearInterval(id);
+  }, [showTimeline, refreshActivity]);
 
   // Milestones edit state
   const milestonesRef = useRef<ShipmentMilestonesTabHandle>(null);
@@ -385,24 +399,6 @@ export function BrokerageBookingDetails({
     fetchProjects();
   }, []);
 
-  const addActivity = (
-    fieldName: string,
-    oldValue: string,
-    newValue: string
-  ) => {
-    const newActivity: ActivityLogEntry = {
-      id: `activity-${Date.now()}-${Math.random()}`,
-      timestamp: new Date(),
-      user: currentUser?.name || "Current User",
-      action: "field_updated",
-      fieldName,
-      oldValue,
-      newValue
-    };
-
-    setActivityLog(prev => [newActivity, ...prev]);
-  };
-
   const handleSave = async () => {
     setIsSaving(true);
     console.log('[BrokerageBookingDetails] Saving booking with editData:', editData);
@@ -464,15 +460,6 @@ export function BrokerageBookingDetails({
       // 3. Update local state on success
       // Merge editData with original booking
       const updatedBooking = { ...editedBooking, ...editData, updatedAt: payload.updatedAt };
-      
-      // Track changes for activity log
-      Object.keys(editData).forEach(key => {
-        const oldValue = String((editedBooking as any)[key] || "");
-        const newValue = String((editData as any)[key] || "");
-        if (oldValue !== newValue) {
-          addActivity(key, oldValue, newValue);
-        }
-      });
 
       setEditedBooking(updatedBooking as BrokerageBooking);
       setIsEditing(false);
@@ -813,7 +800,6 @@ export function BrokerageBookingDetails({
                   <BookingInformationTab
                     booking={editedBooking}
                     onBookingUpdated={onBookingUpdated}
-                    addActivity={addActivity}
                     setEditedBooking={setEditedBooking}
                     isEditing={isEditing}
                     editData={editData}
@@ -907,6 +893,7 @@ export function BrokerageBookingDetails({
             backgroundColor: "#FAFBFC",
             overflow: "auto"
           }}>
+            <ActivityTimeline activities={activityLog} />
             <TagHistoryTimeline history={tagHistory} />
           </div>
         )}
@@ -978,131 +965,6 @@ export function BrokerageBookingDetails({
         </div>
       )}
 
-    </div>
-  );
-}
-
-// Activity Timeline Component
-function ActivityTimeline({ activities }: { activities: ActivityLogEntry[] }) {
-  return (
-    <div style={{ padding: "24px" }}>
-      <h3 style={{
-        fontSize: "16px",
-        fontWeight: 600,
-        color: "var(--neuron-brand-green)",
-        marginBottom: "20px"
-      }}>
-        Activity Timeline
-      </h3>
-
-      <div style={{ position: "relative" }}>
-        {/* Timeline Line */}
-        <div style={{
-          position: "absolute",
-          left: "15px",
-          top: "0",
-          bottom: "0",
-          width: "2px",
-          backgroundColor: "#E5E9F0"
-        }} />
-
-        {/* Activity Items */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {activities.map((activity) => (
-            <div key={activity.id} style={{ position: "relative", paddingLeft: "40px" }}>
-              {/* Timeline Dot */}
-              <div style={{
-                position: "absolute",
-                left: "8px",
-                top: "4px",
-                width: "16px",
-                height: "16px",
-                borderRadius: "50%",
-                backgroundColor: activity.action === "created" ? "#6B7280" :
-                               activity.action === "field_updated" ? "#3B82F6" : "#F59E0B",
-                border: "3px solid #FAFBFC"
-              }} />
-
-              {/* Activity Content */}
-              <div style={{
-                backgroundColor: "white",
-                border: "1px solid var(--neuron-ui-border)",
-                borderRadius: "6px",
-                padding: "12px 16px"
-              }}>
-                {/* Timestamp */}
-                <div style={{
-                  fontSize: "12px",
-                  color: "var(--neuron-ink-muted)",
-                  marginBottom: "6px"
-                }}>
-                  {activity.timestamp.toLocaleString()}
-                </div>
-
-                {/* Action Description */}
-                {activity.action === "field_updated" && (
-                  <div>
-                    <div style={{
-                      fontSize: "13px",
-                      color: "var(--neuron-ink-base)",
-                      marginBottom: "4px"
-                    }}>
-                      <span style={{ fontWeight: 600 }}>{activity.fieldName}</span> updated
-                    </div>
-                    {activity.oldValue && activity.newValue && (
-                      <div style={{
-                        fontSize: "12px",
-                        color: "var(--neuron-ink-secondary)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        marginTop: "6px"
-                      }}>
-                        <span style={{
-                          padding: "2px 8px",
-                          backgroundColor: "#FEE2E2",
-                          borderRadius: "4px",
-                          textDecoration: "line-through",
-                          color: "#EF4444"
-                        }}>
-                          {activity.oldValue || "(empty)"}
-                        </span>
-                        <ChevronRight size={12} />
-                        <span style={{
-                          padding: "2px 8px",
-                          backgroundColor: "#D1FAE5",
-                          borderRadius: "4px",
-                          color: "#10B981"
-                        }}>
-                          {activity.newValue}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activity.action === "created" && (
-                  <div style={{
-                    fontSize: "13px",
-                    color: "var(--neuron-ink-base)"
-                  }}>
-                    Booking created
-                  </div>
-                )}
-
-                {/* User */}
-                <div style={{
-                  fontSize: "12px",
-                  color: "var(--neuron-ink-muted)",
-                  marginTop: "8px"
-                }}>
-                  by {activity.user}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1687,7 +1549,6 @@ function computeVolumeSummary(containerNo: string, volume: string): string {
 function BookingInformationTab({
   booking,
   onBookingUpdated,
-  addActivity,
   setEditedBooking,
   isEditing,
   editData,
@@ -1699,7 +1560,6 @@ function BookingInformationTab({
 }: {
   booking: BrokerageBooking;
   onBookingUpdated: () => void;
-  addActivity: (fieldName: string, oldValue: string, newValue: string) => void;
   setEditedBooking: (booking: BrokerageBooking) => void;
   isEditing: boolean;
   editData: Partial<BrokerageBooking>;

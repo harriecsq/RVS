@@ -17,6 +17,8 @@ import { PanelBackdrop } from "../shared/PanelBackdrop";
 import { toast } from "../ui/toast-utils";
 import { publicAnonKey } from "../../utils/supabase/info";
 import { API_BASE_URL } from "@/utils/api-config";
+import { ActivityTimeline } from "./shared/ActivityTimeline";
+import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
 import type { Client, Contact } from "../../types/operations";
 
 interface ClientDetailViewProps {
@@ -24,7 +26,7 @@ interface ClientDetailViewProps {
   onBack: () => void;
 }
 
-type DetailTab = "clients" | "attachments";
+type DetailTab = "clients" | "attachments" | "activity";
 
 function getInitials(name: string): string {
   return name
@@ -52,6 +54,10 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
   const [notes, setNotes] = useState(client.notes || "");
   const [showAddClientPanel, setShowAddClientPanel] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
+  useEffect(() => {
+    if (activeTab === "activity" && client.id) fetchEntityActivity("clients", String(client.id)).then(setActivityLog);
+  }, [activeTab, client.id]);
 
   // Editable company fields
   const [editData, setEditData] = useState({
@@ -344,6 +350,7 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
             tabs={[
               { id: "clients", label: "Clients", badge: contacts.length || undefined },
               { id: "attachments", label: "Attachments" },
+              { id: "activity", label: "Activity" },
             ]}
             activeTab={activeTab}
             onChange={(id) => setActiveTab(id as DetailTab)}
@@ -365,6 +372,10 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
 
             {activeTab === "attachments" && (
               <AttachmentsTab entityType="client" entityId={client.id} />
+            )}
+
+            {activeTab === "activity" && (
+              <ActivityTimeline activities={activityLog} />
             )}
 
           </div>

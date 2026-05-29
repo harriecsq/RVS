@@ -16,6 +16,8 @@ import { BookingSelector } from "../selectors/BookingSelector";
 import { PayeeSelector } from "../selectors/PayeeSelector";
 import { formatAmount } from "../../utils/formatAmount";
 import { API_BASE_URL } from '@/utils/api-config';
+import { ActivityTimeline } from "../operations/shared/ActivityTimeline";
+import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
 import { invalidateCache } from '@/hooks/useCachedFetch';
 import { DocumentViewToggle } from "../shared/document-preview/DocumentViewToggle";
 import { DocumentPreviewShell } from "../shared/document-preview/DocumentPreviewShell";
@@ -309,6 +311,17 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated, onDeleted }: V
   const [isEditing, setIsEditing] = useState(false);
   const [editedVoucher, setEditedVoucher] = useState<Voucher | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
+  useEffect(() => {
+    if (voucherId) fetchEntityActivity("vouchers", String(voucherId)).then(setActivityLog);
+  }, [voucherId, showTimeline]);
+  useEffect(() => {
+    if (!showTimeline || !voucherId) return;
+    const t = window.setInterval(() => {
+      fetchEntityActivity("vouchers", String(voucherId)).then(setActivityLog);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [showTimeline, voucherId]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<"voucher-info" | "attachments">("voucher-info");
   const [voucherView, setVoucherView] = useState<"form" | "pdf">("form");
@@ -906,8 +919,13 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated, onDeleted }: V
         </DocumentPreviewShell>
       )}
 
-      {/* Content Area */}
-      <div style={{ flex: 1, overflow: "auto", display: voucherView === "pdf" ? "none" : undefined }}>
+      {/* Content Area + Activity Sidebar */}
+      <div style={{
+        flex: 1,
+        display: voucherView === "pdf" ? "none" : "flex",
+        minHeight: 0,
+      }}>
+      <div style={{ flex: showTimeline ? "0 0 65%" : "1", overflow: "auto", transition: "flex 0.3s ease" }}>
         <div style={{ display: activeTab === "voucher-info" ? undefined : "none", padding: "32px 48px" }}>
         <div className="flex flex-col gap-6">
           
@@ -1274,6 +1292,17 @@ export function ViewVoucherScreen({ voucherId, onBack, onUpdated, onDeleted }: V
             />
           )}
         </div>
+      </div>
+        {showTimeline && (
+          <div style={{
+            flex: "0 0 35%",
+            borderLeft: "1px solid var(--neuron-ui-border)",
+            backgroundColor: "#FAFBFC",
+            overflow: "auto",
+          }}>
+            <ActivityTimeline activities={activityLog} />
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

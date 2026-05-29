@@ -32,6 +32,8 @@ import { ReorderButtons } from "./ReorderButtons";
 import { swapRows } from "./utils/reorderRow";
 import { API_BASE_URL } from '@/utils/api-config';
 import { invalidateCache } from '@/hooks/useCachedFetch';
+import { ActivityTimeline } from "../operations/shared/ActivityTimeline";
+import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
 
 
 interface ViewBillingScreenProps {
@@ -204,7 +206,18 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   const [editedMargin, setEditedMargin] = useState(0);
   const [editedStatus, setEditedStatus] = useState<BillingStatus>("Draft");
   const [showTimeline, setShowTimeline] = useState(false);
-  
+  const [activityLog, setActivityLog] = useState<UIActivityEntry[]>([]);
+  useEffect(() => {
+    if (billingId) fetchEntityActivity("billings", String(billingId)).then(setActivityLog);
+  }, [billingId, showTimeline]);
+  useEffect(() => {
+    if (!showTimeline || !billingId) return;
+    const t = window.setInterval(() => {
+      fetchEntityActivity("billings", String(billingId)).then(setActivityLog);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [showTimeline, billingId]);
+
   // General Information fields
   const [editedClientName, setEditedClientName] = useState("");
   const [editedCompanyName, setEditedCompanyName] = useState("");
@@ -1012,13 +1025,18 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
         }}
       />
 
-      {/* Content */}
+      {/* Content + Activity Sidebar */}
+      <div style={{
+        flex: 1,
+        display: billingView === "pdf" ? "none" : "flex",
+        minHeight: 0,
+      }}>
       <div style={{
         padding: "32px 48px",
-        flex: 1,
+        flex: showTimeline ? "0 0 65%" : "1",
         overflowY: "auto",
         overflowX: "hidden",
-        display: billingView === "pdf" ? "none" : undefined,
+        transition: "flex 0.3s ease",
       }}>
         <div style={{ display: (embedded || activeTab === "overview") ? undefined : "none" }}>
           <div>
@@ -1812,9 +1830,20 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
           </div>
         )}
       </div>
+        {showTimeline && (
+          <div style={{
+            flex: "0 0 35%",
+            borderLeft: "1px solid var(--neuron-ui-border)",
+            backgroundColor: "#FAFBFC",
+            overflow: "auto",
+          }}>
+            <ActivityTimeline activities={activityLog} />
+          </div>
+        )}
+      </div>
       </div>
 
-      <CreateCollectionPanel 
+      <CreateCollectionPanel
          isOpen={showCreateCollection}
          onClose={() => setShowCreateCollection(false)}
          onSuccess={() => { setShowCreateCollection(false); fetchCollections(); fetchBillingDetails(); }}

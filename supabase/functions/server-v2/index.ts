@@ -62,6 +62,212 @@ async function resolveRowId(table: string, refColumn: string, idOrRef: string): 
 const route = new Hono().basePath("/server-v2");
 
 // ============================================================================
+// activity-log middleware — auto-records every successful write (POST/PUT/
+// DELETE). User identity comes from X-User-* headers stamped by the frontend
+// fetch interceptor (the server is otherwise stateless / blind to the caller).
+// Best-effort: logging failures never break the underlying request.
+// ============================================================================
+const ACTION_BY_METHOD: Record<string, string> = {
+  POST: "created",
+  PUT: "updated",
+  PATCH: "updated",
+  DELETE: "deleted",
+};
+
+// Top-level resources whose path segment maps cleanly to one DB table with an
+// `id` PK. Only these get before/after field diffs; everything else (nested
+// sub-resources, singleton settings) is logged action-only.
+const PATH_TO_TABLE: Record<string, string> = {
+  clients: "clients",
+  contacts: "contacts",
+  expenses: "expenses",
+  vouchers: "vouchers",
+  billings: "billings",
+  collections: "collections",
+  payees: "payees",
+  "trucking-bookings": "trucking_bookings",
+  "trucking-legs": "trucking_legs",
+  "trucking-records": "trucking_records",
+  "export-bookings": "bookings",
+  "import-bookings": "bookings",
+};
+
+// Path :id refers to this column when snapshotting the row. Defaults to "id";
+// bookings are addressed by their human reference (booking_number).
+const LOOKUP_COLUMN: Record<string, string> = {
+  "export-bookings": "booking_number",
+  "import-bookings": "booking_number",
+};
+
+const SKIP_DIFF_KEYS = new Set(["created_at", "updated_at"]);
+const MAX_VALUE_LEN = 2000;
+
+const truncJSON = (obj: unknown): string | null => {
+  if (obj == null) return null;
+  const s = JSON.stringify(obj);
+  if (!s || s === "{}") return null;
+  return s.length > MAX_VALUE_LEN ? s.slice(0, MAX_VALUE_LEN) + "…(truncated)" : s;
+};
+
+const diffRows = (oldRow: any, newRow: any) => {
+  const oldOut: Record<string, unknown> = {};
+  const newOut: Record<string, unknown> = {};
+  const keys = new Set([...Object.keys(oldRow ?? {}), ...Object.keys(newRow ?? {})]);
+  for (const k of keys) {
+    if (SKIP_DIFF_KEYS.has(k)) continue;
+    const a = oldRow?.[k];
+    const b = newRow?.[k];
+    if (JSON.stringify(a) !== JSON.stringify(b)) {
+      oldOut[k] = a ?? null;
+      newOut[k] = b ?? null;
+    }
+  }
+  return { oldOut, newOut };
+};
+
+// Separator between an item/segment context label and the field key in a
+// flattened diff key, e.g. `MANILA<US>domesticFreight`. ASCII Unit Separator —
+// never appears in field keys or human labels, so the frontend can split safely.
+const ITEM_SEP = "";
+
+// Columns never worth surfacing as a changed "field".
+const FLATTEN_SKIP = new Set(["id", "created_at", "updated_at", "data", "position", "leg_order"]);
+
+// Flatten one DB row into { ...scalar columns, ...data } so jsonb passthrough
+// fields diff individually instead of as one opaque `data` blob.
+const flattenRow = (row: any): Record<string, unknown> => {
+  if (!row) return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (FLATTEN_SKIP.has(k)) continue;
+    out[k] = v;
+  }
+  Object.assign(out, (row.data && typeof row.data === "object") ? row.data : {});
+  return out;
+};
+
+// Parent table → line-item child table, its FK column, and the fields to try
+// for a human item label. Lets edits to line items show up as per-item diffs.
+const CHILD_SPEC: Record<string, { table: string; fk: string; labelKeys: string[]; word: string }> = {
+  bookings:  { table: "booking_segments",   fk: "booking_id",  labelKeys: ["province", "origin", "destination"], word: "Leg" },
+  billings:  { table: "billing_particulars", fk: "billing_id",  labelKeys: ["description", "particular", "name"], word: "Item" },
+  expenses:  { table: "expense_particulars", fk: "expense_id",  labelKeys: ["description", "particular", "name"], word: "Item" },
+  vouchers:  { table: "voucher_line_items",  fk: "voucher_id",  labelKeys: ["description", "particular", "name"], word: "Item" },
+};
+
+const itemLabel = (row: any, keys: string[], word: string, index: number): string => {
+  for (const k of keys) {
+    const v = row?.[k] ?? row?.data?.[k];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return `${word} ${index + 1}`;
+};
+
+// Build a flat field map for an entity: its own fields plus every line-item
+// child's fields, child keys prefixed with the item label + ITEM_SEP.
+async function snapshotEntity(table: string, lookupCol: string, idValue: string): Promise<{ flat: Record<string, unknown>; row: any }> {
+  const { data: row } = await db().from(table).select("*").eq(lookupCol, idValue).maybeSingle();
+  if (!row) return { flat: {}, row: null };
+  const flat = flattenRow(row);
+  const child = CHILD_SPEC[table];
+  if (child) {
+    const { data: kids } = await db()
+      .from(child.table).select("*").eq(child.fk, (row as any).id)
+      .order("created_at", { ascending: true });
+    const seen: Record<string, number> = {};
+    (kids ?? []).forEach((k: any, i: number) => {
+      let label = itemLabel(k, child.labelKeys, child.word, i);
+      if (seen[label] != null) label = `${label} #${seen[label] + 1}`;
+      seen[label] = (seen[label] ?? 0) + 1;
+      const kf = flattenRow(k);
+      for (const [fk, fv] of Object.entries(kf)) {
+        if (fk === child.fk) continue;
+        flat[`${label}${ITEM_SEP}${fk}`] = fv;
+      }
+    });
+  }
+  return { flat, row };
+}
+
+route.use("*", async (c, next) => {
+  const action = ACTION_BY_METHOD[c.req.method];
+
+  // path segments after the /server-v2 base
+  const segments = new URL(c.req.url).pathname.split("/").filter(Boolean);
+  const baseIdx = segments.indexOf("server-v2");
+  const rest = baseIdx >= 0 ? segments.slice(baseIdx + 1) : segments;
+  const entityType = rest[0];
+  let pathId = rest[1] ?? null;
+  if (pathId) { try { pathId = decodeURIComponent(pathId); } catch { /* keep raw */ } }
+
+  // A clean top-level CRUD route (/:resource or /:resource/:id) on a mapped table.
+  const table = entityType ? PATH_TO_TABLE[entityType] : undefined;
+  const lookupCol = entityType ? (LOOKUP_COLUMN[entityType] ?? "id") : "id";
+  const diffable = !!action && !!table && rest.length <= 2;
+
+  // Snapshot the "before" state (own fields + line items) for edits/deletes;
+  // it changes/disappears after next() runs.
+  let oldSnap: { flat: Record<string, unknown>; row: any } = { flat: {}, row: null };
+  if (diffable && pathId && c.req.method !== "POST") {
+    try { oldSnap = await snapshotEntity(table!, lookupCol, pathId); } catch { /* best-effort */ }
+  }
+
+  await next();
+
+  if (!action) return;
+  if (c.res.status >= 300) return;
+  if (!entityType || entityType === "auth" || entityType === "activity-log") return;
+
+  const decode = (v: string | undefined) => {
+    if (!v) return null;
+    try { return decodeURIComponent(v); } catch { return v; }
+  };
+
+  // Response body (used for create, and to recover the id/name).
+  let resBody: any = null;
+  try {
+    const body = await c.res.clone().json();
+    resBody = body?.data ?? body;
+  } catch { /* non-JSON response */ }
+
+  const oldRow = oldSnap.row;
+  const entityId = pathId ?? (resBody?.id ? String(resBody.id) : "unknown");
+  const entityName =
+    resBody?.name ?? resBody?.company_name ?? resBody?.booking_number ??
+    oldRow?.name ?? oldRow?.company_name ?? oldRow?.booking_number ?? oldRow?.client_name ?? null;
+
+  let oldValue: string | null = null;
+  let newValue: string | null = null;
+  if (action === "updated") {
+    // Deep per-field diff (own fields + line items). Skip logging no-op saves
+    // and non-diffable sub-route updates that produce nothing to show.
+    if (!diffable) return;
+    let newSnap: { flat: Record<string, unknown>; row: any } = { flat: {}, row: null };
+    try { newSnap = await snapshotEntity(table!, lookupCol, pathId!); } catch { /* best-effort */ }
+    const { oldOut, newOut } = diffRows(oldSnap.flat, newSnap.flat);
+    oldValue = truncJSON(oldOut);
+    newValue = truncJSON(newOut);
+    if (!oldValue && !newValue) return;
+  }
+
+  try {
+    await db().from("activity_log").insert({
+      entity_type: entityType,
+      entity_id: entityId,
+      entity_name: entityName,
+      action_type: action,
+      user_id: asUuid(c.req.header("X-User-Id") ?? null),
+      user_name: decode(c.req.header("X-User-Name")),
+      user_department: decode(c.req.header("X-User-Department")),
+      old_value: oldValue,
+      new_value: newValue,
+    });
+  } catch (_) {
+    // best-effort logging — never surface to the caller
+  }
+});
+
+// ============================================================================
 // /health
 // ============================================================================
 route.get("/health", (c) => c.json({ status: "ok" }));
@@ -78,6 +284,24 @@ route.get("/users", async (c) => {
   const { data, error } = await q;
   if (error) return c.json(fail(error.message, 500), 500);
   return c.json(ok(data ?? []));
+});
+
+// ============================================================================
+// /auth/login  (beta: email-only, no password — column dropped in 0005)
+// ============================================================================
+route.post("/auth/login", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const email = String(body.email ?? "").trim().toLowerCase();
+  if (!email) return c.json(fail("Invalid email or password", 401), 401);
+  const { data, error } = await db()
+    .from("users")
+    .select("*")
+    .eq("email", email)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) return c.json(fail(error.message, 500), 500);
+  if (!data) return c.json(fail("Invalid email or password", 401), 401);
+  return c.json(ok(data));
 });
 
 // ============================================================================
@@ -249,12 +473,12 @@ route.delete("/contacts/:id", async (c) => {
 // /activity-log
 // ============================================================================
 route.get("/activity-log", async (c) => {
-  const role = c.req.query("role");
-  const department = c.req.query("department");
-  if (role === "rep") {
-    return c.json(fail("Forbidden", 403), 403);
-  }
+  // RBAC disabled for beta — every account can read the full activity log.
   const entityType = c.req.query("entity_type");
+  const entityId = c.req.query("entity_id");
+  // Multi-id aggregation (list tabs): repeated ?entity_ids= or a single CSV.
+  const entityIds = (c.req.queries("entity_ids") ?? [])
+    .flatMap((p) => p.split(",")).map((s) => s.trim()).filter(Boolean);
   const actionType = c.req.query("action_type");
   const userId = c.req.query("user_id");
   const dateFrom = c.req.query("date_from");
@@ -264,6 +488,8 @@ route.get("/activity-log", async (c) => {
 
   let q = db().from("activity_log").select("*", { count: "exact" }).order("timestamp", { ascending: false });
   if (entityType) q = q.eq("entity_type", entityType);
+  if (entityIds.length) q = q.in("entity_id", entityIds);
+  else if (entityId) q = q.eq("entity_id", entityId);
   if (actionType) q = q.eq("action_type", actionType);
   if (userId) q = q.eq("user_id", userId);
   if (dateFrom) q = q.gte("timestamp", dateFrom);
@@ -273,7 +499,6 @@ route.get("/activity-log", async (c) => {
     eod.setUTCHours(23, 59, 59, 999);
     q = q.lte("timestamp", eod.toISOString());
   }
-  if (role === "manager" && department) q = q.eq("user_department", department);
   q = q.range(offset, offset + limit - 1);
 
   const { data, error, count } = await q;

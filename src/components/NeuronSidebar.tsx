@@ -30,7 +30,6 @@ import {
   ArrowDownToLine
 } from "lucide-react";
 import logoImage from "figma:asset/28c84ed117b026fbf800de0882eb478561f37f4f.png";
-import { useUser } from "../hooks/useUser";
 
 export type Page = "dashboard" | "export-bookings" | "export-trucking" | "import-bookings" | "import-trucking" | "clients" | "acct-vouchers" | "acct-billings" | "acct-collections" | "acct-expenses" | "acct-logbook" | "reports" | "hr" | "calendar" | "profile" | "admin" | "activity-log";
 
@@ -116,16 +115,10 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
     localStorage.setItem('neuron_acct_expanded', String(isAcctExpanded));
   }, [isAcctExpanded]);
   
-  // Use effectiveDepartment from context for dev role override support
-  const { effectiveDepartment, effectiveRole } = useUser();
-  
-  // Determine what modules to show based on effective department
-  const userDepartment = effectiveDepartment || currentUser?.department || "Operations";
-  const isExecutive = userDepartment === "Executive";
-  const isManager = effectiveRole === 'manager' || effectiveRole === 'director';
-  const showOperations = isExecutive || userDepartment === "Operations";
-  const showAccounting = isExecutive || userDepartment === "Accounting";
-  const showHR = isExecutive || userDepartment === "HR";
+  // RBAC disabled for beta — every account has full access to all modules.
+  const showOperations = true;
+  const showAccounting = true;
+  const showHR = true;
   
   // Dashboard - standalone
   const dashboardItem = { id: "dashboard" as Page, label: "Dashboard", icon: LayoutDashboard };
@@ -163,10 +156,7 @@ export function NeuronSidebar({ currentPage, onNavigate, currentUser }: NeuronSi
   // Personal section
   const personalItems = [];
   
-  // Add Activity Log for Managers and Directors only
-  if (isManager || currentUser?.role === "director") {
-    personalItems.push({ id: "activity-log" as Page, label: "Activity Log", icon: Activity });
-  }
+  personalItems.push({ id: "activity-log" as Page, label: "Activity Log", icon: Activity });
 
   const otherItems = [
     { id: "admin" as Page, label: "Settings", icon: Settings },
