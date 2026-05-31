@@ -13,6 +13,7 @@ import { ArrowLeft, Truck, Save, X, ChevronDown, Check, Search, Plus, Trash2, Li
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "../ui/toast-utils";
 import type { TruckingRecord } from "./CreateTruckingModal";
+import { GrossWeightField } from "./CreateTruckingModal";
 import { StandardButton } from "../design-system";
 import { StandardTabs } from "../design-system/StandardTabs";
 import { BookingSelector } from "../selectors/BookingSelector";
@@ -1552,6 +1553,9 @@ export function TruckingRecordDetails({
                           <EditTextInput value={editForm.truckingSoa} onChange={(v) => set("truckingSoa", v)} placeholder="Enter SOA number" />
                         </div>
                       </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <GrossWeightField value={(editForm as any).grossWeight || ""} onChange={(v) => set("grossWeight" as any, v)} />
+                      </div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -1575,6 +1579,9 @@ export function TruckingRecordDetails({
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
                         <ReadField label="Plate Number" value={(r as any).plateNo} />
                         <ReadField label="SOA Number" value={r.truckingSoa} />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+                        <ReadField label="Gross Weight" value={(r as any).grossWeight} />
                       </div>
                     </div>
                   )}

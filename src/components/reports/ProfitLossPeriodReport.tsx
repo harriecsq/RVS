@@ -118,6 +118,10 @@ export function ProfitLossPeriodReport() {
       luzonExport: number;
       cdoImport: number;
       cdoExport: number;
+      iloiloImport: number;
+      iloiloExport: number;
+      davaoImport: number;
+      davaoExport: number;
     };
     expenses: {
       annual: number;
@@ -150,7 +154,7 @@ export function ProfitLossPeriodReport() {
     return String(id).trim().toLowerCase();
   };
 
-  const getBookingRegion = (bk: any): "CDO" | "Luzon" => {
+  const getBookingRegion = (bk: any): "CDO" | "Iloilo" | "Davao" | "Luzon" => {
     if (!bk) return "Luzon";
     const haystack = [
       bk.origin, bk.destination, bk.port, bk.pol, bk.pod,
@@ -159,6 +163,8 @@ export function ProfitLossPeriodReport() {
       .map((v) => String(v || "").toLowerCase())
       .join(" ");
     if (/\bcdo\b|cagayan/.test(haystack)) return "CDO";
+    if (/iloilo/.test(haystack)) return "Iloilo";
+    if (/davao/.test(haystack)) return "Davao";
     return "Luzon";
   };
 
@@ -216,6 +222,10 @@ export function ProfitLossPeriodReport() {
       let luzonExport = 0;
       let cdoImport = 0;
       let cdoExport = 0;
+      let iloiloImport = 0;
+      let iloiloExport = 0;
+      let davaoImport = 0;
+      let davaoExport = 0;
 
       // 2. Iterate Billings (Revenue)
       billings.forEach(b => {
@@ -255,12 +265,18 @@ export function ProfitLossPeriodReport() {
                      const type = isExportBooking(linkedBooking) ? "Export" : "Import";
                      const region = getBookingRegion(linkedBooking);
 
-                     if (region === "Luzon") {
-                         if (type === "Import") luzonImport += amount;
-                         else luzonExport += amount;
-                     } else {
+                     if (region === "CDO") {
                          if (type === "Import") cdoImport += amount;
                          else cdoExport += amount;
+                     } else if (region === "Iloilo") {
+                         if (type === "Import") iloiloImport += amount;
+                         else iloiloExport += amount;
+                     } else if (region === "Davao") {
+                         if (type === "Import") davaoImport += amount;
+                         else davaoExport += amount;
+                     } else {
+                         if (type === "Import") luzonImport += amount;
+                         else luzonExport += amount;
                      }
                  }
              }
@@ -318,12 +334,18 @@ export function ProfitLossPeriodReport() {
                      const type = isExportBooking(linkedBooking) ? "Export" : "Import";
                      const region = getBookingRegion(linkedBooking);
 
-                     if (region === "Luzon") {
-                         if (type === "Import") luzonImport -= validAmount;
-                         else luzonExport -= validAmount;
-                     } else {
+                     if (region === "CDO") {
                          if (type === "Import") cdoImport -= validAmount;
                          else cdoExport -= validAmount;
+                     } else if (region === "Iloilo") {
+                         if (type === "Import") iloiloImport -= validAmount;
+                         else iloiloExport -= validAmount;
+                     } else if (region === "Davao") {
+                         if (type === "Import") davaoImport -= validAmount;
+                         else davaoExport -= validAmount;
+                     } else {
+                         if (type === "Import") luzonImport -= validAmount;
+                         else luzonExport -= validAmount;
                      }
                  }
              }
@@ -376,7 +398,7 @@ export function ProfitLossPeriodReport() {
       });
 
       setReportData({
-        revenue: { luzonImport, luzonExport, cdoImport, cdoExport },
+        revenue: { luzonImport, luzonExport, cdoImport, cdoExport, iloiloImport, iloiloExport, davaoImport, davaoExport },
         expenses: expenseTotals
       });
       
@@ -476,6 +498,10 @@ export function ProfitLossPeriodReport() {
         <tr><td class="lbl" style="text-transform:uppercase;">Luzon Export</td><td class="amt">${signed(reportData.revenue.luzonExport)}</td></tr>
         <tr><td class="lbl" style="text-transform:uppercase;">CDO Import</td><td class="amt">${signed(reportData.revenue.cdoImport)}</td></tr>
         <tr><td class="lbl" style="text-transform:uppercase;">CDO Export</td><td class="amt">${signed(reportData.revenue.cdoExport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">Iloilo Import</td><td class="amt">${signed(reportData.revenue.iloiloImport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">Iloilo Export</td><td class="amt">${signed(reportData.revenue.iloiloExport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">Davao Import</td><td class="amt">${signed(reportData.revenue.davaoImport)}</td></tr>
+        <tr><td class="lbl" style="text-transform:uppercase;">Davao Export</td><td class="amt">${signed(reportData.revenue.davaoExport)}</td></tr>
         <tr class="total"><td class="lbl">Total</td><td class="amt">${signed(revTotal)}</td></tr>
       </table>
     </div>
@@ -512,8 +538,12 @@ export function ProfitLossPeriodReport() {
   const revenueTotal = reportData ? (
     reportData.revenue.luzonImport + 
     reportData.revenue.luzonExport + 
-    reportData.revenue.cdoImport + 
-    reportData.revenue.cdoExport
+    reportData.revenue.cdoImport +
+    reportData.revenue.cdoExport +
+    reportData.revenue.iloiloImport +
+    reportData.revenue.iloiloExport +
+    reportData.revenue.davaoImport +
+    reportData.revenue.davaoExport
   ) : 0;
 
   const expensesTotal = reportData ? (
@@ -639,6 +669,10 @@ export function ProfitLossPeriodReport() {
                     <TableRow label="Luzon Export" amount={reportData.revenue.luzonExport} />
                     <TableRow label="CDO Import" amount={reportData.revenue.cdoImport} />
                     <TableRow label="CDO Export" amount={reportData.revenue.cdoExport} />
+                    <TableRow label="Iloilo Import" amount={reportData.revenue.iloiloImport} />
+                    <TableRow label="Iloilo Export" amount={reportData.revenue.iloiloExport} />
+                    <TableRow label="Davao Import" amount={reportData.revenue.davaoImport} />
+                    <TableRow label="Davao Export" amount={reportData.revenue.davaoExport} />
                     <TableRow label="TOTAL" amount={revenueTotal} isTotal />
                 </div>
               </div>

@@ -143,6 +143,7 @@ export interface TruckingRecord {
   driverHelperName: string;
   stickers: string;
   weighing: string;
+  grossWeight: string;
   waitingFee: string;
   loadingDate: string;
   truckingAddress: string;
@@ -205,6 +206,104 @@ function TextInput({
       className="w-full px-4 py-2.5 rounded-lg border transition-colors"
       style={{ borderColor: "#E5E9F0", fontSize: "14px", color: "#0A1D4D", outline: "none", backgroundColor: "#FFFFFF" }}
     />
+  );
+}
+
+/** Gross Weight — numeric value + unit dropdown (matches Import booking) */
+const GROSS_WEIGHT_UNITS = ["kg", "lbs", "tons"];
+
+export function GrossWeightField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const parts = (value || "").trim().split(/\s+/);
+  const numVal = parts[0] && /^[0-9.]+$/.test(parts[0]) ? parts[0] : "";
+  const unitVal = GROSS_WEIGHT_UNITS.includes(parts[1]) ? parts[1] : "kg";
+  const [showDropdown, setShowDropdown] = useState(false);
+  const compose = (num: string, unit: string) => (num ? `${num} ${unit}` : "");
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-2" style={{ color: "#0A1D4D" }}>
+        Gross Weight
+      </label>
+      <div style={{ display: "flex", gap: "8px" }}>
+        <input
+          type="text"
+          value={numVal}
+          onChange={(e) => onChange(compose(e.target.value.replace(/[^0-9.]/g, ""), unitVal))}
+          placeholder="0.00"
+          style={{
+            flex: 1,
+            padding: "10px 12px",
+            fontSize: "14px",
+            border: "1px solid #E5E9F0",
+            borderRadius: "8px",
+            color: "#0A1D4D",
+            backgroundColor: "white",
+            outline: "none",
+            height: "42px",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#0F766E"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#E5E9F0"; }}
+        />
+        <div style={{ position: "relative", width: "80px" }}>
+          <div
+            onClick={() => setShowDropdown(!showDropdown)}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+            tabIndex={0}
+            style={{
+              padding: "10px 8px",
+              fontSize: "14px",
+              border: "1px solid #E5E9F0",
+              borderRadius: "8px",
+              color: "#111827",
+              fontWeight: 500,
+              backgroundColor: "white",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              outline: "none",
+              height: "42px",
+              textTransform: "uppercase",
+            }}
+          >
+            {unitVal}
+            <ChevronDown size={14} color="#667085" style={{ transform: showDropdown ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+          </div>
+          {showDropdown && (
+            <div style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              right: 0,
+              background: "white",
+              border: "1.5px solid #E5E9F0",
+              borderRadius: "8px",
+              zIndex: 50,
+            }}>
+              {GROSS_WEIGHT_UNITS.map((unit, index) => (
+                <div
+                  key={unit}
+                  onClick={() => { onChange(compose(numVal, unit)); setShowDropdown(false); }}
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    color: "#111827",
+                    background: unitVal === unit ? "#F0FDF4" : "transparent",
+                    borderBottom: index < GROSS_WEIGHT_UNITS.length - 1 ? "1px solid #E5E9F0" : "none",
+                    textTransform: "uppercase",
+                  }}
+                  onMouseEnter={(e) => { if (unitVal !== unit) e.currentTarget.style.background = "#F9FAFB"; }}
+                  onMouseLeave={(e) => { if (unitVal !== unit) e.currentTarget.style.background = "transparent"; }}
+                >
+                  {unit}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -384,7 +483,7 @@ function makeNewRecord(prefillBookingId?: string, prefillBookingType?: string, p
     demurragePaymentDate: "", demurragePaymentTime: "",
     containerDamage: "", doDate: "", padlockDate: "", notes: "",
     plateNo: "", contact: "", driverHelperName: "", stickers: "",
-    weighing: "", waitingFee: "", loadingDate: "", truckingAddress: "", truckingStatus: DEFAULT_TRUCKING_STATUS, inyardDate: "",
+    weighing: "", grossWeight: "", waitingFee: "", loadingDate: "", truckingAddress: "", truckingStatus: DEFAULT_TRUCKING_STATUS, inyardDate: "",
     truckingDate: new Date().toISOString().split("T")[0],
     createdAt: "", updatedAt: "",
   };
@@ -1388,6 +1487,9 @@ export function CreateTruckingModal({
                     <div>
                       <Label>Weighing</Label>
                       <TextInput value={form.weighing} onChange={(v) => set("weighing", v)} placeholder="Enter weighing details" />
+                    </div>
+                    <div>
+                      <GrossWeightField value={form.grossWeight} onChange={(v) => set("grossWeight", v)} />
                     </div>
                     <div>
                       <Label>Waiting Fee</Label>

@@ -36,6 +36,9 @@ interface Booking {
   shipmentType?: string;
   notes?: string;
   segments?: any[];
+  shipmentTags?: string[];
+  deliveredAt?: string; // ISO timestamp set when "delivered" tag first applied
+  logbookNumber?: number | null; // logbook ref # (per-month sequence), from logbook_entries
 }
 
 interface Billing {
@@ -296,8 +299,14 @@ export function FinalShipmentCostReport() {
         }
       });
 
-      // Process Rows
-      const processedRows: FinalShipmentRow[] = bookings.map(booking => {
+      // Process Rows — only delivered shipments qualify. Imports use the "delivered" tag;
+      // exports use the "Shipped Out" status (which also adds the "delivered" tag). Accept either.
+      const isDelivered = (booking: Booking) =>
+        (Array.isArray(booking.shipmentTags) && booking.shipmentTags.includes("delivered")) ||
+        String(booking.status || "").toLowerCase() === "shipped out";
+      const processedRows: FinalShipmentRow[] = bookings
+        .filter(isDelivered)
+        .map(booking => {
         // Collect all possible identifiers for this booking — include uuid since billing/expense
         // junction tables reference bookings by UUID.
         const identifiers = new Set<string>();
@@ -450,7 +459,7 @@ export function FinalShipmentCostReport() {
 
         return {
             id: booking.id,
-            shipmentNo: booking.bookingId || booking.id || "—",
+            shipmentNo: booking.logbookNumber != null ? String(booking.logbookNumber) : "—",
             clientName: booking.customerName || booking.clientName || booking.client || booking.shipper || "—",
             commodity: booking.commodity || "—",
             containerNumbers: containerNumbers,
@@ -465,7 +474,8 @@ export function FinalShipmentCostReport() {
             depositDate,
             rawDepositDates,
             referenceStatus,
-            date: booking.date || booking.bookingDate || booking.etd || (booking.createdAt ? String(booking.createdAt).slice(0, 10) : ""),
+            // Month basis = delivered date (when the "delivered" tag was applied), not booking date.
+            date: booking.deliveredAt ? String(booking.deliveredAt).slice(0, 10) : "",
             serviceType,
             port,
             status: booking.status || "Ongoing",
@@ -951,7 +961,7 @@ ${subtitleText ? `<div class="subtitle">${esc(subtitleText)}</div>` : ""}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
           <KPICard label="Total Shipments" value={totalShipments.toString()} />
           <KPICard label="Total Billing" value={formatCurrency(totalBilling)} />
-          <KPICard label="Total Costing" value={formatCurrency(totalCosting)} />
+          <KPICard label="Total Costing" value={formatCurrency(totalCosting)} color="#EF4444" />
           <KPICard label="Total Profit" value={formatCurrency(totalProfit)} color={totalProfit >= 0 ? "var(--neuron-brand-green)" : "#EF4444"} />
         </div>
 

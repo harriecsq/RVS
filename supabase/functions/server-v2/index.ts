@@ -624,6 +624,7 @@ function bookingRowToApi(row: any, kids: {
   events?: any[];
   segments?: any[];
   documents?: Record<string, any>;
+  logbookNumber?: number | null;
 }) {
   const passthrough = row.data ?? {};
   const base = {
@@ -653,6 +654,7 @@ function bookingRowToApi(row: any, kids: {
     shipmentTags: kids.tags ?? [],
     tagHistory: kids.history ?? [],
     shipmentEvents: kids.events ?? [],
+    logbookNumber: kids.logbookNumber ?? null,
   };
   if (row.movement === "EXPORT") {
     return { ...base, segments: kids.segments ?? [], exportDocuments: kids.documents ?? {} };
@@ -668,7 +670,7 @@ const BOOKING_KNOWN_KEYS = new Set([
   "etd","eta","ata","hasTrucking","has_trucking","truckingStatus","trucking_status",
   "linkedBookingId","linked_booking_id","createdBy","created_by",
   "createdAt","created_at","updatedAt","updated_at",
-  "segments","exportDocuments","shipmentTags","tagHistory","shipmentEvents",
+  "segments","exportDocuments","shipmentTags","tagHistory","shipmentEvents","logbookNumber",
 ]);
 
 // API body → DB row (snake_case). Only writes fields actually present in body.
@@ -897,7 +899,7 @@ async function listBookings(opts: {
   const ids = rows.map((r: any) => r.id);
   const d = db();
   const hasExport = !movement || rows.some((r: any) => r.movement === "EXPORT");
-  const [tagsRes, historyRes, segmentsRes, docsRes] = await Promise.all([
+  const [tagsRes, historyRes, segmentsRes, docsRes, logbookRes] = await Promise.all([
     d.from("booking_shipment_tags").select("booking_id, tag").in("booking_id", ids),
     d.from("booking_tag_history").select("*").in("booking_id", ids).order("timestamp", { ascending: false }),
     hasExport
@@ -906,6 +908,7 @@ async function listBookings(opts: {
     hasExport
       ? d.from("booking_documents").select("*").in("booking_id", ids)
       : Promise.resolve({ data: [] as any[] }),
+    d.from("logbook_entries").select("booking_id, logbook_number").in("booking_id", ids),
   ]);
 
   const tagsByBooking: Record<string, string[]> = {};
@@ -922,12 +925,16 @@ async function listBookings(opts: {
     (docsByBooking[d_.booking_id] ??= {})[docTypeToCamel(d_.doc_type)] = docRowToApi(d_);
   }
 
+  const logbookByBooking: Record<string, number> = {};
+  for (const e of (logbookRes.data ?? []) as any[]) logbookByBooking[e.booking_id] = e.logbook_number;
+
   return {
     rows: rows.map((r: any) => bookingRowToApi(r, {
-      tags:      tagsByBooking[r.id] ?? [],
-      history:   historyByBooking[r.id] ?? [],
-      segments:  segmentsByBooking[r.id] ?? [],
-      documents: docsByBooking[r.id]   ?? {},
+      tags:        tagsByBooking[r.id] ?? [],
+      history:     historyByBooking[r.id] ?? [],
+      segments:    segmentsByBooking[r.id] ?? [],
+      documents:   docsByBooking[r.id]   ?? {},
+      logbookNumber: logbookByBooking[r.id] ?? null,
     })),
     total,
   };

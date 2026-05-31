@@ -178,38 +178,6 @@ export function CreateExportBookingPanel({
   const [lctCargo, setLctCargo] = useState("");
   const [lctCargoTime, setLctCargoTime] = useState("");
 
-  // ── Trucking ──
-  const [loadingAddress, setLoadingAddress] = useState("");
-  const [loadingSchedule, setLoadingSchedule] = useState("");
-
-  // ── Domestic Cost ──
-  const [domesticFreight, setDomesticFreight] = useState("");
-  const [hustlingStripping, setHustlingStripping] = useState("");
-  const [forkliftOperator, setForkliftOperator] = useState("");
-
-  // ── Customs Processing ──
-  const [exportDivision, setExportDivision] = useState("");
-  const [lodgmentCdsFee, setLodgmentCdsFee] = useState("");
-  const [formE, setFormE] = useState("");
-
-  // ── Shipping Line Cost ──
-  const [oceanFreight, setOceanFreight] = useState("");
-  const [sealFee, setSealFee] = useState("");
-  const [docsFee, setDocsFee] = useState("");
-  const [lssFee, setLssFee] = useState("");
-  const [storageCost, setStorageCost] = useState("");
-
-  // ── Port Charges Cost ──
-  const [arrastre, setArrastre] = useState("");
-  const [shutOut, setShutOut] = useState("");
-
-  // ── Miscellaneous Cost ──
-  const [royaltyFee, setRoyaltyFee] = useState("");
-  const [lona, setLona] = useState("");
-  const [lalamove, setLalamove] = useState("");
-  const [bir, setBir] = useState("");
-  const [labor, setLabor] = useState("");
-  const [otherCharges, setOtherCharges] = useState("");
 
   // Fetch next available ref number when panel opens
   useEffect(() => {
@@ -318,27 +286,6 @@ export function CreateExportBookingPanel({
         lctEdArrastreTime,
         lctCargo,
         lctCargoTime,
-        loadingAddress,
-        loadingSchedule,
-        domesticFreight,
-        hustlingStripping,
-        forkliftOperator,
-        exportDivision,
-        lodgmentCdsFee,
-        formE,
-        oceanFreight,
-        sealFee,
-        docsFee,
-        lssFee,
-        storageCost,
-        arrastre,
-        shutOut,
-        royaltyFee,
-        lona,
-        lalamove,
-        bir,
-        labor,
-        otherCharges,
         createdBy: currentUser?.name || "Unknown",
         createdAt: new Date().toISOString(),
         shipmentType: "Export",
@@ -362,12 +309,6 @@ export function CreateExportBookingPanel({
           etd, etdTime, atd, atdTime, eta, etaTime, vesselStatus,
           lctEdArrastre, lctEdArrastreTime, lctCargo, lctCargoTime,
           blNumber, mblMawb: "",
-          loadingAddress, loadingSchedule,
-          domesticFreight, hustlingStripping, forkliftOperator,
-          exportDivision, lodgmentCdsFee, formE,
-          oceanFreight, sealFee, docsFee, lssFee, storageCost,
-          arrastre, shutOut,
-          royaltyFee, lona, lalamove, bir, labor, otherCharges,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }],
@@ -431,27 +372,6 @@ export function CreateExportBookingPanel({
     setLctEdArrastreTime("");
     setLctCargo("");
     setLctCargoTime("");
-    setLoadingAddress("");
-    setLoadingSchedule("");
-    setDomesticFreight("");
-    setHustlingStripping("");
-    setForkliftOperator("");
-    setExportDivision("");
-    setLodgmentCdsFee("");
-    setFormE("");
-    setOceanFreight("");
-    setSealFee("");
-    setDocsFee("");
-    setLssFee("");
-    setStorageCost("");
-    setArrastre("");
-    setShutOut("");
-    setRoyaltyFee("");
-    setLona("");
-    setLalamove("");
-    setBir("");
-    setLabor("");
-    setOtherCharges("");
   };
 
   if (!isOpen) return null;
@@ -864,9 +784,6 @@ export function CreateExportBookingPanel({
               </div>
             </div>
 
-            {/* ═══════════════ VESSEL/VOY DETAILS ═══════════════ */}
-            <SectionTitle>Vessel/VOY Details</SectionTitle>
-
             {/* Vessel/VOY | ETD */}
             <div style={twoCol}>
               <div>
@@ -939,163 +856,6 @@ export function CreateExportBookingPanel({
                   timeValue={lctCargoTime}
                   onDateChange={setLctCargo}
                   onTimeChange={setLctCargoTime}
-                />
-              </div>
-            </div>
-
-            {/* ═══════════════ TRUCKING ═══════════════ */}
-            <SectionTitle>Trucking</SectionTitle>
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Loading Address</label>
-                <NeuronInput
-                  value={loadingAddress}
-                  onChange={setLoadingAddress}
-                  placeholder="Enter loading address"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Loading Schedule</label>
-                <NeuronDatePicker value={loadingSchedule} onChange={setLoadingSchedule} />
-              </div>
-            </div>
-
-            {/* ═══════════════ DOMESTIC COST ═══════════════ */}
-            <SectionTitle>Domestic Cost</SectionTitle>
-
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Domestic Freight</label>
-                <NeuronInput
-                  value={domesticFreight}
-                  onChange={setDomesticFreight}
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Hustling/Stripping</label>
-                <NeuronInput
-                  value={hustlingStripping}
-                  onChange={setHustlingStripping}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>Forklift Operator</label>
-              <NeuronInput
-                value={forkliftOperator}
-                onChange={setForkliftOperator}
-                placeholder="Enter forklift operator"
-              />
-            </div>
-
-            {/* ═══════════════ CUSTOMS PROCESSING ═══════════════ */}
-            <SectionTitle>Customs Processing</SectionTitle>
-
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Export Division</label>
-                <NeuronInput
-                  value={exportDivision}
-                  onChange={setExportDivision}
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Lodgment/CDS Fee</label>
-                <NeuronInput
-                  value={lodgmentCdsFee}
-                  onChange={setLodgmentCdsFee}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>Form E</label>
-              <NeuronInput value={formE} onChange={setFormE} placeholder="Enter Form E" />
-            </div>
-
-            {/* ═══════════════ SHIPPING LINE COST ═══════════════ */}
-            <SectionTitle>Shipping Line Cost</SectionTitle>
-
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Ocean Freight</label>
-                <NeuronInput
-                  value={oceanFreight}
-                  onChange={setOceanFreight}
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Seal Fee</label>
-                <NeuronInput value={sealFee} onChange={setSealFee} placeholder="0.00" />
-              </div>
-            </div>
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Docs Fee</label>
-                <NeuronInput value={docsFee} onChange={setDocsFee} placeholder="0.00" />
-              </div>
-              <div>
-                <label style={labelStyle}>LSS Fee</label>
-                <NeuronInput value={lssFee} onChange={setLssFee} placeholder="0.00" />
-              </div>
-            </div>
-            <div>
-              <label style={labelStyle}>Storage</label>
-              <NeuronInput value={storageCost} onChange={setStorageCost} placeholder="0.00" />
-            </div>
-
-            {/* ═══════════════ PORT CHARGES COST ═══════════════ */}
-            <SectionTitle>Port Charges Cost</SectionTitle>
-
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Arrastre</label>
-                <NeuronInput value={arrastre} onChange={setArrastre} placeholder="0.00" />
-              </div>
-              <div>
-                <label style={labelStyle}>Shut Out</label>
-                <NeuronInput value={shutOut} onChange={setShutOut} placeholder="Enter shut out" />
-              </div>
-            </div>
-
-            {/* ═══════════════ MISCELLANEOUS COST ═══════════════ */}
-            <SectionTitle>Miscellaneous Cost</SectionTitle>
-
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Royalty Fee</label>
-                <NeuronInput value={royaltyFee} onChange={setRoyaltyFee} placeholder="0.00" />
-              </div>
-              <div>
-                <label style={labelStyle}>Lona</label>
-                <NeuronInput value={lona} onChange={setLona} placeholder="0.00" />
-              </div>
-            </div>
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Lalamove</label>
-                <NeuronInput value={lalamove} onChange={setLalamove} placeholder="0.00" />
-              </div>
-              <div>
-                <label style={labelStyle}>BIR</label>
-                <NeuronInput value={bir} onChange={setBir} placeholder="0.00" />
-              </div>
-            </div>
-            <div style={twoCol}>
-              <div>
-                <label style={labelStyle}>Labor</label>
-                <NeuronInput value={labor} onChange={setLabor} placeholder="0.00" />
-              </div>
-              <div>
-                <label style={labelStyle}>Other Charges</label>
-                <NeuronInput
-                  value={otherCharges}
-                  onChange={setOtherCharges}
-                  placeholder="0.00"
                 />
               </div>
             </div>

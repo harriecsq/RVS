@@ -82,39 +82,6 @@ export interface ExportBooking {
   lctCargo?: string;
   lctCargoTime?: string;
 
-  // Trucking
-  loadingAddress?: string;
-  loadingSchedule?: string;
-
-  // Domestic Cost
-  domesticFreight?: string;
-  hustlingStripping?: string;
-  forkliftOperator?: string;
-
-  // Customs Processing
-  exportDivision?: string;
-  lodgmentCdsFee?: string;
-  formE?: string;
-
-  // Shipping Line Cost
-  oceanFreight?: string;
-  sealFee?: string;
-  docsFee?: string;
-  lssFee?: string;
-  storageCost?: string;
-
-  // Port Charges Cost
-  arrastre?: string;
-  shutOut?: string;
-
-  // Miscellaneous Cost
-  royaltyFee?: string;
-  lona?: string;
-  lalamove?: string;
-  bir?: string;
-  labor?: string;
-  otherCharges?: string;
-
   // Operational Details (legacy)
   section?: string;
   ot?: string;
@@ -2165,14 +2132,6 @@ const SEGMENT_FIELDS = new Set([
   "lctEdArrastre", "lctEdArrastreTime", "lctCargo", "lctCargoTime",
   // BL
   "blNumber", "mblMawb",
-  // Trucking
-  "loadingAddress", "loadingSchedule",
-  // Costs
-  "domesticFreight", "hustlingStripping", "forkliftOperator",
-  "exportDivision", "lodgmentCdsFee", "formE",
-  "oceanFreight", "sealFee", "docsFee", "lssFee", "storageCost",
-  "arrastre", "shutOut",
-  "royaltyFee", "lona", "lalamove", "bir", "labor", "otherCharges",
   // Operational Details
   "section", "ot", "receivedDocs", "ata", "discharged",
   "storageBegins", "demBegins", "entryNumber", "shippingLineStatus",
@@ -3268,11 +3227,8 @@ function BookingInformationTab({
             </>
           )}
         </div>
-      </SectionCard>
 
-      {/* ═══════════════ VESSEL/VOY DETAILS ═══════════════ */}
-      <SectionCard title="Vessel/VOY Details">
-        {/* Row 1: Vessel/VOY + Vessel Status */}
+        {/* Vessel/VOY + Vessel Status */}
         <div style={twoCol}>
           <EditableField
             fieldName="vesselVoyage"
@@ -3286,281 +3242,17 @@ function BookingInformationTab({
           {renderEditDropdown("vesselStatus", "Vessel Status", ["VESSEL IS OPEN", "VESSEL IS NOT OPEN"], showVesselStatusDD, setShowVesselStatusDD)}
         </div>
 
-        {/* Row 2: ETD + ATD + ETA */}
+        {/* ETD + ATD + ETA */}
         <div style={threeCol}>
           {renderDateTimeEditField("etd", "ETD")}
           {renderDateTimeEditField("atd", "ATD")}
           {renderDateTimeEditField("eta", "ETA")}
         </div>
 
-        {/* Row 3: LCT ED/Arrastre + LCT Cargo */}
+        {/* LCT ED/Arrastre + LCT Cargo */}
         <div style={twoCol}>
           {renderDateTimeEditField("lctEdArrastre", "LCT ED/Arrastre")}
           {renderDateTimeEditField("lctCargo", "LCT Cargo")}
-        </div>
-      </SectionCard>
-
-      {/* ═══════════════ TRUCKING ═══════════════ */}
-      <SectionCard title="Trucking">
-        <div style={twoCol}>
-          <EditableField
-            fieldName="loadingAddress"
-            label="Loading Address"
-            value={(mergedBooking as any).loadingAddress || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          {(() => {
-            const schedVal = (mergedBooking as any).loadingSchedule || "";
-            if (!isEditing) {
-              const isEmpty = !schedVal;
-              return (
-                <div>
-                  <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
-                    Loading Schedule
-                  </label>
-                  <div style={{
-                    padding: "10px 14px",
-                    backgroundColor: isEmpty ? "white" : "#F9FAFB",
-                    border: isEmpty ? "2px dashed #E5E9F0" : "1px solid #E5E9F0",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    color: isEmpty ? "#9CA3AF" : "var(--neuron-ink-primary)",
-                    minHeight: "42px",
-                    display: "flex",
-                    alignItems: "center"
-                  }}>
-                    {isEmpty ? "—" : isoToMMDD(schedVal)}
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <div>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: 500, color: "var(--neuron-ink-base)", marginBottom: "8px" }}>
-                  Loading Schedule
-                </label>
-                <SingleDateInput
-                  value={mmddToISO((mergedEditData as any).loadingSchedule ?? schedVal)}
-                  onChange={(iso) => {
-                    mergedSetEditData({ loadingSchedule: isoToMMDD(iso) } as any);
-                  }}
-                  placeholder="MM/DD/YYYY"
-                />
-              </div>
-            );
-          })()}
-        </div>
-      </SectionCard>
-
-      {/* ═══════════════ DOMESTIC COST ═══════════════ */}
-      <SectionCard title="Domestic Cost">
-        <div style={threeCol}>
-          <EditableField
-            fieldName="domesticFreight"
-            label="Domestic Freight"
-            value={(mergedBooking as any).domesticFreight || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="hustlingStripping"
-            label="Hustling/Stripping"
-            value={(mergedBooking as any).hustlingStripping || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="forkliftOperator"
-            label="Forklift Operator"
-            value={(mergedBooking as any).forkliftOperator || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-        </div>
-      </SectionCard>
-
-      {/* ═══════════════ CUSTOMS PROCESSING ═══════════════ */}
-      <SectionCard title="Customs Processing">
-        <div style={threeCol}>
-          <EditableField
-            fieldName="exportDivision"
-            label="Export Division"
-            value={(mergedBooking as any).exportDivision || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="lodgmentCdsFee"
-            label="Lodgment/CDS Fee"
-            value={(mergedBooking as any).lodgmentCdsFee || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="formE"
-            label="Form E"
-            value={(mergedBooking as any).formE || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-        </div>
-      </SectionCard>
-
-      {/* ═══════════════ SHIPPING LINE COST ═══════════════ */}
-      <SectionCard title="Shipping Line Cost">
-        {/* Row 1: Ocean Freight + Seal Fee */}
-        <div style={twoCol}>
-          <EditableField
-            fieldName="oceanFreight"
-            label="Ocean Freight"
-            value={(mergedBooking as any).oceanFreight || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="sealFee"
-            label="Seal Fee"
-            value={(mergedBooking as any).sealFee || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-        </div>
-        {/* Row 2: Docs Fee + LSS Fee + Storage */}
-        <div style={threeCol}>
-          <EditableField
-            fieldName="docsFee"
-            label="Docs Fee"
-            value={(mergedBooking as any).docsFee || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="lssFee"
-            label="LSS Fee"
-            value={(mergedBooking as any).lssFee || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="storageCost"
-            label="Storage"
-            value={(mergedBooking as any).storageCost || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-        </div>
-      </SectionCard>
-
-      {/* ═══════════════ PORT CHARGES COST ═══════════════ */}
-      <SectionCard title="Port Charges Cost">
-        <div style={twoCol}>
-          <EditableField
-            fieldName="arrastre"
-            label="Arrastre"
-            value={(mergedBooking as any).arrastre || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="shutOut"
-            label="Shut Out"
-            value={(mergedBooking as any).shutOut || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-        </div>
-      </SectionCard>
-
-      {/* ═══════════════ MISCELLANEOUS COST ═══════════════ */}
-      <SectionCard title="Miscellaneous Cost">
-        {/* Row 1: Royalty Fee + Lona + Lalamove */}
-        <div style={threeCol}>
-          <EditableField
-            fieldName="royaltyFee"
-            label="Royalty Fee"
-            value={(mergedBooking as any).royaltyFee || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="lona"
-            label="Lona"
-            value={(mergedBooking as any).lona || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="lalamove"
-            label="Lalamove"
-            value={(mergedBooking as any).lalamove || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-        </div>
-        {/* Row 2: BIR + Labor + Other Charges */}
-        <div style={threeCol}>
-          <EditableField
-            fieldName="bir"
-            label="BIR"
-            value={(mergedBooking as any).bir || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="labor"
-            label="Labor"
-            value={(mergedBooking as any).labor || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
-          <EditableField
-            fieldName="otherCharges"
-            label="Other Charges"
-            value={(mergedBooking as any).otherCharges || ""}
-            status={mergedBooking.status as ExecutionStatus}
-            isEditing={isEditing}
-            editData={mergedEditData}
-            setEditData={mergedSetEditData}
-          />
         </div>
       </SectionCard>
 
