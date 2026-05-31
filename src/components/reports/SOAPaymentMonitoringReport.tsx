@@ -262,10 +262,6 @@ export function SOAPaymentMonitoringReport() {
           }
         }
 
-        const clientName = billing.clientName ||
-          (booking ? (booking.customerName || booking.clientName || booking.client || booking.shipper) : null) ||
-          "—";
-
         const commodity = billing.commodity || booking?.commodity || "—";
 
         // Service type: prefer booking-level type (booking_type / shipmentType / mode),
@@ -283,6 +279,13 @@ export function SOAPaymentMonitoringReport() {
         else if (bookingIdStr.startsWith("IMP")) serviceType = "Import";
         else serviceType = rawType || "Import";
         const isImport = serviceType === "Import";
+
+        // Client column: billing.clientName already = contact person if picked, else company.
+        // companyName is the pure-company backstop (consignee for import / shipper for export equal it).
+        const clientName = String((billing as any).clientName || "").trim()
+          || String((billing as any).companyName || "").trim()
+          || (isImport ? String((billing as any).consignee || "") : String((billing as any).shipper || ""))
+          || "—";
 
         // Container numbers:
         //  - Export: only Manila-leg containers. By convention segments[0] is the Manila leg

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router";
 import {
   BookOpen,
   ChevronLeft,
@@ -120,6 +121,7 @@ const EMPTY_MONTH_DATA: LogbookMonthData = {
 
 export function LogbookScreen() {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [month, setMonth] = useState<string>(currentMonthKey());
   const [searchTerm, setSearchTerm] = useState("");
   const [isAdjustMode, setIsAdjustMode] = useState(false);
@@ -188,6 +190,15 @@ export function LogbookScreen() {
         );
     return [...base].sort((a, b) => (a.logbookNumber || 0) - (b.logbookNumber || 0));
   }, [monthData.bookings, searchTerm]);
+
+  // Row click → open that booking's detail screen. Prefix decides import vs export;
+  // the list page reads location.state.openBookingId and auto-opens the detail.
+  const openBooking = (entry: LogbookEntry) => {
+    const isExport = entry.bookingId.toUpperCase().startsWith("EXP");
+    navigate(isExport ? "/export/bookings" : "/import/bookings", {
+      state: { openBookingId: entry.bookingId },
+    });
+  };
 
   const toggleSelect = (bookingRowId: string) => {
     setSelectedIds((prev) => {
@@ -469,6 +480,9 @@ export function LogbookScreen() {
           data={filteredBookings}
           columns={columns}
           rowKey={(b) => b.bookingRowId}
+          onRowClick={(entry) =>
+            isAdjustMode ? toggleSelect(entry.bookingRowId) : openBooking(entry)
+          }
           isLoading={isLoading}
           emptyTitle={
             searchTerm

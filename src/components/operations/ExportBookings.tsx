@@ -265,6 +265,17 @@ export function ExportBookings({ currentUser }: ExportBookingsProps = {}) {
     });
   }, [onlyProvinceSelected]);
 
+  // Deep-link: open a specific booking when navigated here with openBookingId (e.g. from Logbook).
+  useEffect(() => {
+    if (location.state?.openBookingId && bookings.length > 0) {
+      const bookingToOpen = bookings.find(b => b.bookingId === location.state.openBookingId);
+      if (bookingToOpen) {
+        setSelectedBooking(bookingToOpen);
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [location, bookings]);
+
   if (selectedBooking) {
     return (
       <ExportBookingDetails

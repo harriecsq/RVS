@@ -460,7 +460,13 @@ export function FinalShipmentCostReport() {
         return {
             id: booking.id,
             shipmentNo: booking.logbookNumber != null ? String(booking.logbookNumber) : "—",
-            clientName: booking.customerName || booking.clientName || booking.client || booking.shipper || "—",
+            clientName: (() => {
+              const contact = String((booking as any).contactPersonName || "").trim();
+              const company = isImport
+                ? String((booking as any).consignee || "")
+                : String((booking as any).shipper || "");
+              return contact || company || "—";
+            })(),
             commodity: booking.commodity || "—",
             containerNumbers: containerNumbers,
             numberOfContainers: containerNumbers.length,
