@@ -28,5 +28,10 @@ export { SkeletonBar, SkeletonTableRow, SkeletonTable } from "./StandardSkeleton
 export { StandardTable } from "./StandardTable";
 export type { ColumnDef, TableSummary } from "./StandardTable";
 
+// Overlay Shells
+export { StandardConfirmDialog } from "./StandardConfirmDialog";
+export { StandardModal } from "./StandardModal";
+export { StandardSidePanel } from "./StandardSidePanel";
+
 // Design Tokens
 export * from "./neuron-design-tokens";
