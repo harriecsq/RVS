@@ -832,31 +832,24 @@ export function CreateBillingScreen({
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-[#FAFBFC] border-t border-[#E5E9F0]">
-                  <tr>
-                    <td colSpan={5} className="px-4 py-3 text-right text-xs font-semibold text-[#667085] uppercase">Subtotal</td>
-                    <td className="px-4 py-3 text-right text-sm font-bold text-[#0A1D4D]">
+                {/* Grand Total — integrated footer matching ExpenseCostingTables */}
+                <tfoot>
+                  <tr style={{ background: "#F0F4F3", borderTop: "2px solid #E5E9F0" }}>
+                    <td colSpan={5} style={{ padding: "14px 16px", textAlign: "right", fontSize: "13px", fontWeight: 700, color: "#0A1D4D", textTransform: "uppercase" as const, letterSpacing: "0.03em" }}>
+                      Total Billing Amount
+                      {expenseBillingAmount > 0 && (
+                        <div style={{ fontSize: "11px", fontWeight: 400, color: "#667085", marginTop: "2px", textTransform: "none" }}>
+                          Amount for Billing (from Expenses): ₱{formatAmount(expenseBillingAmount)}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "14px 16px", textAlign: "right", fontSize: "18px", fontWeight: 700, color: "#0A1D4D" }}>
                       ₱{formatAmount(billingParticulars.reduce((sum, p) => sum + p.amount, 0))}
                     </td>
                     <td></td>
                   </tr>
                 </tfoot>
               </table>
-            </div>
-
-            {/* Total — matches ExpenseCostingTables style */}
-            <div className="bg-white border border-[#E5E9F0] rounded-lg p-6 flex justify-between items-center shadow-sm">
-              <div>
-                <div className="text-sm font-medium text-[#667085]">Total Billing Amount</div>
-                {expenseBillingAmount > 0 && (
-                  <div className="text-xs text-[#98A2B3] mt-1">
-                    Amount for Billing (from Expenses): ₱{formatAmount(expenseBillingAmount)}
-                  </div>
-                )}
-              </div>
-              <div className="text-3xl font-bold text-[#0A1D4D]">
-                ₱{formatAmount(billingParticulars.reduce((sum, p) => sum + p.amount, 0))}
-              </div>
             </div>
 
             {/* Action Buttons — matches CreateExpenseScreen */}
