@@ -14,6 +14,7 @@ import { formatAmount } from "../../utils/formatAmount";
 import { EXPORT_STANDARD_PARTICULARS, getAvailableExportSuggestions } from "./ExpenseCostingTables";
 import { AttachmentsTab } from "../shared/AttachmentsTab";
 import { NotesSection } from "../shared/NotesSection";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
 import { API_BASE_URL } from '@/utils/api-config';
 import { ActivityTimeline } from "../operations/shared/ActivityTimeline";
 import { fetchEntityActivity, type UIActivityEntry } from "../../utils/activityLog";
@@ -26,6 +27,11 @@ import { ExportExpenseDocTemplate } from "../shared/document-preview/templates/E
 import { DEFAULT_DOCUMENT_SETTINGS } from "../../types/document-settings";
 import type { DocumentSettings } from "../../types/document-settings";
 import { ReorderButtons } from "./ReorderButtons";
+
+// Container-type dropdown labels (value stored as "40" | "20" | "BL")
+const PER_LABELS = ["PER 40", "PER 20", "PER BL"];
+const perToLabel = (v?: string) => (v === "20" ? "PER 20" : v === "BL" ? "PER BL" : "PER 40");
+const labelToPer = (l: string) => (l === "PER 20" ? "20" : l === "PER BL" ? "BL" : "40");
 
 const EXPENSE_STATUS_COLORS: Record<string, string> = {
   "Draft": "#6B7280",
@@ -172,6 +178,7 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
   }, [externalSaveCounter]);
 
   // Billing Calculator State
+  const [bulkCurrency, setBulkCurrency] = useState("");
   const [showBillingCalculator, setShowBillingCalculator] = useState(false);
   const [billingCalcMode, setBillingCalcMode] = useState<"margin" | "percent" | "total">("margin");
   
@@ -2057,77 +2064,54 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                                     cursor: "text"
                                   }}
                                 />
-                                <select
-                                  value={item.currency || "PHP"}
-                                  onChange={(e) => {
-                                    if (editedExpense?.charges && actualIndex !== -1) {
-                                      const updatedCharges = [...editedExpense.charges];
-                                      const newCurrency = e.target.value;
-                                      const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, updatedCharges[actualIndex].per, newCurrency, updatedCharges[actualIndex].multiplyByContainers);
-                                      updatedCharges[actualIndex] = { 
-                                        ...updatedCharges[actualIndex], 
-                                        currency: newCurrency,
-                                        amount: newAmount
-                                      };
-                                      setEditedExpense({ ...editedExpense, charges: updatedCharges });
-                                    }
-                                  }}
-                                  style={{
-                                    width: "62px",
-                                    padding: "6px 2px",
-                                    fontSize: "11px",
-                                    border: "1px solid #E5E9F0",
-                                    borderRadius: "4px",
-                                    background: "white",
-                                    color: "#0A1D4D",
-                                    cursor: "pointer"
-                                  }}
-                                >
-                                  <option value="PHP">PHP</option>
-                                  <option value="USD">USD</option>
-                                  <option value="RMB">RMB</option>
-                                </select>
-                                <select
-                                  value={item.per || "40"}
-                                  onChange={(e) => {
-                                    if (editedExpense?.charges && actualIndex !== -1) {
-                                      const updatedCharges = [...editedExpense.charges];
-                                      const newPer = e.target.value;
-                                      const current = updatedCharges[actualIndex];
-                                      // When linked to a voucher, derive unit price from the snapshot voucher total
-                                      // so PER 40 ↔ PER BL toggling stays consistent. Stays editable after.
-                                      let nextUnitPrice = current.unitPrice;
-                                      if (current.linkedVoucherAmount !== undefined) {
-                                        const containers = (current.multiplyByContainers !== false) ? Math.max(effContainerCount, 1) : 1;
-                                        nextUnitPrice = newPer === "BL"
-                                          ? current.linkedVoucherAmount
-                                          : current.linkedVoucherAmount / containers;
+                                <div style={{ width: "82px" }}>
+                                  <NeuronDropdown
+                                    value={item.currency || "PHP"}
+                                    options={["PHP", "USD", "RMB"]}
+                                    onChange={(newCurrency) => {
+                                      if (editedExpense?.charges && actualIndex !== -1) {
+                                        const updatedCharges = [...editedExpense.charges];
+                                        const newAmount = computeVolumeAmount(updatedCharges[actualIndex].unitPrice || 0, updatedCharges[actualIndex].per, newCurrency, updatedCharges[actualIndex].multiplyByContainers);
+                                        updatedCharges[actualIndex] = {
+                                          ...updatedCharges[actualIndex],
+                                          currency: newCurrency,
+                                          amount: newAmount
+                                        };
+                                        setEditedExpense({ ...editedExpense, charges: updatedCharges });
                                       }
-                                      const newAmount = computeVolumeAmount(nextUnitPrice || 0, newPer, current.currency, current.multiplyByContainers);
-                                      updatedCharges[actualIndex] = {
-                                        ...current,
-                                        per: newPer,
-                                        unitPrice: nextUnitPrice,
-                                        amount: newAmount,
-                                      };
-                                      setEditedExpense({ ...editedExpense, charges: updatedCharges });
-                                    }
-                                  }}
-                                  style={{
-                                    width: "72px",
-                                    padding: "6px 2px",
-                                    fontSize: "11px",
-                                    border: "1px solid #E5E9F0",
-                                    borderRadius: "4px",
-                                    background: "white",
-                                    color: "#667085",
-                                    cursor: "pointer"
-                                  }}
-                                >
-                                  <option value="40">PER 40</option>
-                                  <option value="20">PER 20</option>
-                                  <option value="BL">PER BL</option>
-                                </select>
+                                    }}
+                                  />
+                                </div>
+                                <div style={{ width: "92px" }}>
+                                  <NeuronDropdown
+                                    value={perToLabel(item.per)}
+                                    options={PER_LABELS}
+                                    onChange={(l) => {
+                                      if (editedExpense?.charges && actualIndex !== -1) {
+                                        const updatedCharges = [...editedExpense.charges];
+                                        const newPer = labelToPer(l);
+                                        const current = updatedCharges[actualIndex];
+                                        // When linked to a voucher, derive unit price from the snapshot voucher total
+                                        // so PER 40 ↔ PER BL toggling stays consistent. Stays editable after.
+                                        let nextUnitPrice = current.unitPrice;
+                                        if (current.linkedVoucherAmount !== undefined) {
+                                          const containers = (current.multiplyByContainers !== false) ? Math.max(effContainerCount, 1) : 1;
+                                          nextUnitPrice = newPer === "BL"
+                                            ? current.linkedVoucherAmount
+                                            : current.linkedVoucherAmount / containers;
+                                        }
+                                        const newAmount = computeVolumeAmount(nextUnitPrice || 0, newPer, current.currency, current.multiplyByContainers);
+                                        updatedCharges[actualIndex] = {
+                                          ...current,
+                                          per: newPer,
+                                          unitPrice: nextUnitPrice,
+                                          amount: newAmount,
+                                        };
+                                        setEditedExpense({ ...editedExpense, charges: updatedCharges });
+                                      }
+                                    }}
+                                  />
+                                </div>
                             </div>
                           ) : (
                             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "flex-end", gap: "8px" }}>
@@ -2913,34 +2897,14 @@ export function ViewExpenseScreen({ expenseId, onBack, onDeleted, onUpdated, emb
                   {isEditing && expense.documentTemplate !== "IMPORT" && (
                     <>
                       <span style={{ fontSize: "12px", color: "#667085", fontWeight: 500 }}>Set all currencies:</span>
-                      {["PHP", "USD", "RMB"].map((cur) => (
-                        <button
-                          key={cur}
-                          type="button"
-                          onClick={() => handleMainCurrencyChange(cur)}
-                          style={{
-                            padding: "5px 12px",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            color: "#0F766E",
-                            background: "white",
-                            border: "1px solid #E5E9F0",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            transition: "all 0.15s ease"
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "#F0FDFA";
-                            e.currentTarget.style.borderColor = "#0F766E";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "white";
-                            e.currentTarget.style.borderColor = "#E5E9F0";
-                          }}
-                        >
-                          {cur}
-                        </button>
-                      ))}
+                      <div style={{ width: "110px" }}>
+                        <NeuronDropdown
+                          value={bulkCurrency}
+                          placeholder="Select…"
+                          options={["PHP", "USD", "RMB"]}
+                          onChange={(cur) => { setBulkCurrency(cur); handleMainCurrencyChange(cur); }}
+                        />
+                      </div>
                     </>
                   )}
                   {isEditing && getAvailableCategoriesToAdd().length > 0 && (

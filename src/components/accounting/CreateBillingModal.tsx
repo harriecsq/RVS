@@ -10,7 +10,6 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Card } from "../ui/card";
-import { Checkbox } from "../ui/checkbox";
 import { SingleDateInput } from "../shared/UnifiedDateRangeFilter";
 import { API_BASE_URL } from '@/utils/api-config';
 import { ReorderButtons } from "./ReorderButtons";
@@ -64,6 +63,7 @@ interface BillingParticular {
   volumeQty: string;
   unitCost: string;
   total: number;
+  currency: string;
   applyExchangeRate: boolean;
   amount: number;
 }
@@ -98,10 +98,14 @@ export function CreateBillingScreen({
       volumeQty: "",
       unitCost: "",
       total: 0,
+      currency: "PHP",
       applyExchangeRate: false,
       amount: 0,
     }
   ]);
+
+  // Selected value for the "Set all currencies" bulk dropdown
+  const [bulkCurrency, setBulkCurrency] = useState("");
 
   // Shipment details
   const [vessel, setVessel] = useState("");
@@ -357,6 +361,7 @@ export function CreateBillingScreen({
       volumeQty: vol ? vol.toString() : "",
       unitCost: "",
       total: 0,
+      currency: "PHP",
       applyExchangeRate: false,
       amount: 0,
     };
@@ -369,19 +374,18 @@ export function CreateBillingScreen({
 
       const updated = { ...p, [field]: value };
       const rate = parseFloat(exchangeRate) || 0;
+      const multiply = (updated.currency || "PHP") !== "PHP";
+      updated.applyExchangeRate = multiply;
 
       if (field === "volumeQty" || field === "unitCost") {
         const qty = parseFloat(field === "volumeQty" ? value : updated.volumeQty) || 0;
         const cost = parseFloat(field === "unitCost" ? value : updated.unitCost) || 0;
         updated.total = qty * cost;
-        updated.amount = updated.applyExchangeRate 
-          ? updated.total * rate 
-          : updated.total;
+        updated.amount = multiply ? updated.total * rate : updated.total;
       }
 
-      if (field === "applyExchangeRate") {
-        updated.applyExchangeRate = value;
-        updated.amount = value ? updated.total * rate : updated.total;
+      if (field === "currency") {
+        updated.amount = multiply ? updated.total * rate : updated.total;
       }
 
       return updated;
@@ -743,15 +747,36 @@ export function CreateBillingScreen({
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold text-[#0A1D4D]">Billing Particulars</h3>
                 </div>
-                <Button
-                  type="button"
-                  onClick={addBillingParticular}
-                  variant="ghost"
-                  size="sm"
-                  className="text-[#0F766E] hover:text-[#0D6560] hover:bg-[#0F766E]/5 h-8 text-xs"
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Add Item
-                </Button>
+                <div className="flex items-center gap-3">
+                  <span style={{ fontSize: "12px", color: "#667085", fontWeight: 500 }}>Set all currencies:</span>
+                  <div style={{ width: "110px" }}>
+                    <NeuronDropdown
+                      value={bulkCurrency}
+                      placeholder="Select…"
+                      options={["PHP", "USD", "RMB"]}
+                      onChange={(currency) => {
+                        setBulkCurrency(currency);
+                        const rate = parseFloat(exchangeRate) || 0;
+                        const multiply = currency !== "PHP";
+                        setBillingParticulars(billingParticulars.map(p => ({
+                          ...p,
+                          currency,
+                          applyExchangeRate: multiply,
+                          amount: multiply ? p.total * rate : p.total,
+                        })));
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={addBillingParticular}
+                    variant="ghost"
+                    size="sm"
+                    className="text-[#0F766E] hover:text-[#0D6560] hover:bg-[#0F766E]/5 h-8 text-xs"
+                  >
+                    <Plus className="h-3 w-3 mr-1" /> Add Item
+                  </Button>
+                </div>
               </div>
 
               <table className="w-full">
@@ -760,8 +785,8 @@ export function CreateBillingScreen({
                     <th className="px-4 py-3 text-left font-medium w-[35%]">Particulars</th>
                     <th className="px-4 py-3 text-right font-medium w-[10%]">Volume</th>
                     <th className="px-4 py-3 text-right font-medium w-[15%]">Unit Cost</th>
+                    <th className="px-4 py-3 text-center font-medium w-[8%]">Currency</th>
                     <th className="px-4 py-3 text-right font-medium w-[15%]">Total</th>
-                    <th className="px-4 py-3 text-center font-medium w-[8%]">Ex. Rate</th>
                     <th className="px-4 py-3 text-right font-medium w-[15%]">Amount</th>
                     <th className="w-[10%]"></th>
                   </tr>
@@ -794,18 +819,16 @@ export function CreateBillingScreen({
                           placeholder="0.00"
                         />
                       </td>
+                      <td className="p-2 text-center">
+                        <NeuronDropdown
+                          value={particular.currency || "PHP"}
+                          options={["PHP", "USD", "RMB"]}
+                          onChange={(v) => updateParticular(particular.id, "currency", v)}
+                        />
+                      </td>
                       <td className="p-2">
                         <div className="h-9 flex items-center justify-end px-3 bg-[#F9FAFB] rounded-md border border-[#E5E9F0] text-sm font-medium text-gray-500">
                           {formatAmount(particular.total)}
-                        </div>
-                      </td>
-                      <td className="p-2 text-center">
-                        <div className="flex justify-center">
-                          <Checkbox
-                            checked={particular.applyExchangeRate}
-                            onCheckedChange={(checked) => updateParticular(particular.id, "applyExchangeRate", checked === true)}
-                            className="border-[#D0D5DD] data-[state=checked]:bg-[#0F766E] data-[state=checked]:border-[#0F766E]"
-                          />
                         </div>
                       </td>
                       <td className="p-2">

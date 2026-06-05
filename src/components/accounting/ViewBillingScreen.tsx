@@ -70,6 +70,7 @@ interface BillingParticular {
   volumeQty: number;
   unitCost: number;
   total: number; // calculated: volumeQty * unitCost
+  currency: string; // PHP = no exchange rate; USD/RMB = apply billing-level rate
   exchangeRate: number | null;
   applyExchangeRate?: boolean; // Whether to apply the billing-level exchange rate
   amount: number; // final PHP amount
@@ -203,6 +204,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
   
   // Edited state for all editable fields
   const [editedParticulars, setEditedParticulars] = useState<BillingParticular[]>([]);
+  // Selected value for the "Set all currencies" bulk dropdown
+  const [bulkCurrency, setBulkCurrency] = useState("");
   const [editedMargin, setEditedMargin] = useState(0);
   const [editedStatus, setEditedStatus] = useState<BillingStatus>("Draft");
   const [showTimeline, setShowTimeline] = useState(false);
@@ -337,8 +340,13 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
 
   useEffect(() => {
     if (billing) {
-      // Initialize billing particulars
-      setEditedParticulars(billing.particulars);
+      // Initialize billing particulars — backfill currency on legacy entries
+      // (old entries used the applyExchangeRate flag and had no per-line currency)
+      const docCurrency = billing.currency && billing.currency !== "PHP" ? billing.currency : "USD";
+      setEditedParticulars((billing.particulars || []).map((p: BillingParticular) => ({
+        ...p,
+        currency: p.currency || (p.applyExchangeRate ? docCurrency : "PHP"),
+      })));
       setEditedMargin(billing.margin || 0);
       setEditedStatus(billing.status);
       
@@ -1257,43 +1265,63 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                     Billing Particulars
                   </h3>
                   {isEditing && (
-                    <button
-                      onClick={() => {
-                        const overallRate = parseFloat(editedExchangeRate) || 0;
-                        setEditedParticulars([
-                          ...editedParticulars,
-                          {
-                            id: Math.random().toString(36).substr(2, 9),
-                            particulars: "",
-                            volumeType: "BL",
-                            volumeQty: 1,
-                            unitCost: 0,
-                            total: 0,
-                            exchangeRate: null,
-                            applyExchangeRate: false,
-                            amount: 0
-                          }
-                        ]);
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        color: "#0F766E",
-                        fontSize: "12px",
-                        fontWeight: 500,
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        transition: "background 0.15s ease"
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(15,118,110,0.05)"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                    >
-                      <Plus size={12} /> Add Item
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span style={{ fontSize: "12px", color: "#667085", fontWeight: 500 }}>Set all currencies:</span>
+                      <div style={{ width: "110px" }}>
+                        <NeuronDropdown
+                          value={bulkCurrency}
+                          placeholder="Select…"
+                          options={["PHP", "USD", "RMB"]}
+                          onChange={(currency) => {
+                            setBulkCurrency(currency);
+                            const overallRate = parseFloat(editedExchangeRate) || 0;
+                            const multiply = currency !== "PHP";
+                            setEditedParticulars(editedParticulars.map(p => {
+                              const total = p.volumeQty * p.unitCost;
+                              const amount = multiply && overallRate > 0 ? total * overallRate : total;
+                              return { ...p, currency, applyExchangeRate: multiply, exchangeRate: multiply ? overallRate : null, total, amount };
+                            }));
+                          }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEditedParticulars([
+                            ...editedParticulars,
+                            {
+                              id: Math.random().toString(36).substr(2, 9),
+                              particulars: "",
+                              volumeType: "BL",
+                              volumeQty: 1,
+                              unitCost: 0,
+                              total: 0,
+                              currency: "PHP",
+                              exchangeRate: null,
+                              applyExchangeRate: false,
+                              amount: 0
+                            }
+                          ]);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          color: "#0F766E",
+                          fontSize: "12px",
+                          fontWeight: 500,
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          transition: "background 0.15s ease"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(15,118,110,0.05)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                      >
+                        <Plus size={12} /> Add Item
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1311,6 +1339,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                             volumeQty: 1,
                             unitCost: 0,
                             total: 0,
+                            currency: "PHP",
                             exchangeRate: null,
                             applyExchangeRate: false,
                             amount: 0
@@ -1330,8 +1359,8 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                         <th style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "35%" }}>Particulars</th>
                         <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "10%" }}>Volume</th>
                         <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Unit Cost</th>
+                        <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "8%" }}>Currency</th>
                         <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Total</th>
-                        <th style={{ padding: "12px 16px", textAlign: "center", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "8%" }}>Ex. Rate</th>
                         <th style={{ padding: "12px 16px", textAlign: "right", fontSize: "12px", fontWeight: 500, color: "#667085", textTransform: "uppercase" as const, width: "15%" }}>Amount</th>
                         {isEditing && <th style={{ width: "10%" }}></th>}
                       </tr>
@@ -1339,7 +1368,7 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                     <tbody>
                       {editedParticulars.map((particular, index) => {
                         const overallRate = parseFloat(editedExchangeRate) || 0;
-                        const isExRateApplied = particular.applyExchangeRate ?? (particular.exchangeRate !== null && particular.exchangeRate !== undefined && particular.exchangeRate > 0);
+                        const isExRateApplied = (particular.currency || "PHP") !== "PHP";
                         return (
                           <tr key={particular.id || index} style={{ borderBottom: "1px solid #E5E9F0", background: "white" }}>
                             <td style={{ padding: "8px 8px 8px 16px" }}>
@@ -1499,6 +1528,37 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                                 </div>
                               )}
                             </td>
+                            {/* Currency */}
+                            <td style={{ padding: "8px", textAlign: "center" }}>
+                              {isEditing ? (
+                                <NeuronDropdown
+                                  value={particular.currency || "PHP"}
+                                  options={["PHP", "USD", "RMB"]}
+                                  onChange={(currency) => {
+                                    const multiply = currency !== "PHP";
+                                    const total = particular.volumeQty * particular.unitCost;
+                                    const amount = multiply && overallRate > 0 ? total * overallRate : total;
+                                    const newParticulars = [...editedParticulars];
+                                    newParticulars[index] = {
+                                      ...particular,
+                                      currency,
+                                      applyExchangeRate: multiply,
+                                      exchangeRate: multiply ? overallRate : null,
+                                      total,
+                                      amount
+                                    };
+                                    setEditedParticulars(newParticulars);
+                                  }}
+                                />
+                              ) : (
+                                <div style={{
+                                  height: "36px", display: "flex", alignItems: "center",
+                                  justifyContent: "center", fontSize: "13px", fontWeight: 600, color: "#0A1D4D"
+                                }}>
+                                  {particular.currency || "PHP"}
+                                </div>
+                              )}
+                            </td>
                             {/* Total — computed read-only */}
                             <td style={{ padding: "8px" }}>
                               <div style={{
@@ -1512,62 +1572,6 @@ export function ViewBillingScreen({ billingId, onBack, embedded = false, externa
                               }}>
                                 {formatAmount(particular.total || (particular.volumeQty * particular.unitCost))}
                               </div>
-                            </td>
-                            {/* Exchange Rate checkbox */}
-                            <td style={{ padding: "8px", textAlign: "center" }}>
-                              {isEditing ? (
-                                <div style={{ display: "flex", justifyContent: "center" }}>
-                                  <div
-                                    onClick={() => {
-                                      const checked = !isExRateApplied;
-                                      const total = particular.volumeQty * particular.unitCost;
-                                      const amount = checked && overallRate > 0 ? total * overallRate : total;
-                                      const newParticulars = [...editedParticulars];
-                                      newParticulars[index] = {
-                                        ...particular,
-                                        applyExchangeRate: checked,
-                                        exchangeRate: checked ? overallRate : null,
-                                        total,
-                                        amount
-                                      };
-                                      setEditedParticulars(newParticulars);
-                                    }}
-                                    style={{
-                                      width: "16px",
-                                      height: "16px",
-                                      borderRadius: "4px",
-                                      border: isExRateApplied ? "none" : "1px solid #D0D5DD",
-                                      background: isExRateApplied ? "#0F766E" : "white",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontSize: "10px",
-                                      color: "white",
-                                      cursor: "pointer",
-                                      transition: "all 0.15s ease",
-                                    }}
-                                  >
-                                    {isExRateApplied && "✓"}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div style={{ display: "flex", justifyContent: "center" }}>
-                                  <div style={{
-                                    width: "16px",
-                                    height: "16px",
-                                    borderRadius: "4px",
-                                    border: isExRateApplied ? "none" : "1px solid #D0D5DD",
-                                    background: isExRateApplied ? "#0F766E" : "white",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: "10px",
-                                    color: "white"
-                                  }}>
-                                    {isExRateApplied && "✓"}
-                                  </div>
-                                </div>
-                              )}
                             </td>
                             {/* Amount — computed read-only */}
                             <td style={{ padding: "8px" }}>

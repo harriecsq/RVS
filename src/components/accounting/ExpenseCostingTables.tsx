@@ -6,6 +6,12 @@ import { PortalDropdown } from "../shared/PortalDropdown";
 import { FilterSingleDropdown } from "../shared/FilterSingleDropdown";
 import { ReorderButtons } from "./ReorderButtons";
 import { swapRows } from "./utils/reorderRow";
+import { NeuronDropdown } from "../shared/NeuronDropdown";
+
+// Container-type dropdown labels (value stored as "40" | "20" | "BL")
+const PER_LABELS = ["PER 40", "PER 20", "PER BL"];
+const perToLabel = (v?: string) => (v === "20" ? "PER 20" : v === "BL" ? "PER BL" : "PER 40");
+const labelToPer = (l: string) => (l === "PER 20" ? "20" : l === "PER BL" ? "BL" : "40");
 
 // Types
 export interface ExpenseLineItem {
@@ -318,6 +324,9 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
       )
     } : {})
   });
+
+  // Selected value for the "Set all currencies" bulk dropdown
+  const [bulkCurrency, setBulkCurrency] = useState("");
 
   // Detect province segments (segments beyond the first one, for export bookings)
   const provinceSegments = (() => {
@@ -1355,53 +1364,20 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                             onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
                             onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                           />
-                          <select
-                            value={item.currency || "PHP"}
-                            onChange={(e) => handleExportCategoryUpdate(categoryName, item.id, 'currency', e.target.value)}
-                            style={{
-                              height: "36px",
-                              width: "58px",
-                              border: "1px solid #E5E9F0",
-                              borderRadius: "4px",
-                              padding: "0 2px",
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              color: "#0F766E",
-                              background: "white",
-                              outline: "none",
-                              cursor: "pointer",
-                              transition: "border-color 0.15s ease"
-                            }}
-                            onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                          >
-                            <option value="PHP">PHP</option>
-                            <option value="USD">USD</option>
-                            <option value="RMB">RMB</option>
-                          </select>
-                          <select
-                            value={item.per || "40"}
-                            onChange={(e) => handleExportCategoryUpdate(categoryName, item.id, 'per', e.target.value)}
-                            style={{
-                              height: "36px",
-                              width: "70px",
-                              border: "1px solid #E5E9F0",
-                              borderRadius: "4px",
-                              padding: "0 2px",
-                              fontSize: "11px",
-                              color: "#667085",
-                              background: "white",
-                              outline: "none",
-                              cursor: "pointer",
-                              transition: "border-color 0.15s ease"
-                            }}
-                            onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                            onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                          >
-                            <option value="40">PER 40</option>
-                            <option value="20">PER 20</option>
-                            <option value="BL">PER BL</option>
-                          </select>
+                          <div style={{ width: "78px" }}>
+                            <NeuronDropdown
+                              value={item.currency || "PHP"}
+                              options={["PHP", "USD", "RMB"]}
+                              onChange={(v) => handleExportCategoryUpdate(categoryName, item.id, 'currency', v)}
+                            />
+                          </div>
+                          <div style={{ width: "92px" }}>
+                            <NeuronDropdown
+                              value={perToLabel(item.per)}
+                              options={PER_LABELS}
+                              onChange={(l) => handleExportCategoryUpdate(categoryName, item.id, 'per', labelToPer(l))}
+                            />
+                          </div>
                         </div>
                       </td>
                       {/* Multiply by containers checkbox */}
@@ -1751,38 +1727,18 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
             Charge Categories & Line Items
           </h3>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {/* Set All Currencies buttons for EXPORT */}
+          {/* Set All Currencies dropdown for EXPORT */}
           {!isImport && (
             <>
               <span style={{ fontSize: "12px", color: "#667085", fontWeight: 500 }}>Set all currencies:</span>
-              {["PHP", "USD", "RMB"].map((cur) => (
-                <button
-                  key={cur}
-                  type="button"
-                  onClick={() => handleExportGlobalBulkCurrency(cur)}
-                  style={{
-                    padding: "5px 12px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: "#0F766E",
-                    background: "white",
-                    border: "1px solid #E5E9F0",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#F0FDFA";
-                    e.currentTarget.style.borderColor = "#0F766E";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "white";
-                    e.currentTarget.style.borderColor = "#E5E9F0";
-                  }}
-                >
-                  {cur}
-                </button>
-              ))}
+              <div style={{ width: "110px" }}>
+                <NeuronDropdown
+                  value={bulkCurrency}
+                  placeholder="Select…"
+                  options={["PHP", "USD", "RMB"]}
+                  onChange={(currency) => { setBulkCurrency(currency); handleExportGlobalBulkCurrency(currency); }}
+                />
+              </div>
             </>
           )}
           {/* Add Category button for IMPORT */}
@@ -2121,36 +2077,20 @@ export function ExpenseCostingTables({ booking, vouchers, onChange, isImport, ex
                                 onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
                                 onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
                               />
-                              <select
-                                value={item.currency || "PHP"}
-                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'currency', e.target.value)}
-                                style={{
-                                  height: "36px", width: "58px", border: "1px solid #E5E9F0", borderRadius: "4px",
-                                  padding: "0 2px", fontSize: "11px", fontWeight: 600, color: "#0F766E",
-                                  background: "white", outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                              >
-                                <option value="PHP">PHP</option>
-                                <option value="USD">USD</option>
-                                <option value="RMB">RMB</option>
-                              </select>
-                              <select
-                                value={item.per || "40"}
-                                onChange={(e) => handleDomesticUpdateItem(section.segmentId, item.id, 'per', e.target.value)}
-                                style={{
-                                  height: "36px", width: "70px", border: "1px solid #E5E9F0", borderRadius: "4px",
-                                  padding: "0 2px", fontSize: "11px", color: "#667085", background: "white",
-                                  outline: "none", cursor: "pointer", transition: "border-color 0.15s ease"
-                                }}
-                                onFocus={(e) => e.currentTarget.style.borderColor = "#0F766E"}
-                                onBlur={(e) => e.currentTarget.style.borderColor = "#E5E9F0"}
-                              >
-                                <option value="40">PER 40</option>
-                                <option value="20">PER 20</option>
-                                <option value="BL">PER BL</option>
-                              </select>
+                              <div style={{ width: "78px" }}>
+                                <NeuronDropdown
+                                  value={item.currency || "PHP"}
+                                  options={["PHP", "USD", "RMB"]}
+                                  onChange={(v) => handleDomesticUpdateItem(section.segmentId, item.id, 'currency', v)}
+                                />
+                              </div>
+                              <div style={{ width: "92px" }}>
+                                <NeuronDropdown
+                                  value={perToLabel(item.per)}
+                                  options={PER_LABELS}
+                                  onChange={(l) => handleDomesticUpdateItem(section.segmentId, item.id, 'per', labelToPer(l))}
+                                />
+                              </div>
                             </div>
                           </td>
                           {/* Multiply by containers checkbox */}
