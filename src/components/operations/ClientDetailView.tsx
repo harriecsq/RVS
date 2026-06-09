@@ -50,6 +50,8 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>("clients");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>(client.contacts || []);
   const [notes, setNotes] = useState(client.notes || "");
   const [showAddClientPanel, setShowAddClientPanel] = useState(false);
@@ -140,6 +142,30 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
     setIsEditing(false);
   };
 
+  const handleDeleteCompany = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/clients/${client.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success(`Client "${companyName}" deleted successfully`);
+        onBack();
+      } else {
+        toast.error(result.error || "Failed to delete client");
+        setShowDeleteConfirm(false);
+      }
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      toast.error("Failed to delete client");
+      setShowDeleteConfirm(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSaveNotes = async () => {
     try {
       await fetch(`${API_BASE_URL}/clients/${client.id}`, {
@@ -178,7 +204,7 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
           }}
         >
           <ArrowLeft size={16} />
-          Back to Customers
+          Back to Client Companies
         </button>
       </div>
 
@@ -355,6 +381,41 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
             activeTab={activeTab}
             onChange={(id) => setActiveTab(id as DetailTab)}
             style={{ padding: 0 }}
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      height: "32px",
+                      padding: "6px 16px",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      color: "#0A1D4D",
+                      background: "#FFFFFF",
+                      border: "1px solid #E5E9F0",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <MoreVertical size={16} />
+                    Actions
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    style={{ color: "#EF4444", display: "flex", alignItems: "center", gap: "8px" }}
+                  >
+                    <Trash2 size={14} />
+                    Delete Client
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
           />
 
           <div style={{ flex: 1, overflowY: "auto", marginTop: "24px" }}>
@@ -381,6 +442,55 @@ export function ClientDetailView({ client, onBack }: ClientDetailViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+            background: "rgba(0, 0, 0, 0.5)", display: "flex",
+            justifyContent: "center", alignItems: "center", zIndex: 1000,
+          }}
+          onClick={() => !isDeleting && setShowDeleteConfirm(false)}
+        >
+          <div
+            style={{ background: "white", borderRadius: "12px", padding: "32px", width: "400px", boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#0A1D4D", marginBottom: "16px" }}>
+              Delete Client
+            </h2>
+            <p style={{ fontSize: "14px", color: "#667085", marginBottom: "24px" }}>
+              Are you sure you want to delete "{companyName}"? This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                style={{
+                  padding: "12px 20px", background: "transparent", border: "1px solid #E5E9F0",
+                  borderRadius: "8px", color: "#667085", fontSize: "14px", fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCompany}
+                disabled={isDeleting}
+                style={{
+                  padding: "12px 20px", border: "none", borderRadius: "8px",
+                  background: isDeleting ? "#F87171" : "#EF4444", color: "#FFFFFF",
+                  fontSize: "14px", fontWeight: 600,
+                  cursor: isDeleting ? "not-allowed" : "pointer",
+                  opacity: isDeleting ? 0.7 : 1,
+                }}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
