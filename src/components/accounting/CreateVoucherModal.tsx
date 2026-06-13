@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Plus, Trash2, Link2, ChevronDown, Check } from "lucide-react";
 import { PortalDropdown } from "../shared/PortalDropdown";
 import { NeuronDropdown } from "../shared/NeuronDropdown";
+import { LegSelector } from "../shared/LegSelector";
 import { projectId, publicAnonKey } from "../../utils/supabase/info";
 import { toast } from "sonner@2.0.3";
 import { ComboInput } from "../ui/ComboInput";
@@ -1211,78 +1212,13 @@ export function CreateVoucherModal({
                     </div>
 
                     {selectedBooking && (() => {
-                      const isExportBookingForLeg = selectedBooking.shipmentType?.toLowerCase().includes("export") || selectedBooking.type?.toLowerCase().includes("export");
-                      const segmentsList: any[] = Array.isArray(selectedBooking.segments) ? selectedBooking.segments : [];
-                      const provinceLegs = segmentsList.filter((s: any) => typeof s?.segmentLabel === "string" && s.segmentLabel.startsWith("Province"));
-                      const showLegToggle = !!isExportBookingForLeg;
                       return (
                       <>
-                        {showLegToggle && (
-                          <div style={{ marginBottom: "16px" }}>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF", fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.04em", marginBottom: "6px" }}>
-                              Leg
-                            </div>
-                            <div style={{ display: "inline-flex", border: "1px solid #E5E9F0", borderRadius: "8px", overflow: "hidden", background: "#FFFFFF" }}>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedLeg("Manila")}
-                                style={{
-                                  padding: "8px 14px",
-                                  fontSize: "13px",
-                                  fontWeight: 500,
-                                  cursor: "pointer",
-                                  border: "none",
-                                  background: selectedLeg === "Manila" ? "#237F66" : "transparent",
-                                  color: selectedLeg === "Manila" ? "#FFFFFF" : "#12332B",
-                                }}
-                              >
-                                Manila
-                              </button>
-                              {provinceLegs.length === 0 ? (
-                                <button
-                                  type="button"
-                                  disabled
-                                  title="No province leg on this booking"
-                                  style={{
-                                    padding: "8px 14px",
-                                    fontSize: "13px",
-                                    fontWeight: 500,
-                                    cursor: "not-allowed",
-                                    border: "none",
-                                    borderLeft: "1px solid #E5E9F0",
-                                    background: "#F9FAFB",
-                                    color: "#9CA3AF",
-                                  }}
-                                >
-                                  Province
-                                </button>
-                              ) : (
-                                provinceLegs.map((seg: any) => {
-                                  const active = selectedLeg === seg.segmentId;
-                                  return (
-                                    <button
-                                      key={seg.segmentId}
-                                      type="button"
-                                      onClick={() => setSelectedLeg(seg.segmentId)}
-                                      style={{
-                                        padding: "8px 14px",
-                                        fontSize: "13px",
-                                        fontWeight: 500,
-                                        cursor: "pointer",
-                                        border: "none",
-                                        borderLeft: "1px solid #E5E9F0",
-                                        background: active ? "#237F66" : "transparent",
-                                        color: active ? "#FFFFFF" : "#12332B",
-                                      }}
-                                    >
-                                      {seg.segmentLabel}
-                                    </button>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </div>
-                        )}
+                        <LegSelector
+                          booking={selectedBooking}
+                          value={selectedLeg}
+                          onChange={setSelectedLeg}
+                        />
                         {/* Linked info badge */}
                         <div style={{
                           display: "flex",
